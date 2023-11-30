@@ -1,7 +1,7 @@
 package com.github.pflooky.datagen.core.validator
 
 import com.github.pflooky.datacaterer.api.model.Constants.{FORMAT, HTTP, JMS}
-import com.github.pflooky.datacaterer.api.model.{DataSourceValidation, ExpressionValidation, FoldersConfig, GroupByValidation, UpstreamDataSourceValidation, ValidationConfig, ValidationConfiguration}
+import com.github.pflooky.datacaterer.api.model.{ColumnNamesValidation, DataSourceValidation, ExpressionValidation, FoldersConfig, GroupByValidation, UpstreamDataSourceValidation, ValidationConfig, ValidationConfiguration}
 import com.github.pflooky.datagen.core.model.{DataSourceValidationResult, ValidationConfigResult}
 import com.github.pflooky.datagen.core.parser.ValidationParser
 import com.github.pflooky.datagen.core.validator.ValidationWaitImplicits.WaitConditionOps
@@ -74,6 +74,7 @@ class ValidationProcessor(
           case exprValid: ExpressionValidation => new ExpressionValidationOps(exprValid)
           case grpValid: GroupByValidation => new GroupByValidationOps(grpValid)
           case upValid: UpstreamDataSourceValidation => new UpstreamDataSourceValidationOps(upValid, foldersConfig.recordTrackingForValidationFolderPath)
+          case colNames: ColumnNamesValidation => new ColumnNamesValidationOps(colNames)
           case x => throw new RuntimeException(s"Unsupported validation type, validation=$x")
         }
         validationOps.validate(df, count)

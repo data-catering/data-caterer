@@ -35,28 +35,13 @@ cd data-caterer-example && ./run.sh
 
 Data Caterer is able to support the following data sources:
 
-1. Database
-   1. JDBC
-      1. Postgres
-      2. MySQL
-   2. Cassandra
-   3. ElasticSearch (coming soon)
-2. Files (local or cloud)
-   1. CSV
-   2. Parquet
-   3. ORC
-   4. Delta (coming soon)
-   5. JSON
-3. HTTP (sponsors only)
-4. JMS (sponsors only)
-   1. Solace
-5. Kafka (sponsors only)
-
-Metadata sources (sponsors only):
-
-1. OpenAPI
-2. Marquez (OpenLineage)
-3. OpenMetadata
+| Data Source Type | Data Source                            | Sponsor |
+|------------------|----------------------------------------|---------|
+| Database         | Postgres, MySQL, Cassandra             | N       |
+| File             | CSV, JSON, ORC, Parquet                | N       |
+| Messaging        | Kafka, Solace                          | Y       |
+| HTTP             | REST API                               | Y       |
+| Metadata         | Marquez, OpenMetadata, OpenAPI/Swagger | Y       |
 
 ## Supported use cases
 
@@ -112,9 +97,9 @@ This is inspired by the [mkdocs-material project](https://github.com/squidfunk/m
 
 ## Additional Details
 
-### High Level Flow
+### Design
 
-![Data Caterer high level design](design/high-level-design.png "High level design")
+[Design motivations and details can be found here.](https://data.catering/setup/design)
 
 ### Roadmap
 

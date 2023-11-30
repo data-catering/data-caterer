@@ -1,7 +1,7 @@
 package com.github.pflooky.datacaterer.api
 
-import com.github.pflooky.datacaterer.api.model.Constants.{DEFAULT_VALIDATION_JOIN_TYPE, DEFAULT_VALIDATION_WEBHOOK_HTTP_DATA_SOURCE_NAME, DEFAULT_VALIDATION_WEBHOOK_HTTP_METHOD, DEFAULT_VALIDATION_WEBHOOK_HTTP_STATUS_CODES, PATH}
-import com.github.pflooky.datacaterer.api.model.{DataExistsWaitCondition, ExpressionValidation, FileExistsWaitCondition, GroupByValidation, PauseWaitCondition, UpstreamDataSourceValidation, WebhookWaitCondition}
+import com.github.pflooky.datacaterer.api.model.Constants.{DEFAULT_VALIDATION_JOIN_TYPE, DEFAULT_VALIDATION_WEBHOOK_HTTP_DATA_SOURCE_NAME, DEFAULT_VALIDATION_WEBHOOK_HTTP_METHOD, DEFAULT_VALIDATION_WEBHOOK_HTTP_STATUS_CODES, PATH, VALIDATION_COLUMN_NAME_COUNT_BETWEEN, VALIDATION_COLUMN_NAME_COUNT_EQUAL, VALIDATION_COLUMN_NAME_MATCH_ORDER, VALIDATION_COLUMN_NAME_MATCH_SET}
+import com.github.pflooky.datacaterer.api.model.{ColumnNamesValidation, DataExistsWaitCondition, ExpressionValidation, FileExistsWaitCondition, GroupByValidation, PauseWaitCondition, UpstreamDataSourceValidation, WebhookWaitCondition}
 import org.junit.runner.RunWith
 import org.scalatest.funsuite.AnyFunSuite
 import org.scalatestplus.junit.JUnitRunner
@@ -480,6 +480,39 @@ class ValidationConfigurationBuilderTest extends AnyFunSuite {
     assert(validation.joinCols == List("expr:account_id == CONCAT('ACC', other_data_source_account_number)"))
     assert(validation.validationBuilder.validation.isInstanceOf[GroupByValidation])
     assert(validation.validationBuilder.validation.asInstanceOf[GroupByValidation].expr == "count == 0")
+  }
+
+  test("Can create column count validation") {
+    val result = ValidationBuilder().columnNames().countEqual(5)
+
+    assert(result.validation.isInstanceOf[ColumnNamesValidation])
+    assert(result.validation.asInstanceOf[ColumnNamesValidation].`type` == VALIDATION_COLUMN_NAME_COUNT_EQUAL)
+    assert(result.validation.asInstanceOf[ColumnNamesValidation].count == 5)
+  }
+
+  test("Can create column count between validation") {
+    val result = ValidationBuilder().columnNames().countBetween(5, 10)
+
+    assert(result.validation.isInstanceOf[ColumnNamesValidation])
+    assert(result.validation.asInstanceOf[ColumnNamesValidation].`type` == VALIDATION_COLUMN_NAME_COUNT_BETWEEN)
+    assert(result.validation.asInstanceOf[ColumnNamesValidation].minCount == 5)
+    assert(result.validation.asInstanceOf[ColumnNamesValidation].maxCount == 10)
+  }
+
+  test("Can create column names match ordered list of names") {
+    val result = ValidationBuilder().columnNames().matchOrder("account_id", "year")
+
+    assert(result.validation.isInstanceOf[ColumnNamesValidation])
+    assert(result.validation.asInstanceOf[ColumnNamesValidation].`type` == VALIDATION_COLUMN_NAME_MATCH_ORDER)
+    assert(result.validation.asInstanceOf[ColumnNamesValidation].names sameElements Array("account_id", "year"))
+  }
+
+  test("Can create column names exist in set of names") {
+    val result = ValidationBuilder().columnNames().matchSet("account_id", "year")
+
+    assert(result.validation.isInstanceOf[ColumnNamesValidation])
+    assert(result.validation.asInstanceOf[ColumnNamesValidation].`type` == VALIDATION_COLUMN_NAME_MATCH_SET)
+    assert(result.validation.asInstanceOf[ColumnNamesValidation].names sameElements Array("account_id", "year"))
   }
 
   test("Can create validation pause wait condition") {

@@ -137,7 +137,7 @@ class PlanProcessorTest extends SparkSuite {
       )
 
     val conf = configuration
-      .generatedReportsFolderPath("/Users/peter/code/spark-datagen/tmp/report")
+      .generatedReportsFolderPath("/tmp/report")
       .enableSinkMetadata(true)
 
     execute(conf, jsonTask, csvTask)
@@ -163,7 +163,7 @@ class PlanProcessorTest extends SparkSuite {
     )
 
     val conf = configuration.enableGeneratePlanAndTasks(true)
-      .generatedReportsFolderPath("/Users/peter/code/spark-datagen/tmp/report")
+      .generatedReportsFolderPath("/tmp/report")
 
     execute(myPlan, conf, csvTask, postgresTask)
   }
@@ -234,6 +234,10 @@ class PlanProcessorTest extends SparkSuite {
       )
       .count(count.records(10).recordsPerColumn(3, "account_id"))
       .validations(
+        validation.columnNames().countEqual(3),
+        validation.columnNames().countBetween(1, 2),
+        validation.columnNames().matchOrder("account_id", "amount", "name"),
+        validation.columnNames().matchSet("account_id", "my_name"),
         validation.upstreamData(firstJsonTask).joinColumns("account_id")
           .withValidation(validation.col("my_first_json_customer_details.name").isEqualCol("name")),
         validation.upstreamData(firstJsonTask).joinColumns("account_id")
@@ -254,7 +258,7 @@ class PlanProcessorTest extends SparkSuite {
       )
 
     val config = configuration
-      .generatedReportsFolderPath("/Users/peter/code/spark-datagen/tmp/report")
+      .generatedReportsFolderPath("/tmp/report")
       .recordTrackingForValidationFolderPath("/tmp/record-tracking-validation")
       .enableValidation(true)
 

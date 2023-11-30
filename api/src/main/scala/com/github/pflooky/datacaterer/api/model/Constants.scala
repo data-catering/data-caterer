@@ -266,6 +266,7 @@ object Constants {
   lazy val DEFAULT_VALIDATION_WEBHOOK_HTTP_DATA_SOURCE_NAME = "tmp_http_data_source"
   lazy val DEFAULT_VALIDATION_WEBHOOK_HTTP_METHOD = "GET"
   lazy val DEFAULT_VALIDATION_WEBHOOK_HTTP_STATUS_CODES = List(200)
+  lazy val DEFAULT_VALIDATION_COLUMN_NAME_TYPE = VALIDATION_COLUMN_NAME_COUNT_EQUAL
 
   //metadata source
   lazy val METADATA_SOURCE_TYPE = "metadata_source_type"
@@ -341,6 +342,10 @@ object Constants {
   lazy val VALIDATION_GROUP_BY = "groupBy"
   lazy val VALIDATION_UNIQUE = "unique"
   lazy val VALIDATION_PREFIX_JOIN_EXPRESSION = "expr:"
+  lazy val VALIDATION_COLUMN_NAME_COUNT_EQUAL = "column_count_equal"
+  lazy val VALIDATION_COLUMN_NAME_COUNT_BETWEEN = "column_count_between"
+  lazy val VALIDATION_COLUMN_NAME_MATCH_ORDER = "column_name_match_order"
+  lazy val VALIDATION_COLUMN_NAME_MATCH_SET = "column_name_match_set"
 
   //trial
   lazy val API_KEY = "API_KEY"

@@ -1,9 +1,9 @@
 package com.github.pflooky.datagen.core.model
 
 import com.github.pflooky.datacaterer.api.ValidationBuilder
-import com.github.pflooky.datacaterer.api.model.ExpressionValidation
+import com.github.pflooky.datacaterer.api.model.{ColumnNamesValidation, ExpressionValidation}
 import com.github.pflooky.datagen.core.util.{SparkSuite, Transaction}
-import com.github.pflooky.datagen.core.validator.ExpressionValidationOps
+import com.github.pflooky.datagen.core.validator.{ColumnNamesValidationOps, ExpressionValidationOps}
 import org.junit.runner.RunWith
 import org.scalatestplus.junit.JUnitRunner
 
@@ -64,5 +64,47 @@ class ValidationOperationsTest extends SparkSuite {
     assert(result.sampleErrorValues.isDefined)
     assert(result.sampleErrorValues.get.count() == 2)
     assert(result.sampleErrorValues.get.filter(r => r.getAs[Double]("amount") >= 100).count() == 2)
+  }
+
+  test("Can check column names count is equal") {
+    val validation = new ValidationBuilder().columnNames().countEqual(5).validation.asInstanceOf[ColumnNamesValidation]
+    val result = new ColumnNamesValidationOps(validation).validate(df, 4)
+
+    assert(result.isSuccess)
+    assert(result.total == 1)
+    assert(result.numErrors == 0)
+    assert(result.sampleErrorValues.isEmpty)
+  }
+
+  test("Can check column names count is between") {
+    val validation = new ValidationBuilder().columnNames().countBetween(3, 5).validation.asInstanceOf[ColumnNamesValidation]
+    val result = new ColumnNamesValidationOps(validation).validate(df, 4)
+
+    assert(result.isSuccess)
+    assert(result.total == 1)
+    assert(result.numErrors == 0)
+    assert(result.sampleErrorValues.isEmpty)
+  }
+
+  test("Can show error when column name order fails") {
+    val validation = new ValidationBuilder().columnNames().matchOrder("account_id", "name", "transaction_id", "amount", "created_date").validation.asInstanceOf[ColumnNamesValidation]
+    val result = new ColumnNamesValidationOps(validation).validate(df, 4)
+
+    assert(!result.isSuccess)
+    assert(result.total == 5)
+    assert(result.numErrors == 2)
+    assert(result.sampleErrorValues.isDefined)
+    assert(result.sampleErrorValues.get.count() == 2)
+  }
+
+  test("Can show error when column name not in set") {
+    val validation = new ValidationBuilder().columnNames().matchSet("account_id", "name", "transaction_id", "my_amount").validation.asInstanceOf[ColumnNamesValidation]
+    val result = new ColumnNamesValidationOps(validation).validate(df, 4)
+
+    assert(!result.isSuccess)
+    assert(result.total == 4)
+    assert(result.numErrors == 1)
+    assert(result.sampleErrorValues.isDefined)
+    assert(result.sampleErrorValues.get.count() == 1)
   }
 }

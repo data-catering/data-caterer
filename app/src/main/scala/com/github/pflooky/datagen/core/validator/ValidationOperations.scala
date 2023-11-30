@@ -1,10 +1,11 @@
 package com.github.pflooky.datagen.core.validator
 
-import com.github.pflooky.datacaterer.api.model.Constants.{AGGREGATION_COUNT, FORMAT, VALIDATION_PREFIX_JOIN_EXPRESSION, VALIDATION_UNIQUE}
-import com.github.pflooky.datacaterer.api.model.{ExpressionValidation, GroupByValidation, UpstreamDataSourceValidation, Validation}
+import com.github.pflooky.datacaterer.api.model.Constants.{AGGREGATION_COUNT, FORMAT, VALIDATION_COLUMN_NAME_COUNT_BETWEEN, VALIDATION_COLUMN_NAME_COUNT_EQUAL, VALIDATION_COLUMN_NAME_MATCH_ORDER, VALIDATION_COLUMN_NAME_MATCH_SET, VALIDATION_PREFIX_JOIN_EXPRESSION, VALIDATION_UNIQUE}
+import com.github.pflooky.datacaterer.api.model.{ColumnNamesValidation, ExpressionValidation, GroupByValidation, UpstreamDataSourceValidation, Validation}
 import com.github.pflooky.datagen.core.model.ValidationResult
+import org.apache.log4j.Logger
 import org.apache.spark.sql.functions.{col, expr}
-import org.apache.spark.sql.{DataFrame, Dataset, Row, SparkSession}
+import org.apache.spark.sql.{DataFrame, Dataset, Encoder, Encoders, Row, SparkSession}
 
 abstract class ValidationOps(validation: Validation) {
   def validate(df: DataFrame, dfCount: Long): ValidationResult
@@ -63,6 +64,7 @@ class UpstreamDataSourceValidationOps(
       case expr: ExpressionValidation => new ExpressionValidationOps(expr)
       case grp: GroupByValidation => new GroupByValidationOps(grp)
       case up: UpstreamDataSourceValidation => new UpstreamDataSourceValidationOps(up, recordTrackingForValidationFolderPath)
+      case colNames: ColumnNamesValidation => new ColumnNamesValidationOps(colNames)
       case x => throw new RuntimeException(s"Unsupported validation type, validation=$x")
     }
     val result = baseValidationOp.validate(joinedDf, joinedCount)
@@ -97,3 +99,44 @@ class UpstreamDataSourceValidationOps(
       .load()
   }
 }
+
+
+class ColumnNamesValidationOps(columnNamesValidation: ColumnNamesValidation) extends ValidationOps(columnNamesValidation) {
+
+  private val LOGGER = Logger.getLogger(getClass.getName)
+
+  override def validate(df: DataFrame, dfCount: Long): ValidationResult = {
+    implicit val stringEncoder: Encoder[CustomErrorSample] = Encoders.kryo[CustomErrorSample]
+
+    val (isSuccess, errorSamples, total) = columnNamesValidation.`type` match {
+      case VALIDATION_COLUMN_NAME_COUNT_EQUAL =>
+        val isEqualLength = df.columns.length == columnNamesValidation.count
+        val sample = if (isEqualLength) List() else List(CustomErrorSample(df.columns.length.toString))
+        (isEqualLength, sample, 1)
+      case VALIDATION_COLUMN_NAME_COUNT_BETWEEN =>
+        val colLength = df.columns.length
+        val isBetween = colLength >= columnNamesValidation.minCount && colLength <= columnNamesValidation.maxCount
+        val sample = if (isBetween) List() else List(CustomErrorSample(df.columns.length.toString))
+        (isBetween, sample, 1)
+      case VALIDATION_COLUMN_NAME_MATCH_ORDER =>
+        val zippedNames = df.columns.zip(columnNamesValidation.names).zipWithIndex
+        val misalignedNames = zippedNames.filter(n => n._1._1 != n._1._2)
+        (misalignedNames.isEmpty, misalignedNames.map(n => CustomErrorSample(s"${n._2}: ${n._1._1} -> ${n._1._2}")).toList, zippedNames.length)
+      case VALIDATION_COLUMN_NAME_MATCH_SET =>
+        val missingNames = columnNamesValidation.names.filter(n => !df.columns.contains(n)).map(CustomErrorSample)
+        (missingNames.isEmpty, missingNames.toList, columnNamesValidation.names.length)
+      case x =>
+        LOGGER.error(s"Unknown column name validation type, returning as a failed validation, type=$x")
+        (false, List(), 1)
+    }
+
+    val optErrorSample = if (isSuccess) {
+      None
+    } else {
+      Some(df.sparkSession.createDataFrame(errorSamples))
+    }
+    ValidationResult(columnNamesValidation, isSuccess, errorSamples.size, total, optErrorSample)
+  }
+}
+
+case class CustomErrorSample(value: String)

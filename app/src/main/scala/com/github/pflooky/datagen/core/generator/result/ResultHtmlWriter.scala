@@ -1,7 +1,7 @@
 package com.github.pflooky.datagen.core.generator.result
 
-import com.github.pflooky.datacaterer.api.model.Constants.HISTOGRAM
-import com.github.pflooky.datacaterer.api.model.{ExpressionValidation, FlagsConfig, Generator, GroupByValidation, Plan, Step, UpstreamDataSourceValidation, Validation}
+import com.github.pflooky.datacaterer.api.model.Constants.{HISTOGRAM, VALIDATION_COLUMN_NAME_COUNT_BETWEEN, VALIDATION_COLUMN_NAME_COUNT_EQUAL, VALIDATION_COLUMN_NAME_MATCH_ORDER, VALIDATION_COLUMN_NAME_MATCH_SET}
+import com.github.pflooky.datacaterer.api.model.{ColumnNamesValidation, ExpressionValidation, FlagsConfig, Generator, GroupByValidation, Plan, Step, UpstreamDataSourceValidation, Validation}
 import com.github.pflooky.datagen.core.listener.{SparkRecordListener, SparkTaskRecordSummary}
 import com.github.pflooky.datagen.core.model.Constants.{REPORT_DATA_SOURCES_HTML, REPORT_FIELDS_HTML, REPORT_HOME_HTML, REPORT_VALIDATIONS_HTML}
 import com.github.pflooky.datagen.core.util.PlanImplicits.CountOps
@@ -697,6 +697,14 @@ class ResultHtmlWriter {
           List("joinColumns", joinCols.mkString(",")),
           List("joinType", joinType),
         ) ++ nestedValidation
+      case ColumnNamesValidation(validType, count, minCount, maxCount, names) =>
+        val baseAttributes = validType match {
+          case VALIDATION_COLUMN_NAME_COUNT_EQUAL => List(List("count", count.toString))
+          case VALIDATION_COLUMN_NAME_COUNT_BETWEEN => List(List("min", minCount.toString), List("max", maxCount.toString))
+          case VALIDATION_COLUMN_NAME_MATCH_ORDER => List(List("matchOrder", names.mkString(",")))
+          case VALIDATION_COLUMN_NAME_MATCH_SET => List(List("matchSet", names.mkString(",")))
+        }
+        List(List("columnNameValidationType", validType)) ++ baseAttributes
       case _ => List()
     }
     options.filter(_.forall(_.nonEmpty))
