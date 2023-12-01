@@ -8,8 +8,8 @@ plugins {
     id("io.github.gradle-nexus.publish-plugin") version "1.3.0"
 }
 
-group = project.property("groupId").toString()
-version = project.property("version").toString()
+group = project.properties["groupId"].toString()
+version = project.properties["version"].toString()
 
 idea.project.settings {
     runConfigurations {
