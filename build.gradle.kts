@@ -8,6 +8,9 @@ plugins {
     id("io.github.gradle-nexus.publish-plugin") version "1.3.0"
 }
 
+group = project.property("groupId").toString()
+version = project.property("version").toString()
+
 idea.project.settings {
     runConfigurations {
         create("GenerateFromManualJson", Application::class.java) {
