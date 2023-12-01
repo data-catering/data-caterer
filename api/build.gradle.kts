@@ -8,7 +8,6 @@ import org.scoverage.ScoverageExtension
  * User Manual available at https://docs.gradle.org/7.5.1/userguide/building_java_projects.html
  * This project uses @Incubating APIs which are subject to change.
  */
-val groupId: String by project
 val apiArtifactId: String by project
 val scalaVersion: String by project
 val scalaSpecificVersion: String by project
@@ -136,7 +135,7 @@ publishing {
             artifact(tasks.shadowJar)
             artifact(tasks["sourcesJar"])
             artifact(tasks["javadocJar"])
-            groupId = groupId
+            groupId = project.properties["groupId"].toString()
             artifactId = apiArtifactId
 
             pom {
