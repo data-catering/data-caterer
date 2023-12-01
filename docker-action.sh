@@ -5,7 +5,7 @@ sparkVersion=$(grep spark gradle.properties | cut -d= -f2)
 platforms="linux/amd64,linux/arm64"
 
 echo "Creating API jars and publishing"
-./gradlew clean :api:javadocJar :api:sourcesJar :api:shadowJar :api:publish
+./gradlew clean :api:javadocJar :api:sourcesJar :api:shadowJar publishToSonatype closeAndReleaseSonatypeStagingRepository
 publish_res=$?
 if [[ "$publish_res" -ne 0 ]] ; then
   echo "Publish API jar failed, exiting"

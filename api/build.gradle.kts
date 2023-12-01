@@ -8,7 +8,7 @@ import org.scoverage.ScoverageExtension
  * User Manual available at https://docs.gradle.org/7.5.1/userguide/building_java_projects.html
  * This project uses @Incubating APIs which are subject to change.
  */
-val apiGroupId: String by project
+val groupId: String by project
 val apiArtifactId: String by project
 val scalaVersion: String by project
 val scalaSpecificVersion: String by project
@@ -136,16 +136,16 @@ publishing {
             artifact(tasks.shadowJar)
             artifact(tasks["sourcesJar"])
             artifact(tasks["javadocJar"])
-            groupId = apiGroupId
+            groupId = groupId
             artifactId = apiArtifactId
 
             pom {
                 name.set("Data Caterer API")
                 description.set("API for discovering, generating and validating data using Data Caterer")
-                url.set("https://pflooky.github.io/data-caterer-docs/")
+                url.set("https://data.catering/")
                 scm {
-                    url.set("https://github.com/pflooky/data-caterer-example")
-                    developerConnection.set("git@github.com:pflooky/data-caterer-example.git")
+                    url.set("https://github.com/data-catering/data-caterer")
+                    developerConnection.set("git@github.com:data-catering/data-caterer.git")
                 }
                 developers {
                     developer {

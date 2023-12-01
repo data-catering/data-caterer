@@ -5,6 +5,7 @@ import org.jetbrains.gradle.ext.settings
 plugins {
     idea
     id("org.jetbrains.gradle.plugin.idea-ext") version "1.1.7"
+    id("io.github.gradle-nexus.publish-plugin") version "1.3.0"
 }
 
 idea.project.settings {
@@ -87,6 +88,17 @@ idea.project.settings {
                 "TASK_FOLDER_PATH" to "app/src/test/resources/sample/task",
                 "LOG_LEVEL" to "debug"
             )
+        }
+    }
+}
+
+nexusPublishing {
+    repositories {
+        create("sonatype") {
+            nexusUrl.set(uri("https://s01.oss.sonatype.org/service/local/"))
+            snapshotRepositoryUrl.set(uri("https://s01.oss.sonatype.org/content/repositories/snapshots/"))
+            username.set(System.getenv("MAVEN_USERNAME"))
+            password.set(System.getenv("MAVEN_PASSWORD"))
         }
     }
 }
