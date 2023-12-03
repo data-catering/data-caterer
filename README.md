@@ -67,6 +67,10 @@ Data Caterer is able to support the following data sources:
       least one transaction)
    3. Upstream data source validations (generate data and then check same data is inserted in another data source with
       potential transformations)
+   4. Column name validations (check count and ordering of column names)
+10. Data migration validations
+    1. Ensure row counts are equal
+    2. Check both data sources have same values for key columns
 
 ## Run Configurations
 

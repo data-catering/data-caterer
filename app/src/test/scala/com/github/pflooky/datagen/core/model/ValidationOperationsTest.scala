@@ -67,7 +67,7 @@ class ValidationOperationsTest extends SparkSuite {
   }
 
   test("Can check column names count is equal") {
-    val validation = new ValidationBuilder().columnNames().countEqual(5).validation.asInstanceOf[ColumnNamesValidation]
+    val validation = new ValidationBuilder().columnNames.countEqual(5).validation.asInstanceOf[ColumnNamesValidation]
     val result = new ColumnNamesValidationOps(validation).validate(df, 4)
 
     assert(result.isSuccess)
@@ -77,7 +77,7 @@ class ValidationOperationsTest extends SparkSuite {
   }
 
   test("Can check column names count is between") {
-    val validation = new ValidationBuilder().columnNames().countBetween(3, 5).validation.asInstanceOf[ColumnNamesValidation]
+    val validation = new ValidationBuilder().columnNames.countBetween(3, 5).validation.asInstanceOf[ColumnNamesValidation]
     val result = new ColumnNamesValidationOps(validation).validate(df, 4)
 
     assert(result.isSuccess)
@@ -87,7 +87,7 @@ class ValidationOperationsTest extends SparkSuite {
   }
 
   test("Can show error when column name order fails") {
-    val validation = new ValidationBuilder().columnNames().matchOrder("account_id", "name", "transaction_id", "amount", "created_date").validation.asInstanceOf[ColumnNamesValidation]
+    val validation = new ValidationBuilder().columnNames.matchOrder("account_id", "name", "transaction_id", "amount", "created_date").validation.asInstanceOf[ColumnNamesValidation]
     val result = new ColumnNamesValidationOps(validation).validate(df, 4)
 
     assert(!result.isSuccess)
@@ -98,7 +98,7 @@ class ValidationOperationsTest extends SparkSuite {
   }
 
   test("Can show error when column name not in set") {
-    val validation = new ValidationBuilder().columnNames().matchSet("account_id", "name", "transaction_id", "my_amount").validation.asInstanceOf[ColumnNamesValidation]
+    val validation = new ValidationBuilder().columnNames.matchSet("account_id", "name", "transaction_id", "my_amount").validation.asInstanceOf[ColumnNamesValidation]
     val result = new ColumnNamesValidationOps(validation).validate(df, 4)
 
     assert(!result.isSuccess)

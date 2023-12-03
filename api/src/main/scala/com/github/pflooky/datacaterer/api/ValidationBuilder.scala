@@ -192,7 +192,7 @@ case class ValidationBuilder(validation: Validation = ExpressionValidation()) {
    *
    * @return ColumnNamesValidationBuilder
    */
-  def columnNames(): ColumnNamesValidationBuilder = {
+  def columnNames: ColumnNamesValidationBuilder = {
     ColumnNamesValidationBuilder()
   }
 }

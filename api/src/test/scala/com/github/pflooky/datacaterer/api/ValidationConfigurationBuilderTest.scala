@@ -483,7 +483,7 @@ class ValidationConfigurationBuilderTest extends AnyFunSuite {
   }
 
   test("Can create column count validation") {
-    val result = ValidationBuilder().columnNames().countEqual(5)
+    val result = ValidationBuilder().columnNames.countEqual(5)
 
     assert(result.validation.isInstanceOf[ColumnNamesValidation])
     assert(result.validation.asInstanceOf[ColumnNamesValidation].`type` == VALIDATION_COLUMN_NAME_COUNT_EQUAL)
@@ -491,7 +491,7 @@ class ValidationConfigurationBuilderTest extends AnyFunSuite {
   }
 
   test("Can create column count between validation") {
-    val result = ValidationBuilder().columnNames().countBetween(5, 10)
+    val result = ValidationBuilder().columnNames.countBetween(5, 10)
 
     assert(result.validation.isInstanceOf[ColumnNamesValidation])
     assert(result.validation.asInstanceOf[ColumnNamesValidation].`type` == VALIDATION_COLUMN_NAME_COUNT_BETWEEN)
@@ -500,7 +500,7 @@ class ValidationConfigurationBuilderTest extends AnyFunSuite {
   }
 
   test("Can create column names match ordered list of names") {
-    val result = ValidationBuilder().columnNames().matchOrder("account_id", "year")
+    val result = ValidationBuilder().columnNames.matchOrder("account_id", "year")
 
     assert(result.validation.isInstanceOf[ColumnNamesValidation])
     assert(result.validation.asInstanceOf[ColumnNamesValidation].`type` == VALIDATION_COLUMN_NAME_MATCH_ORDER)
@@ -508,7 +508,7 @@ class ValidationConfigurationBuilderTest extends AnyFunSuite {
   }
 
   test("Can create column names exist in set of names") {
-    val result = ValidationBuilder().columnNames().matchSet("account_id", "year")
+    val result = ValidationBuilder().columnNames.matchSet("account_id", "year")
 
     assert(result.validation.isInstanceOf[ColumnNamesValidation])
     assert(result.validation.asInstanceOf[ColumnNamesValidation].`type` == VALIDATION_COLUMN_NAME_MATCH_SET)
