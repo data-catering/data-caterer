@@ -87,7 +87,7 @@ Sponsors have access to the following features:
 
 - Metadata discovery
 - All data sources (see [here for all data sources](https://data.catering/setup/connection/connection/))
-- Batch and :material-circle-multiple: Event generation
+- Batch and Event generation
 - Auto generation from data connections or metadata sources
 - Suggest data validations
 - Clean up generated data
