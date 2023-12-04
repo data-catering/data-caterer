@@ -1,6 +1,4 @@
-# MOVED TO FOLLOWING REPO: [Data Caterer](https://github.com/data-catering/data-caterer)
-
-# Data Caterer - Data Generation and Validation
+# Data Caterer - Data Generation and Validation Tool
 
 ![Data Catering](misc/banner/logo_landscape_banner.svg)
 
