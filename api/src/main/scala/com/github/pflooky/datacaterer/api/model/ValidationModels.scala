@@ -19,7 +19,7 @@ trait Validation {
 
 case class ExpressionValidation(
                                  whereExpr: String = "true",
-                                 selectExpr: String = "*"
+                                 selectExpr: List[String] = List("*")
                                ) extends Validation
 
 case class GroupByValidation(

@@ -47,7 +47,7 @@ object ValidationHelper {
 
 class ExpressionValidationOps(expressionValidation: ExpressionValidation) extends ValidationOps(expressionValidation) {
   override def validate(df: DataFrame, dfCount: Long): ValidationResult = {
-    val dfWithSelectExpr = df.selectExpr(expressionValidation.selectExpr)
+    val dfWithSelectExpr = df.selectExpr(expressionValidation.selectExpr: _*)
     validateWithExpression(dfWithSelectExpr, dfCount, expressionValidation.whereExpr)
   }
 }

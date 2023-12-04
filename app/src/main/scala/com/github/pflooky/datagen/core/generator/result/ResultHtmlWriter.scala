@@ -679,7 +679,7 @@ class ResultHtmlWriter {
     val options = validation match {
       case ExpressionValidation(expr, selectExpr) =>
         List(
-          List("selectExpr", selectExpr),
+          List("selectExpr", selectExpr.mkString(", ")),
           List("whereExpr", expr),
           List("errorThreshold", validation.errorThreshold.getOrElse(0.0).toString)
         )

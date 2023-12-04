@@ -32,8 +32,10 @@ class ValidationBuilderSerializer extends JsonSerializer[ValidationBuilder] {
     gen.writeStartObject()
     validation match {
       case ExpressionValidation(expr, selectExpr) =>
+        gen.writeArrayFieldStart("selectExpr")
+        selectExpr.foreach(gen.writeObject)
+        gen.writeEndArray()
         gen.writeStringField("whereExpr", expr)
-        gen.writeStringField("selectExpr", selectExpr)
       case GroupByValidation(groupByCols, aggCol, aggType, expr) =>
         gen.writeArrayFieldStart("groupByCols")
         groupByCols.foreach(gen.writeObject)

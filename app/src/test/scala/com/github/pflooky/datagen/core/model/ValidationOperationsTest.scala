@@ -29,7 +29,7 @@ class ValidationOperationsTest extends SparkSuite {
   }
 
   test("Can define select expression to run before where expression") {
-    val validation = ExpressionValidation("median_amount < 1000", "PERCENTILE(amount, 0.5) AS median_amount")
+    val validation = ExpressionValidation("median_amount < 1000", List("PERCENTILE(amount, 0.5) AS median_amount"))
     val result = new ExpressionValidationOps(validation).validate(df, 4)
 
     assert(result.isSuccess)

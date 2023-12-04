@@ -137,16 +137,16 @@ case class ValidationBuilder(validation: Validation = ExpressionValidation()) {
    * SQL expression used to apply to columns before running validations.
    *
    * For example,
-   * {{{validation.selectExpr("PERCENTILE(amount, 0.5) AS median_amount, *")}}}
+   * {{{validation.selectExpr("PERCENTILE(amount, 0.5) AS median_amount", "*")}}}
    *
-   * @param expr SQL expression
+   * @param expr SQL expressions
    * @return ValidationBuilder
    * @see <a href="https://spark.apache.org/docs/latest/api/sql/">SQL expressions</a>
    */
-  def selectExpr(expr: String): ValidationBuilder = {
+  @varargs def selectExpr(expr: String*): ValidationBuilder = {
     validation match {
       case expressionValidation: ExpressionValidation =>
-        val withExpr = expressionValidation.modify(_.selectExpr).setTo(expr)
+        val withExpr = expressionValidation.modify(_.selectExpr).setTo(expr.toList)
         copyWithDescAndThreshold(withExpr)
     }
   }
