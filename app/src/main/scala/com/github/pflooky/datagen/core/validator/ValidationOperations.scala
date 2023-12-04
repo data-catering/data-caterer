@@ -3,6 +3,7 @@ package com.github.pflooky.datagen.core.validator
 import com.github.pflooky.datacaterer.api.model.Constants.{AGGREGATION_COUNT, FORMAT, VALIDATION_COLUMN_NAME_COUNT_BETWEEN, VALIDATION_COLUMN_NAME_COUNT_EQUAL, VALIDATION_COLUMN_NAME_MATCH_ORDER, VALIDATION_COLUMN_NAME_MATCH_SET, VALIDATION_PREFIX_JOIN_EXPRESSION, VALIDATION_UNIQUE}
 import com.github.pflooky.datacaterer.api.model.{ColumnNamesValidation, ExpressionValidation, GroupByValidation, UpstreamDataSourceValidation, Validation}
 import com.github.pflooky.datagen.core.model.ValidationResult
+import com.github.pflooky.datagen.core.validator.ValidationHelper.getValidationType
 import org.apache.log4j.Logger
 import org.apache.spark.sql.functions.{col, expr}
 import org.apache.spark.sql.{DataFrame, Dataset, Encoder, Encoders, Row, SparkSession}
@@ -27,6 +28,20 @@ abstract class ValidationOps(validation: Validation) {
       case _ => (true, None)
     }
     (isSuccess, sampleErrors, numErrors)
+  }
+}
+
+
+object ValidationHelper {
+
+  def getValidationType(validation: Validation, recordTrackingForValidationFolderPath: String): ValidationOps = {
+    validation match {
+      case exprValid: ExpressionValidation => new ExpressionValidationOps(exprValid)
+      case grpValid: GroupByValidation => new GroupByValidationOps(grpValid)
+      case upValid: UpstreamDataSourceValidation => new UpstreamDataSourceValidationOps(upValid, recordTrackingForValidationFolderPath)
+      case colNames: ColumnNamesValidation => new ColumnNamesValidationOps(colNames)
+      case x => throw new RuntimeException(s"Unsupported validation type, validation=$x")
+    }
   }
 }
 
@@ -60,13 +75,7 @@ class UpstreamDataSourceValidationOps(
     val joinedDf = getJoinedDf(df, upstreamDf)
     val joinedCount = joinedDf.count()
 
-    val baseValidationOp = upstreamDataSourceValidation.validationBuilder.validation match {
-      case expr: ExpressionValidation => new ExpressionValidationOps(expr)
-      case grp: GroupByValidation => new GroupByValidationOps(grp)
-      case up: UpstreamDataSourceValidation => new UpstreamDataSourceValidationOps(up, recordTrackingForValidationFolderPath)
-      case colNames: ColumnNamesValidation => new ColumnNamesValidationOps(colNames)
-      case x => throw new RuntimeException(s"Unsupported validation type, validation=$x")
-    }
+    val baseValidationOp = getValidationType(upstreamDataSourceValidation.validationBuilder.validation, recordTrackingForValidationFolderPath)
     val result = baseValidationOp.validate(joinedDf, joinedCount)
     ValidationResult.fromValidationWithBaseResult(upstreamDataSourceValidation, result)
   }

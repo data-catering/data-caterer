@@ -4,6 +4,7 @@ import com.github.pflooky.datacaterer.api.model.Constants.{FORMAT, HTTP, JMS}
 import com.github.pflooky.datacaterer.api.model.{ColumnNamesValidation, DataSourceValidation, ExpressionValidation, FoldersConfig, GroupByValidation, UpstreamDataSourceValidation, ValidationConfig, ValidationConfiguration}
 import com.github.pflooky.datagen.core.model.{DataSourceValidationResult, ValidationConfigResult}
 import com.github.pflooky.datagen.core.parser.ValidationParser
+import com.github.pflooky.datagen.core.validator.ValidationHelper.getValidationType
 import com.github.pflooky.datagen.core.validator.ValidationWaitImplicits.WaitConditionOps
 import org.apache.log4j.Logger
 import org.apache.spark.sql.{DataFrame, SparkSession}
@@ -70,14 +71,7 @@ class ValidationProcessor(
     } else {
       val count = df.count()
       val results = dataSourceValidation.validations.map(validBuilder => {
-        val validationOps = validBuilder.validation match {
-          case exprValid: ExpressionValidation => new ExpressionValidationOps(exprValid)
-          case grpValid: GroupByValidation => new GroupByValidationOps(grpValid)
-          case upValid: UpstreamDataSourceValidation => new UpstreamDataSourceValidationOps(upValid, foldersConfig.recordTrackingForValidationFolderPath)
-          case colNames: ColumnNamesValidation => new ColumnNamesValidationOps(colNames)
-          case x => throw new RuntimeException(s"Unsupported validation type, validation=$x")
-        }
-        validationOps.validate(df, count)
+        getValidationType(validBuilder.validation, foldersConfig.recordTrackingForValidationFolderPath).validate(df, count)
       })
       df.unpersist()
       LOGGER.debug(s"Finished data validations, name=${vc.name}," +

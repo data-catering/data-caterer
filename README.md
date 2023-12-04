@@ -80,19 +80,19 @@ Different ways to run Data Caterer based on your use case:
 
 ## Sponsorship
 
-Data Caterer is set up under a sponsorware model where all features are available to sponsors. A subset of the features
+Data Caterer is set up under a sponsorware model where all features are available to sponsors. The core features
 are available here in this project for all to use/fork/update/improve etc., as the open core.
 
 Sponsors have access to the following features:
 
 - Metadata discovery
-- All data sources (see [here for all data sources](https://data.catering/setup/connection/connection/))
+- All data sources (see [here for all data sources](https://data.catering/setup/connection/))
 - Batch and Event generation
-- Auto generation from data connections or metadata sources
+- [Auto generation from data connections or metadata sources](https://data.catering/setup/guide/scenario/auto-generate-connection/)
 - Suggest data validations
-- Clean up generated data
+- [Clean up generated data](https://data.catering/setup/guide/scenario/delete-generated-data/)
 - Run as many times as you want, not charged by usage
-plus [more the come](#roadmap).
+- [Plus more to come](#roadmap)
 
 [Find out more details here to help with sponsorship.](https://data.catering/sponsor)
 
