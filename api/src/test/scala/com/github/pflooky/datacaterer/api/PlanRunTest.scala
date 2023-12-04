@@ -84,7 +84,7 @@ class PlanRunTest extends AnyFunSuite {
     assert(dsValidation._2.head.validations.size == 1)
     assert(dsValidation._2.head.validations.head.validation.isInstanceOf[ExpressionValidation])
     val expressionValidation = dsValidation._2.head.validations.head.validation.asInstanceOf[ExpressionValidation]
-    assert(expressionValidation.expr == "account_id != ''")
+    assert(expressionValidation.whereExpr == "account_id != ''")
   }
 
   test("Can create plan with multiple validations for one data source") {
@@ -105,10 +105,10 @@ class PlanRunTest extends AnyFunSuite {
     assert(dsValidation._1 == "my_postgres")
     val accountValid = dsValidation._2.filter(_.options.get(JDBC_TABLE).contains("account.accounts")).head
     assert(accountValid.validations.size == 1)
-    assert(accountValid.validations.exists(v => v.validation.asInstanceOf[ExpressionValidation].expr == "account_id != ''"))
+    assert(accountValid.validations.exists(v => v.validation.asInstanceOf[ExpressionValidation].whereExpr == "account_id != ''"))
     val txnValid = dsValidation._2.filter(_.options.get(JDBC_TABLE).contains("account.transactions")).head
     assert(txnValid.validations.size == 1)
-    assert(txnValid.validations.exists(v => v.validation.asInstanceOf[ExpressionValidation].expr == "txn_id IS NOT NULL"))
+    assert(txnValid.validations.exists(v => v.validation.asInstanceOf[ExpressionValidation].whereExpr == "txn_id IS NOT NULL"))
   }
 
   test("Can create plan with validations only defined") {
@@ -124,7 +124,7 @@ class PlanRunTest extends AnyFunSuite {
     assert(result._validations.head.dataSources.contains("my_csv"))
     val validRes = result._validations.head.dataSources("my_csv").head
     assert(validRes.validations.size == 1)
-    assert(validRes.validations.head.validation.asInstanceOf[ExpressionValidation].expr == "account_id != 'acc123'")
+    assert(validRes.validations.head.validation.asInstanceOf[ExpressionValidation].whereExpr == "account_id != 'acc123'")
     assert(validRes.options.nonEmpty)
     assert(validRes.options == Map(FORMAT -> "csv", PATH -> "/my/csv"))
   }

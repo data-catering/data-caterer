@@ -116,7 +116,7 @@ case class ValidationBuilder(validation: Validation = ExpressionValidation()) {
    * required to be boolean. Can use any columns in the validation logic.
    *
    * For example,
-   * {{{validation.expr("CASE WHEN status == 'open' THEN balance > 0 ELSE balance == 0 END}}}
+   * {{{validation.expr("CASE WHEN status == 'open' THEN balance > 0 ELSE balance == 0 END")}}}
    *
    * @param expr SQL expression which returns a boolean
    * @return ValidationBuilder
@@ -126,14 +126,28 @@ case class ValidationBuilder(validation: Validation = ExpressionValidation()) {
     validation match {
       case GroupByValidation(grpCols, aggCol, aggType, _) =>
         val grpWithExpr = GroupByValidation(grpCols, aggCol, aggType, expr)
-        grpWithExpr.description = this.validation.description
-        grpWithExpr.errorThreshold = this.validation.errorThreshold
-        this.modify(_.validation).setTo(grpWithExpr)
+        copyWithDescAndThreshold(grpWithExpr)
       case expressionValidation: ExpressionValidation =>
-        val withExpr = expressionValidation.modify(_.expr).setTo(expr)
-        withExpr.description = this.validation.description
-        withExpr.errorThreshold = this.validation.errorThreshold
-        this.modify(_.validation).setTo(withExpr)
+        val withExpr = expressionValidation.modify(_.whereExpr).setTo(expr)
+        copyWithDescAndThreshold(withExpr)
+    }
+  }
+
+  /**
+   * SQL expression used to apply to columns before running validations.
+   *
+   * For example,
+   * {{{validation.selectExpr("PERCENTILE(amount, 0.5) AS median_amount, *")}}}
+   *
+   * @param expr SQL expression
+   * @return ValidationBuilder
+   * @see <a href="https://spark.apache.org/docs/latest/api/sql/">SQL expressions</a>
+   */
+  def selectExpr(expr: String): ValidationBuilder = {
+    validation match {
+      case expressionValidation: ExpressionValidation =>
+        val withExpr = expressionValidation.modify(_.selectExpr).setTo(expr)
+        copyWithDescAndThreshold(withExpr)
     }
   }
 
@@ -194,6 +208,12 @@ case class ValidationBuilder(validation: Validation = ExpressionValidation()) {
    */
   def columnNames: ColumnNamesValidationBuilder = {
     ColumnNamesValidationBuilder()
+  }
+
+  private def copyWithDescAndThreshold(newValidation: Validation): ValidationBuilder = {
+    newValidation.description = this.validation.description
+    newValidation.errorThreshold = this.validation.errorThreshold
+    this.modify(_.validation).setTo(newValidation)
   }
 }
 

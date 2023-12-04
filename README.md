@@ -99,6 +99,10 @@ Sponsors have access to the following features:
 This is inspired by the [mkdocs-material project](https://github.com/squidfunk/mkdocs-material) which
 [follows the same model](https://squidfunk.github.io/mkdocs-material/insiders/).
 
+## Contributing
+
+[View details here about how you can contribute to the project.](CONTRIBUTING.md)
+
 ## Additional Details
 
 ### Design

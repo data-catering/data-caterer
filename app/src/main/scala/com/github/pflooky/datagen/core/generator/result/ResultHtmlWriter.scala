@@ -677,9 +677,10 @@ class ResultHtmlWriter {
 
   private def getValidationOptions(validation: Validation): List[List[String]] = {
     val options = validation match {
-      case ExpressionValidation(expr) =>
+      case ExpressionValidation(expr, selectExpr) =>
         List(
-          List("expr", expr),
+          List("selectExpr", selectExpr),
+          List("whereExpr", expr),
           List("errorThreshold", validation.errorThreshold.getOrElse(0.0).toString)
         )
       case GroupByValidation(groupByCols, aggCol, aggType, expr) =>

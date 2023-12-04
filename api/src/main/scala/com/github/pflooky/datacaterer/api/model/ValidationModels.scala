@@ -18,7 +18,8 @@ trait Validation {
 }
 
 case class ExpressionValidation(
-                                 expr: String = "true"
+                                 whereExpr: String = "true",
+                                 selectExpr: String = "*"
                                ) extends Validation
 
 case class GroupByValidation(

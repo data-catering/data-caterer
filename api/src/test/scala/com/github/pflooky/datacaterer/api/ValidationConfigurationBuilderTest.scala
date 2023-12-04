@@ -38,276 +38,276 @@ class ValidationConfigurationBuilderTest extends AnyFunSuite {
     val result = ValidationBuilder().col("my_col").greaterThan(10)
 
     assert(result.validation.isInstanceOf[ExpressionValidation])
-    assert(result.validation.asInstanceOf[ExpressionValidation].expr == "my_col > 10")
+    assert(result.validation.asInstanceOf[ExpressionValidation].whereExpr == "my_col > 10")
   }
 
   test("Can create column equal to validation") {
     val result = ValidationBuilder().col("my_col").isEqual(10)
 
     assert(result.validation.isInstanceOf[ExpressionValidation])
-    assert(result.validation.asInstanceOf[ExpressionValidation].expr == "my_col == 10")
+    assert(result.validation.asInstanceOf[ExpressionValidation].whereExpr == "my_col == 10")
 
     val resultStr = ValidationBuilder().col("my_col").isEqual("created")
 
     assert(resultStr.validation.isInstanceOf[ExpressionValidation])
-    assert(resultStr.validation.asInstanceOf[ExpressionValidation].expr == "my_col == 'created'")
+    assert(resultStr.validation.asInstanceOf[ExpressionValidation].whereExpr == "my_col == 'created'")
   }
 
   test("Can create column equal to another column validation") {
     val result = ValidationBuilder().col("my_col").isEqualCol("other_col")
 
     assert(result.validation.isInstanceOf[ExpressionValidation])
-    assert(result.validation.asInstanceOf[ExpressionValidation].expr == "my_col == other_col")
+    assert(result.validation.asInstanceOf[ExpressionValidation].whereExpr == "my_col == other_col")
   }
 
   test("Can create column not equal to validation") {
     val result = ValidationBuilder().col("my_col").isNotEqual(10)
 
     assert(result.validation.isInstanceOf[ExpressionValidation])
-    assert(result.validation.asInstanceOf[ExpressionValidation].expr == "my_col != 10")
+    assert(result.validation.asInstanceOf[ExpressionValidation].whereExpr == "my_col != 10")
 
     val resultStr = ValidationBuilder().col("my_col").isNotEqual("created")
 
     assert(resultStr.validation.isInstanceOf[ExpressionValidation])
-    assert(resultStr.validation.asInstanceOf[ExpressionValidation].expr == "my_col != 'created'")
+    assert(resultStr.validation.asInstanceOf[ExpressionValidation].whereExpr == "my_col != 'created'")
   }
 
   test("Can create column not equal to another column validation") {
     val result = ValidationBuilder().col("my_col").isNotEqualCol("other_col")
 
     assert(result.validation.isInstanceOf[ExpressionValidation])
-    assert(result.validation.asInstanceOf[ExpressionValidation].expr == "my_col != other_col")
+    assert(result.validation.asInstanceOf[ExpressionValidation].whereExpr == "my_col != other_col")
   }
 
   test("Can create column is null validation") {
     val result = ValidationBuilder().col("my_col").isNull
 
     assert(result.validation.isInstanceOf[ExpressionValidation])
-    assert(result.validation.asInstanceOf[ExpressionValidation].expr == "ISNULL(my_col)")
+    assert(result.validation.asInstanceOf[ExpressionValidation].whereExpr == "ISNULL(my_col)")
   }
 
   test("Can create column is not null validation") {
     val result = ValidationBuilder().col("my_col").isNotNull
 
     assert(result.validation.isInstanceOf[ExpressionValidation])
-    assert(result.validation.asInstanceOf[ExpressionValidation].expr == "ISNOTNULL(my_col)")
+    assert(result.validation.asInstanceOf[ExpressionValidation].whereExpr == "ISNOTNULL(my_col)")
   }
 
   test("Can create column contains validation") {
     val result = ValidationBuilder().col("my_col").contains("apple")
 
     assert(result.validation.isInstanceOf[ExpressionValidation])
-    assert(result.validation.asInstanceOf[ExpressionValidation].expr == "CONTAINS(my_col, 'apple')")
+    assert(result.validation.asInstanceOf[ExpressionValidation].whereExpr == "CONTAINS(my_col, 'apple')")
   }
 
   test("Can create column not contains validation") {
     val result = ValidationBuilder().col("my_col").notContains("apple")
 
     assert(result.validation.isInstanceOf[ExpressionValidation])
-    assert(result.validation.asInstanceOf[ExpressionValidation].expr == "!CONTAINS(my_col, 'apple')")
+    assert(result.validation.asInstanceOf[ExpressionValidation].whereExpr == "!CONTAINS(my_col, 'apple')")
   }
 
   test("Can create column less than validation") {
     val result = ValidationBuilder().col("my_col").lessThan(Date.valueOf("2023-01-01"))
 
     assert(result.validation.isInstanceOf[ExpressionValidation])
-    assert(result.validation.asInstanceOf[ExpressionValidation].expr == "my_col < DATE('2023-01-01')")
+    assert(result.validation.asInstanceOf[ExpressionValidation].whereExpr == "my_col < DATE('2023-01-01')")
   }
 
   test("Can create column less than other column validation") {
     val result = ValidationBuilder().col("my_col").lessThanCol("other_col")
 
     assert(result.validation.isInstanceOf[ExpressionValidation])
-    assert(result.validation.asInstanceOf[ExpressionValidation].expr == "my_col < other_col")
+    assert(result.validation.asInstanceOf[ExpressionValidation].whereExpr == "my_col < other_col")
   }
 
   test("Can create column less than or equal validation") {
     val result = ValidationBuilder().col("my_col").lessThanOrEqual(Timestamp.valueOf("2023-01-01 00:00:00.0"))
 
     assert(result.validation.isInstanceOf[ExpressionValidation])
-    assert(result.validation.asInstanceOf[ExpressionValidation].expr == "my_col <= TIMESTAMP('2023-01-01 00:00:00.0')")
+    assert(result.validation.asInstanceOf[ExpressionValidation].whereExpr == "my_col <= TIMESTAMP('2023-01-01 00:00:00.0')")
   }
 
   test("Can create column less than or equal other column validation") {
     val result = ValidationBuilder().col("my_col").lessThanOrEqualCol("other_col")
 
     assert(result.validation.isInstanceOf[ExpressionValidation])
-    assert(result.validation.asInstanceOf[ExpressionValidation].expr == "my_col <= other_col")
+    assert(result.validation.asInstanceOf[ExpressionValidation].whereExpr == "my_col <= other_col")
   }
 
   test("Can create column greater than validation") {
     val result = ValidationBuilder().col("my_col").greaterThan(10)
 
     assert(result.validation.isInstanceOf[ExpressionValidation])
-    assert(result.validation.asInstanceOf[ExpressionValidation].expr == "my_col > 10")
+    assert(result.validation.asInstanceOf[ExpressionValidation].whereExpr == "my_col > 10")
   }
 
   test("Can create column greater than other column validation") {
     val result = ValidationBuilder().col("my_col").greaterThanCol("other_col")
 
     assert(result.validation.isInstanceOf[ExpressionValidation])
-    assert(result.validation.asInstanceOf[ExpressionValidation].expr == "my_col > other_col")
+    assert(result.validation.asInstanceOf[ExpressionValidation].whereExpr == "my_col > other_col")
   }
 
   test("Can create column greater than or equal validation") {
     val result = ValidationBuilder().col("my_col").greaterThanOrEqual(10)
 
     assert(result.validation.isInstanceOf[ExpressionValidation])
-    assert(result.validation.asInstanceOf[ExpressionValidation].expr == "my_col >= 10")
+    assert(result.validation.asInstanceOf[ExpressionValidation].whereExpr == "my_col >= 10")
   }
 
   test("Can create column greater than or equal other column validation") {
     val result = ValidationBuilder().col("my_col").greaterThanOrEqualCol("other_col")
 
     assert(result.validation.isInstanceOf[ExpressionValidation])
-    assert(result.validation.asInstanceOf[ExpressionValidation].expr == "my_col >= other_col")
+    assert(result.validation.asInstanceOf[ExpressionValidation].whereExpr == "my_col >= other_col")
   }
 
   test("Can create column between validation") {
     val result = ValidationBuilder().col("my_col").between(10, 20)
 
     assert(result.validation.isInstanceOf[ExpressionValidation])
-    assert(result.validation.asInstanceOf[ExpressionValidation].expr == "my_col BETWEEN 10 AND 20")
+    assert(result.validation.asInstanceOf[ExpressionValidation].whereExpr == "my_col BETWEEN 10 AND 20")
   }
 
   test("Can create column between other col validation") {
     val result = ValidationBuilder().col("my_col").betweenCol("other_col", "another_col")
 
     assert(result.validation.isInstanceOf[ExpressionValidation])
-    assert(result.validation.asInstanceOf[ExpressionValidation].expr == "my_col BETWEEN other_col AND another_col")
+    assert(result.validation.asInstanceOf[ExpressionValidation].whereExpr == "my_col BETWEEN other_col AND another_col")
   }
 
   test("Can create column not between validation") {
     val result = ValidationBuilder().col("my_col").notBetween(10, 20)
 
     assert(result.validation.isInstanceOf[ExpressionValidation])
-    assert(result.validation.asInstanceOf[ExpressionValidation].expr == "my_col NOT BETWEEN 10 AND 20")
+    assert(result.validation.asInstanceOf[ExpressionValidation].whereExpr == "my_col NOT BETWEEN 10 AND 20")
   }
 
   test("Can create column not between other col validation") {
     val result = ValidationBuilder().col("my_col").notBetweenCol("other_col", "another_col")
 
     assert(result.validation.isInstanceOf[ExpressionValidation])
-    assert(result.validation.asInstanceOf[ExpressionValidation].expr == "my_col NOT BETWEEN other_col AND another_col")
+    assert(result.validation.asInstanceOf[ExpressionValidation].whereExpr == "my_col NOT BETWEEN other_col AND another_col")
   }
 
   test("Can create column in validation") {
     val result = ValidationBuilder().col("my_col").in("open", "closed")
 
     assert(result.validation.isInstanceOf[ExpressionValidation])
-    assert(result.validation.asInstanceOf[ExpressionValidation].expr == "my_col IN ('open','closed')")
+    assert(result.validation.asInstanceOf[ExpressionValidation].whereExpr == "my_col IN ('open','closed')")
   }
 
   test("Can create column not in validation") {
     val result = ValidationBuilder().col("my_col").notIn("open", "closed")
 
     assert(result.validation.isInstanceOf[ExpressionValidation])
-    assert(result.validation.asInstanceOf[ExpressionValidation].expr == "NOT my_col IN ('open','closed')")
+    assert(result.validation.asInstanceOf[ExpressionValidation].whereExpr == "NOT my_col IN ('open','closed')")
   }
 
   test("Can create column matches validation") {
     val result = ValidationBuilder().col("my_col").matches("ACC[0-9]{8}")
 
     assert(result.validation.isInstanceOf[ExpressionValidation])
-    assert(result.validation.asInstanceOf[ExpressionValidation].expr == "REGEXP(my_col, 'ACC[0-9]{8}')")
+    assert(result.validation.asInstanceOf[ExpressionValidation].whereExpr == "REGEXP(my_col, 'ACC[0-9]{8}')")
   }
 
   test("Can create column not matches validation") {
     val result = ValidationBuilder().col("my_col").notMatches("ACC[0-9]{8}")
 
     assert(result.validation.isInstanceOf[ExpressionValidation])
-    assert(result.validation.asInstanceOf[ExpressionValidation].expr == "!REGEXP(my_col, 'ACC[0-9]{8}')")
+    assert(result.validation.asInstanceOf[ExpressionValidation].whereExpr == "!REGEXP(my_col, 'ACC[0-9]{8}')")
   }
 
   test("Can create column starts with validation") {
     val result = ValidationBuilder().col("my_col").startsWith("ACC")
 
     assert(result.validation.isInstanceOf[ExpressionValidation])
-    assert(result.validation.asInstanceOf[ExpressionValidation].expr == "STARTSWITH(my_col, 'ACC')")
+    assert(result.validation.asInstanceOf[ExpressionValidation].whereExpr == "STARTSWITH(my_col, 'ACC')")
   }
 
   test("Can create column not starts with validation") {
     val result = ValidationBuilder().col("my_col").notStartsWith("ACC")
 
     assert(result.validation.isInstanceOf[ExpressionValidation])
-    assert(result.validation.asInstanceOf[ExpressionValidation].expr == "!STARTSWITH(my_col, 'ACC')")
+    assert(result.validation.asInstanceOf[ExpressionValidation].whereExpr == "!STARTSWITH(my_col, 'ACC')")
   }
 
   test("Can create column ends with validation") {
     val result = ValidationBuilder().col("my_col").endsWith("ACC")
 
     assert(result.validation.isInstanceOf[ExpressionValidation])
-    assert(result.validation.asInstanceOf[ExpressionValidation].expr == "ENDSWITH(my_col, 'ACC')")
+    assert(result.validation.asInstanceOf[ExpressionValidation].whereExpr == "ENDSWITH(my_col, 'ACC')")
   }
 
   test("Can create column not ends with validation") {
     val result = ValidationBuilder().col("my_col").notEndsWith("ACC")
 
     assert(result.validation.isInstanceOf[ExpressionValidation])
-    assert(result.validation.asInstanceOf[ExpressionValidation].expr == "!ENDSWITH(my_col, 'ACC')")
+    assert(result.validation.asInstanceOf[ExpressionValidation].whereExpr == "!ENDSWITH(my_col, 'ACC')")
   }
 
   test("Can create column size validation") {
     val result = ValidationBuilder().col("my_col").size(2)
 
     assert(result.validation.isInstanceOf[ExpressionValidation])
-    assert(result.validation.asInstanceOf[ExpressionValidation].expr == "SIZE(my_col) == 2")
+    assert(result.validation.asInstanceOf[ExpressionValidation].whereExpr == "SIZE(my_col) == 2")
   }
 
   test("Can create column not size validation") {
     val result = ValidationBuilder().col("my_col").notSize(5)
 
     assert(result.validation.isInstanceOf[ExpressionValidation])
-    assert(result.validation.asInstanceOf[ExpressionValidation].expr == "SIZE(my_col) != 5")
+    assert(result.validation.asInstanceOf[ExpressionValidation].whereExpr == "SIZE(my_col) != 5")
   }
 
   test("Can create column less than size validation") {
     val result = ValidationBuilder().col("my_col").lessThanSize(5)
 
     assert(result.validation.isInstanceOf[ExpressionValidation])
-    assert(result.validation.asInstanceOf[ExpressionValidation].expr == "SIZE(my_col) < 5")
+    assert(result.validation.asInstanceOf[ExpressionValidation].whereExpr == "SIZE(my_col) < 5")
   }
 
   test("Can create column less than or equal size validation") {
     val result = ValidationBuilder().col("my_col").lessThanOrEqualSize(5)
 
     assert(result.validation.isInstanceOf[ExpressionValidation])
-    assert(result.validation.asInstanceOf[ExpressionValidation].expr == "SIZE(my_col) <= 5")
+    assert(result.validation.asInstanceOf[ExpressionValidation].whereExpr == "SIZE(my_col) <= 5")
   }
 
   test("Can create column greater than size validation") {
     val result = ValidationBuilder().col("my_col").greaterThanSize(5)
 
     assert(result.validation.isInstanceOf[ExpressionValidation])
-    assert(result.validation.asInstanceOf[ExpressionValidation].expr == "SIZE(my_col) > 5")
+    assert(result.validation.asInstanceOf[ExpressionValidation].whereExpr == "SIZE(my_col) > 5")
   }
 
   test("Can create column greater than or equal size validation") {
     val result = ValidationBuilder().col("my_col").greaterThanOrEqualSize(5)
 
     assert(result.validation.isInstanceOf[ExpressionValidation])
-    assert(result.validation.asInstanceOf[ExpressionValidation].expr == "SIZE(my_col) >= 5")
+    assert(result.validation.asInstanceOf[ExpressionValidation].whereExpr == "SIZE(my_col) >= 5")
   }
 
   test("Can create column greater luhn check validation") {
     val result = ValidationBuilder().col("my_col").luhnCheck
 
     assert(result.validation.isInstanceOf[ExpressionValidation])
-    assert(result.validation.asInstanceOf[ExpressionValidation].expr == "LUHN_CHECK(my_col)")
+    assert(result.validation.asInstanceOf[ExpressionValidation].whereExpr == "LUHN_CHECK(my_col)")
   }
 
   test("Can create column type validation") {
     val result = ValidationBuilder().col("my_col").hasType("double")
 
     assert(result.validation.isInstanceOf[ExpressionValidation])
-    assert(result.validation.asInstanceOf[ExpressionValidation].expr == "TYPEOF(my_col) == 'double'")
+    assert(result.validation.asInstanceOf[ExpressionValidation].whereExpr == "TYPEOF(my_col) == 'double'")
   }
 
   test("Can create column generic expression validation") {
     val result = ValidationBuilder().col("my_col").expr("my_col * 2 < other_col / 4")
 
     assert(result.validation.isInstanceOf[ExpressionValidation])
-    assert(result.validation.asInstanceOf[ExpressionValidation].expr == "my_col * 2 < other_col / 4")
+    assert(result.validation.asInstanceOf[ExpressionValidation].whereExpr == "my_col * 2 < other_col / 4")
   }
 
   test("Can create group by column validation") {
@@ -446,7 +446,7 @@ class ValidationConfigurationBuilderTest extends AnyFunSuite {
     assert(validation.joinType == DEFAULT_VALIDATION_JOIN_TYPE)
     assert(validation.joinCols == List("account_id"))
     assert(validation.validationBuilder.validation.isInstanceOf[ExpressionValidation])
-    assert(validation.validationBuilder.validation.asInstanceOf[ExpressionValidation].expr == "amount <= other_data_source_balance")
+    assert(validation.validationBuilder.validation.asInstanceOf[ExpressionValidation].whereExpr == "amount <= other_data_source_balance")
   }
 
   test("Can create validation based on data from another data source as an anti-join") {

@@ -119,7 +119,7 @@ class ValidationProcessor(
       } else {
         failedValidations.foreach(validationRes => {
           val (validationType, validationCheck) = validationRes.validation match {
-            case ExpressionValidation(expr) => ("expression", expr)
+            case ExpressionValidation(expr, selectExpr) => ("expression", expr)
             case GroupByValidation(_, _, _, expr) => ("groupByAggregate", expr)
             //TODO get validationCheck from validationBuilder -> make this a recursive method to get validationCheck
             case UpstreamDataSourceValidation(validationBuilder, upstreamDataSource, _, _, _) => ("upstreamDataSource", "")
