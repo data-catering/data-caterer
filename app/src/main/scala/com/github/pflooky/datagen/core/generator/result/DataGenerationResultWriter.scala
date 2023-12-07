@@ -2,10 +2,11 @@ package com.github.pflooky.datagen.core.generator.result
 
 import com.fasterxml.jackson.annotation.JsonInclude.Include
 import com.github.pflooky.datacaterer.api.model.Constants.DEFAULT_GENERATED_REPORTS_FOLDER_PATH
-import com.github.pflooky.datacaterer.api.model.{Field, FlagsConfig, FoldersConfig, MetadataConfig, Plan, Step, Task}
+import com.github.pflooky.datacaterer.api.model.{DataCatererConfiguration, Field, FlagsConfig, FoldersConfig, MetadataConfig, Plan, Step, Task}
 import com.github.pflooky.datagen.core.listener.SparkRecordListener
 import com.github.pflooky.datagen.core.model.Constants.{REPORT_DATA_SOURCES_HTML, REPORT_FIELDS_HTML, REPORT_HOME_HTML, REPORT_VALIDATIONS_HTML}
 import com.github.pflooky.datagen.core.model.{DataSourceResult, DataSourceResultSummary, StepResultSummary, TaskResultSummary, ValidationConfigResult}
+import com.github.pflooky.datagen.core.plan.PostPlanProcessor
 import com.github.pflooky.datagen.core.util.FileUtil.writeStringToFile
 import com.github.pflooky.datagen.core.util.ObjectMapperUtil
 import org.apache.hadoop.fs.{FileSystem, Path}
@@ -16,10 +17,19 @@ import java.io.File
 import scala.util.{Failure, Success, Try}
 import scala.xml.Node
 
-class DataGenerationResultWriter(metadataConfig: MetadataConfig, foldersConfig: FoldersConfig, flagsConfig: FlagsConfig)(implicit sparkSession: SparkSession) {
+class DataGenerationResultWriter(val dataCatererConfiguration: DataCatererConfiguration)
+                                (implicit sparkSession: SparkSession) extends PostPlanProcessor {
 
   private lazy val LOGGER = Logger.getLogger(getClass.getName)
   private lazy val OBJECT_MAPPER = ObjectMapperUtil.jsonObjectMapper
+  private val foldersConfig = dataCatererConfiguration.foldersConfig
+
+  override val enabled: Boolean = dataCatererConfiguration.flagsConfig.enableSaveReports
+
+  override def apply(plan: Plan, sparkRecordListener: SparkRecordListener, generationResult: List[DataSourceResult],
+                     validationResults: List[ValidationConfigResult]): Unit = {
+    writeResult(plan, generationResult, validationResults, sparkRecordListener)
+  }
 
   def writeResult(
                    plan: Plan,
@@ -37,7 +47,8 @@ class DataGenerationResultWriter(metadataConfig: MetadataConfig, foldersConfig: 
     val fileWriter = writeToFile(fileSystem, foldersConfig.generatedReportsFolderPath) _
 
     try {
-      fileWriter(REPORT_HOME_HTML, htmlWriter.index(plan, stepSummary, taskSummary, dataSourceSummary, validationResults, flagsConfig, sparkRecordListener))
+      fileWriter(REPORT_HOME_HTML, htmlWriter.index(plan, stepSummary, taskSummary, dataSourceSummary,
+        validationResults, dataCatererConfiguration.flagsConfig, sparkRecordListener))
       fileWriter("tasks.html", htmlWriter.taskDetails(taskSummary))
       fileWriter(REPORT_FIELDS_HTML, htmlWriter.stepDetails(stepSummary))
       fileWriter(REPORT_DATA_SOURCES_HTML, htmlWriter.dataSourceDetails(stepSummary.flatMap(_.dataSourceResults)))
@@ -102,7 +113,7 @@ class DataGenerationResultWriter(metadataConfig: MetadataConfig, foldersConfig: 
   private def summariseDataSourceResult(dataSourceResults: List[DataSourceResult]): (Long, Boolean, List[String], List[Field]) = {
     val totalRecords = dataSourceResults.map(_.sinkResult.count).sum
     val isSuccess = dataSourceResults.forall(_.sinkResult.isSuccess)
-    val sample = dataSourceResults.flatMap(_.sinkResult.sample).take(metadataConfig.numGeneratedSamples)
+    val sample = dataSourceResults.flatMap(_.sinkResult.sample).take(dataCatererConfiguration.metadataConfig.numGeneratedSamples)
     val fieldMetadata = dataSourceResults.flatMap(_.sinkResult.generatedMetadata)
       .groupBy(_.name)
       .map(field => {

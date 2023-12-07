@@ -1,8 +1,10 @@
 package com.github.pflooky.datagen.core.generator
 
 import com.github.pflooky.datacaterer.api.model.{DataCatererConfiguration, Plan, Task, TaskSummary, ValidationConfiguration}
+import com.github.pflooky.datagen.core.alert.AlertProcessor
 import com.github.pflooky.datagen.core.generator.result.DataGenerationResultWriter
 import com.github.pflooky.datagen.core.listener.SparkRecordListener
+import com.github.pflooky.datagen.core.model.{DataSourceResult, ValidationConfigResult}
 import com.github.pflooky.datagen.core.util.PlanImplicits.TaskOps
 import com.github.pflooky.datagen.core.parser.PlanParser
 import com.github.pflooky.datagen.core.validator.ValidationProcessor
@@ -17,7 +19,6 @@ class DataGeneratorProcessor(dataCatererConfiguration: DataCatererConfiguration)
   private val metadataConfig = dataCatererConfiguration.metadataConfig
   private val flagsConfig = dataCatererConfiguration.flagsConfig
   private val generationConfig = dataCatererConfiguration.generationConfig
-  private lazy val dataGenerationResultWriter = new DataGenerationResultWriter(metadataConfig, foldersConfig, flagsConfig)
   private lazy val batchDataProcessor = new BatchDataProcessor(connectionConfigsByName, foldersConfig, metadataConfig, flagsConfig, generationConfig)
   private lazy val sparkRecordListener = new SparkRecordListener(flagsConfig.enableCount)
   sparkSession.sparkContext.addSparkListener(sparkRecordListener)
@@ -49,7 +50,7 @@ class DataGeneratorProcessor(dataCatererConfiguration: DataCatererConfiguration)
     val stepNames = summaryWithTask.map(t => s"task=${t._2.name}, num-steps=${t._2.steps.size}, steps=${t._2.steps.map(_.name).mkString(",")}").mkString("||")
 
     if (summaryWithTask.isEmpty) {
-      LOGGER.warn("No tasks found or no tasks enabled. No data will be generated")
+      LOGGER.warn("No tasks found or no tasks enabled. No data will be generated or validated")
     } else {
       val generationResult = if (flagsConfig.enableGenerateData) {
         LOGGER.info(s"Following tasks are enabled and will be executed: num-tasks=${summaryWithTask.size}, tasks=$stepNames")
@@ -61,10 +62,17 @@ class DataGeneratorProcessor(dataCatererConfiguration: DataCatererConfiguration)
           .executeValidations
       } else List()
 
-      if (flagsConfig.enableSaveReports) {
-        dataGenerationResultWriter.writeResult(plan, generationResult, validationResults, sparkRecordListener)
-      }
+      applyPostPlanProcessors(plan, sparkRecordListener, generationResult, validationResults)
     }
+  }
+
+  private def applyPostPlanProcessors(plan: Plan, sparkRecordListener: SparkRecordListener,
+                                      generationResult: List[DataSourceResult], validationResults: List[ValidationConfigResult]): Unit = {
+    val postPlanProcessors = List(new DataGenerationResultWriter(dataCatererConfiguration), new AlertProcessor(dataCatererConfiguration))
+
+    postPlanProcessors.foreach(postPlanProcessor => {
+      if (postPlanProcessor.enabled) postPlanProcessor.apply(plan, sparkRecordListener, generationResult, validationResults)
+    })
   }
 
 }

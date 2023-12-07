@@ -24,7 +24,7 @@ Full docs can be found [**here**](https://data.catering).
 ## Quick start
 
 ```shell
-git clone git@github.com:pflooky/data-caterer-example.git
+git clone git@github.com:data-catering/data-caterer-example.git
 cd data-caterer-example && ./run.sh
 #check results under docker/sample/report/index.html folder
 ```
@@ -112,43 +112,3 @@ This is inspired by the [mkdocs-material project](https://github.com/squidfunk/m
 ### Roadmap
 
 [Can check here for full list.](https://data.catering/use-case/roadmap/)
-
-### Challenges
-
-- How to apply foreign keys across datasets
-- Providing functions for data generators
-- Setting out the Plan -> Task -> Step model
-- How to process the data in batches
-- Data cleanup after run
-  - Save data into parquet files. Can read and delete when needed
-  - Have option to delete directly
-  - Have to do in particular order due to foreign keys
-- Relationships/constraints between fields
-  - e.g. if transaction has type purchase, then it is a debit
-  - if country is Australia, then country code should be AU
-  - could be one to one, one to many, many to many mapping
-- Predict the type of string expression to use from DataFaker
-  - Utilise the metadata for the field
-- Having intermediate fields and not including them into the output
-  - Allow for SQL expressions
-- Issues with spark streaming to write real-time data
-  - Using rate format, have to manage the connection to the data source yourself
-  - Connection per batch, stopped working for Solace after 125 messages (5 per second)
-- Generating regex pattern given data samples
-- Database generated columns values
-  - Auto increment
-  - On update current_timestamp
-  - Omit generating columns (only if they are not used as foreign keys)
-- Metadata storage and referencing
-  - How will it interact with a data dictionary?
-  - Updated schema/metadata
-
-### Resources
-
-[Spark test data generator](https://github.com/apache/spark/blob/master/sql/catalyst/src/test/scala/org/apache/spark/sql/RandomDataGenerator.scala)
-
-### Java 17 VM Options
-
-```shell
---add-opens=java.base/java.lang=ALL-UNNAMED --add-opens=java.base/java.lang.invoke=ALL-UNNAMED --add-opens=java.base/java.lang.reflect=ALL-UNNAMED --add-opens=java.base/java.io=ALL-UNNAMED --add-opens=java.base/java.net=ALL-UNNAMED --add-opens=java.base/java.nio=ALL-UNNAMED --add-opens=java.base/java.util=ALL-UNNAMED --add-opens=java.base/java.util.concurrent=ALL-UNNAMED --add-opens=java.base/java.util.concurrent.atomic=ALL-UNNAMED --add-opens=java.base/sun.nio.ch=ALL-UNNAMED --add-opens=java.base/sun.nio.cs=ALL-UNNAMED --add-opens=java.base/sun.security.action=ALL-UNNAMED --add-opens=java.base/sun.util.calendar=ALL-UNNAMED --add-opens=java.security.jgss/sun.security.krb5=ALL-UNNAMED
-```

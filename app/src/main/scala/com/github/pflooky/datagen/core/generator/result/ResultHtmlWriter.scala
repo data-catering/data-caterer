@@ -1,7 +1,7 @@
 package com.github.pflooky.datagen.core.generator.result
 
-import com.github.pflooky.datacaterer.api.model.Constants.{HISTOGRAM, VALIDATION_COLUMN_NAME_COUNT_BETWEEN, VALIDATION_COLUMN_NAME_COUNT_EQUAL, VALIDATION_COLUMN_NAME_MATCH_ORDER, VALIDATION_COLUMN_NAME_MATCH_SET}
-import com.github.pflooky.datacaterer.api.model.{ColumnNamesValidation, ExpressionValidation, FlagsConfig, Generator, GroupByValidation, Plan, Step, UpstreamDataSourceValidation, Validation}
+import com.github.pflooky.datacaterer.api.model.Constants.HISTOGRAM
+import com.github.pflooky.datacaterer.api.model.{FlagsConfig, Generator, Plan, Step, Validation}
 import com.github.pflooky.datagen.core.listener.{SparkRecordListener, SparkTaskRecordSummary}
 import com.github.pflooky.datagen.core.model.Constants.{REPORT_DATA_SOURCES_HTML, REPORT_FIELDS_HTML, REPORT_HOME_HTML, REPORT_VALIDATIONS_HTML}
 import com.github.pflooky.datagen.core.util.PlanImplicits.CountOps
@@ -676,39 +676,7 @@ class ResultHtmlWriter {
   }
 
   private def getValidationOptions(validation: Validation): List[List[String]] = {
-    val options = validation match {
-      case ExpressionValidation(expr, selectExpr) =>
-        List(
-          List("selectExpr", selectExpr.mkString(", ")),
-          List("whereExpr", expr),
-          List("errorThreshold", validation.errorThreshold.getOrElse(0.0).toString)
-        )
-      case GroupByValidation(groupByCols, aggCol, aggType, expr) =>
-        List(
-          List("expr", expr),
-          List("groupByColumns", groupByCols.mkString(",")),
-          List("aggregationColumn", aggCol),
-          List("aggregationType", aggType),
-          List("errorThreshold", validation.errorThreshold.getOrElse(0.0).toString)
-        )
-      case UpstreamDataSourceValidation(validationBuilder, upstreamDataSource, _, joinCols, joinType) =>
-        val nestedValidation = getValidationOptions(validationBuilder.validation)
-        List(
-          List("upstreamDataSource", upstreamDataSource.connectionConfigWithTaskBuilder.dataSourceName),
-          List("joinColumns", joinCols.mkString(",")),
-          List("joinType", joinType),
-        ) ++ nestedValidation
-      case ColumnNamesValidation(validType, count, minCount, maxCount, names) =>
-        val baseAttributes = validType match {
-          case VALIDATION_COLUMN_NAME_COUNT_EQUAL => List(List("count", count.toString))
-          case VALIDATION_COLUMN_NAME_COUNT_BETWEEN => List(List("min", minCount.toString), List("max", maxCount.toString))
-          case VALIDATION_COLUMN_NAME_MATCH_ORDER => List(List("matchOrder", names.mkString(",")))
-          case VALIDATION_COLUMN_NAME_MATCH_SET => List(List("matchSet", names.mkString(",")))
-        }
-        List(List("columnNameValidationType", validType)) ++ baseAttributes
-      case _ => List()
-    }
-    options.filter(_.forall(_.nonEmpty))
+    validation.toOptions.filter(_.forall(_.nonEmpty))
   }
 
   def bodyScripts: NodeBuffer = {

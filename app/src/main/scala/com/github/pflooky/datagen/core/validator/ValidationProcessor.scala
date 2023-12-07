@@ -1,7 +1,7 @@
 package com.github.pflooky.datagen.core.validator
 
 import com.github.pflooky.datacaterer.api.model.Constants.{FORMAT, HTTP, JMS}
-import com.github.pflooky.datacaterer.api.model.{ColumnNamesValidation, DataSourceValidation, ExpressionValidation, FoldersConfig, GroupByValidation, UpstreamDataSourceValidation, ValidationConfig, ValidationConfiguration}
+import com.github.pflooky.datacaterer.api.model.{DataSourceValidation, ExpressionValidation, FoldersConfig, GroupByValidation, UpstreamDataSourceValidation, ValidationConfig, ValidationConfiguration}
 import com.github.pflooky.datagen.core.model.{DataSourceValidationResult, ValidationConfigResult}
 import com.github.pflooky.datagen.core.parser.ValidationParser
 import com.github.pflooky.datagen.core.validator.ValidationHelper.getValidationType
@@ -10,6 +10,7 @@ import org.apache.log4j.Logger
 import org.apache.spark.sql.{DataFrame, SparkSession}
 
 import java.io.File
+import java.time.LocalDateTime
 import scala.reflect.io.Directory
 
 /*
@@ -39,6 +40,7 @@ class ValidationProcessor(
   def executeValidations: List[ValidationConfigResult] = {
     LOGGER.info("Executing data validations")
     val validationResults = getValidations.map(vc => {
+      val startTime = LocalDateTime.now()
       val dataSourceValidationResults = vc.dataSources.flatMap(dataSource => {
         val dataSourceName = dataSource._1
         val dataSourceValidations = dataSource._2
@@ -48,7 +50,8 @@ class ValidationProcessor(
           s"data-source-name=$dataSourceName, num-validations=$numValidations")
         dataSourceValidations.map(dataSourceValidation => executeDataValidations(vc, dataSourceName, dataSourceValidation))
       }).toList
-      ValidationConfigResult(vc.name, vc.description, dataSourceValidationResults)
+      val endTime = LocalDateTime.now()
+      ValidationConfigResult(vc.name, vc.description, dataSourceValidationResults, startTime, endTime)
     }).toList
 
     logValidationErrors(validationResults)

@@ -1,5 +1,6 @@
 package com.github.pflooky.datagen.core.model
 
+import com.github.pflooky.datacaterer.api.model.Constants.DEFAULT_DATA_SOURCE_NAME
 import com.github.pflooky.datacaterer.api.model.{Field, Step, Task}
 
 import java.time.{Duration, LocalDateTime}
@@ -12,10 +13,10 @@ case class DataSourceResultSummary(
                                   )
 
 case class DataSourceResult(
-                             name: String,
-                             task: Task,
-                             step: Step,
-                             sinkResult: SinkResult,
+                             name: String = DEFAULT_DATA_SOURCE_NAME,
+                             task: Task = Task(),
+                             step: Step = Step(),
+                             sinkResult: SinkResult = SinkResult(),
                              batchNum: Int = 0
                            )
 
@@ -34,9 +35,9 @@ case class StepResultSummary(
                             )
 
 case class SinkResult(
-                       name: String,
-                       format: String,
-                       saveMode: String,
+                       name: String = DEFAULT_DATA_SOURCE_NAME,
+                       format: String = "json",
+                       saveMode: String = "append",
                        options: Map[String, String] = Map(),
                        count: Long = -1,
                        isSuccess: Boolean = true,

@@ -159,6 +159,7 @@ object Constants {
   lazy val DEFAULT_ENABLE_SAVE_REPORTS = true
   lazy val DEFAULT_ENABLE_VALIDATION = true
   lazy val DEFAULT_ENABLE_SUGGEST_VALIDATIONS = false
+  lazy val DEFAULT_ENABLE_ALERTS = true
 
   //folders defaults
   lazy val DEFAULT_PLAN_FILE_PATH = "/opt/app/plan/customer-create-plan.yaml"
@@ -346,6 +347,15 @@ object Constants {
   lazy val VALIDATION_COLUMN_NAME_COUNT_BETWEEN = "column_count_between"
   lazy val VALIDATION_COLUMN_NAME_MATCH_ORDER = "column_name_match_order"
   lazy val VALIDATION_COLUMN_NAME_MATCH_SET = "column_name_match_set"
+
+  //alert trigger on
+  lazy val ALERT_TRIGGER_ON_ALL = "all"
+  lazy val ALERT_TRIGGER_ON_FAILURE = "failure"
+  lazy val ALERT_TRIGGER_ON_SUCCESS = "success"
+  lazy val ALERT_TRIGGER_ON_GENERATION_FAILURE = "generation_failure"
+  lazy val ALERT_TRIGGER_ON_VALIDATION_FAILURE = "validation_failure"
+  lazy val ALERT_TRIGGER_ON_GENERATION_SUCCESS = "generation_success"
+  lazy val ALERT_TRIGGER_ON_VALIDATION_SUCCESS = "validation_success"
 
   //trial
   lazy val API_KEY = "API_KEY"

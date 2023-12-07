@@ -261,6 +261,8 @@ class PlanProcessorTest extends SparkSuite {
       .generatedReportsFolderPath("/tmp/report")
       .recordTrackingForValidationFolderPath("/tmp/record-tracking-validation")
       .enableValidation(true)
+      .slackAlertToken(System.getenv("SLACK_TOKEN"))
+      .slackAlertChannels("#data-testing")
 
     val foreignPlan = plan
       .addForeignKeyRelationship(firstJsonTask, "account_id", List(secondJsonTask -> "account_id", thirdJsonTask -> "account_id"))

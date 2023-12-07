@@ -1,13 +1,19 @@
 package com.github.pflooky.datagen.core.model
 
-import com.github.pflooky.datacaterer.api.model.{ExpressionValidation, Validation, ValidationConfiguration}
+import com.github.pflooky.datacaterer.api.model.{ExpressionValidation, Validation}
 import org.apache.spark.sql.DataFrame
+
+import java.time.{Duration, LocalDateTime}
 
 case class ValidationConfigResult(
                                    name: String = "default_validation_result",
                                    description: String = "Validation result for data sources",
-                                   dataSourceValidationResults: List[DataSourceValidationResult] = List()
-                                 )
+                                   dataSourceValidationResults: List[DataSourceValidationResult] = List(),
+                                   startTime: LocalDateTime = LocalDateTime.now(),
+                                   endTime: LocalDateTime = LocalDateTime.now()
+                                 ) {
+  def durationInSeconds: Long = Duration.between(startTime, endTime).toSeconds
+}
 
 case class DataSourceValidationResult(
                                        dataSourceName: String = "default_data_source",

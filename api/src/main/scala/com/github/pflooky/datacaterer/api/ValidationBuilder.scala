@@ -78,6 +78,9 @@ case class DataSourceValidationBuilder(dataSourceValidation: DataSourceValidatio
   @varargs def validations(validations: ValidationBuilder*): DataSourceValidationBuilder =
     this.modify(_.dataSourceValidation.validations)(_ ++ validations)
 
+  def validations(metadataSourceBuilder: MetadataSourceBuilder): DataSourceValidationBuilder =
+    this.modify(_.dataSourceValidation.options)(_ ++ metadataSourceBuilder.metadataSource.allOptions)
+
   def wait(waitCondition: WaitConditionBuilder): DataSourceValidationBuilder =
     this.modify(_.dataSourceValidation.waitCondition).setTo(waitCondition.waitCondition)
 

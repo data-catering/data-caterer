@@ -64,6 +64,9 @@ dependencies {
     basicImpl("net.datafaker:datafaker:1.9.0")
     basicImpl("org.reflections:reflections:0.10.2")
 
+    // alert
+    basicImpl("com.slack.api:slack-api-client:1.36.1")
+
     // misc
     basicImpl("joda-time:joda-time:2.12.5")
     basicImpl("com.google.guava:guava:32.1.3-jre")

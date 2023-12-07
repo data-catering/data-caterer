@@ -6,6 +6,8 @@ import com.github.pflooky.datacaterer.api.model.Constants._
 import com.github.pflooky.datacaterer.api.model.DataCatererConfiguration
 import com.softwaremill.quicklens.ModifyPimp
 
+import scala.annotation.varargs
+
 case class DataCatererConfigurationBuilder(build: DataCatererConfiguration = DataCatererConfiguration()) {
   def this() = this(DataCatererConfiguration())
 
@@ -328,6 +330,13 @@ case class DataCatererConfigurationBuilder(build: DataCatererConfiguration = Dat
 
   def numErrorSampleRecords(numRecords: Int): DataCatererConfigurationBuilder =
     this.modify(_.build.validationConfig.numSampleErrorRecords).setTo(numRecords)
+
+
+  def slackAlertToken(token: String): DataCatererConfigurationBuilder =
+    this.modify(_.build.alertConfig.slackAlertConfig.token).setTo(token)
+
+  @varargs def slackAlertChannels(channels: String*): DataCatererConfigurationBuilder =
+    this.modify(_.build.alertConfig.slackAlertConfig.channels).setTo(channels.toList)
 }
 
 final case class ConnectionConfigWithTaskBuilder(

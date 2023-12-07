@@ -14,6 +14,7 @@ case class FlagsConfig(
                         enableSaveReports: Boolean = DEFAULT_ENABLE_SAVE_REPORTS,
                         enableValidation: Boolean = DEFAULT_ENABLE_VALIDATION,
                         enableGenerateValidations: Boolean = DEFAULT_ENABLE_SUGGEST_VALIDATIONS,
+                        enableAlerts: Boolean = DEFAULT_ENABLE_ALERTS
                       )
 
 case class FoldersConfig(
@@ -44,12 +45,23 @@ case class ValidationConfig(
                              enableDeleteRecordTrackingFiles: Boolean = DEFAULT_VALIDATION_DELETE_RECORD_TRACKING_FILES,
                            )
 
+case class AlertConfig(
+                        triggerOn: String = ALERT_TRIGGER_ON_ALL,
+                        slackAlertConfig: SlackAlertConfig = SlackAlertConfig()
+                      )
+
+case class SlackAlertConfig(
+                             token: String = "",
+                             channels: List[String] = List()
+                           )
+
 case class DataCatererConfiguration(
                                      flagsConfig: FlagsConfig = FlagsConfig(),
                                      foldersConfig: FoldersConfig = FoldersConfig(),
                                      metadataConfig: MetadataConfig = MetadataConfig(),
                                      generationConfig: GenerationConfig = GenerationConfig(),
                                      validationConfig: ValidationConfig = ValidationConfig(),
+                                     alertConfig: AlertConfig = AlertConfig(),
                                      connectionConfigByName: Map[String, Map[String, String]] = Map(),
                                      runtimeConfig: Map[String, String] = DEFAULT_RUNTIME_CONFIG,
                                      master: String = DEFAULT_MASTER

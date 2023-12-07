@@ -5,7 +5,7 @@ import com.fasterxml.jackson.annotation.{JsonIgnoreProperties, JsonTypeInfo}
 import com.fasterxml.jackson.databind.annotation.{JsonDeserialize, JsonTypeIdResolver}
 import com.github.pflooky.datacaterer.api.ValidationBuilder
 import com.github.pflooky.datacaterer.api.connection.{ConnectionTaskBuilder, FileBuilder}
-import com.github.pflooky.datacaterer.api.model.Constants.{AGGREGATION_SUM, DEFAULT_VALIDATION_COLUMN_NAME_TYPE, DEFAULT_VALIDATION_CONFIG_NAME, DEFAULT_VALIDATION_DESCRIPTION, DEFAULT_VALIDATION_JOIN_TYPE, DEFAULT_VALIDATION_WEBHOOK_HTTP_METHOD, DEFAULT_VALIDATION_WEBHOOK_HTTP_STATUS_CODES}
+import com.github.pflooky.datacaterer.api.model.Constants.{AGGREGATION_SUM, DEFAULT_VALIDATION_COLUMN_NAME_TYPE, DEFAULT_VALIDATION_CONFIG_NAME, DEFAULT_VALIDATION_DESCRIPTION, DEFAULT_VALIDATION_JOIN_TYPE, DEFAULT_VALIDATION_WEBHOOK_HTTP_METHOD, DEFAULT_VALIDATION_WEBHOOK_HTTP_STATUS_CODES, VALIDATION_COLUMN_NAME_COUNT_BETWEEN, VALIDATION_COLUMN_NAME_COUNT_EQUAL, VALIDATION_COLUMN_NAME_MATCH_ORDER, VALIDATION_COLUMN_NAME_MATCH_SET}
 import com.github.pflooky.datacaterer.api.parser.ValidationIdResolver
 
 
@@ -15,19 +15,35 @@ import com.github.pflooky.datacaterer.api.parser.ValidationIdResolver
 trait Validation {
   var description: Option[String] = None
   @JsonDeserialize(contentAs = classOf[java.lang.Double]) var errorThreshold: Option[Double] = None
+
+  def toOptions: List[List[String]]
 }
 
 case class ExpressionValidation(
                                  whereExpr: String = "true",
                                  selectExpr: List[String] = List("*")
-                               ) extends Validation
+                               ) extends Validation {
+  override def toOptions: List[List[String]] = List(
+    List("selectExpr", selectExpr.mkString(", ")),
+    List("whereExpr", whereExpr),
+    List("errorThreshold", errorThreshold.getOrElse(0.0).toString)
+  )
+}
 
 case class GroupByValidation(
                               groupByCols: Seq[String] = Seq(),
                               aggCol: String = "",
                               aggType: String = AGGREGATION_SUM,
                               expr: String = "true"
-                            ) extends Validation
+                            ) extends Validation {
+  override def toOptions: List[List[String]] = List(
+    List("expr", expr),
+    List("groupByColumns", groupByCols.mkString(",")),
+    List("aggregationColumn", aggCol),
+    List("aggregationType", aggType),
+    List("errorThreshold", errorThreshold.getOrElse(0.0).toString)
+  )
+}
 
 case class UpstreamDataSourceValidation(
                                          validationBuilder: ValidationBuilder = ValidationBuilder(),
@@ -35,7 +51,16 @@ case class UpstreamDataSourceValidation(
                                          upstreamReadOptions: Map[String, String] = Map(),
                                          joinCols: List[String] = List(),
                                          joinType: String = DEFAULT_VALIDATION_JOIN_TYPE,
-                                       ) extends Validation
+                                       ) extends Validation {
+  override def toOptions: List[List[String]] = {
+    val nestedValidation = validationBuilder.validation.toOptions
+    List(
+      List("upstreamDataSource", upstreamDataSource.connectionConfigWithTaskBuilder.dataSourceName),
+      List("joinColumns", joinCols.mkString(",")),
+      List("joinType", joinType),
+    ) ++ nestedValidation
+  }
+}
 
 case class ColumnNamesValidation(
                                   `type`: String = DEFAULT_VALIDATION_COLUMN_NAME_TYPE,
@@ -43,7 +68,17 @@ case class ColumnNamesValidation(
                                   minCount: Int = 0,
                                   maxCount: Int = 0,
                                   names: Array[String] = Array()
-                                ) extends Validation
+                                ) extends Validation {
+  override def toOptions: List[List[String]] = {
+    val baseAttributes = `type` match {
+      case VALIDATION_COLUMN_NAME_COUNT_EQUAL => List(List("count", count.toString))
+      case VALIDATION_COLUMN_NAME_COUNT_BETWEEN => List(List("min", minCount.toString), List("max", maxCount.toString))
+      case VALIDATION_COLUMN_NAME_MATCH_ORDER => List(List("matchOrder", names.mkString(",")))
+      case VALIDATION_COLUMN_NAME_MATCH_SET => List(List("matchSet", names.mkString(",")))
+    }
+    List(List("columnNameValidationType", `type`)) ++ baseAttributes
+  }
+}
 
 case class ValidationConfiguration(
                                     name: String = DEFAULT_VALIDATION_CONFIG_NAME,
