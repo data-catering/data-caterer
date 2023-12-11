@@ -1,6 +1,6 @@
 package com.github.pflooky.datacaterer.api.connection
 
-import com.github.pflooky.datacaterer.api.model.Constants.FORMAT
+import com.github.pflooky.datacaterer.api.model.Constants.{ENABLE_DATA_VALIDATION, FORMAT}
 import com.github.pflooky.datacaterer.api.model.{Step, Task}
 import com.github.pflooky.datacaterer.api.{ConnectionConfigWithTaskBuilder, CountBuilder, FieldBuilder, GeneratorBuilder, MetadataSourceBuilder, SchemaBuilder, StepBuilder, TaskBuilder, TasksBuilder, ValidationBuilder, WaitConditionBuilder}
 
@@ -75,6 +75,16 @@ trait ConnectionTaskBuilder[T] {
     val waitConditionBuilder = new WaitConditionBuilder()
       .dataExists(this.connectionConfigWithTaskBuilder.dataSourceName, this.connectionConfigWithTaskBuilder.options, expr)
     this.step = Some(getStep.wait(waitConditionBuilder))
+    this
+  }
+
+  def enableDataGeneration(enable: Boolean): ConnectionTaskBuilder[T] = {
+    this.step = Some(getStep.enableDataGeneration(enable))
+    this
+  }
+
+  def enableDataValidation(enable: Boolean): ConnectionTaskBuilder[T] = {
+    this.connectionConfigWithTaskBuilder = connectionConfigWithTaskBuilder.options(Map(ENABLE_DATA_VALIDATION -> enable.toString))
     this
   }
 

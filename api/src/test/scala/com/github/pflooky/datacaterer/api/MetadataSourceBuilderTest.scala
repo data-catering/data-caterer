@@ -1,7 +1,7 @@
 package com.github.pflooky.datacaterer.api
 
-import com.github.pflooky.datacaterer.api.model.Constants.{METADATA_SOURCE_URL, OPEN_LINEAGE_DATASET, OPEN_LINEAGE_NAMESPACE, OPEN_METADATA_API_VERSION, OPEN_METADATA_AUTH_TYPE, OPEN_METADATA_AUTH_TYPE_BASIC, OPEN_METADATA_AUTH_TYPE_OPEN_METADATA, OPEN_METADATA_BASIC_AUTH_PASSWORD, OPEN_METADATA_BASIC_AUTH_USERNAME, OPEN_METADATA_DEFAULT_API_VERSION, OPEN_METADATA_HOST, OPEN_METADATA_JWT_TOKEN, SCHEMA_LOCATION}
-import com.github.pflooky.datacaterer.api.model.{MarquezMetadataSource, OpenAPISource, OpenMetadataSource}
+import com.github.pflooky.datacaterer.api.model.Constants.{DATA_CONTRACTS_FOLDER, EXPECTATIONS_FOLDER, METADATA_SOURCE_URL, OPEN_LINEAGE_DATASET, OPEN_LINEAGE_NAMESPACE, OPEN_METADATA_API_VERSION, OPEN_METADATA_AUTH_TYPE, OPEN_METADATA_AUTH_TYPE_BASIC, OPEN_METADATA_AUTH_TYPE_OPEN_METADATA, OPEN_METADATA_BASIC_AUTH_PASSWORD, OPEN_METADATA_BASIC_AUTH_USERNAME, OPEN_METADATA_DEFAULT_API_VERSION, OPEN_METADATA_HOST, OPEN_METADATA_JWT_TOKEN, SCHEMA_LOCATION}
+import com.github.pflooky.datacaterer.api.model.{GreatExpectationsSource, MarquezMetadataSource, OpenAPISource, OpenDataContractStandardSource, OpenMetadataSource}
 import org.junit.runner.RunWith
 import org.scalatest.funsuite.AnyFunSuite
 import org.scalatestplus.junit.JUnitRunner
@@ -50,6 +50,20 @@ class MetadataSourceBuilderTest extends AnyFunSuite {
 
     assert(result.isInstanceOf[OpenAPISource])
     assert(result.asInstanceOf[OpenAPISource].connectionOptions == Map(SCHEMA_LOCATION -> "localhost:8080"))
+  }
+
+  test("Can create Great Expectations metadata source") {
+    val result = MetadataSourceBuilder().greatExpectations("/tmp/expectations").metadataSource
+
+    assert(result.isInstanceOf[GreatExpectationsSource])
+    assert(result.asInstanceOf[GreatExpectationsSource].connectionOptions == Map(EXPECTATIONS_FOLDER -> "/tmp/expectations"))
+  }
+
+  test("Can create Open Data Contract Standard metadata source") {
+    val result = MetadataSourceBuilder().openDataContractStandard("/tmp/odcs").metadataSource
+
+    assert(result.isInstanceOf[OpenDataContractStandardSource])
+    assert(result.asInstanceOf[OpenDataContractStandardSource].connectionOptions == Map(DATA_CONTRACTS_FOLDER -> "/tmp/odcs"))
   }
 
 }

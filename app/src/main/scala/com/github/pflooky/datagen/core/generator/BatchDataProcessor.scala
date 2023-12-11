@@ -1,5 +1,6 @@
 package com.github.pflooky.datagen.core.generator
 
+import com.github.pflooky.datacaterer.api.model.Constants.{DEFAULT_ENABLE_GENERATE_DATA, ENABLE_DATA_GENERATION}
 import com.github.pflooky.datacaterer.api.model.{FlagsConfig, FoldersConfig, GenerationConfig, MetadataConfig, Plan, Task, TaskSummary}
 import com.github.pflooky.datagen.core.model.DataSourceResult
 import com.github.pflooky.datagen.core.util.PlanImplicits.StepOps
@@ -35,20 +36,26 @@ class BatchDataProcessor(connectionConfigsByName: Map[String, Map[String, String
       LOGGER.info(s"Starting batch, batch=$batch, num-batches=$numBatches")
       val generatedDataForeachTask = executableTasks.flatMap(task =>
         task._2.steps.filter(_.enabled).map(s => {
+          val isStepGenerateData = s.options.get(ENABLE_DATA_GENERATION).map(_.toBoolean).getOrElse(DEFAULT_ENABLE_GENERATE_DATA)
           val dataSourceStepName = getDataSourceName(task._1, s)
-          val recordStepName = s"${task._2.name}_${s.name}"
-          val stepRecords = trackRecordsPerStep(recordStepName)
-          val startIndex = stepRecords.currentNumRecords
-          val endIndex = stepRecords.currentNumRecords + stepRecords.numRecordsPerBatch
+          if (isStepGenerateData) {
+            val recordStepName = s"${task._2.name}_${s.name}"
+            val stepRecords = trackRecordsPerStep(recordStepName)
+            val startIndex = stepRecords.currentNumRecords
+            val endIndex = stepRecords.currentNumRecords + stepRecords.numRecordsPerBatch
 
-          val genDf = dataGeneratorFactory.generateDataForStep(s, task._1.dataSourceName, startIndex, endIndex)
-          val df = if (s.gatherPrimaryKeys.nonEmpty && flagsConfig.enableUniqueCheck) uniqueFieldUtil.getUniqueFieldsValues(dataSourceStepName, genDf) else genDf
+            val genDf = dataGeneratorFactory.generateDataForStep(s, task._1.dataSourceName, startIndex, endIndex)
+            val df = if (s.gatherPrimaryKeys.nonEmpty && flagsConfig.enableUniqueCheck) uniqueFieldUtil.getUniqueFieldsValues(dataSourceStepName, genDf) else genDf
 
-          if (!df.storageLevel.useMemory) df.cache()
-          val dfRecordCount = if (flagsConfig.enableCount) df.count() else stepRecords.numRecordsPerBatch
-          LOGGER.debug(s"Step record count for batch, batch=$batch, step-name=${s.name}, target-num-records=${stepRecords.numRecordsPerBatch}, actual-num-records=$dfRecordCount")
-          trackRecordsPerStep = trackRecordsPerStep ++ Map(recordStepName -> stepRecords.copy(currentNumRecords = dfRecordCount))
-          (dataSourceStepName, df)
+            if (!df.storageLevel.useMemory) df.cache()
+            val dfRecordCount = if (flagsConfig.enableCount) df.count() else stepRecords.numRecordsPerBatch
+            LOGGER.debug(s"Step record count for batch, batch=$batch, step-name=${s.name}, target-num-records=${stepRecords.numRecordsPerBatch}, actual-num-records=$dfRecordCount")
+            trackRecordsPerStep = trackRecordsPerStep ++ Map(recordStepName -> stepRecords.copy(currentNumRecords = dfRecordCount))
+            (dataSourceStepName, df)
+          } else {
+            LOGGER.debug("Step has data generation disabled")
+            (dataSourceStepName, sparkSession.emptyDataFrame)
+          }
         })
       ).toMap
 

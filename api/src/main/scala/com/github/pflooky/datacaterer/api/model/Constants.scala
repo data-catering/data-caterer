@@ -149,6 +149,10 @@ object Constants {
   lazy val REGEX_GENERATOR = "regex"
   lazy val SQL_GENERATOR = "sql"
 
+  //flag names
+  lazy val ENABLE_DATA_GENERATION = "enableDataGeneration"
+  lazy val ENABLE_DATA_VALIDATION = "enableDataValidation"
+
   //flags defaults
   lazy val DEFAULT_ENABLE_COUNT = true
   lazy val DEFAULT_ENABLE_GENERATE_DATA = true

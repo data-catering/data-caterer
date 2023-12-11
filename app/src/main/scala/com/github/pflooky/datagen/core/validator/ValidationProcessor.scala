@@ -1,8 +1,9 @@
 package com.github.pflooky.datagen.core.validator
 
-import com.github.pflooky.datacaterer.api.model.Constants.{FORMAT, HTTP, JMS}
+import com.github.pflooky.datacaterer.api.ValidationBuilder
+import com.github.pflooky.datacaterer.api.model.Constants.{DEFAULT_ENABLE_VALIDATION, ENABLE_DATA_VALIDATION, FORMAT, HTTP, JMS}
 import com.github.pflooky.datacaterer.api.model.{DataSourceValidation, ExpressionValidation, FoldersConfig, GroupByValidation, UpstreamDataSourceValidation, ValidationConfig, ValidationConfiguration}
-import com.github.pflooky.datagen.core.model.{DataSourceValidationResult, ValidationConfigResult}
+import com.github.pflooky.datagen.core.model.{DataSourceValidationResult, ValidationConfigResult, ValidationResult}
 import com.github.pflooky.datagen.core.parser.ValidationParser
 import com.github.pflooky.datagen.core.validator.ValidationHelper.getValidationType
 import com.github.pflooky.datagen.core.validator.ValidationWaitImplicits.WaitConditionOps
@@ -12,6 +13,7 @@ import org.apache.spark.sql.{DataFrame, SparkSession}
 import java.io.File
 import java.time.LocalDateTime
 import scala.reflect.io.Directory
+import scala.util.{Failure, Success, Try}
 
 /*
 Given a list of validations, check and report on the success and failure of each
@@ -46,7 +48,7 @@ class ValidationProcessor(
         val dataSourceValidations = dataSource._2
         val numValidations = dataSourceValidations.flatMap(_.validations).size
 
-        LOGGER.info(s"Executing data validations for data source, name=${vc.name}," +
+        LOGGER.info(s"Executing data validations for data source, name=${vc.name}, " +
           s"data-source-name=$dataSourceName, num-validations=$numValidations")
         dataSourceValidations.map(dataSourceValidation => executeDataValidations(vc, dataSourceName, dataSourceValidation))
       }).toList
@@ -63,32 +65,39 @@ class ValidationProcessor(
                                       dataSourceName: String,
                                       dataSourceValidation: DataSourceValidation
                                     ): DataSourceValidationResult = {
-    LOGGER.debug(s"Waiting for validation condition to be successful before running validations, name=${vc.name}," +
-      s"data-source-name=$dataSourceName, details=${dataSourceValidation.options}, num-validations=${dataSourceValidation.validations.size}")
-    dataSourceValidation.waitCondition.waitForCondition(connectionConfigsByName)
-
-    val df = getDataFrame(dataSourceName, dataSourceValidation.options)
-    if (df.isEmpty) {
-      LOGGER.info("No data found to run validations")
-      DataSourceValidationResult(dataSourceName, dataSourceValidation.options, List())
-    } else {
-      val count = df.count()
-      val results = dataSourceValidation.validations.map(validBuilder => {
-        getValidationType(validBuilder.validation, foldersConfig.recordTrackingForValidationFolderPath).validate(df, count)
-      })
-      df.unpersist()
-      LOGGER.debug(s"Finished data validations, name=${vc.name}," +
+    val isValidationsEnabled = dataSourceValidation.options.get(ENABLE_DATA_VALIDATION).map(_.toBoolean).getOrElse(DEFAULT_ENABLE_VALIDATION)
+    if (isValidationsEnabled) {
+      LOGGER.debug(s"Waiting for validation condition to be successful before running validations, name=${vc.name}," +
         s"data-source-name=$dataSourceName, details=${dataSourceValidation.options}, num-validations=${dataSourceValidation.validations.size}")
-      cleanRecordTrackingFiles()
-      DataSourceValidationResult(dataSourceName, dataSourceValidation.options, results)
+      dataSourceValidation.waitCondition.waitForCondition(connectionConfigsByName)
+
+      val df = getDataFrame(dataSourceName, dataSourceValidation.options)
+      if (df.isEmpty) {
+        LOGGER.info("No data found to run validations")
+        DataSourceValidationResult(dataSourceName, dataSourceValidation.options, List())
+      } else {
+        val count = df.count()
+        val results = dataSourceValidation.validations.map(validBuilder => tryValidate(df, count, validBuilder))
+        df.unpersist()
+        LOGGER.debug(s"Finished data validations, name=${vc.name}," +
+          s"data-source-name=$dataSourceName, details=${dataSourceValidation.options}, num-validations=${dataSourceValidation.validations.size}")
+        DataSourceValidationResult(dataSourceName, dataSourceValidation.options, results)
+      }
+    } else {
+      LOGGER.debug(s"Data validations are disabled, data-source-name=$dataSourceName, details=${dataSourceValidation.options}")
+      DataSourceValidationResult(dataSourceName, dataSourceValidation.options, List())
     }
   }
 
-  private def cleanRecordTrackingFiles(): Unit = {
-    if (validationConfig.enableDeleteRecordTrackingFiles) {
-      LOGGER.debug(s"Deleting all record tracking files from directory, " +
-        s"record-tracking-for-validation-directory=${foldersConfig.recordTrackingForValidationFolderPath}")
-      new Directory(new File(foldersConfig.recordTrackingForValidationFolderPath)).deleteRecursively()
+  private def tryValidate(df: DataFrame, count: Long, validBuilder: ValidationBuilder): ValidationResult = {
+    val validationDescription = validBuilder.validation.toOptions.map(l => s"${l.head}=${l.last}").mkString(", ")
+    Try(getValidationType(validBuilder.validation, foldersConfig.recordTrackingForValidationFolderPath).validate(df, count)) match {
+      case Failure(exception) =>
+        LOGGER.error(s"Failed to run data validation, $validationDescription", exception)
+        ValidationResult(validBuilder.validation, false, count, count, Some(sparkSession.createDataFrame(Seq(CustomErrorSample(exception.getLocalizedMessage)))))
+      case Success(value) =>
+        LOGGER.debug(s"Successfully ran data validation, $validationDescription")
+        value
     }
   }
 

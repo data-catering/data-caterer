@@ -56,7 +56,8 @@ class GroupByValidationOps(groupByValidation: GroupByValidation) extends Validat
   override def validate(df: DataFrame, dfCount: Long): ValidationResult = {
     val groupByDf = df.groupBy(groupByValidation.groupByCols.map(col): _*)
     val (aggregateDf, validationCount) = if ((groupByValidation.aggCol == VALIDATION_UNIQUE || groupByValidation.aggCol.isEmpty) && groupByValidation.aggType == AGGREGATION_COUNT) {
-      (groupByDf.count(), 1L)
+      val countDf = groupByDf.count()
+      (countDf, Math.max(1L, countDf.count()))
     } else {
       val aggDf = groupByDf.agg(Map(
         groupByValidation.aggCol -> groupByValidation.aggType

@@ -307,6 +307,16 @@ case class StepBuilder(step: Step = Step(), optValidation: Option[DataSourceVali
   def wait(waitConditionBuilder: WaitConditionBuilder): StepBuilder =
     this.modify(_.optValidation).setTo(Some(getValidation.wait(waitConditionBuilder)))
 
+  /**
+   * Enable/disable data generation for this step. By default, it follows what is defined at configuration level
+   * {{configuration.enableGenerateData}}. Enabled by default.
+   *
+   * @param enable Enable data generation
+   * @return
+   */
+  def enableDataGeneration(enable: Boolean): StepBuilder =
+    this.modify(_.step.options)(_ ++ Map(ENABLE_DATA_GENERATION -> enable.toString))
+
   private def getValidation: DataSourceValidationBuilder = optValidation.getOrElse(DataSourceValidationBuilder())
 }
 
