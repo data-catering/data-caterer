@@ -19,7 +19,7 @@ Full docs can be found [**here**](https://data.catering).
 - Data validation
 - Suggest data validations
 
-![Basic flow](design/high_level_flow-basic-flow.svg)
+![Basic flow](design/basic_data_caterer_flow_medium.gif)
 
 ## Quick start
 
