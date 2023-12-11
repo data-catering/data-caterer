@@ -61,6 +61,11 @@ trait ConnectionTaskBuilder[T] {
     this
   }
 
+  def validations(metadataSourceBuilder: MetadataSourceBuilder): ConnectionTaskBuilder[T] = {
+    this.connectionConfigWithTaskBuilder = this.connectionConfigWithTaskBuilder.metadataSource(metadataSourceBuilder)
+    this
+  }
+
   def validationWait(waitConditionBuilder: WaitConditionBuilder): ConnectionTaskBuilder[T] = {
     this.step = Some(getStep.wait(waitConditionBuilder))
     this

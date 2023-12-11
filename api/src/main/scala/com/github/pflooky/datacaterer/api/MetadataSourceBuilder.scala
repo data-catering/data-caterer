@@ -1,8 +1,8 @@
 package com.github.pflooky.datacaterer.api
 
 import com.github.pflooky.datacaterer.api.converter.Converters.toScalaMap
-import com.github.pflooky.datacaterer.api.model.Constants.{METADATA_SOURCE_URL, OPEN_LINEAGE_DATASET, OPEN_LINEAGE_NAMESPACE, OPEN_METADATA_API_VERSION, OPEN_METADATA_AUTH_TYPE, OPEN_METADATA_AUTH_TYPE_OPEN_METADATA, OPEN_METADATA_DEFAULT_API_VERSION, OPEN_METADATA_HOST, OPEN_METADATA_JWT_TOKEN, SCHEMA_LOCATION}
-import com.github.pflooky.datacaterer.api.model.{MarquezMetadataSource, MetadataSource, OpenAPISource, OpenMetadataSource}
+import com.github.pflooky.datacaterer.api.model.Constants.{DATA_CONTRACTS_FOLDER, EXPECTATIONS_FOLDER, METADATA_SOURCE_URL, OPEN_LINEAGE_DATASET, OPEN_LINEAGE_NAMESPACE, OPEN_METADATA_API_VERSION, OPEN_METADATA_AUTH_TYPE, OPEN_METADATA_AUTH_TYPE_OPEN_METADATA, OPEN_METADATA_DEFAULT_API_VERSION, OPEN_METADATA_HOST, OPEN_METADATA_JWT_TOKEN, SCHEMA_LOCATION}
+import com.github.pflooky.datacaterer.api.model.{GreatExpectationsSource, MarquezMetadataSource, MetadataSource, OpenAPISource, OpenDataContractStandardSource, OpenMetadataSource}
 import com.softwaremill.quicklens.ModifyPimp
 
 case class MetadataSourceBuilder(metadataSource: MetadataSource = MarquezMetadataSource()) {
@@ -54,9 +54,9 @@ case class MetadataSourceBuilder(metadataSource: MetadataSource = MarquezMetadat
    * options can contain additional authentication related configuration values.
    * Check under {{{Constants}}} openmetadata section for more details.
    *
-   * @param url URL to OpenMetadata server
+   * @param url          URL to OpenMetadata server
    * @param authProvider See above for list of auth providers
-   * @param options Additional auth configuration
+   * @param options      Additional auth configuration
    * @return
    */
   def openMetadata(url: String, authProvider: String, options: Map[String, String]): MetadataSourceBuilder =
@@ -70,5 +70,13 @@ case class MetadataSourceBuilder(metadataSource: MetadataSource = MarquezMetadat
 
   def openApi(schemaLocation: String): MetadataSourceBuilder = {
     this.modify(_.metadataSource).setTo(OpenAPISource(Map(SCHEMA_LOCATION -> schemaLocation)))
+  }
+
+  def greatExpectations(expectationsFolder: String): MetadataSourceBuilder = {
+    this.modify(_.metadataSource).setTo(GreatExpectationsSource(Map(EXPECTATIONS_FOLDER -> expectationsFolder)))
+  }
+
+  def openDataContractStandard(dataContractsFolder: String): MetadataSourceBuilder = {
+    this.modify(_.metadataSource).setTo(OpenDataContractStandardSource(Map(DATA_CONTRACTS_FOLDER -> dataContractsFolder)))
   }
 }
