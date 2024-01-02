@@ -3,11 +3,11 @@
         <envs>
             <env name="ENABLE_DELETE_GENERATED_RECORDS" value="true" />
         </envs>
-        <option name="MAIN_CLASS_NAME" value="com.github.pflooky.datagen.App" />
+        <option name="MAIN_CLASS_NAME" value="io.github.datacatering.datacaterer.App" />
         <module name="spartagen.app.main" />
         <extension name="coverage">
             <pattern>
-                <option name="PATTERN" value="com.github.pflooky.datagen.*" />
+                <option name="PATTERN" value="io.github.datacatering.datacaterer.*" />
                 <option name="ENABLED" value="true" />
             </pattern>
         </extension>
@@ -20,10 +20,10 @@
             <env name="ENABLE_GENERATE_PLAN_AND_TASKS" value="false" />
             <env name="PLAN_FILE_PATH" value="/plan/account-create-plan.yaml" />
         </envs>
-        <option name="MAIN_CLASS_NAME" value="com.github.pflooky.datagen.App" />
+        <option name="MAIN_CLASS_NAME" value="io.github.datacatering.datacaterer.App" />
         <extension name="coverage">
             <pattern>
-                <option name="PATTERN" value="com.github.pflooky.datagen.*" />
+                <option name="PATTERN" value="io.github.datacatering.datacaterer.*" />
                 <option name="ENABLED" value="true" />
             </pattern>
         </extension>
@@ -37,11 +37,11 @@
             <env name="PLAN_FILE_PATH" value="/plan/account-create-plan.yaml" />
         </envs>
         <option name="INCLUDE_PROVIDED_SCOPE" value="true" />
-        <option name="MAIN_CLASS_NAME" value="com.github.pflooky.datagen.App" />
+        <option name="MAIN_CLASS_NAME" value="io.github.datacatering.datacaterer.App" />
         <module name="data-caterer.app.main" />
         <extension name="coverage">
             <pattern>
-                <option name="PATTERN" value="com.github.pflooky.datagen.*" />
+                <option name="PATTERN" value="io.github.datacatering.datacaterer.*" />
                 <option name="ENABLED" value="true" />
             </pattern>
         </extension>
@@ -54,11 +54,11 @@
             <env name="ENABLE_GENERATE_PLAN_AND_TASKS" value="true" />
             <env name="ENABLE_GENERATE_DATA" value="false" />
         </envs>
-        <option name="MAIN_CLASS_NAME" value="com.github.pflooky.datagen.App" />
+        <option name="MAIN_CLASS_NAME" value="io.github.datacatering.datacaterer.App" />
         <module name="spartagen.app.main" />
         <extension name="coverage">
             <pattern>
-                <option name="PATTERN" value="com.github.pflooky.datagen.*" />
+                <option name="PATTERN" value="io.github.datacatering.datacaterer.*" />
                 <option name="ENABLED" value="true" />
             </pattern>
         </extension>
@@ -72,11 +72,11 @@
             <env name="ENABLE_GENERATE_DATA" value="true" />
             <env name="APPLICATION_CONFIG_PATH" value="app/src/test/resources/sample/conf/mysql.conf" />
         </envs>
-        <option name="MAIN_CLASS_NAME" value="com.github.pflooky.datagen.App" />
+        <option name="MAIN_CLASS_NAME" value="io.github.datacatering.datacaterer.App" />
         <module name="spartagen.app.main" />
         <extension name="coverage">
             <pattern>
-                <option name="PATTERN" value="com.github.pflooky.datagen.*" />
+                <option name="PATTERN" value="io.github.datacatering.datacaterer.*" />
                 <option name="ENABLED" value="true" />
             </pattern>
         </extension>
@@ -90,11 +90,11 @@
             <env name="ENABLE_GENERATE_DATA" value="true" />
             <env name="ENABLE_RECORD_TRACKING" value="true" />
         </envs>
-        <option name="MAIN_CLASS_NAME" value="com.github.pflooky.datagen.App" />
+        <option name="MAIN_CLASS_NAME" value="io.github.datacatering.datacaterer.App" />
         <module name="spartagen.app.main" />
         <extension name="coverage">
             <pattern>
-                <option name="PATTERN" value="com.github.pflooky.datagen.*" />
+                <option name="PATTERN" value="io.github.datacatering.datacaterer.*" />
                 <option name="ENABLED" value="true" />
             </pattern>
         </extension>

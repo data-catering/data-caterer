@@ -114,7 +114,7 @@ testing {
 
 application {
     // Define the main class for the application.
-    mainClass.set("com.github.pflooky.datagen.App")
+    mainClass.set("io.github.datacatering.datacaterer.App")
 }
 
 sourceSets {
@@ -137,5 +137,5 @@ tasks.test {
 configure<ScoverageExtension> {
     scoverageScalaVersion.set(scalaSpecificVersion)
     excludedFiles.add(".*CombinationCalculator.*")
-    excludedPackages.add("com.github.pflooky.datagen.core.exception.*")
+    excludedPackages.add("io.github.datacatering.datacaterer.core.exception.*")
 }

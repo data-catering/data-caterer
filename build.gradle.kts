@@ -14,7 +14,7 @@ version = project.properties["version"].toString()
 idea.project.settings {
     runConfigurations {
         create("GenerateFromManualJson", Application::class.java) {
-            mainClass = "com.github.pflooky.datagen.App"
+            mainClass = "io.github.datacatering.datacaterer.App"
             moduleName = "data-caterer.app.main"
             includeProvidedDependencies = true
             envs = mutableMapOf(
@@ -24,7 +24,7 @@ idea.project.settings {
             )
         }
         create("GenerateFromMetadata", Application::class.java) {
-            mainClass = "com.github.pflooky.datagen.App"
+            mainClass = "io.github.datacatering.datacaterer.App"
             moduleName = "data-caterer.app.main"
             includeProvidedDependencies = true
             envs = mutableMapOf(
@@ -35,7 +35,7 @@ idea.project.settings {
             )
         }
         create("GenerateFromMetadataMysql", Application::class.java) {
-            mainClass = "com.github.pflooky.datagen.App"
+            mainClass = "io.github.datacatering.datacaterer.App"
             moduleName = "data-caterer.app.main"
             includeProvidedDependencies = true
             envs = mutableMapOf(
@@ -46,7 +46,7 @@ idea.project.settings {
             )
         }
         create("GenerateFromMetadataWithTracking", Application::class.java) {
-            mainClass = "com.github.pflooky.datagen.App"
+            mainClass = "io.github.datacatering.datacaterer.App"
             moduleName = "data-caterer.app.main"
             includeProvidedDependencies = true
             envs = mutableMapOf(
@@ -58,7 +58,7 @@ idea.project.settings {
             )
         }
         create("DeleteGeneratedRecords", Application::class.java) {
-            mainClass = "com.github.pflooky.datagen.App"
+            mainClass = "io.github.datacatering.datacaterer.App"
             moduleName = "data-caterer.app.main"
             includeProvidedDependencies = true
             envs = mutableMapOf(
@@ -68,7 +68,7 @@ idea.project.settings {
             )
         }
         create("GenerateLargeData", Application::class.java) {
-            mainClass = "com.github.pflooky.datagen.App"
+            mainClass = "io.github.datacatering.datacaterer.App"
             moduleName = "data-caterer.app.main"
             includeProvidedDependencies = true
             envs = mutableMapOf(
@@ -80,7 +80,7 @@ idea.project.settings {
             )
         }
         create("ExampleAccountCreatePlan", Application::class.java) {
-            mainClass = "com.github.pflooky.datagen.App"
+            mainClass = "io.github.datacatering.datacaterer.App"
             moduleName = "data-caterer.app.main"
             includeProvidedDependencies = true
             envs = mutableMapOf(

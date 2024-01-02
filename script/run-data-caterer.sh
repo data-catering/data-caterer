@@ -8,7 +8,7 @@ ALL_OPTS="$ADDITIONAL_OPTS --conf \"spark.driver.extraJavaOptions=$JAVA_OPTS\" -
 
 CMD=(
   /opt/spark/bin/spark-submit
-  --class com.github.pflooky.datagen.App
+  --class io.github.datacatering.datacaterer.App
   --master "$DATA_CATERER_MASTER"
   --deploy-mode "$DEPLOY_MODE"
   --driver-memory "$DRIVER_MEMORY"
