@@ -50,29 +50,47 @@ case class DataCatererConfigurationBuilder(build: DataCatererConfiguration = Dat
   def addConnectionConfigJava(name: String, format: String, path: String, connectionConfig: java.util.Map[String, String]): DataCatererConfigurationBuilder =
     addConnectionConfig(name, format, path, toScalaMap(connectionConfig))
 
-  def csv(name: String, path: String = "", options: Map[String, String] = Map()): DataCatererConfigurationBuilder =
+  def csv(name: String, path: String, options: Map[String, String] = Map()): DataCatererConfigurationBuilder =
     addConnectionConfig(name, CSV, path, options)
 
   def csv(name: String, path: String, options: java.util.Map[String, String]): DataCatererConfigurationBuilder =
     csv(name, path, toScalaMap(options))
 
-  def parquet(name: String, path: String = "", options: Map[String, String] = Map()): DataCatererConfigurationBuilder =
+  def parquet(name: String, path: String, options: Map[String, String] = Map()): DataCatererConfigurationBuilder =
     addConnectionConfig(name, PARQUET, path, options)
 
   def parquet(name: String, path: String, options: java.util.Map[String, String]): DataCatererConfigurationBuilder =
     parquet(name, path, toScalaMap(options))
 
-  def orc(name: String, path: String = "", options: Map[String, String] = Map()): DataCatererConfigurationBuilder =
+  def orc(name: String, path: String, options: Map[String, String] = Map()): DataCatererConfigurationBuilder =
     addConnectionConfig(name, ORC, path, options)
 
   def orc(name: String, path: String, options: java.util.Map[String, String]): DataCatererConfigurationBuilder =
     orc(name, path, toScalaMap(options))
 
-  def json(name: String, path: String = "", options: Map[String, String] = Map()): DataCatererConfigurationBuilder =
+  def json(name: String, path: String, options: Map[String, String] = Map()): DataCatererConfigurationBuilder =
     addConnectionConfig(name, JSON, path, options)
 
   def json(name: String, path: String, options: java.util.Map[String, String]): DataCatererConfigurationBuilder =
     json(name, path, toScalaMap(options))
+
+  def hudi(name: String, path: String, tableName: String, options: Map[String, String] = Map()): DataCatererConfigurationBuilder =
+    addConnectionConfig(name, HUDI, path, options ++ Map(HUDI_TABLE_NAME -> tableName))
+
+  def hudi(name: String, path: String, tableName: String, options: java.util.Map[String, String]): DataCatererConfigurationBuilder =
+    hudi(name, path, tableName, toScalaMap(options))
+
+  def delta(name: String, path: String = "", options: Map[String, String] = Map()): DataCatererConfigurationBuilder =
+    addConnectionConfig(name, DELTA, path, options)
+
+  def delta(name: String, path: String, options: java.util.Map[String, String]): DataCatererConfigurationBuilder =
+    delta(name, path, toScalaMap(options))
+
+  def iceberg(name: String, path: String = "", options: Map[String, String] = Map()): DataCatererConfigurationBuilder =
+    addConnectionConfig(name, ICEBERG, path, options)
+
+  def iceberg(name: String, path: String, options: java.util.Map[String, String]): DataCatererConfigurationBuilder =
+    iceberg(name, path, toScalaMap(options))
 
   def postgres(
                 name: String,
@@ -352,6 +370,14 @@ final case class ConnectionConfigWithTaskBuilder(
       case JSON => configBuilder.json(name, path, options)
       case ORC => configBuilder.orc(name, path, options)
       case PARQUET => configBuilder.parquet(name, path, options)
+      case HUDI =>
+        options.get(HUDI_TABLE_NAME) match {
+          case Some(value) => configBuilder.hudi(name, path, value, options)
+          case None => throw new IllegalArgumentException(s"Missing $HUDI_TABLE_NAME from options: $options")
+        }
+      case DELTA => configBuilder.delta(name, path, options)
+      case ICEBERG => configBuilder.iceberg(name, path, options)
+      case _ => throw new IllegalArgumentException(s"Unsupported file format: $format")
     }
     setConnectionConfig(name, fileConnectionConfig, FileBuilder())
   }

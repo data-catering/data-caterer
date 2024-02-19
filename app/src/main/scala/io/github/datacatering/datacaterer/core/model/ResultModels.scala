@@ -5,6 +5,8 @@ import io.github.datacatering.datacaterer.api.model.{Field, Step, Task}
 
 import java.time.{Duration, LocalDateTime}
 
+case class PlanRunResults(generationResults: List[DataSourceResult], validationResults: List[ValidationConfigResult], optReportPath: Option[String] = None)
+
 case class DataSourceResultSummary(
                                     name: String,
                                     numRecords: Long,

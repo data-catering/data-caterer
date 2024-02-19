@@ -1,0 +1,41 @@
+package io.github.datacatering.datacaterer.core.ui.model
+
+import io.github.datacatering.datacaterer.core.ui.mapper.DateTimeFormat
+import io.github.datacatering.datacaterer.core.ui.plan.PlanRepository.{ExecutionsById, GroupedPlanRunsByName, PlanRunExecutionDetails}
+import org.joda.time.DateTime
+import spray.json.DefaultJsonProtocol._
+import spray.json.{JsFalse, JsNumber, JsString, JsTrue, JsValue, JsonFormat, RootJsonFormat}
+
+trait JsonSupport {
+
+  implicit object AnyJsonFormat extends JsonFormat[Any] {
+    def write(x: Any): JsValue = x match {
+      case n: BigDecimal => JsNumber(n)
+      case s: String => JsString(s)
+      case b: Boolean if b => JsTrue
+      case b: Boolean if !b => JsFalse
+    }
+
+    def read(value: JsValue): Any = value match {
+      case JsNumber(n) => n
+      case JsString(s) => s
+      case JsTrue => true
+      case JsFalse => false
+    }
+  }
+
+  implicit val fieldRequestFormat: RootJsonFormat[FieldRequest] = jsonFormat3(FieldRequest.apply)
+  implicit val recordCountRequestFormat: RootJsonFormat[RecordCountRequest] = jsonFormat7(RecordCountRequest.apply)
+  implicit val dataSourceRequestFormat: RootJsonFormat[DataSourceRequest] = jsonFormat5(DataSourceRequest.apply)
+  implicit val planRunRequestFormat: RootJsonFormat[PlanRunRequest] = jsonFormat3(PlanRunRequest.apply)
+  implicit val planRunRequestsFormat: RootJsonFormat[PlanRunRequests] = jsonFormat1(PlanRunRequests.apply)
+  implicit val dateTimeFormat: RootJsonFormat[DateTime] = DateTimeFormat
+  implicit val planRunExecutionFormat: RootJsonFormat[PlanRunExecution] = jsonFormat8(PlanRunExecution.apply)
+  implicit val executionsByIdFormat: RootJsonFormat[ExecutionsById] = jsonFormat2(ExecutionsById.apply)
+  implicit val groupedPlanRunsByNameFormat: RootJsonFormat[GroupedPlanRunsByName] = jsonFormat2(GroupedPlanRunsByName.apply)
+  implicit val planRunExecutionDetailsFormat: RootJsonFormat[PlanRunExecutionDetails] = jsonFormat1(PlanRunExecutionDetails.apply)
+  implicit val connectionFormat: RootJsonFormat[Connection] = jsonFormat3(Connection.apply)
+  implicit val saveConnectionsRequestFormat: RootJsonFormat[SaveConnectionsRequest] = jsonFormat1(SaveConnectionsRequest.apply)
+  implicit val getConnectionsResponseFormat: RootJsonFormat[GetConnectionsResponse] = jsonFormat1(GetConnectionsResponse.apply)
+
+}

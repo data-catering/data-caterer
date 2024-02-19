@@ -36,6 +36,14 @@ class ValidationOperationsTest extends SparkSuite {
     assert(result.sampleErrorValues.isEmpty)
   }
 
+  test("Can define select expression to run before where expression") {
+    val validation = ExpressionValidation("amount < 1000", List("PERCENTILE(amount, 0.5) AS median_amount"))
+    val result = new ExpressionValidationOps(validation).validate(df, 4)
+
+    assert(result.isSuccess)
+    assert(result.sampleErrorValues.isEmpty)
+  }
+
   test("Can return empty sample rows when validation is successful from error threshold") {
     val validation = new ValidationBuilder().expr("amount < 400").errorThreshold(1).validation.asInstanceOf[ExpressionValidation]
     val result = new ExpressionValidationOps(validation).validate(df, 4)

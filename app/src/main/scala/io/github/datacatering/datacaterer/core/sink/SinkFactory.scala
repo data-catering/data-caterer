@@ -38,26 +38,26 @@ class SinkFactory(val flagsConfig: FlagsConfig, val metadataConfig: MetadataConf
                        saveMode: SaveMode, format: String, count: String, enableFailOnError: Boolean, startTime: LocalDateTime): SinkResult = {
     val baseSinkResult = SinkResult(dataSourceName, format, saveMode.name())
     //TODO might have use case where empty data can be tested, is it okay just to check for empty schema?
-    val sinkResult = if (df.schema.isEmpty) {
-      LOGGER.debug(s"Generated data schema is empty, not saving to data source, data-source-name=$dataSourceName, format=$format")
+    val finalSinkResult = if (df.schema.isEmpty) {
+      LOGGER.warn(s"Data schema is empty, not saving to data source, data-source-name=$dataSourceName, format=$format")
       baseSinkResult
     } else {
-      saveBatchData(dataSourceName, df, saveMode, connectionConfig, count, startTime)
+      val sinkResult = saveBatchData(dataSourceName, df, saveMode, connectionConfig, count, startTime)
+      (sinkResult.isSuccess, sinkResult.exception) match {
+        case (false, Some(exception)) =>
+          LOGGER.error(s"Failed to save data for sink, data-source-name=$dataSourceName, step-name=${step.name}, save-mode=${saveMode.name()}, " +
+            s"num-records=$count, status=$FAILED, exception=${exception.getMessage.take(500)}")
+          if (enableFailOnError) throw new RuntimeException(exception) else baseSinkResult
+        case (true, None) =>
+          LOGGER.info(s"Successfully saved data to sink, data-source-name=$dataSourceName, step-name=${step.name}, save-mode=${saveMode.name()}, " +
+            s"num-records=$count, status=$FINISHED")
+          sinkResult
+        case (isSuccess, optException) =>
+          LOGGER.warn(s"Unexpected sink result scenario, is-success=$isSuccess, exception-exists=${optException.isDefined}")
+          sinkResult
+      }
     }
 
-    val finalSinkResult = (sinkResult.isSuccess, sinkResult.exception) match {
-      case (false, Some(exception)) =>
-        LOGGER.error(s"Failed to save data for sink, data-source-name=$dataSourceName, step-name=${step.name}, save-mode=${saveMode.name()}, " +
-          s"num-records=$count, status=$FAILED, exception=${exception.getMessage.take(500)}")
-        if (enableFailOnError) throw new RuntimeException(exception) else baseSinkResult
-      case (true, None) =>
-        LOGGER.info(s"Successfully saved data to sink, data-source-name=$dataSourceName, step-name=${step.name}, save-mode=${saveMode.name()}, " +
-          s"num-records=$count, status=$FINISHED")
-        sinkResult
-      case (isSuccess, optException) =>
-        LOGGER.warn(s"Unexpected sink result scenario, is-success=$isSuccess, exception-exists=${optException.isDefined}")
-        sinkResult
-    }
     df.unpersist()
     finalSinkResult
   }

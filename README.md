@@ -112,3 +112,13 @@ This is inspired by the [mkdocs-material project](https://github.com/squidfunk/m
 ### Roadmap
 
 [Can check here for full list.](https://data.catering/use-case/roadmap/)
+
+#### UI
+
+1. Allow the application to run with UI enabled
+2. Runs as long-lived app with UI that interacts with existing app as single container
+3. Ability to run as UI, Spark job or both
+4. Persist data in files or database (Postgres)
+5. UI will show history of data generation/validation runs, delete generated data, create new scenarios, define data connections
+
+

@@ -8,12 +8,14 @@ object Constants {
 
   //supported data formats
   lazy val CASSANDRA = "org.apache.spark.sql.cassandra"
+  lazy val CASSANDRA_NAME = "cassandra"
   lazy val JDBC = "jdbc"
   lazy val POSTGRES = "postgres"
   lazy val MYSQL = "mysql"
   lazy val HTTP = "http"
   lazy val JMS = "jms"
   lazy val KAFKA = "kafka"
+  lazy val SOLACE = "solace"
   lazy val RATE = "rate"
   //file formats
   lazy val CSV = "csv"
@@ -21,6 +23,8 @@ object Constants {
   lazy val JSON = "json"
   lazy val ORC = "orc"
   lazy val PARQUET = "parquet"
+  lazy val HUDI = "hudi"
+  lazy val ICEBERG = "iceberg"
   lazy val XML = "xml"
   //jdbc drivers
   lazy val POSTGRES_DRIVER = "org.postgresql.Driver"
@@ -33,6 +37,8 @@ object Constants {
   lazy val CASSANDRA_KEYSPACE = "keyspace"
   lazy val CASSANDRA_TABLE = "table"
   lazy val JDBC_TABLE = "dbtable"
+  lazy val SCHEMA = "schema"
+  lazy val TABLE = "table"
   lazy val JDBC_QUERY = "query"
   lazy val URL = "url"
   lazy val USERNAME = "user"
@@ -50,9 +56,7 @@ object Constants {
   lazy val EXPECTATIONS_FILE = "expectationsFile"
   lazy val DATA_CONTRACT_FILE = "dataContractFile"
   lazy val ROWS_PER_SECOND = "rowsPerSecond"
-  lazy val HTTP_METHOD = "httpMethod"
-  lazy val HTTP_CONTENT_TYPE = "httpContentType"
-  lazy val HTTP_HEADER = "httpHeader"
+  lazy val HUDI_TABLE_NAME = "hoodie.table.name"
 
   //field metadata
   lazy val FIELD_DATA_TYPE = "type"
@@ -198,6 +202,10 @@ object Constants {
     "spark.sql.shuffle.partitions" -> "10",
     "spark.sql.catalog.postgres" -> "",
     "spark.sql.catalog.cassandra" -> "com.datastax.spark.connector.datasource.CassandraCatalog",
+//    "spark.serializer" -> "org.apache.spark.serializer.KryoSerializer",
+//    "spark.sql.catalog.hudi" -> "org.apache.spark.sql.hudi.catalog.HoodieCatalog",
+//    "spark.kryo.registrator" -> "org.apache.spark.HoodieSparkKryoRegistrar",
+//    "spark.sql.extensions" -> "org.apache.spark.sql.hudi.HoodieSparkSessionExtension,io.delta.sql.DeltaSparkSessionExtension",
     "spark.hadoop.fs.s3a.directory.marker.retention" -> "keep",
     "spark.hadoop.fs.s3a.bucket.all.committer.magic.enabled" -> "true"
   )
@@ -347,9 +355,46 @@ object Constants {
   lazy val AGGREGATION_STDDEV = "stddev"
 
   //validation types
-  lazy val VALIDATION_EXPRESSION = "expr"
+  lazy val VALIDATION_COLUMN = "column"
+  lazy val VALIDATION_COLUMN_NAMES = "columnNames"
+  lazy val VALIDATION_UPSTREAM = "upstream"
   lazy val VALIDATION_GROUP_BY = "groupBy"
+
+  lazy val VALIDATION_EQUAL = "equal"
+  lazy val VALIDATION_NOT_EQUAL = "notEqual"
+  lazy val VALIDATION_NULL = "null"
+  lazy val VALIDATION_NOT_NULL = "notNull"
+  lazy val VALIDATION_CONTAINS = "contains"
+  lazy val VALIDATION_NOT_CONTAINS = "notContains"
   lazy val VALIDATION_UNIQUE = "unique"
+  lazy val VALIDATION_LESS_THAN = "lessThan"
+  lazy val VALIDATION_LESS_THAN_OR_EQUAL = "lessThanOrEqual"
+  lazy val VALIDATION_GREATER_THAN = "greaterThan"
+  lazy val VALIDATION_GREATER_THAN_OR_EQUAL = "greaterThanOrEqual"
+  lazy val VALIDATION_BETWEEN = "between"
+  lazy val VALIDATION_NOT_BETWEEN = "notBetween"
+  lazy val VALIDATION_IN = "in"
+  lazy val VALIDATION_MATCHES = "matches"
+  lazy val VALIDATION_NOT_MATCHES = "notMatches"
+  lazy val VALIDATION_STARTS_WITH = "startsWith"
+  lazy val VALIDATION_NOT_STARTS_WITH = "notStartsWith"
+  lazy val VALIDATION_ENDS_WITH = "endsWith"
+  lazy val VALIDATION_NOT_ENDS_WITH = "notEndsWith"
+  lazy val VALIDATION_SIZE = "size"
+  lazy val VALIDATION_NOT_SIZE = "notSize"
+  lazy val VALIDATION_LESS_THAN_SIZE = "lessThanSize"
+  lazy val VALIDATION_LESS_THAN_OR_EQUAL_SIZE = "lessThanOrEqualSize"
+  lazy val VALIDATION_GREATER_THAN_SIZE = "greaterThanSize"
+  lazy val VALIDATION_GREATER_THAN_OR_EQUAL_SIZE = "greaterThanOrEqualSize"
+  lazy val VALIDATION_LUHN_CHECK = "luhnCheck"
+  lazy val VALIDATION_HAS_TYPE = "hasType"
+  lazy val VALIDATION_SQL = "sql"
+
+  lazy val VALIDATION_MIN = "min"
+  lazy val VALIDATION_MAX = "max"
+  lazy val VALIDATION_IN_DELIMITER = "||"
+  lazy val VALIDATION_SUPPORTING_OPTIONS = List(VALIDATION_MIN, VALIDATION_MAX)
+
   lazy val VALIDATION_PREFIX_JOIN_EXPRESSION = "expr:"
   lazy val VALIDATION_COLUMN_NAME_COUNT_EQUAL = "column_count_equal"
   lazy val VALIDATION_COLUMN_NAME_COUNT_BETWEEN = "column_count_between"
@@ -367,4 +412,9 @@ object Constants {
 
   //trial
   lazy val API_KEY = "API_KEY"
+
+  //ui
+  lazy val PLAN_RUN_EXECUTION_DELIMITER = "||"
+  lazy val PLAN_RUN_EXECUTION_DELIMITER_REGEX = "\\|\\|"
+
 }

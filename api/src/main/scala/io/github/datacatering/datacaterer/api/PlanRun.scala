@@ -1,8 +1,7 @@
 package io.github.datacatering.datacaterer.api
 
-import io.github.datacatering.datacaterer.api.converter.Converters.toScalaList
-import io.github.datacatering.datacaterer.api.model.Constants._
 import io.github.datacatering.datacaterer.api.connection.{CassandraBuilder, ConnectionTaskBuilder, FileBuilder, HttpBuilder, KafkaBuilder, MySqlBuilder, PostgresBuilder, SolaceBuilder}
+import io.github.datacatering.datacaterer.api.model.Constants._
 import io.github.datacatering.datacaterer.api.model.{DataCatererConfiguration, ForeignKeyRelation, Plan, Task, ValidationConfiguration}
 
 import scala.annotation.varargs
@@ -97,6 +96,40 @@ trait PlanRun {
    */
   def parquet(name: String, path: String, options: Map[String, String] = Map()): FileBuilder =
     ConnectionConfigWithTaskBuilder().file(name, PARQUET, path, options)
+
+  /**
+   * Create new HUDI generation step with configurations
+   *
+   * @param name    Data source name
+   * @param path    File path to generated HUDI
+   * @param tableName Table name to be used for HUDI generation
+   * @param options Additional options for HUDI generation
+   * @return FileBuilder
+   */
+  def hudi(name: String, path: String, tableName: String, options: Map[String, String] = Map()): FileBuilder =
+    ConnectionConfigWithTaskBuilder().file(name, HUDI, path, options ++ Map(HUDI_TABLE_NAME -> tableName))
+
+  /**
+   * Create new DELTA generation step with configurations
+   *
+   * @param name    Data source name
+   * @param path    File path to generated DELTA
+   * @param options Additional options for DELTA generation
+   * @return FileBuilder
+   */
+  def delta(name: String, path: String, options: Map[String, String] = Map()): FileBuilder =
+    ConnectionConfigWithTaskBuilder().file(name, DELTA, path, options)
+
+  /**
+   * Create new ICEBERG generation step with configurations
+   *
+   * @param name    Data source name
+   * @param path    File path to generated ICEBERG
+   * @param options Additional options for ICEBERG generation
+   * @return FileBuilder
+   */
+  def iceberg(name: String, path: String, options: Map[String, String] = Map()): FileBuilder =
+    ConnectionConfigWithTaskBuilder().file(name, ICEBERG, path, options)
 
   /**
    * Create new POSTGRES generation step with connection configuration
