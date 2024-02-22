@@ -2,22 +2,132 @@ package io.github.datacatering.datacaterer.core.ui.mapper
 
 import io.github.datacatering.datacaterer.api.connection.{ConnectionTaskBuilder, FileBuilder, JdbcBuilder}
 import io.github.datacatering.datacaterer.api.model.Constants._
-import io.github.datacatering.datacaterer.api.model.DataType
-import io.github.datacatering.datacaterer.api.{BasePlanRun, ConnectionConfigWithTaskBuilder, CountBuilder, DataCatererConfigurationBuilder, FieldBuilder, GeneratorBuilder, PlanRun, ValidationBuilder}
-import io.github.datacatering.datacaterer.core.ui.model.{DataSourceRequest, PlanRunRequest}
+import io.github.datacatering.datacaterer.api.model.{DataType, ForeignKeyRelation}
+import io.github.datacatering.datacaterer.api.{BasePlanRun, ColumnNamesValidationBuilder, ConnectionConfigWithTaskBuilder, CountBuilder, DataCatererConfigurationBuilder, FieldBuilder, GeneratorBuilder, GroupByValidationBuilder, PlanBuilder, PlanRun, ValidationBuilder}
+import io.github.datacatering.datacaterer.core.ui.model.{DataSourceRequest, ForeignKeyRequest, PlanRunRequest}
 
 object UiMapper {
 
   def mapToPlanRun(planRunRequest: PlanRunRequest): PlanRun = {
     val plan = new BasePlanRun()
     val planBuilder = plan.plan.name(planRunRequest.name)
+    val configuration = DataCatererConfigurationBuilder()
     val connections = planRunRequest.dataSources.map(dataSourceToConnection)
-    plan.execute(planBuilder, DataCatererConfigurationBuilder(), connections.head, connections.tail: _*)
+    val planBuilderWithForeignKeys = foreignKeyMapping(planRunRequest.foreignKeys, connections, planBuilder)
+    // after initial connection mapping, need to get the upstream validations based on the connection mapping
+    plan.execute(planBuilderWithForeignKeys, configuration, connections.head, connections.tail: _*)
     plan
   }
 
   def dataSourceToConnection(dataSourceRequest: DataSourceRequest): ConnectionTaskBuilder[_] = {
-    val baseConnection = dataSourceRequest.`type` match {
+    val baseConnection = connectionMapping(dataSourceRequest)
+    val mappedFields = fieldMapping(dataSourceRequest)
+    val countBuilder = countMapping(dataSourceRequest)
+    val mappedValidations = validationMapping(dataSourceRequest)
+
+    baseConnection
+      .name(dataSourceRequest.taskName)
+      .schema(mappedFields: _*)
+      .count(countBuilder)
+      .validations(mappedValidations: _*)
+      .enableDataGeneration(mappedFields.nonEmpty)
+      .enableDataValidation(mappedValidations.nonEmpty)
+  }
+
+  def foreignKeyMapping(foreignKeyRequests: List[ForeignKeyRequest], connections: List[ConnectionTaskBuilder[_]], planBuilder: PlanBuilder): PlanBuilder = {
+    val mappedWithConnections = foreignKeyRequests.map(fkr => {
+      val sourceConnection = getConnectionByTaskName(connections, fkr.source.get.taskName)
+      val sourceColumns = fkr.source.get.columns.split(VALIDATION_OPTION_DELIMITER).toList
+      val linkConnections = fkr.links.map(link => {
+        val matchingConnection = getConnectionByTaskName(connections, link.taskName)
+        (matchingConnection, link.columns.split(VALIDATION_OPTION_DELIMITER).toList)
+      })
+
+      (sourceConnection, sourceColumns, linkConnections)
+    })
+    mappedWithConnections.foldLeft(planBuilder)((pb, fk) => pb.addForeignKeyRelationship(fk._1, fk._2, fk._3))
+  }
+
+  private def getConnectionByTaskName(connections: List[ConnectionTaskBuilder[_]], taskName: String): ConnectionTaskBuilder[_] = {
+    val matchingConnection = connections.find(c => c.task.exists(taskBuilder => taskBuilder.task.name == taskName))
+    matchingConnection match {
+      case Some(value) => value
+      case None => throw new RuntimeException(s"No connection found with matching task name, task-name=$taskName")
+    }
+  }
+
+  private def validationMapping(dataSourceRequest: DataSourceRequest): List[ValidationBuilder] = {
+    dataSourceRequest.validations.map(validations => {
+      validations.flatMap(validateItem => {
+        validateItem.`type` match {
+          case VALIDATION_COLUMN =>
+            //map type of column validation to builder method
+            //each option is a new validation
+            val mappedValids = validateItem.options.map(opts => {
+              val colName = opts(VALIDATION_COLUMN)
+              opts
+                .filter(o => !VALIDATION_SUPPORTING_OPTIONS.contains(o._1))
+                .map(opt => columnValidationMapping(opts, colName, opt))
+                .toList
+            }).getOrElse(List())
+            mappedValids
+          case VALIDATION_COLUMN_NAMES =>
+            val baseValid = ValidationBuilder().columnNames
+            validateItem.options.map(opts => {
+              opts
+                .filter(o => !VALIDATION_SUPPORTING_OPTIONS.contains(o._1))
+                .map(opt => columnNamesValidationMapping(baseValid, opts, opt))
+                .toList
+            }).getOrElse(List())
+          case VALIDATION_UPSTREAM =>
+            // require upstream ConnectionTaskBuilder
+            List()
+          case VALIDATION_GROUP_BY =>
+            validateItem.options.map(opts => {
+              val groupByCols = opts(VALIDATION_GROUP_BY_COLUMNS).split(VALIDATION_OPTION_DELIMITER)
+              val baseValid = ValidationBuilder().groupBy(groupByCols: _*)
+              opts
+                .filter(o => !VALIDATION_SUPPORTING_OPTIONS.contains(o._1))
+                .map(opt => groupByValidationMapping(baseValid, opt))
+                .toList
+            }).getOrElse(List())
+          case _ => List()
+        }
+      })
+    }).getOrElse(List())
+  }
+
+  private def countMapping(dataSourceRequest: DataSourceRequest): CountBuilder = {
+    dataSourceRequest.count.map(recordCountRequest => {
+      val baseRecordCount = (recordCountRequest.records, recordCountRequest.recordsMin, recordCountRequest.recordsMax) match {
+        case (Some(records), None, None) => CountBuilder().records(records)
+        case (None, Some(min), Some(max)) => CountBuilder().generator(GeneratorBuilder().min(min).max(max))
+        case _ => CountBuilder().records(DEFAULT_COUNT_RECORDS)
+      }
+
+      val perColumnNames = recordCountRequest.perColumnNames.getOrElse(List())
+      if (perColumnNames.nonEmpty) {
+        (recordCountRequest.perColumnRecords, recordCountRequest.perColumnRecordsMin, recordCountRequest.perColumnRecordsMax) match {
+          case (Some(records), None, None) => baseRecordCount.recordsPerColumn(records, perColumnNames: _*)
+          case (None, Some(min), Some(max)) => baseRecordCount.recordsPerColumnGenerator(GeneratorBuilder().min(min).max(max), perColumnNames: _*)
+          case _ => baseRecordCount.recordsPerColumn(DEFAULT_PER_COLUMN_COUNT_RECORDS, perColumnNames: _*)
+        }
+      } else {
+        baseRecordCount
+      }
+    }).getOrElse(CountBuilder())
+  }
+
+  private def fieldMapping(dataSourceRequest: DataSourceRequest): List[FieldBuilder] = {
+    dataSourceRequest.fields.getOrElse(List()).map(field => {
+      assert(field.name.nonEmpty, s"Field name cannot be empty, data-source-name=${dataSourceRequest.name}")
+      assert(field.`type`.nonEmpty, s"Field type cannot be empty, data-source-name=${dataSourceRequest.name}, field-name=${field.name}")
+      FieldBuilder().name(field.name).`type`(DataType.fromString(field.`type`)).options(field.options.getOrElse(Map()))
+    })
+  }
+
+  private def connectionMapping(dataSourceRequest: DataSourceRequest): ConnectionTaskBuilder[_] = {
+    dataSourceRequest.`type` match {
       case Some(CASSANDRA_NAME) => createCassandraConnection(dataSourceRequest)
       case Some(POSTGRES) => createJdbcConnection(dataSourceRequest, POSTGRES)
       case Some(MYSQL) => createJdbcConnection(dataSourceRequest, POSTGRES)
@@ -41,92 +151,74 @@ object UiMapper {
       case Some(x) =>
         throw new IllegalArgumentException(s"Unsupported data source from UI, data-source-type=$x")
     }
+  }
 
-    val mappedFields = dataSourceRequest.fields.getOrElse(List()).map(field => {
-      assert(field.name.nonEmpty, s"Field name cannot be empty, data-source-name=${dataSourceRequest.name}")
-      assert(field.`type`.nonEmpty, s"Field type cannot be empty, data-source-name=${dataSourceRequest.name}, field-name=${field.name}")
-      FieldBuilder().name(field.name).`type`(DataType.fromString(field.`type`)).options(field.options.getOrElse(Map()))
-    })
+  private def groupByValidationMapping(baseValid: GroupByValidationBuilder, opt: (String, String)) = {
+    val aggregateValidation = opt._1 match {
+      case VALIDATION_MIN => baseValid.min(opt._2)
+      case VALIDATION_MAX => baseValid.max(opt._2)
+      case VALIDATION_COUNT => baseValid.count(opt._2)
+      case VALIDATION_SUM => baseValid.sum(opt._2)
+      case VALIDATION_AVERAGE => baseValid.avg(opt._2)
+      case VALIDATION_STANDARD_DEVIATION => baseValid.stddev(opt._2)
+      case _ => baseValid.count()
+    }
+    aggregateValidation.greaterThan(0)
+  }
 
-    val countBuilder = dataSourceRequest.count.map(recordCountRequest => {
-      val baseRecordCount = (recordCountRequest.records, recordCountRequest.recordsMin, recordCountRequest.recordsMax) match {
-        case (Some(records), None, None) => CountBuilder().records(records)
-        case (None, Some(min), Some(max)) => CountBuilder().generator(GeneratorBuilder().min(min).max(max))
-        case _ => CountBuilder().records(DEFAULT_COUNT_RECORDS)
-      }
+  private def columnNamesValidationMapping(baseValid: ColumnNamesValidationBuilder, opts: Map[String, String], opt: (String, String)) = {
+    opt._1 match {
+      case VALIDATION_COLUMN_NAMES_COUNT_EQUAL => baseValid.countEqual(opt._2.toInt)
+      case VALIDATION_COLUMN_NAMES_COUNT_BETWEEN =>
+        val min = opts(VALIDATION_MIN)
+        val max = opts(VALIDATION_MAX)
+        baseValid.countBetween(min.toInt, max.toInt)
+      case VALIDATION_COLUMN_NAMES_MATCH_ORDER => baseValid.matchOrder(opt._2.split(VALIDATION_OPTION_DELIMITER): _*)
+      case VALIDATION_COLUMN_NAMES_MATCH_SET => baseValid.matchSet(opt._2.split(VALIDATION_OPTION_DELIMITER): _*)
+      case _ => baseValid.countEqual(1)
+    }
+  }
 
-      val perColumnNames = recordCountRequest.perColumnNames.getOrElse(List())
-      if (perColumnNames.nonEmpty) {
-        (recordCountRequest.perColumnRecords, recordCountRequest.perColumnRecordsMin, recordCountRequest.perColumnRecordsMax) match {
-          case (Some(records), None, None) => baseRecordCount.recordsPerColumn(records, perColumnNames: _*)
-          case (None, Some(min), Some(max)) => baseRecordCount.recordsPerColumnGenerator(GeneratorBuilder().min(min).max(max), perColumnNames: _*)
-          case _ => baseRecordCount.recordsPerColumn(DEFAULT_PER_COLUMN_COUNT_RECORDS, perColumnNames: _*)
-        }
-      } else {
-        baseRecordCount
-      }
-    }).getOrElse(CountBuilder())
-
-    val mappedValidations = dataSourceRequest.validations.map(validationRequest => {
-      validationRequest.validations.map(validateItem => {
-        validateItem.`type` match {
-          case VALIDATION_COLUMN =>
-            //map type of column validation to builder method
-            //each option is a new validation
-            val mappedValids = validateItem.options.map(opts => {
-              val colName = opts(VALIDATION_COLUMN)
-              opts.filter(o => !VALIDATION_SUPPORTING_OPTIONS.contains(o._1)).map(opt => {
-                val baseValid = ValidationBuilder().col(colName)
-                opt._1 match {
-                  case VALIDATION_EQUAL => baseValid.isEqualCol(opt._2)
-                  case VALIDATION_NOT_EQUAL => baseValid.isNotEqualCol(opt._2)
-                  case VALIDATION_NULL => baseValid.isNull
-                  case VALIDATION_NOT_NULL => baseValid.isNotNull
-                  case VALIDATION_CONTAINS => baseValid.contains(opt._2)
-                  case VALIDATION_NOT_CONTAINS => baseValid.notContains(opt._2)
-                  case VALIDATION_UNIQUE => ValidationBuilder().unique(colName)
-                  case VALIDATION_LESS_THAN => baseValid.lessThan(opt._2)
-                  case VALIDATION_LESS_THAN_OR_EQUAL => baseValid.lessThanOrEqual(opt._2)
-                  case VALIDATION_GREATER_THAN => baseValid.greaterThan(opt._2)
-                  case VALIDATION_GREATER_THAN_OR_EQUAL => baseValid.greaterThanOrEqual(opt._2)
-                  case VALIDATION_BETWEEN =>
-                    val min = opts(VALIDATION_MIN)
-                    val max = opts(VALIDATION_MAX)
-                    baseValid.betweenCol(min, max)
-                  case VALIDATION_NOT_BETWEEN =>
-                    val min = opts(VALIDATION_MIN)
-                    val max = opts(VALIDATION_MAX)
-                    baseValid.notBetweenCol(min, max)
-                  case VALIDATION_IN => baseValid.in(opt._2.split(VALIDATION_IN_DELIMITER): _*)
-                  case VALIDATION_MATCHES => baseValid.matches(opt._2)
-                  case VALIDATION_NOT_MATCHES => baseValid.notMatches(opt._2)
-                  case VALIDATION_STARTS_WITH => baseValid.startsWith(opt._2)
-                  case VALIDATION_NOT_STARTS_WITH => baseValid.notStartsWith(opt._2)
-                  case VALIDATION_ENDS_WITH => baseValid.endsWith(opt._2)
-                  case VALIDATION_NOT_ENDS_WITH => baseValid.notEndsWith(opt._2)
-                  case VALIDATION_SIZE => baseValid.size(opt._2.toInt)
-                  case VALIDATION_NOT_SIZE => baseValid.notSize(opt._2.toInt)
-                  case VALIDATION_LESS_THAN_SIZE => baseValid.lessThanSize(opt._2.toInt)
-                  case VALIDATION_LESS_THAN_OR_EQUAL_SIZE => baseValid.lessThanOrEqualSize(opt._2.toInt)
-                  case VALIDATION_GREATER_THAN_SIZE => baseValid.greaterThanSize(opt._2.toInt)
-                  case VALIDATION_GREATER_THAN_OR_EQUAL_SIZE => baseValid.greaterThanOrEqualSize(opt._2.toInt)
-                  case VALIDATION_LUHN_CHECK => baseValid.luhnCheck
-                  case VALIDATION_HAS_TYPE => baseValid.hasType(opt._2)
-                  case VALIDATION_SQL => baseValid.expr(opt._2)
-                  case _ => baseValid.isNotNull
-                }
-              }).toList
-            }).getOrElse(List())
-            mappedValids
-          case VALIDATION_COLUMN_NAMES =>
-          case VALIDATION_UPSTREAM =>
-          case VALIDATION_GROUP_BY =>
-          case _ =>
-        }
-      })
-    })
-
-    baseConnection.schema(mappedFields: _*).count(countBuilder)
+  private def columnValidationMapping(opts: Map[String, String], colName: String, opt: (String, String)) = {
+    val baseValid = ValidationBuilder().col(colName)
+    opt._1 match {
+      case VALIDATION_EQUAL => baseValid.isEqualCol(opt._2)
+      case VALIDATION_NOT_EQUAL => baseValid.isNotEqualCol(opt._2)
+      case VALIDATION_NULL => baseValid.isNull
+      case VALIDATION_NOT_NULL => baseValid.isNotNull
+      case VALIDATION_CONTAINS => baseValid.contains(opt._2)
+      case VALIDATION_NOT_CONTAINS => baseValid.notContains(opt._2)
+      case VALIDATION_UNIQUE => ValidationBuilder().unique(colName)
+      case VALIDATION_LESS_THAN => baseValid.lessThan(opt._2)
+      case VALIDATION_LESS_THAN_OR_EQUAL => baseValid.lessThanOrEqual(opt._2)
+      case VALIDATION_GREATER_THAN => baseValid.greaterThan(opt._2)
+      case VALIDATION_GREATER_THAN_OR_EQUAL => baseValid.greaterThanOrEqual(opt._2)
+      case VALIDATION_BETWEEN =>
+        val min = opts(VALIDATION_MIN)
+        val max = opts(VALIDATION_MAX)
+        baseValid.betweenCol(min, max)
+      case VALIDATION_NOT_BETWEEN =>
+        val min = opts(VALIDATION_MIN)
+        val max = opts(VALIDATION_MAX)
+        baseValid.notBetweenCol(min, max)
+      case VALIDATION_IN => baseValid.in(opt._2.split(VALIDATION_OPTION_DELIMITER): _*)
+      case VALIDATION_MATCHES => baseValid.matches(opt._2)
+      case VALIDATION_NOT_MATCHES => baseValid.notMatches(opt._2)
+      case VALIDATION_STARTS_WITH => baseValid.startsWith(opt._2)
+      case VALIDATION_NOT_STARTS_WITH => baseValid.notStartsWith(opt._2)
+      case VALIDATION_ENDS_WITH => baseValid.endsWith(opt._2)
+      case VALIDATION_NOT_ENDS_WITH => baseValid.notEndsWith(opt._2)
+      case VALIDATION_SIZE => baseValid.size(opt._2.toInt)
+      case VALIDATION_NOT_SIZE => baseValid.notSize(opt._2.toInt)
+      case VALIDATION_LESS_THAN_SIZE => baseValid.lessThanSize(opt._2.toInt)
+      case VALIDATION_LESS_THAN_OR_EQUAL_SIZE => baseValid.lessThanOrEqualSize(opt._2.toInt)
+      case VALIDATION_GREATER_THAN_SIZE => baseValid.greaterThanSize(opt._2.toInt)
+      case VALIDATION_GREATER_THAN_OR_EQUAL_SIZE => baseValid.greaterThanOrEqualSize(opt._2.toInt)
+      case VALIDATION_LUHN_CHECK => baseValid.luhnCheck
+      case VALIDATION_HAS_TYPE => baseValid.hasType(opt._2)
+      case VALIDATION_SQL => baseValid.expr(opt._2)
+      case _ => baseValid.isNotNull
+    }
   }
 
   private def createFileConnection(dataSourceRequest: DataSourceRequest, format: String): FileBuilder = {

@@ -53,7 +53,7 @@ class BatchDataProcessor(connectionConfigsByName: Map[String, Map[String, String
             trackRecordsPerStep = trackRecordsPerStep ++ Map(recordStepName -> stepRecords.copy(currentNumRecords = dfRecordCount))
             (dataSourceStepName, df)
           } else {
-            LOGGER.debug("Step has data generation disabled")
+            LOGGER.info(s"Step has data generation disabled, data-source=${task._1.dataSourceName}")
             (dataSourceStepName, sparkSession.emptyDataFrame)
           }
         })
@@ -77,7 +77,7 @@ class BatchDataProcessor(connectionConfigsByName: Map[String, Map[String, String
       task._2.steps.map(s => (getDataSourceName(task._1, s), (s, task._2)))
     ).toMap
 
-    sinkDf.map(df => {
+    sinkDf.filter(s => !s._2.isEmpty).map(df => {
       val dataSourceName = df._1.split("\\.").head
       val (step, task) = stepAndTaskByDataSourceName(df._1)
       val dataSourceConfig = connectionConfigsByName.getOrElse(dataSourceName, Map())

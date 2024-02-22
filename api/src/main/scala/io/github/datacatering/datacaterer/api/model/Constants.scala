@@ -359,7 +359,7 @@ object Constants {
   lazy val VALIDATION_COLUMN_NAMES = "columnNames"
   lazy val VALIDATION_UPSTREAM = "upstream"
   lazy val VALIDATION_GROUP_BY = "groupBy"
-
+  //column validations
   lazy val VALIDATION_EQUAL = "equal"
   lazy val VALIDATION_NOT_EQUAL = "notEqual"
   lazy val VALIDATION_NULL = "null"
@@ -389,11 +389,27 @@ object Constants {
   lazy val VALIDATION_LUHN_CHECK = "luhnCheck"
   lazy val VALIDATION_HAS_TYPE = "hasType"
   lazy val VALIDATION_SQL = "sql"
-
+  //group by validations
   lazy val VALIDATION_MIN = "min"
   lazy val VALIDATION_MAX = "max"
-  lazy val VALIDATION_IN_DELIMITER = "||"
-  lazy val VALIDATION_SUPPORTING_OPTIONS = List(VALIDATION_MIN, VALIDATION_MAX)
+  lazy val VALIDATION_COUNT = "count"
+  lazy val VALIDATION_SUM = "sum"
+  lazy val VALIDATION_AVERAGE = "average"
+  lazy val VALIDATION_STANDARD_DEVIATION = "standardDeviation"
+  lazy val VALIDATION_GROUP_BY_COLUMNS = "groupByColumns"
+  //upstream validations
+  lazy val VALIDATION_UPSTREAM_TASK_NAME = "upstreamTaskName"
+  lazy val VALIDATION_UPSTREAM_JOIN_COLUMNS = "joinColumns"
+  lazy val VALIDATION_UPSTREAM_JOIN_TYPE = "joinType"
+  lazy val VALIDATION_UPSTREAM_JOIN_EXPR = "joinExpr"
+  //column name validations
+  lazy val VALIDATION_COLUMN_NAMES_COUNT_EQUAL = "countEqual"
+  lazy val VALIDATION_COLUMN_NAMES_COUNT_BETWEEN = "countBetween"
+  lazy val VALIDATION_COLUMN_NAMES_MATCH_ORDER = "matchOrder"
+  lazy val VALIDATION_COLUMN_NAMES_MATCH_SET = "matchSet"
+
+  lazy val VALIDATION_OPTION_DELIMITER = "||"
+  lazy val VALIDATION_SUPPORTING_OPTIONS = List(VALIDATION_COLUMN, VALIDATION_MIN, VALIDATION_MAX, VALIDATION_GROUP_BY_COLUMNS)
 
   lazy val VALIDATION_PREFIX_JOIN_EXPRESSION = "expr:"
   lazy val VALIDATION_COLUMN_NAME_COUNT_EQUAL = "column_count_equal"

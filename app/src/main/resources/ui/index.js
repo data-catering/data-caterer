@@ -12,37 +12,85 @@
 //     console.log(e);
 // });
 
-import {camelize, createAccordionItem} from "./shared.js";
+import {
+    camelize,
+    createAccordionItem,
+    createBadge,
+    createButton,
+    createCloseButton,
+    createFormFloating,
+    createFormText,
+    createInput,
+    createInputGroup,
+    createSelect
+} from "./shared.js";
 
 const baseDataTypes = ["string", "integer", "long", "short", "decimal", "double", "float", "date", "timestamp", "binary", "array", "struct"];
 const dataTypeOptionsMap = new Map();
 const defaultDataTypeOptions = {
-    enableEdgeCases: {default: "false", type: "text", choice: ["true", "false"]},
-    edgeCaseProbability: {default: 0.0, type: "number", min: 0.0, max: 1.0},
-    isUnique: {default: "false", type: "text", choice: ["true", "false"]},
-    seed: {default: -1, type: "number", min: -1, max: 9223372036854775807},
-    sql: {default: "", type: "text"},
-    oneOf: {default: [], type: "text"}
+    enableEdgeCases: {
+        default: "false",
+        type: "text",
+        choice: ["true", "false"],
+        help: "Enable generating edge case values for data type."
+    },
+    edgeCaseProbability: {
+        default: 0.0,
+        type: "number",
+        min: 0.0,
+        max: 1.0,
+        step: 0.001,
+        help: "Probability of generating edge case values. Range from 0-1."
+    },
+    isUnique: {default: "false", type: "text", choice: ["true", "false"], help: "Generate only unique values."},
+    seed: {
+        default: -1,
+        type: "number",
+        min: -1,
+        max: 9223372036854775807,
+        help: "Seed for generating consistent random values."
+    },
+    sql: {default: "", type: "text", help: "SQL expression for generating data."},
+    oneOf: {default: [], type: "text", help: "Generated values will be one of the defined values. Comma separated."},
+    omit: {
+        default: "false",
+        type: "text",
+        choice: ["true", "false"],
+        help: "Exclude the column from the final output. Can be used for intermediate data generation."
+    },
 };
 
 function getNumberOptions(min, max) {
     let minMaxOpt = min && max ? {min: min, max: max} : {};
     return {
-        min: {default: 0, type: "number", ...minMaxOpt},
-        max: {default: 1000, type: "number", ...minMaxOpt},
-        stddev: {default: 1.0, type: "number", min: 0.0, max: 100000000.0},
-        mean: {default: 500, type: "number", ...minMaxOpt}
+        min: {default: 0, type: "number", ...minMaxOpt, help: "Minimum generated value."},
+        max: {default: 1000, type: "number", ...minMaxOpt, help: "Maximum generated value."},
+        stddev: {
+            default: 1.0,
+            type: "number",
+            min: 0.0,
+            max: 100000000.0,
+            help: "Standard deviation of generated values."
+        },
+        mean: {default: 500, type: "number", ...minMaxOpt, help: "Mean of generated values."}
     };
 }
 
 dataTypeOptionsMap.set("string", {
     ...defaultDataTypeOptions,
-    minLen: {default: 1, type: "number", min: 0, max: 1000},
-    maxLen: {default: 10, type: "number", min: 0, max: 1000},
-    expression: {default: "", type: "text"},
-    enableNull: {default: "false", type: "text", choice: ["true", "false"]},
-    nullProbability: {default: 0.0, type: "number", min: 0.0, max: 1.0},
-    regex: {default: "", type: "text"}
+    minLen: {default: 1, type: "number", min: 0, max: 1000, help: "Minimum length of generated values."},
+    maxLen: {default: 10, type: "number", min: 0, max: 1000, help: "Maximum length of generated values."},
+    expression: {default: "", type: "text", help: "Faker expression to generate values."},
+    enableNull: {default: "false", type: "text", choice: ["true", "false"], help: "Enable generation of null values."},
+    nullProbability: {
+        default: 0.0,
+        type: "number",
+        min: 0.0,
+        max: 1.0,
+        step: 0.001,
+        help: "Probability of generating null values. Range from 0-1."
+    },
+    regex: {default: "", type: "text", help: "Regex for generating values."}
 });
 dataTypeOptionsMap.set("integer", {...defaultDataTypeOptions, ...getNumberOptions(-2147483648, 2147483647)});
 dataTypeOptionsMap.set("long", {...defaultDataTypeOptions, ...getNumberOptions(-9223372036854775808, 9223372036854775807)});
@@ -50,15 +98,33 @@ dataTypeOptionsMap.set("short", {...defaultDataTypeOptions, ...getNumberOptions(
 dataTypeOptionsMap.set("decimal", {
     ...defaultDataTypeOptions,
     ...getNumberOptions(),
-    numericPrecision: {default: 10, type: "number", min: 0, max: 2147483647},
-    numericScale: {default: 0, type: "number", min: 0, max: 2147483647}
+    numericPrecision: {
+        default: 10,
+        type: "number",
+        min: 0,
+        max: 2147483647,
+        help: "Precision for generated decimal values."
+    },
+    numericScale: {default: 0, type: "number", min: 0, max: 2147483647, help: "Scale for geneated decimal values."}
 });
 dataTypeOptionsMap.set("double", {...defaultDataTypeOptions, ...getNumberOptions()});
 dataTypeOptionsMap.set("float", {...defaultDataTypeOptions, ...getNumberOptions()});
 dataTypeOptionsMap.set("date", {
     ...defaultDataTypeOptions,
-    min: {default: formatDate(true), type: "date", min: "0001-01-01", max: "9999-12-31"},
-    max: {default: formatDate(false), type: "date", min: "0001-01-01", max: "9999-12-31"}
+    min: {
+        default: formatDate(true),
+        type: "date",
+        min: "0001-01-01",
+        max: "9999-12-31",
+        help: "Minimum date of generated values. Expected format 'yyyy-MM-dd'."
+    },
+    max: {
+        default: formatDate(false),
+        type: "date",
+        min: "0001-01-01",
+        max: "9999-12-31",
+        help: "Maximum date of generated values. Expected format 'yyyy-MM-dd'."
+    }
 });
 dataTypeOptionsMap.set("timestamp", {
     ...defaultDataTypeOptions,
@@ -66,117 +132,406 @@ dataTypeOptionsMap.set("timestamp", {
         default: formatDate(true, true),
         type: "datetime-local",
         min: "0001-01-01 00:00:00",
-        max: "9999-12-31 23:59:59"
+        max: "9999-12-31 23:59:59",
+        help: "Minimum timestamp of generated values. Expected format 'yyyy-MM-dd HH:mm:ss'."
     },
     max: {
         default: formatDate(false, true),
         type: "datetime-local",
         min: "0001-01-01 00:00:00",
-        max: "9999-12-31 23:59:59"
+        max: "9999-12-31 23:59:59",
+        help: "Maximum timestamp of generated values. Expected format 'yyyy-MM-dd HH:mm:ss'."
     }
 });
 dataTypeOptionsMap.set("binary", {
     ...defaultDataTypeOptions,
-    minLen: {default: 1, type: "number", min: 0, max: 2147483647},
-    maxLen: {default: 20, type: "number", min: 0, max: 2147483647},
+    minLen: {default: 1, type: "number", min: 0, max: 2147483647, help: "Minimum length of generated values."},
+    maxLen: {default: 20, type: "number", min: 0, max: 2147483647, help: "Maximum length of generated values."},
 });
 dataTypeOptionsMap.set("array", {
     ...defaultDataTypeOptions,
-    arrayMinLen: {default: 0, type: "number", min: 0, max: 2147483647},
-    arrayMaxLen: {default: 5, type: "number", min: 0, max: 2147483647},
-    arrayType: {default: "string", type: "text", choice: baseDataTypes}
+    arrayMinLen: {default: 0, type: "number", min: 0, max: 2147483647, help: "Minimum generated array length."},
+    arrayMaxLen: {default: 5, type: "number", min: 0, max: 2147483647, help: "Maximum generated array length."},
+    arrayType: {default: "string", type: "text", choice: baseDataTypes, help: "Data type of array values."}
 });
 dataTypeOptionsMap.set("struct", {...defaultDataTypeOptions});
 
 const validationTypeOptionsMap = new Map();
 const defaultValidationOptions = {
-    description: {default: "", type: "text"},
-    errorThreshold: {default: 0.0, type: "number", min: 0.0},
+    description: {default: "", type: "text", help: "Description of validation. Used in report."},
+    errorThreshold: {
+        default: 0.0,
+        type: "number",
+        min: 0.0,
+        help: "Number or percentage (0.0 to 1.0) of errors before marking validation as failed."
+    },
 }
 validationTypeOptionsMap.set("column", {
     ...defaultValidationOptions,
-    defaultChildColumn: {default: "", type: "text", required: ""},
-    equal: {default: "", type: "text"},
-    notEqual: {default: "", type: "text"},
-    null: {default: "isNull", type: "badge"},
-    notNull: {default: "isNotNull", type: "badge"},
-    contains: {default: "", type: "text"},
-    notContains: {default: "", type: "text"},
+    defaultChildColumn: {default: "", type: "text", required: "", help: "Column to validate."},
+    equal: {
+        default: "",
+        type: "text",
+        group: {type: "checkbox", innerText: "Not"},
+        help: "Equal to value. Select 'Not' for not equals."
+    },
+    null: {default: "", type: "text", disabled: ""},
+    notNull: {default: "", type: "text", disabled: ""},
+    contains: {
+        default: "",
+        type: "text",
+        group: {type: "checkbox", innerText: "Not"},
+        help: "Contains value. Select 'Not' for not contains."
+    },
     unique: {default: "", type: "text"},
-    lessThan: {default: "", type: "text"},
-    lessThanOrEqual: {default: "", type: "text"},
-    greaterThan: {default: "", type: "text"},
-    greaterThanOrEqual: {default: "", type: "text"},
-    between: {default: "", type: "min-max"},
-    notBetween: {default: "", type: "min-max"},
+    lessThan: {
+        default: "",
+        type: "text",
+        group: {type: "checkbox", innerText: "Strictly"},
+        help: "Less than value. Select 'Strictly' for less than or equal to."
+    },
+    greaterThan: {
+        default: "",
+        type: "text",
+        group: {type: "checkbox", innerText: "Strictly"},
+        help: "Greater than value. Select 'Strictly' for greater than or equal to."
+    },
+    between: {
+        default: "",
+        type: "min-max",
+        group: {type: "checkbox", innerText: "Not"},
+        help: "Between values. Select 'Not' for not between."
+    },
     in: {default: "", type: "text"},    // provide as list?
-    matches: {default: "", type: "text"},
-    notMatches: {default: "", type: "text"},
-    startsWith: {default: "", type: "text"},
-    notStartsWith: {default: "", type: "text"},
-    endsWith: {default: "", type: "text"},
-    notEndsWith: {default: "", type: "text"},
-    size: {default: 0, type: "number"},
-    notSize: {default: 0, type: "number"},
-    lessThanSize: {default: 0, type: "number"},
-    lessThanOrEqualSize: {default: 0, type: "number"},
-    greaterThanSize: {default: 0, type: "number"},
-    greaterThanOrEqualSize: {default: 0, type: "number"},
-    luhnCheck: {default: "luhnCheck", type: "badge"},
+    matches: {
+        default: "",
+        type: "text",
+        group: {type: "checkbox", innerText: "Not"},
+        help: "Matches regex. Select 'Not' for not matches regex."
+    },
+    startsWith: {
+        default: "",
+        type: "text",
+        group: {type: "checkbox", innerText: "Not"},
+        help: "Starts with value. Select 'Not' for not starts with."
+    },
+    endsWith: {
+        default: "",
+        type: "text",
+        group: {type: "checkbox", innerText: "Not"},
+        help: "Ends with value. Select 'Not' for not ends with."
+    },
+    size: {
+        default: 0,
+        type: "number",
+        group: {type: "checkbox", innerText: "Not"},
+        help: "Equal to size. Select 'Not' for not equal to size."
+    },
+    lessThanSize: {
+        default: 0,
+        type: "number",
+        group: {type: "checkbox", innerText: "Strictly"},
+        help: "Less than size. Select 'Strictly' for less than or equal to size."
+    },
+    greaterThanSize: {
+        default: 0,
+        type: "number",
+        group: {type: "checkbox", innerText: "Strictly"},
+        help: "Greater than size. Select 'Strictly' for greater than or equal to size."
+    },
+    luhnCheck: {default: "", type: "text", disabled: ""},
     hasType: {default: "string", type: "text", choice: baseDataTypes},
     sql: {default: "", type: "text"},
 });
 validationTypeOptionsMap.set("groupBy", {
     ...defaultValidationOptions,
-    defaultChildGroupByColumns: {default: "", type: "text", required: ""},
-    count: {default: "", type: "text"},
-    sum: {default: "", type: "text"},
-    min: {default: "", type: "text"},
-    max: {default: "", type: "text"},
-    average: {default: "", type: "text"},
-    standardDeviation: {default: "", type: "text"},
+    defaultChildGroupByColumns: {
+        default: "",
+        type: "text",
+        required: "",
+        help: "Column name(s) to group by. Comma separated."
+    },
+    count: {default: "", type: "text", help: "Column name to count number of groups after group by."},
+    sum: {default: "", type: "text", help: "Column name of values to sum after group by."},
+    min: {default: "", type: "text", help: "Column name to find minimum value after group by."},
+    max: {default: "", type: "text", help: "Column name to find maximum value after group by."},
+    average: {default: "", type: "text", help: "Column name to find average value after group by."},
+    standardDeviation: {
+        default: "",
+        type: "text",
+        help: "Column name to find standard deviation value after group by."
+    },
 });
 validationTypeOptionsMap.set("upstream", {
     ...defaultValidationOptions,
-    defaultChildUpstreamTaskName: {default: "", type: "text", required: ""},
-    joinColumns: {default: "", type: "text"},
+    defaultChildUpstreamTaskName: {
+        default: "",
+        type: "text",
+        required: "",
+        selector: ".task-name-field",
+        help: "Name of upstream data generation task."
+    },  //can also have upstream data source
+    joinColumns: {default: "", type: "text", help: "Column name(s) to join by."},
     joinType: {
         default: "outer",
         type: "text",
-        choice: ["inner", "outer", "left_outer", "right_outer", "left_semi", "anti", "cross"]
+        choice: ["inner", "outer", "left_outer", "right_outer", "left_semi", "anti", "cross"],
+        help: "Type of join."
     },
-    joinExpr: {default: "", type: "text"}
+    joinExpr: {default: "", type: "text", help: "Custom join SQL expression."}
 });
 validationTypeOptionsMap.set("columnNames", {
     ...defaultValidationOptions,
-    countEqual: {default: 0, type: "number"},
-    countBetween: {default: 0, type: "min-max"},
-    matchOrder: {default: "", type: "text"},
-    matchSet: {default: "", type: "text"},
+    countEqual: {default: 0, type: "number", help: "Number of columns has to equal value."},
+    countBetween: {
+        default: 0,
+        type: "min-max",
+        help: "Number of columns has to be between min and max value (inclusive)."
+    },
+    matchOrder: {
+        default: "",
+        type: "text",
+        help: "All column names match particular ordering and is complete. Comma separated."
+    },
+    matchSet: {
+        default: "",
+        type: "text",
+        help: "Column names contains set of expected names. Order is not checked. Comma separated."
+    },
+});
+
+const configurationOptionsMap = new Map();
+configurationOptionsMap.set("flag", {
+    enableCount: {
+        default: "true",
+        type: "text",
+        choice: ["true", "false"],
+        help: "Count the number of records generated. Can be disabled to improve performance."
+    },
+    enableGenerateData: {
+        default: "true",
+        type: "text",
+        choice: ["true", "false"],
+        help: "Enable/disable data generation."
+    },
+    enableFailOnError: {
+        default: "true",
+        type: "text",
+        choice: ["true", "false"],
+        help: "Whilst saving generated data, if there is an error, it will stop any further data from being generated."
+    },
+    enableUniqueCheck: {
+        default: "false",
+        type: "text",
+        choice: ["true", "false"],
+        help: "Enable/disable generating unique values for columns marked as unique. Can be disabled to improve performance but not guarantee uniqueness."
+    },
+    enableSinkMetadata: {
+        default: "false",
+        type: "text",
+        choice: ["true", "false"],
+        help: "Run data profiling for the generated data. Shown in HTML reports if enableSaveSinkMetadata is enabled."
+    },
+    enableSaveReports: {
+        default: "true",
+        type: "text",
+        choice: ["true", "false"],
+        help: "Enable/disable HTML reports summarising data generated, metadata of data generated (if enableSinkMetadata is enabled) and validation results (if enableValidation is enabled)."
+    },
+    enableValidation: {
+        default: "true",
+        type: "text",
+        choice: ["true", "false"],
+        help: "Run validations as described in plan. Results can be viewed from logs or from HTML report if enableSaveSinkMetadata is enabled."
+    },
+    enableAlerts: {
+        default: "true",
+        type: "text",
+        choice: ["true", "false"],
+        help: "Enable/disable alerts being sent when plan execution is finished (can be configured for success/failure)."
+    },
+    enableGenerateValidations: {
+        default: "false",
+        type: "text",
+        choice: ["true", "false"],
+        paid: "true",
+        help: "Enable/disable automatically generating validations based on the data sources defined."
+    },
+    enableRecordTracking: {
+        default: "false",
+        type: "text",
+        choice: ["true", "false"],
+        paid: "true",
+        help: "Enable/disable tracking of data records generated."
+    },
+    enableDeleteGeneratedRecords: {
+        default: "false",
+        type: "text",
+        choice: ["true", "false"],
+        paid: "true",
+        help: "Delete all generated records based off record tracking (if enableRecordTracking has been set to true whilst generating)."
+    },
+    enableGeneratePlanAndTasks: {
+        default: "false",
+        type: "text",
+        choice: ["true", "false"],
+        paid: "true",
+        help: "Enable/disable plan and task automatic generation based off data source connections."
+    },
+});
+configurationOptionsMap.set("folder", {
+    generatedReportsFolderPath: {
+        default: "",
+        type: "text",
+        help: "Folder path where generated HTML reports will be saved."
+    },
+    validationFolderPath: {
+        default: "",
+        type: "text",
+        help: "If using YAML validation file(s), folder path that contains all validation files (can have nested directories)."
+    },
+    planFilePath: {
+        default: "",
+        type: "text",
+        help: "If using YAML plan file, path to use when generating and/or validating data."
+    },
+    taskFolderPath: {
+        default: "",
+        type: "text",
+        help: "If using YAML task file(s), folder path that contains all the task files (can have nested directories)."
+    },
+    generatedPlanAndTasksFolderPath: {
+        default: "",
+        type: "text",
+        paid: "true",
+        help: "Folder path where generated plan and task files will be saved."
+    },
+    recordTrackingFolderPath: {
+        default: "",
+        type: "text",
+        paid: "true",
+        help: "Folder path where record tracking files will be saved."
+    },
+    recordTrackingForValidationFolderPath: {
+        default: "",
+        type: "text",
+        paid: "true",
+        help: "Folder path where record tracking for validation files will be saved."
+    },
+});
+configurationOptionsMap.set("metadata", {
+    numGeneratedSamples: {
+        default: 10,
+        type: "number",
+        min: 0,
+        help: "Number of sample records from generated data to take. Shown in HTML report."
+    },
+    numRecordsFromDataSource: {
+        default: 10000,
+        type: "number",
+        paid: "true",
+        min: 0,
+        help: "Number of records read in from the data source that could be used for data profiling."
+    },
+    numRecordsForAnalysis: {
+        default: 10000,
+        type: "number",
+        paid: "true",
+        min: 0,
+        help: "Number of records used for data profiling from the records gathered in numRecordsFromDataSource."
+    },
+    oneOfDistinctCountVsCountThreshold: {
+        default: 0.2,
+        type: "number",
+        paid: "true",
+        min: 0.0,
+        max: 1.0,
+        step: 0.001,
+        help: "Threshold ratio to determine if a field is of type oneOf (i.e. a field called status that only contains open or closed. Distinct count = 2, total count = 10, ratio = 2 / 10 = 0.2 therefore marked as oneOf)."
+    },
+    oneOfMinCount: {
+        default: 1000,
+        type: "number",
+        paid: "true",
+        min: 0,
+        help: "Minimum number of records required before considering if a field can be of type oneOf."
+    },
+});
+configurationOptionsMap.set("generation", {
+    numRecordsPerBatch: {
+        default: 100000,
+        type: "number",
+        min: 0,
+        help: "Number of records across all data sources to generate per batch."
+    },
+    numRecordsPerStep: {
+        default: -1,
+        type: "number",
+        help: "Overrides the count defined in each step with this value if defined (i.e. if set to 1000, for each step, 1000 records will be generated)."
+    },
+});
+configurationOptionsMap.set("validation", {
+    numSampleErrorRecords: {
+        default: 5,
+        type: "number",
+        help: "Number of sample error records to show in HTML report. Useful for debugging."
+    },
+    enableDeleteRecordTrackingFiles: {
+        default: "true",
+        type: "text",
+        choice: ["true", "false"],
+        paid: "true",
+        help: "Enable/disable to delete record tracking files at end of execution."
+    },
+});
+configurationOptionsMap.set("alert", {
+    triggerOn: {
+        default: "all",
+        type: "text",
+        choice: ["all", "failure", "success", "generation_failure", "validation_failure", "generation_success", "validation_success"],
+        help: "Condition for triggering alert."
+    },
+    slackToken: {
+        default: "",
+        type: "text",
+        help: "Slack token to connect to Slack. Check https://api.slack.com/authentication/token-types for more details."
+    },
+    slackChannels: {
+        default: "",
+        type: "text",
+        help: "Define one or more Slack channels to send alerts to. Comma separated."
+    },
 });
 
 
 const toastPosition = document.getElementById("toast-container");
 const addTaskButton = document.getElementById("add-task-button");
 const tasksDiv = document.getElementById("tasks-details-body");
+const foreignKeysDiv = document.getElementById("foreign-keys-details-body");
+const configurationDiv = document.getElementById("configuration-details-body");
 let numDataSources = 1;
 let numFields = 0;
 let numValidations = 0;
+let numForeignKeys = 0;
+let numForeignKeysLinks = 0;
 let numAddAttributeButton = 0;
 
 tasksDiv.append(await createDataSourceForPlan(numDataSources));
+foreignKeysDiv.append(createForeignKeys());
+configurationDiv.append(createConfiguration());
 addTaskButton.addEventListener("click", async function () {
     numDataSources += 1;
     let divider = document.createElement("hr");
-    let newDataSource = await createDataSourceForPlan(numDataSources);
-    tasksDiv.append(divider, newDataSource);
+    let newDataSource = await createDataSourceForPlan(numDataSources, divider);
+    tasksDiv.append(newDataSource);
 });
 
 //create row with data source name and checkbox elements for generation and validation
-async function createDataSourceForPlan(index) {
+async function createDataSourceForPlan(index, divider) {
     let dataSourceRow = document.createElement("div");
-    dataSourceRow.setAttribute("class", "row mb-3");
-    let dataSourceConfig = await createDataSourceConfiguration(index);
+    dataSourceRow.setAttribute("class", "mb-3");
+    let closeButton = createCloseButton(dataSourceRow);
+    let dataSourceConfig = await createDataSourceConfiguration(index, closeButton, divider);
     dataSourceRow.append(dataSourceConfig);
     return dataSourceRow;
 }
@@ -186,9 +541,6 @@ function createDataConfigElement(index, name) {
     let dataConfigContainer = document.createElement("div");
     dataConfigContainer.setAttribute("id", `data-source-${name}-config-container`);
     dataConfigContainer.setAttribute("class", "mt-1");
-    // let dataConfigHeader = document.createElement("h4");
-    // dataConfigHeader.innerText = nameCapitalize;
-    // dataConfigContainer.append(dataConfigHeader);
 
     let checkboxOptions = ["auto", "manual"];
     for (let checkboxOption of checkboxOptions) {
@@ -209,26 +561,26 @@ function createDataConfigElement(index, name) {
 
         formCheck.append(checkboxInput, label);
         dataConfigContainer.append(formCheck);
-        addDataConfigCheckboxListener(checkboxInput, name);
+        addDataConfigCheckboxListener(index, checkboxInput, name);
     }
     return createAccordionItem(`${index}-${name}`, nameCapitalize, "", dataConfigContainer);
 }
 
-function addDataConfigCheckboxListener(element, name) {
+function addDataConfigCheckboxListener(index, element, name) {
     let configContainer = element.parentElement.parentElement;
     if (element.getAttribute("value") === "manual") {
         element.addEventListener("change", (event) => {
-            manualCheckboxListenerDisplay(event, configContainer, name);
+            manualCheckboxListenerDisplay(index, event, configContainer, name);
         });
     }
 }
 
-function manualCheckboxListenerDisplay(event, configContainer, name) {
+function manualCheckboxListenerDisplay(index, event, configContainer, name) {
     let querySelector = name === "generation" ? "#data-source-schema-container" : "#data-source-validation-container";
     let schemaContainer = configContainer.querySelector(querySelector);
     if (event.currentTarget.checked) {
         if (schemaContainer === null) {
-            let newElement = name === "generation" ? createManualSchema() : createManualValidation();
+            let newElement = name === "generation" ? createManualSchema(index) : createManualValidation(index);
             configContainer.append(newElement);
         } else {
             schemaContainer.style.display = "inherit";
@@ -243,21 +595,11 @@ function manualCheckboxListenerDisplay(event, configContainer, name) {
 async function createDataConnectionInput(index) {
     let baseTaskDiv = document.createElement("div");
     baseTaskDiv.setAttribute("class", "row");
-    let taskNameInput = document.createElement("input");
-    taskNameInput.setAttribute("id", "task-name-" + index);
-    taskNameInput.setAttribute("aria-label", "Task name");
-    taskNameInput.setAttribute("type", "text");
-    taskNameInput.setAttribute("placeholder", "task-" + index);
-    taskNameInput.setAttribute("class", "form-control input-field task-name-field");
+    let taskNameInput = createInput(`task-name-${index}`, "Task name", "form-control input-field task-name-field", "text", `task-${index}`);
     taskNameInput.setAttribute("required", "");
-    taskNameInput.value = "task-" + index;
     let taskNameFormFloating = createFormFloating("Task name", taskNameInput);
 
-    let dataConnectionSelect = document.createElement("select");
-    dataConnectionSelect.setAttribute("id", "data-source-connection-" + index);
-    dataConnectionSelect.setAttribute("aria-label", "Data source");
-    dataConnectionSelect.setAttribute("placeholder", "");
-    dataConnectionSelect.setAttribute("class", "form-control input-field data-connection-name");
+    let dataConnectionSelect = createSelect(`data-source-connection-${index}`, "Data source", "form-control input-field data-connection-name");
     let dataConnectionFormFloating = createFormFloating("Data source", dataConnectionSelect);
     baseTaskDiv.append(taskNameFormFloating, dataConnectionFormFloating);
 
@@ -295,7 +637,7 @@ Will contain:
     - Record count: total, per column, generated
 - Validation: auto, manual
  */
-async function createDataSourceConfiguration(index) {
+async function createDataSourceConfiguration(index, closeButton, divider) {
     let divContainer = document.createElement("div");
     divContainer.setAttribute("id", "data-source-config-container-" + index);
     divContainer.setAttribute("class", "data-source-config-container");
@@ -304,7 +646,12 @@ async function createDataSourceConfiguration(index) {
     dataConfigAccordion.setAttribute("class", "accordion mt-2");
     let dataGenConfigContainer = createDataConfigElement(index, "generation");
     let dataValidConfigContainer = createDataConfigElement(index, "validation");
+
+    dataConnectionFormFloating.insertBefore(closeButton, dataConnectionFormFloating.firstChild);
     dataConfigAccordion.append(dataGenConfigContainer, dataValidConfigContainer);
+    if (divider) {
+        divContainer.append(divider);
+    }
     divContainer.append(dataConnectionFormFloating, dataConfigAccordion);
     return divContainer;
 }
@@ -314,19 +661,11 @@ function createSchemaField(index) {
     fieldContainer.setAttribute("class", "row g-1 mb-2 data-field-container");
     fieldContainer.setAttribute("id", "data-field-container-" + index);
 
-    let fieldName = document.createElement("input");
-    fieldName.setAttribute("id", "field-name-" + index);
-    fieldName.setAttribute("aria-label", "Name");
-    fieldName.setAttribute("type", "text");
-    fieldName.setAttribute("placeholder", "");
-    fieldName.setAttribute("class", "form-control input-field data-source-field");
+    let fieldName = createInput(`field-name-${index}`, "Name", "form-control input-field data-source-field", "text", "");
     fieldName.setAttribute("required", "");
     let formFloatingName = createFormFloating("Name", fieldName);
 
-    let fieldTypeSelect = document.createElement("select");
-    fieldTypeSelect.setAttribute("id", "field-type-" + index);
-    fieldTypeSelect.setAttribute("aria-label", "Type");
-    fieldTypeSelect.setAttribute("class", "form-select input-field data-source-field field-type");
+    let fieldTypeSelect = createSelect(`field-type-${index}`, "Type", "form-select input-field data-source-field field-type");
     let formFloatingType = createFormFloating("Type", fieldTypeSelect);
 
     for (const key of dataTypeOptionsMap.keys()) {
@@ -339,17 +678,23 @@ function createSchemaField(index) {
         fieldTypeSelect.append(selectOption);
     }
 
-    fieldContainer.append(formFloatingName, formFloatingType);
-    createDataTypeAttributes(fieldContainer, "data-type");
-    return fieldContainer;
+    let accordionItem = createAccordionItem(`column-${index}`, `column-${index}`, "", fieldContainer);
+    // when field name changes, update the accordion header
+    fieldName.addEventListener("input", (event) => {
+        let accordionButton = $(accordionItem).find(".accordion-button");
+        accordionButton[0].innerText = event.target.value;
+    });
+    let closeButton = createCloseButton(accordionItem);
+    fieldContainer.append(closeButton, formFloatingName, formFloatingType);
+    createDataOrValidationTypeAttributes(fieldContainer, "data-type");
+    return accordionItem;
 }
 
-function createAttributeFormFloating(attrMetadata, attributeContainerId, inputClass, attribute) {
+function createAttributeFormFloating(attrMetadata, attributeContainerId, inputClass, attribute, col) {
     let inputAttr;
     if (attrMetadata.choice) {
         inputAttr = document.createElement("select");
-        inputAttr.setAttribute("id", attributeContainerId);
-        inputAttr.setAttribute("class", "form-select input-field user-added-attribute " + inputClass);
+        inputAttr = createSelect(attributeContainerId, attribute, `form-select input-field ${inputClass}`);
         for (let choice of attrMetadata.choice) {
             let option = document.createElement("option");
             option.setAttribute("value", choice.toString());
@@ -362,27 +707,40 @@ function createAttributeFormFloating(attrMetadata, attributeContainerId, inputCl
     } else if (attrMetadata["type"] === "badge") {
         return createBadge(attribute);
     } else {
-        inputAttr = document.createElement("input");
-        inputAttr.setAttribute("id", attributeContainerId);
-        inputAttr.setAttribute("type", attrMetadata["type"]);
-        inputAttr.setAttribute("aria-label", attribute);
-        inputAttr.setAttribute("class", "form-control input-field user-added-attribute " + inputClass);
+        inputAttr = createInput(attributeContainerId, attribute, `form-control input-field ${inputClass}`, attrMetadata["type"], attrMetadata["default"]);
         inputAttr.setAttribute("required", "");
-        inputAttr.value = attrMetadata["default"];
-        inputAttr.setAttribute("placeholder", attrMetadata["default"]);
     }
 
     for (const [key, value] of Object.entries(attrMetadata)) {
-        if (key !== "default" && key !== "type" && key !== "choice") {
+        if (key !== "default" && key !== "type" && key !== "choice" && key !== "help" && key !== "group") {
             inputAttr.setAttribute(key, value);
         }
     }
-
-    return createFormFloating(attribute, inputAttr);
+    let formFloatingInput = createFormFloating(attribute, inputAttr);
+    // if group is defined, there is additional input required
+    // if help is defined, add to container
+    if (attrMetadata.group) {
+        let startInputDiv = document.createElement("div");
+        startInputDiv.setAttribute("class", "input-group-text");
+        let startInput = createInput(`${attributeContainerId}-option-input`, attribute, "form-check-input mt-0", attrMetadata.group.type);
+        let startInputLabel = document.createElement("label");
+        startInputLabel.setAttribute("class", "form-check-label");
+        startInputLabel.setAttribute("for", `${attributeContainerId}-option-input`);
+        startInputLabel.innerText = attrMetadata.group.innerText;
+        startInputDiv.append(startInput, startInputLabel);
+        return createInputGroup(startInputDiv, formFloatingInput, col ? col : "col-8");
+    } else {
+        if (col) {
+            formFloatingInput.setAttribute("class", col);
+        }
+        return formFloatingInput;
+    }
 }
 
 // Create a button for overriding attributes of the data field based on data type, i.e. set min to 10 for integer
-function createDataTypeAttributes(element, elementType) {
+function createDataOrValidationTypeAttributes(element, elementType) {
+    let mainContainer = element.parentElement;
+    let defaultAttributeClass = "default-attribute";
     let elementQuerySelector = ".field-type";
     let menuAttributeName = "current-data-type";
     let inputClass = "data-source-field";
@@ -399,11 +757,8 @@ function createDataTypeAttributes(element, elementType) {
     numAddAttributeButton += 1;
     let buttonWithMenuDiv = document.createElement("div");
     buttonWithMenuDiv.setAttribute("class", "col dropdown");
-    let addAttributeButton = document.createElement("button");
     let addAttributeId = element.getAttribute("id") + "-add-attribute-button";
-    addAttributeButton.setAttribute("id", addAttributeId);
-    addAttributeButton.setAttribute("type", "button");
-    addAttributeButton.setAttribute("class", "btn btn-secondary dropdown-toggle");
+    let addAttributeButton = createButton(addAttributeId, "add-attribute", "btn btn-secondary dropdown-toggle");
     addAttributeButton.setAttribute("data-bs-toggle", "dropdown");
     addAttributeButton.setAttribute("aria-expanded", "false");
     let addIcon = document.createElement("i");
@@ -425,18 +780,25 @@ function createDataTypeAttributes(element, elementType) {
     // there many also be default required children added, 'defaultChild' prefix
     menuDeciderElement.addEventListener("change", (event) => {
         let optionAttributes = optionsMap.get(event.target.value);
-        // remove children from container
-        let userAddedElements = Array.from(element.querySelectorAll(".user-added-attribute").values());
-        for (let userAddedElement of userAddedElements) {
-            element.removeChild(userAddedElement.parentElement);
+        // remove default children from container
+        let defaultAddedElements = Array.from(element.querySelectorAll("." + defaultAttributeClass).values());
+        for (let defaultAddedElement of defaultAddedElements) {
+            // TODO check if userAddedElement is compatible with new 'type' (i.e. change data type from int to long should keep min)
+            element.removeChild(defaultAddedElement);
         }
+        // remove user added children from container
+        let userAddedElements = Array.from(mainContainer.querySelectorAll(".user-added-attribute").values());
+        for (let userAddedElement of userAddedElements) {
+            mainContainer.removeChild(userAddedElement);
+        }
+
         // add in default attributes that are required
         let defaultChildKeys = Object.keys(optionAttributes).filter(k => k.startsWith("defaultChild"));
         for (let defaultChildKey of defaultChildKeys) {
             let defaultChildAttributes = optionAttributes[defaultChildKey];
             let attribute = defaultChildKey.replace("defaultChild", "");
             let attributeContainerId = `${containerId}-${attribute}`;
-            let inputAttribute = createAttributeFormFloating(defaultChildAttributes, attributeContainerId, inputClass, attribute);
+            let inputAttribute = createAttributeFormFloating(defaultChildAttributes, attributeContainerId, inputClass, attribute, `col ${defaultAttributeClass}`);
             element.insertBefore(inputAttribute, buttonWithMenuDiv);
         }
     });
@@ -447,7 +809,6 @@ function createDataTypeAttributes(element, elementType) {
     addAttributeButton.addEventListener("click", (event) => {
         event.preventDefault();
         menu.open = !menu.open;
-
         // get current value of the data type
         let currentType = element.querySelector(elementQuerySelector).value;
         let currentMenuType = menu.getAttribute(menuAttributeName);
@@ -487,14 +848,29 @@ function createDataTypeAttributes(element, elementType) {
             let attrMetadata = currentTypeAttributes[attribute];
 
             // add attribute field to field container
+            let newAttributeRow = document.createElement("div");
+            newAttributeRow.setAttribute("class", "row g-1 m-1 align-items-center user-added-attribute");
+            let closeButton = createCloseButton(newAttributeRow);
+            newAttributeRow.append(closeButton);
             if (attrMetadata["type"] === "min-max") {
-                let formFloatingAttrMin = createAttributeFormFloating(attrMetadata, attributeContainerId, inputClass, attribute + "Min");
-                let formFloatingAttrMax = createAttributeFormFloating(attrMetadata, attributeContainerId, inputClass, attribute + "Max");
-                element.insertBefore(formFloatingAttrMin, buttonWithMenuDiv);
-                element.insertBefore(formFloatingAttrMax, buttonWithMenuDiv);
+                let formFloatingAttrMin = createAttributeFormFloating(attrMetadata, attributeContainerId, inputClass, attribute + "Min", "col-4");
+                let formFloatingAttrMax = createAttributeFormFloating(attrMetadata, attributeContainerId, inputClass, attribute + "Max", "col-3");
+                newAttributeRow.append(formFloatingAttrMin, formFloatingAttrMax);
+                if (attrMetadata.help) {
+                    let helpDiv = createFormText(formFloatingAttrMin.getAttribute("id"), attrMetadata.help, "span");
+                    formFloatingAttrMin.setAttribute("aria-describedby", helpDiv.getAttribute("id"));
+                    newAttributeRow.append(helpDiv);
+                }
+                mainContainer.append(newAttributeRow);
             } else {
-                let formFloatingAttr = createAttributeFormFloating(attrMetadata, attributeContainerId, inputClass, attribute);
-                element.insertBefore(formFloatingAttr, buttonWithMenuDiv);
+                let formFloatingAttr = createAttributeFormFloating(attrMetadata, attributeContainerId, inputClass, attribute, "col-7");
+                newAttributeRow.append(formFloatingAttr);
+                if (attrMetadata.help) {
+                    let helpDiv = createFormText(formFloatingAttr.getAttribute("id"), attrMetadata.help, "span");
+                    formFloatingAttr.setAttribute("aria-describedby", helpDiv.getAttribute("id"));
+                    newAttributeRow.append(helpDiv);
+                }
+                mainContainer.append(newAttributeRow);
             }
             // remove item from menu
             let menuChild = menu.querySelector("#" + attribute);
@@ -506,28 +882,62 @@ function createDataTypeAttributes(element, elementType) {
 }
 
 // Schema can be manually created or override automatic config
-function createManualSchema() {
+function createManualSchema(index) {
     let divContainer = document.createElement("div");
     divContainer.setAttribute("class", "data-source-schema-container");
     divContainer.setAttribute("id", "data-source-schema-container");
+    let schemaAccordion = document.createElement("div");
+    schemaAccordion.setAttribute("class", "accordion m-2");
     // add new fields to schema
-    let addFieldButton = document.createElement("button");
-    addFieldButton.setAttribute("class", "btn btn-secondary");
-    addFieldButton.setAttribute("type", "button");
-    addFieldButton.setAttribute("id", "add-field-btn");
-    addFieldButton.innerText = "+ Field";
+    let addFieldButton = createButton("add-field-btn", "add-field", "btn btn-secondary", "+ Field");
     addFieldButton.addEventListener("click", function () {
         numFields += 1;
         let newField = createSchemaField(numFields);
-        divContainer.insertBefore(newField, addFieldButton);
+        schemaAccordion.append(newField);
     });
 
-    let recordCount = createRecordCount();
-    divContainer.append(addFieldButton, recordCount);
+    let recordCount = createRecordCount(index);
+    divContainer.append(addFieldButton, schemaAccordion, recordCount);
     return divContainer;
 }
 
-function createRecordCount() {
+function createPerColumnCountContainer(index) {
+    let perColumnRecordCol = createRecordCountInput(index, "per-column-record-count", "Per column records", "2");
+    let perColumnMinCol = createRecordCountInput(index, "per-column-min-record-count", "Min", "1");
+    let perColumnMaxCol = createRecordCountInput(index, "per-column-max-record-count", "Max", "2");
+    let perColumnBetweenContainer = document.createElement("div");
+    perColumnBetweenContainer.setAttribute("class", "row g-1");
+    perColumnBetweenContainer.append(perColumnMinCol, perColumnMaxCol);
+    let perColumnOptions = [{text: "None"}, {
+        text: "Per column",
+        child: perColumnRecordCol
+    }, {text: "Per column between", child: perColumnBetweenContainer}];
+    let perColumnRadio = createRadioButtons(index, "per-column-record-count-radio", perColumnOptions);
+    // above per column radio is choice of columns
+    let perColumnText = createInput(`per-column-names-${index}`, "Column(s)", "form-control input-field record-count-field", "text", "");
+    let perColumnFormFloating = createFormFloating("Column(s)", perColumnText);
+    // TODO when perColumnText is empty, disable checkbox for per column
+    let perColumnContainer = document.createElement("div");
+    perColumnContainer.setAttribute("class", "col");
+    perColumnContainer.append(perColumnRadio, perColumnFormFloating);
+    return perColumnContainer;
+}
+
+function createBaseRecordCountContainer(index) {
+    let baseRecordCol = createRecordCountInput(index, "base-record-count", "Records", "1000");
+    let baseRecordMinInput = createRecordCountInput(index, "min-gen-record-count", "Min", "1000");
+    let baseRecordMaxInput = createRecordCountInput(index, "max-gen-record-count", "Max", "2000");
+    let baseRecordBetweenContainer = document.createElement("div");
+    baseRecordBetweenContainer.setAttribute("class", "row g-1");
+    baseRecordBetweenContainer.append(baseRecordMinInput, baseRecordMaxInput);
+    let baseRecordOptions = [{text: "Records", child: baseRecordCol}, {
+        text: "Generated records between",
+        child: baseRecordBetweenContainer
+    }];
+    return createRadioButtons(index, "base-record-count-radio", baseRecordOptions);
+}
+
+function createRecordCount(index) {
     let recordCountContainer = document.createElement("div");
     recordCountContainer.setAttribute("id", "record-count-container");
     let recordCountHeader = document.createElement("h5");
@@ -538,42 +948,8 @@ function createRecordCount() {
     // - total      -> number or random between min max
     // - per column -> number or random between min max
     // - estimated number of record
-    let baseRecordCol = createRecordCountInput("base-record-count", "Records", "1000");
-    let baseRecordMinInput = createRecordCountInput("min-gen-record-count", "Min", "1000");
-    let baseRecordMaxInput = createRecordCountInput("max-gen-record-count", "Max", "2000");
-    let baseRecordBetweenContainer = document.createElement("div");
-    baseRecordBetweenContainer.setAttribute("class", "row g-1");
-    baseRecordBetweenContainer.append(baseRecordMinInput, baseRecordMaxInput);
-    let baseRecordOptions = [{text: "Records", child: baseRecordCol}, {
-        text: "Generated records between",
-        child: baseRecordBetweenContainer
-    }];
-    let baseRecordRadio = createRadioButtons("base-record-count-radio", baseRecordOptions);
-
-    let perColumnRecordCol = createRecordCountInput("per-column-record-count", "Per column records", "2");
-    let perColumnMinCol = createRecordCountInput("per-column-min-record-count", "Min", "1");
-    let perColumnMaxCol = createRecordCountInput("per-column-max-record-count", "Max", "2");
-    let perColumnBetweenContainer = document.createElement("div");
-    perColumnBetweenContainer.setAttribute("class", "row g-1");
-    perColumnBetweenContainer.append(perColumnMinCol, perColumnMaxCol);
-    let perColumnOptions = [{text: "None"}, {
-        text: "Per column",
-        child: perColumnRecordCol
-    }, {text: "Per column between", child: perColumnBetweenContainer}];
-    let perColumnRadio = createRadioButtons("per-column-record-count-radio", perColumnOptions);
-    // above per column radio is choice of columns
-    let perColumnText = document.createElement("input");
-    perColumnText.setAttribute("id", "per-column-names");
-    perColumnText.setAttribute("class", "form-control input-field record-count-field");
-    perColumnText.setAttribute("type", "text");
-    perColumnText.setAttribute("aria-label", "Column(s)");
-    perColumnText.setAttribute("placeholder", "");
-    let perColumnFormFloating = createFormFloating("Column(s)", perColumnText);
-    // TODO when perColumnText is empty, disable checkbox for per column
-    let perColumnContainer = document.createElement("div");
-    perColumnContainer.setAttribute("class", "col");
-    perColumnContainer.append(perColumnRadio, perColumnFormFloating);
-
+    let baseRecordRadio = createBaseRecordCountContainer(index);
+    let perColumnContainer = createPerColumnCountContainer(index);
     let estimatedRecordCountContainer = document.createElement("div");
     estimatedRecordCountContainer.setAttribute("class", "col");
     let estimatedRecordCount = document.createElement("p");
@@ -621,21 +997,17 @@ function estimateRecordCount(recordCountRow) {
     }
     if (perColumnCheck.length >= 1) {
         let perColumNames = $(recordCountRow).find("#per-column-names").val();
-        recordCountSummary["perColumnNames"] = perColumNames.split(",");
+        recordCountSummary["perColumnNames"] = perColumNames ? perColumNames.split(",") : [];
     }
 
     recordCountSummary["estimateRecords"] = baseRecordCount * perColumnCount;
     return recordCountSummary;
 }
 
-function createRecordCountInput(id, label, value) {
-    let recordCountInput = document.createElement("input");
-    recordCountInput.setAttribute("id", id);
-    recordCountInput.setAttribute("class", "form-control input-field record-count-field");
-    recordCountInput.setAttribute("type", "number");
-    recordCountInput.setAttribute("aria-label", label);
-    recordCountInput.setAttribute("placeholder", value);
-    recordCountInput.setAttribute("value", value);
+function createRecordCountInput(index, name, label, value) {
+    let recordCountInput = createInput(`${name}-${index}`, label, "form-control input-field record-count-field", "number", value);
+    let radioGroup = name.startsWith("per-column") ? "per-column-count" : "base-record-count";
+    recordCountInput.setAttribute("radioGroup", radioGroup);
     recordCountInput.setAttribute("min", "0");
     return createFormFloating(label, recordCountInput);
 }
@@ -648,35 +1020,48 @@ Different types of validation:
 - Upstream
 - External source (great expectations)
  */
-function createManualValidation() {
+function createManualValidation(index) {
     let divContainer = document.createElement("div");
     divContainer.setAttribute("class", "data-source-validation-container");
     divContainer.setAttribute("id", "data-source-validation-container");
+    let validationAccordion = document.createElement("div");
+    validationAccordion.setAttribute("class", "accordion m-2");
     // add new validations
-    let addValidationButton = document.createElement("button");
-    addValidationButton.setAttribute("class", "btn btn-secondary");
-    addValidationButton.setAttribute("type", "button");
-    addValidationButton.setAttribute("id", "add-validation-btn");
-    addValidationButton.innerText = "+ Validation";
+    let addValidationButton = createButton("add-validation-btn", "add-validation", "btn btn-secondary", "+ Validation");
     addValidationButton.addEventListener("click", function () {
         numValidations += 1;
         let newValidation = createValidation(numValidations);
-        divContainer.insertBefore(newValidation, addValidationButton);
+        validationAccordion.append(newValidation);
     });
 
-    divContainer.append(addValidationButton);
+    divContainer.append(addValidationButton, validationAccordion);
     return divContainer;
+}
+
+function updateValidationAccordionHeaderOnInput(validationContainerHeadRow, accordionButton) {
+    let defaultAttribute = $(validationContainerHeadRow).find(".default-attribute")[0];
+    let defaultValidationInput = $(defaultAttribute).find(".input-field");
+    if (defaultValidationInput.length > 0) {
+        defaultValidationInput[0].addEventListener("input", (event) => {
+            if (accordionButton.innerText.indexOf("-") === -1) {
+                accordionButton.innerText = `${accordionButton.innerText} - ${event.target.value}`;
+            } else {
+                let selectText = accordionButton.innerText.split("-")[0];
+                accordionButton.innerText = `${selectText} - ${event.target.value}`;
+            }
+        });
+    }
 }
 
 function createValidation(index) {
     let validationContainer = document.createElement("div");
-    validationContainer.setAttribute("class", "row g-1 mb-2 data-validation-container");
+    validationContainer.setAttribute("class", "data-validation-container");
     validationContainer.setAttribute("id", "data-validation-container-" + index);
+    let validationContainerHeadRow = document.createElement("div");
+    validationContainerHeadRow.setAttribute("class", "row g-1 m-1 align-items-center");
+    validationContainer.append(validationContainerHeadRow);
 
-    let validationTypeSelect = document.createElement("select");
-    validationTypeSelect.setAttribute("id", "validation-type-" + index);
-    validationTypeSelect.setAttribute("aria-label", "Type");
-    validationTypeSelect.setAttribute("class", "form-select input-field data-validation-field validation-type");
+    let validationTypeSelect = createSelect(`validation-type-${index}`, "Type", "form-select input-field data-validation-field validation-type");
     let formFloatingType = createFormFloating("Type", validationTypeSelect);
 
     for (const key of validationTypeOptionsMap.keys()) {
@@ -689,14 +1074,24 @@ function createValidation(index) {
         validationTypeSelect.append(selectOption);
     }
 
-    validationContainer.append(formFloatingType);
-    createDataTypeAttributes(validationContainer, "validation-type");
-    return validationContainer;
+    let accordionItem = createAccordionItem(`validation-${index}`, `validation-${index}`, "", validationContainer);
+    let closeButton = createCloseButton(accordionItem);
+    validationContainerHeadRow.append(closeButton, formFloatingType);
+    createDataOrValidationTypeAttributes(validationContainerHeadRow, "validation-type");
+    // on select change and input of default-attribute, update accordion button
+    let accordionButton = $(accordionItem).find(".accordion-button")[0];
+    validationTypeSelect.addEventListener("change", (event) => {
+        accordionButton.innerText = event.target.value;
+        updateValidationAccordionHeaderOnInput(validationContainerHeadRow, accordionButton);
+    });
+    updateValidationAccordionHeaderOnInput(validationContainerHeadRow, accordionButton);
+    return accordionItem;
 }
 
-function createRadioButtons(name, options) {
+function createRadioButtons(index, name, options) {
     let radioButtonContainer = document.createElement("div");
-    radioButtonContainer.setAttribute("id", name);
+    radioButtonContainer.setAttribute("id", `${name}-${index}`);
+    radioButtonContainer.setAttribute("radioGroup", name);
     radioButtonContainer.setAttribute("class", "col");
     for (const [i, option] of options.entries()) {
         let formCheck = document.createElement("div");
@@ -721,6 +1116,187 @@ function createRadioButtons(name, options) {
     return radioButtonContainer;
 }
 
+/*
+Foreign keys section based off tasks created.
+Ability to choose task name and columns. Define custom relationships.
+- One to one
+- One to many
+- Transformations
+ */
+function createForeignKeys() {
+    let foreignKeyContainer = document.createElement("div");
+    foreignKeyContainer.setAttribute("class", "foreign-keys-container");
+    let foreignKeyAccordion = document.createElement("div");
+    foreignKeyAccordion.setAttribute("class", "accordion mt-2");
+    let addForeignKeyButton = createButton("add-foreign-key-btn", "add-foreign-key", "btn btn-secondary", "+ Foreign key");
+    addForeignKeyButton.addEventListener("click", function () {
+        numForeignKeys += 1;
+        let newForeignKey = createForeignKey(numForeignKeys);
+        foreignKeyAccordion.append(newForeignKey);
+    });
+
+    foreignKeyContainer.append(addForeignKeyButton, foreignKeyAccordion);
+    return foreignKeyContainer;
+}
+
+function createForeignKey(index) {
+    let foreignKeyContainer = document.createElement("div");
+    foreignKeyContainer.setAttribute("class", "foreign-key-container");
+    // main source
+    let mainSourceFkHeader = document.createElement("h5");
+    mainSourceFkHeader.innerText = "Source";
+    let mainSourceForeignKey = document.createElement("div");
+    mainSourceForeignKey.setAttribute("class", "foreign-key-main-source");
+    let mainForeignKeySource = createForeignKeyInput(index, "foreign-key-source");
+    mainSourceForeignKey.append(mainForeignKeySource);
+    // links to...
+    let linkSourceFkHeader = document.createElement("h5");
+    linkSourceFkHeader.innerText = "Links to";
+    let linkSourceForeignKeys = document.createElement("div");
+    linkSourceForeignKeys.setAttribute("class", "foreign-key-link-sources");
+    let addLinkForeignKeyButton = createButton("add-foreign-key-link-btn", "add-link", "btn btn-secondary", "+ Link");
+    addLinkForeignKeyButton.addEventListener("click", function () {
+        numForeignKeysLinks += 1;
+        let newForeignKeyLink = createForeignKeyInput(numForeignKeysLinks, "foreign-key-link");
+        linkSourceForeignKeys.insertBefore(newForeignKeyLink, addLinkForeignKeyButton);
+    });
+
+    linkSourceForeignKeys.append(addLinkForeignKeyButton);
+    numForeignKeysLinks += 1;
+    let newForeignKeyLink = createForeignKeyInput(numForeignKeysLinks, "foreign-key-link");
+
+    linkSourceForeignKeys.insertBefore(newForeignKeyLink, addLinkForeignKeyButton);
+    let accordionItem = createAccordionItem(`foreign-key-${index}`, `Foreign key ${index}`, "", foreignKeyContainer);
+    let closeButton = createCloseButton(accordionItem);
+    foreignKeyContainer.append(closeButton, mainSourceFkHeader, mainSourceForeignKey, linkSourceFkHeader, linkSourceForeignKeys);
+    return accordionItem;
+}
+
+function createForeignKeyInput(index, name) {
+    let foreignKey = document.createElement("div");
+    foreignKey.setAttribute("class", `row m-1 ${name}-source`);
+    // input is task name -> column(s)
+    let taskNameSelect = createSelect(`foreign-key-task-name-${index}`, "Task", `form-select input-field ${name}`);
+    let taskNameFloating = createFormFloating("Task", taskNameSelect);
+    // get the latest list of task names
+    taskNameSelect.addEventListener("click", function () {
+        taskNameSelect.replaceChildren();
+        let taskNames = Array.from(document.querySelectorAll(".task-name-field").values());
+        for (const taskName of taskNames) {
+            let selectOption = document.createElement("option");
+            selectOption.setAttribute("value", taskName.value);
+            selectOption.innerText = taskName.value;
+            taskNameSelect.append(selectOption);
+        }
+    });
+    taskNameSelect.dispatchEvent(new Event("click"));
+
+    let columnNamesInput = createInput(`${name}-column-${index}`, "Columns", `form-control input-field ${name}`, "text", "");
+    columnNamesInput.setAttribute("required", "");
+    let columnNameFloating = createFormFloating("Column(s)", columnNamesInput);
+
+    if (name === "foreign-key-link") {
+        let closeButton = createCloseButton(foreignKey);
+        foreignKey.append(closeButton);
+    }
+    foreignKey.append(taskNameFloating, columnNameFloating);
+    return foreignKey;
+}
+
+/*
+Configuration for job execution. Includes:
+- Flags for enabling/disabling features
+- Metadata
+- Generation
+- Validation
+- Folder pathways
+- Alerts
+- Runtime
+ */
+function createConfiguration() {
+    let configurationContainer = document.createElement("div");
+    configurationContainer.setAttribute("class", "accordion mt-2");
+    let configIndex = 0;
+    for (let [configKey, configOptions] of configurationOptionsMap.entries()) {
+        configIndex += 1;
+        // create accordion item with configKey header and configOptions as grid content
+        let header = configKey.charAt(0).toUpperCase() + configKey.slice(1);
+        let configOptionsContainer = document.createElement("div");
+        configOptionsContainer.setAttribute("class", "m-1 configuration-options-container");
+        for (let [optKey, options] of Object.entries(configOptions)) {
+            let newConfigOptionRow = document.createElement("div");
+            newConfigOptionRow.setAttribute("class", "row g-1 m-1 align-items-center user-added-attribute");
+            let configOptionInput = createConfigurationOption(configKey, optKey, options);
+            newConfigOptionRow.append(configOptionInput);
+            if (options.help) {
+                let formText = createFormText(optKey, options.help, "span");
+                formText.setAttribute("class", "col-8");
+                newConfigOptionRow.append(formText);
+            }
+            configOptionsContainer.append(newConfigOptionRow);
+        }
+        let accordionItem = createAccordionItem(`config-${configIndex}`, header, "", configOptionsContainer);
+        configurationContainer.append(accordionItem);
+    }
+    return configurationContainer;
+}
+
+function createConfigurationOption(configKey, config, options) {
+    let configLabel = options["paid"] ? `${config}*` : config;
+    let colWrapper = document.createElement("div");
+    colWrapper.setAttribute("class", "col-4");
+    if (options.choice && options.choice.includes("true")) {
+        let formSwitch = document.createElement("div");
+        formSwitch.setAttribute("class", "form-check form-switch m-1");
+        let switchInput = document.createElement("input");
+        switchInput.setAttribute("class", "form-check-input input-configuration");
+        switchInput.setAttribute("configuration-parent", configKey);
+        switchInput.setAttribute("configuration", config);
+        switchInput.setAttribute("type", "checkbox");
+        switchInput.setAttribute("role", "switch");
+        switchInput.setAttribute("id", "switch-" + config);
+        if (options.default === "true") {
+            switchInput.setAttribute("checked", "");
+        }
+        let switchLabel = document.createElement("label");
+        switchLabel.setAttribute("class", "form-check-label");
+        switchLabel.setAttribute("for", "switch-" + config);
+        switchLabel.innerText = configLabel;
+        formSwitch.append(switchInput, switchLabel);
+        colWrapper.append(formSwitch);
+    } else if (options.choice) {
+        let selectInput = createSelect(`select-${config}`, configLabel, "form-select input-field input-configuration m-1");
+        selectInput.setAttribute("configuration-parent", configKey);
+        selectInput.setAttribute("configuration", config);
+        for (let choice of options.choice) {
+            let option = document.createElement("option");
+            option.setAttribute("value", choice.toString());
+            option.innerText = choice.toString();
+            if (choice === options["default"]) {
+                option.setAttribute("selected", "");
+            }
+            selectInput.append(option);
+        }
+        let formFloatingAttr = createFormFloating(configLabel, selectInput);
+        formFloatingAttr.setAttribute("class", "form-floating");
+        colWrapper.append(formFloatingAttr);
+    } else {
+        let formInput = createInput(`config-${config}`, config, "form-control input-field input-configuration", options.type, options["default"]);
+        formInput.setAttribute("configuration-parent", configKey);
+        formInput.setAttribute("configuration", config);
+
+        for (const [key, value] of Object.entries(options)) {
+            if (key !== "default" && key !== "type" && key !== "choice" && key !== "help") {
+                formInput.setAttribute(key, value);
+            }
+        }
+        let formFloatingAttr = createFormFloating(configLabel, formInput);
+        formFloatingAttr.setAttribute("class", "form-floating");
+        colWrapper.append(formFloatingAttr);
+    }
+    return colWrapper;
+}
+
 submitForm();
 
 function submitForm() {
@@ -740,6 +1316,8 @@ function submitForm() {
             // get data connection name
             let dataConnectionSelect = dataSource.querySelector(".data-connection-name");
             currentDataSource["name"] = dataConnectionSelect.value;
+            let taskName = dataSource.querySelector(".task-name-field");
+            currentDataSource["taskName"] = taskName.value;
 
             // get all fields
             let dataSourceFields = Array.from(dataSource.querySelectorAll(".data-field-container").values());
@@ -784,14 +1362,48 @@ function submitForm() {
             let recordCountSummary = estimateRecordCount(recordCountRow);
             delete recordCountSummary.estimateRecords;
             currentDataSource["count"] = recordCountSummary;
+
             allUserInputs.push(currentDataSource);
         }
         // data-source-container -> data source connection props, data-source-config-container
         // data-source-config-container -> data-source-generation-config-container
         // data-source-generation-config-container -> data-source-schema-container
         // data-source-schema-container -> data-field-container
-        const requestBody = {name: planName, id: runId, dataSources: allUserInputs}
+
+        let foreignKeyContainers = Array.from(document.querySelectorAll(".foreign-key-container").values());
+        let mappedForeignKeys = foreignKeyContainers.map(fkContainer => {
+            let fkSource = $(fkContainer).find(".foreign-key-main-source");
+            let fkSourceDetails = getForeignKeyDetail(fkSource[0]);
+            let fkLinks = $(fkContainer).find(".foreign-key-link-source");
+            let fkLinkArray = [];
+            for (let fkLink of fkLinks) {
+                let fkLinkDetails = getForeignKeyDetail(fkLink);
+                fkLinkArray.push(fkLinkDetails);
+            }
+            return {source: fkSourceDetails, links: fkLinkArray};
+        });
+
+        let configurationOptionContainers = Array.from(document.querySelectorAll(".configuration-options-container").values());
+        let mappedConfiguration = new Map();
+        configurationOptionContainers.forEach(configurationOptionContainer => {
+            let inputConfigurations = Array.from(configurationOptionContainer.querySelectorAll(".input-configuration").values());
+            let baseConfig = inputConfigurations[0].getAttribute("configuration-parent");
+            let options = new Map();
+            for (let option of inputConfigurations) {
+                options.set(option.getAttribute("configuration"), option.value);
+            }
+            mappedConfiguration.set(baseConfig, options);
+        });
+
+        const requestBody = {
+            name: planName,
+            id: runId,
+            dataSources: allUserInputs,
+            foreignKeys: mappedForeignKeys,
+            configuration: mappedConfiguration
+        };
         console.log(JSON.stringify(requestBody));
+        console.log(mappedForeignKeys);
         fetch("http://localhost:9090/run", {
             method: "POST",
             headers: {
@@ -806,6 +1418,7 @@ function submitForm() {
             })
             .then(r => r.text())
             .then(async r => {
+                console.log(r);
                 const toast = new bootstrap.Toast(createToast("Plan run", `Plan run started! Msg: ${r}`));
                 toast.show();
                 // poll every 1 second for status of plan run
@@ -847,6 +1460,12 @@ function submitForm() {
     });
 }
 
+function getForeignKeyDetail(element) {
+    let taskName = $(element).find("select[aria-label=Task]").val();
+    let columns = $(element).find("input[aria-label=Columns]").val();
+    return {taskName: taskName, columns: columns};
+}
+
 function createToast(header, message, type) {
     let toast = document.createElement("div");
     toast.setAttribute("class", "toast");
@@ -871,11 +1490,8 @@ function createToast(header, message, type) {
     strong.innerText = header;
     let small = document.createElement("small");
     small.innerText = "Now";
-    let button = document.createElement("button");
-    button.setAttribute("type", "button");
-    button.setAttribute("class", "btn-close");
+    let button = createButton("", "Close", "btn-close");
     button.setAttribute("data-bs-dismiss", "toast");
-    button.setAttribute("aria-label", "Close");
     let toastBody = document.createElement("div");
     toastBody.setAttribute("class", "toast-body");
     toastBody.innerText = message;
@@ -891,23 +1507,6 @@ function formatDate(isMin, isTimestamp) {
         currentDate.setDate(currentDate.getDate() - 365);
     }
     return isTimestamp ? currentDate.toISOString() : currentDate.toISOString().split("T")[0];
-}
-
-function createFormFloating(floatingText, inputAttr) {
-    let formFloatingAttr = document.createElement("div");
-    formFloatingAttr.setAttribute("class", "col form-floating");
-    let labelAttr = document.createElement("label");
-    labelAttr.setAttribute("for", inputAttr.getAttribute("id"));
-    labelAttr.innerText = floatingText;
-    formFloatingAttr.append(inputAttr, labelAttr);
-    return formFloatingAttr;
-}
-
-function createBadge(text) {
-    let badge = document.createElement("span");
-    badge.setAttribute("class", "col badge bg-secondary m-2");
-    badge.innerText = text;
-    return badge;
 }
 
 const wait = function (ms = 1000) {

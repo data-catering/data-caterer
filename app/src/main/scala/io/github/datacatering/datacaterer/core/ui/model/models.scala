@@ -6,15 +6,22 @@ import org.joda.time.DateTime
 
 case class PlanRunRequests(plans: List[PlanRunRequest])
 
-case class PlanRunRequest(name: String, id: String, dataSources: List[DataSourceRequest])
+case class PlanRunRequest(
+                           name: String,
+                           id: String,
+                           dataSources: List[DataSourceRequest],
+                           foreignKeys: List[ForeignKeyRequest] = List(),
+                           configuration: Option[ConfigurationRequest] = None,
+                         )
 
 case class DataSourceRequest(
                               name: String,
+                              taskName: String,
                               `type`: Option[String] = None,
                               options: Option[Map[String, String]] = None,
                               fields: Option[List[FieldRequest]] = None,
                               count: Option[RecordCountRequest] = None,
-                              validations: Option[ValidationRequest] = None,
+                              validations: Option[List[ValidationItemRequest]] = None,
                             )
 
 case class FieldRequest(name: String, `type`: String, options: Option[Map[String, String]] = None)
@@ -29,14 +36,29 @@ case class RecordCountRequest(
                                perColumnRecordsMax: Option[Long] = None,
                              )
 
-case class ValidationRequest(
-                              validations: List[ValidationItemRequest] = List(),
-                              waitRequest: Option[WaitRequest] = None
-                            )
-
-case class ValidationItemRequest(`type`: String, options: Option[Map[String, String]] = None)
+case class ValidationItemRequest(
+                                  `type`: String,
+                                  options: Option[Map[String, String]] = None,
+                                  waitRequest: Option[WaitRequest] = None
+                                )
 
 case class WaitRequest(`type`: String)
+
+case class ForeignKeyRequest(
+                              source: Option[ForeignKeyRequestItem] = None,
+                              links: List[ForeignKeyRequestItem] = List()
+                            )
+
+case class ForeignKeyRequestItem(taskName: String, columns: String)
+
+case class ConfigurationRequest(
+                                 flag: Map[String, String],
+                                 folder: Map[String, String],
+                                 metadata: Map[String, String],
+                                 generation: Map[String, String],
+                                 validation: Map[String, String],
+                                 alert: Map[String, String],
+                               )
 
 
 case class PlanRunExecution(

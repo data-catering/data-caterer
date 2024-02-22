@@ -20,6 +20,11 @@ trait ConnectionTaskBuilder[T] {
 
   def fromBaseConfig(connectionTaskBuilder: ConnectionTaskBuilder[T]): T
 
+  def name(name: String): ConnectionTaskBuilder[T] = {
+    this.task = Some(getTask.name(name))
+    this
+  }
+
   def step(stepBuilder: StepBuilder): ConnectionTaskBuilder[T] = {
     this.step = Some(stepBuilder)
     this
@@ -94,7 +99,7 @@ trait ConnectionTaskBuilder[T] {
   }
 
   @varargs def task(stepBuilders: StepBuilder*): ConnectionTaskBuilder[T] = {
-    this.task = Some(TaskBuilder().steps(stepBuilders: _*))
+    this.task = Some(getTask.steps(stepBuilders: _*))
     this
   }
 

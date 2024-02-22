@@ -26,8 +26,13 @@ trait JsonSupport {
 
   implicit val fieldRequestFormat: RootJsonFormat[FieldRequest] = jsonFormat3(FieldRequest.apply)
   implicit val recordCountRequestFormat: RootJsonFormat[RecordCountRequest] = jsonFormat7(RecordCountRequest.apply)
-  implicit val dataSourceRequestFormat: RootJsonFormat[DataSourceRequest] = jsonFormat5(DataSourceRequest.apply)
-  implicit val planRunRequestFormat: RootJsonFormat[PlanRunRequest] = jsonFormat3(PlanRunRequest.apply)
+  implicit val waitRequestFormat: RootJsonFormat[WaitRequest] = jsonFormat1(WaitRequest.apply)
+  implicit val validationItemRequestFormat: RootJsonFormat[ValidationItemRequest] = jsonFormat3(ValidationItemRequest.apply)
+  implicit val foreignKeyItemRequestFormat: RootJsonFormat[ForeignKeyRequestItem] = jsonFormat2(ForeignKeyRequestItem.apply)
+  implicit val foreignKeyRequestFormat: RootJsonFormat[ForeignKeyRequest] = jsonFormat2(ForeignKeyRequest.apply)
+  implicit val dataSourceRequestFormat: RootJsonFormat[DataSourceRequest] = jsonFormat7(DataSourceRequest.apply)
+  implicit val configurationRequestFormat: RootJsonFormat[ConfigurationRequest] = jsonFormat6(ConfigurationRequest.apply)
+  implicit val planRunRequestFormat: RootJsonFormat[PlanRunRequest] = jsonFormat5(PlanRunRequest.apply)
   implicit val planRunRequestsFormat: RootJsonFormat[PlanRunRequests] = jsonFormat1(PlanRunRequests.apply)
   implicit val dateTimeFormat: RootJsonFormat[DateTime] = DateTimeFormat
   implicit val planRunExecutionFormat: RootJsonFormat[PlanRunExecution] = jsonFormat8(PlanRunExecution.apply)

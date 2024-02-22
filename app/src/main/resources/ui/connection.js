@@ -1,6 +1,21 @@
-import {camelize, createAccordionItem} from "./shared.js";
+import {
+    camelize,
+    createAccordionItem,
+    createCloseButton,
+    createFormFloating,
+    createInput,
+    createSelect
+} from "./shared.js";
 
 const dataSourcePropertiesMap = new Map();
+dataSourcePropertiesMap.set("cassandra", {
+    Name: "Cassandra",
+    URL: "localhost:9042",
+    User: "cassandra",
+    Password: "cassandra",
+    Keyspace: "",
+    Table: "",
+});
 dataSourcePropertiesMap.set("csv", {
     Name: "CSV",
     Path: "/tmp/generated-data/csv",
@@ -9,13 +24,13 @@ dataSourcePropertiesMap.set("json", {
     Name: "JSON",
     Path: "/tmp/generated-data/json",
 });
-dataSourcePropertiesMap.set("cassandra", {
-    Name: "Cassandra",
-    URL: "localhost:9042",
-    User: "cassandra",
-    Password: "cassandra",
-    Keyspace: "",
-    Table: "",
+dataSourcePropertiesMap.set("orc", {
+    Name: "ORC",
+    Path: "/tmp/generated-data/orc",
+});
+dataSourcePropertiesMap.set("parquet", {
+    Name: "Parquet",
+    Path: "/tmp/generated-data/parquet",
 });
 dataSourcePropertiesMap.set("postgres", {
     Name: "Postgres",
@@ -37,8 +52,8 @@ dataSourceConfigRow.append(createDataSourceElement(numDataSources));
 addDataSourceButton.addEventListener("click", function () {
     numDataSources += 1;
     let divider = document.createElement("hr");
-    let newDataSource = createDataSourceElement(numDataSources);
-    dataSourceConfigRow.append(divider, newDataSource);
+    let newDataSource = createDataSourceElement(numDataSources, divider);
+    dataSourceConfigRow.append(newDataSource);
 });
 
 getExistingConnections();
@@ -107,13 +122,13 @@ function createDataSourceOptions(element) {
     element.addEventListener("change", function () {
         let dataSourceProps = dataSourcePropertiesMap.get(this.value);
         if (dataSourceProps && dataSourceProps !== "") {
-            let currentDataSourceIndexRow = this.parentElement.parentElement.parentElement;
+            let currentDataSourceIndexRow = $(element).closest(".data-source-container");
             let dataSourceOptionsRow = document.createElement("div");
             dataSourceOptionsRow.setAttribute("class", "row mt-2 mb-3");
             dataSourceOptionsRow.setAttribute("id", "connection-row");
-            let existingOptions = currentDataSourceIndexRow.querySelector("#connection-row");
-            if (existingOptions) {
-                currentDataSourceIndexRow.removeChild(existingOptions);
+            let existingOptions = currentDataSourceIndexRow.find("#connection-row");
+            if (existingOptions.length) {
+                currentDataSourceIndexRow[0].removeChild(existingOptions[0]);
             }
 
             for (const [key, value] of Object.entries(dataSourceProps)) {
@@ -121,18 +136,8 @@ function createDataSourceOptions(element) {
                 optionCol.setAttribute("class", "col-md-auto");
                 optionCol.setAttribute("id", key);
                 if (key !== "Name") {
-                    let formFloating = document.createElement("div");
-                    formFloating.setAttribute("class", "form-floating");
-                    let label = document.createElement("label");
-                    label.setAttribute("for", key);
-                    label.innerText = key;
-                    let newElement = document.createElement("input");
-                    newElement.setAttribute("id", key);
-                    newElement.setAttribute("aria-label", key);
-                    newElement.setAttribute("value", value);
-                    newElement.setAttribute("placeholder", value);
-                    newElement.setAttribute("type", "text");
-                    newElement.setAttribute("class", "form-control input-field data-source-property");
+                    let newElement = createInput(key, key, "form-control input-field data-source-property", "text", value);
+                    let formFloating = createFormFloating(key, newElement)
 
                     if (key === "Password") {
                         // add toggle visibility
@@ -154,11 +159,9 @@ function createDataSourceOptions(element) {
                         });
                         let inputGroup = document.createElement("div");
                         inputGroup.setAttribute("class", "input-group");
-                        formFloating.append(newElement, label);
                         inputGroup.append(formFloating, iconHolder);
                         optionCol.append(inputGroup);
                     } else {
-                        formFloating.append(newElement, label);
                         optionCol.append(formFloating);
                     }
                     dataSourceOptionsRow.append(optionCol);
@@ -169,7 +172,7 @@ function createDataSourceOptions(element) {
     });
 }
 
-function createDataSourceElement(index) {
+function createDataSourceElement(index, hr) {
     let divContainer = document.createElement("div");
     divContainer.setAttribute("id", "data-source-container-" + index);
     divContainer.setAttribute("class", "row m-1 data-source-container");
@@ -178,30 +181,11 @@ function createDataSourceElement(index) {
     let colSelect = document.createElement("div");
     colSelect.setAttribute("class", "col");
 
-    let dataSourceName = document.createElement("input");
-    dataSourceName.setAttribute("id", "data-source-name-" + index);
-    dataSourceName.setAttribute("type", "text");
-    dataSourceName.setAttribute("aria-label", "Name");
-    dataSourceName.setAttribute("placeholder", "my-data-source-" + index);
-    dataSourceName.setAttribute("class", "form-control input-field data-source-property");
-    dataSourceName.value = "my-data-source-" + index;
-    let formFloatingName = document.createElement("div");
-    formFloatingName.setAttribute("class", "form-floating");
-    let labelName = document.createElement("label");
-    labelName.setAttribute("for", "data-source-name-" + index);
-    labelName.innerText = "Name";
-    formFloatingName.append(dataSourceName, labelName);
+    let dataSourceName = createInput(`data-source-name-${index}`, "Name", "form-control input-field data-source-property", "text", `my-data-source-${index}`);
+    let formFloatingName = createFormFloating("Name", dataSourceName);
 
-    let dataSourceSelect = document.createElement("select");
-    dataSourceSelect.setAttribute("id", "data-source-select-" + index);
-    dataSourceSelect.setAttribute("class", "form-select input-field data-source-property");
-    dataSourceSelect.setAttribute("aria-label", "Data source");
-    let formFloatingSelect = document.createElement("div");
-    formFloatingSelect.setAttribute("class", "form-floating");
-    let labelSelect = document.createElement("label");
-    labelSelect.setAttribute("for", "data-source-select-" + index);
-    labelSelect.innerText = "Data source";
-    formFloatingSelect.append(dataSourceSelect, labelSelect);
+    let dataSourceSelect = createSelect(`data-source-select-${index}`, "Data source", "form-select input-field data-source-property");
+    let formFloatingSelect = createFormFloating("Data source", dataSourceSelect);
 
     let defaultSelectOption = document.createElement("option");
     defaultSelectOption.setAttribute("value", "");
@@ -216,10 +200,14 @@ function createDataSourceElement(index) {
         selectOption.innerText = dataSourcePropertiesMap.get(key).Name;
         dataSourceSelect.append(selectOption);
     }
+    let closeButton = createCloseButton(divContainer);
 
     createDataSourceOptions(dataSourceSelect);
     colName.append(formFloatingName);
     colSelect.append(formFloatingSelect);
-    divContainer.append(colName, colSelect);
+    if (hr) {
+        divContainer.append(hr);
+    }
+    divContainer.append(closeButton, colName, colSelect);
     return divContainer;
 }
