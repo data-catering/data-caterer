@@ -1,9 +1,10 @@
 package io.github.datacatering.datacaterer.core.ui.plan
 
 import akka.actor.typed.scaladsl.Behaviors
-import akka.actor.typed.{ActorRef, Behavior}
+import akka.actor.typed.{ActorRef, Behavior, SupervisorStrategy}
 import io.github.datacatering.datacaterer.core.model.Constants.{FAILED, FINISHED, PARSED_PLAN, STARTED}
 import io.github.datacatering.datacaterer.core.plan.PlanProcessor
+import io.github.datacatering.datacaterer.core.ui.config.UiConfiguration.INSTALL_DIRECTORY
 import io.github.datacatering.datacaterer.core.ui.mapper.UiMapper
 import io.github.datacatering.datacaterer.core.ui.model.{Connection, GetConnectionsResponse, JsonSupport, PlanRunExecution, PlanRunRequest, SaveConnectionsRequest}
 import io.github.datacatering.datacaterer.core.ui.plan.PlanResponseHandler.{KO, OK, Response}
@@ -35,35 +36,45 @@ object ConnectionRepository extends JsonSupport {
 
   final case class RemoveConnection(name: String) extends ConnectionCommand
 
-  private val connectionSaveFolder = "/tmp/data-caterer/connection"
+  private val connectionSaveFolder = s"$INSTALL_DIRECTORY/connection"
 
-  def apply(): Behavior[ConnectionCommand] = Behaviors.receiveMessage {
-    case SaveConnections(saveConnectionsRequest) =>
-      saveConnectionsRequest.connections.foreach(saveConnection)
-      Behaviors.same
-    case GetConnection(name, replyTo) =>
-      replyTo ! getConnection(name)
-      Behaviors.same
-    case GetConnections(replyTo) =>
-      replyTo ! getAllConnections
-      Behaviors.same
-    case RemoveConnection(name) =>
-      Behaviors.same
+  def apply(): Behavior[ConnectionCommand] = {
+    Behaviors.supervise[ConnectionCommand] {
+      Behaviors.receiveMessage {
+        case SaveConnections(saveConnectionsRequest) =>
+          saveConnectionsRequest.connections.foreach(saveConnection)
+          Behaviors.same
+        case GetConnection(name, replyTo) =>
+          replyTo ! getConnection(name)
+          Behaviors.same
+        case GetConnections(replyTo) =>
+          replyTo ! getAllConnections
+          Behaviors.same
+        case RemoveConnection(name) =>
+          Behaviors.same
+      }
+    }.onFailure(SupervisorStrategy.restart)
   }
 
   private def saveConnection(connection: Connection): Unit = {
+    LOGGER.info(s"Saving connection, connection-name=${connection.name}, connection-type=${connection.`type`}")
     Path.of(connectionSaveFolder).toFile.mkdirs()
     val connectionFile = Path.of(s"$connectionSaveFolder/${connection.name}.csv")
     Files.writeString(connectionFile, connection.toString, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING)
   }
 
   def getConnection(name: String): Connection = {
+    LOGGER.info(s"Getting connection details, connection-name=$name")
     val connectionFile = Path.of(s"$connectionSaveFolder/$name.csv")
-    Connection.fromString(Files.readString(connectionFile))
+    val connection = Connection.fromString(Files.readString(connectionFile))
+    val mappedPw = connection.options.map(o => if (o._1 == "password") (o._1, "***") else o)
+    connection.copy(options = mappedPw)
   }
 
   private def getAllConnections: GetConnectionsResponse = {
+    LOGGER.info(s"Getting all connection details")
     val connectionPath = Path.of(connectionSaveFolder)
+    if (!connectionPath.toFile.exists()) connectionPath.toFile.mkdirs()
     val connections = Files.list(connectionPath)
       .iterator()
       .asScala

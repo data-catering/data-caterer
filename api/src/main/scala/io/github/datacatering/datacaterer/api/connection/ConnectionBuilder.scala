@@ -71,6 +71,10 @@ trait ConnectionTaskBuilder[T] {
     this
   }
 
+  def getValidations: List[ValidationBuilder] = {
+    getStep.optValidation.map(_.dataSourceValidation.validations).getOrElse(List())
+  }
+
   def validationWait(waitConditionBuilder: WaitConditionBuilder): ConnectionTaskBuilder[T] = {
     this.step = Some(getStep.wait(waitConditionBuilder))
     this

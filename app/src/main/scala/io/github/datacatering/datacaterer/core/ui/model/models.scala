@@ -24,7 +24,14 @@ case class DataSourceRequest(
                               validations: Option[List[ValidationItemRequest]] = None,
                             )
 
-case class FieldRequest(name: String, `type`: String, options: Option[Map[String, String]] = None)
+case class FieldRequest(
+                         name: String,
+                         `type`: String,
+                         options: Option[Map[String, String]] = None,
+                         nested: Option[FieldRequests] = None
+                       )
+
+case class FieldRequests(fields: List[FieldRequest])
 
 case class RecordCountRequest(
                                records: Option[Long] = None,
@@ -39,8 +46,11 @@ case class RecordCountRequest(
 case class ValidationItemRequest(
                                   `type`: String,
                                   options: Option[Map[String, String]] = None,
+                                  nested: Option[ValidationItemRequests] = None,
                                   waitRequest: Option[WaitRequest] = None
                                 )
+
+case class ValidationItemRequests(validations: List[ValidationItemRequest])
 
 case class WaitRequest(`type`: String)
 

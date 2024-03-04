@@ -207,7 +207,9 @@ object Constants {
 //    "spark.kryo.registrator" -> "org.apache.spark.HoodieSparkKryoRegistrar",
 //    "spark.sql.extensions" -> "org.apache.spark.sql.hudi.HoodieSparkSessionExtension,io.delta.sql.DeltaSparkSessionExtension",
     "spark.hadoop.fs.s3a.directory.marker.retention" -> "keep",
-    "spark.hadoop.fs.s3a.bucket.all.committer.magic.enabled" -> "true"
+    "spark.hadoop.fs.s3a.bucket.all.committer.magic.enabled" -> "true",
+    "spark.hadoop.fs.hdfs.impl" -> "org.apache.hadoop.hdfs.DistributedFileSystem",
+    "spark.hadoop.fs.file.impl" -> "org.apache.hadoop.fs.LocalFileSystem",
   )
 
   //jdbc defaults
@@ -368,12 +370,13 @@ object Constants {
   lazy val VALIDATION_NOT_CONTAINS = "notContains"
   lazy val VALIDATION_UNIQUE = "unique"
   lazy val VALIDATION_LESS_THAN = "lessThan"
-  lazy val VALIDATION_LESS_THAN_OR_EQUAL = "lessThanOrEqual"
+  lazy val VALIDATION_LESS_THAN_OR_EQUAL = "equalOrLessThan"
   lazy val VALIDATION_GREATER_THAN = "greaterThan"
-  lazy val VALIDATION_GREATER_THAN_OR_EQUAL = "greaterThanOrEqual"
+  lazy val VALIDATION_GREATER_THAN_OR_EQUAL = "equalOrGreaterThan"
   lazy val VALIDATION_BETWEEN = "between"
   lazy val VALIDATION_NOT_BETWEEN = "notBetween"
   lazy val VALIDATION_IN = "in"
+  lazy val VALIDATION_NOT_IN = "notIn"
   lazy val VALIDATION_MATCHES = "matches"
   lazy val VALIDATION_NOT_MATCHES = "notMatches"
   lazy val VALIDATION_STARTS_WITH = "startsWith"
@@ -383,9 +386,9 @@ object Constants {
   lazy val VALIDATION_SIZE = "size"
   lazy val VALIDATION_NOT_SIZE = "notSize"
   lazy val VALIDATION_LESS_THAN_SIZE = "lessThanSize"
-  lazy val VALIDATION_LESS_THAN_OR_EQUAL_SIZE = "lessThanOrEqualSize"
+  lazy val VALIDATION_LESS_THAN_OR_EQUAL_SIZE = "equalOrLessThanSize"
   lazy val VALIDATION_GREATER_THAN_SIZE = "greaterThanSize"
-  lazy val VALIDATION_GREATER_THAN_OR_EQUAL_SIZE = "greaterThanOrEqualSize"
+  lazy val VALIDATION_GREATER_THAN_OR_EQUAL_SIZE = "equalOrGreaterThanSize"
   lazy val VALIDATION_LUHN_CHECK = "luhnCheck"
   lazy val VALIDATION_HAS_TYPE = "hasType"
   lazy val VALIDATION_SQL = "sql"
@@ -408,7 +411,7 @@ object Constants {
   lazy val VALIDATION_COLUMN_NAMES_MATCH_ORDER = "matchOrder"
   lazy val VALIDATION_COLUMN_NAMES_MATCH_SET = "matchSet"
 
-  lazy val VALIDATION_OPTION_DELIMITER = "||"
+  lazy val VALIDATION_OPTION_DELIMITER = ","
   lazy val VALIDATION_SUPPORTING_OPTIONS = List(VALIDATION_COLUMN, VALIDATION_MIN, VALIDATION_MAX, VALIDATION_GROUP_BY_COLUMNS)
 
   lazy val VALIDATION_PREFIX_JOIN_EXPRESSION = "expr:"

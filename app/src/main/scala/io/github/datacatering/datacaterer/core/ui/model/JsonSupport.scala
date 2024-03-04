@@ -1,7 +1,7 @@
 package io.github.datacatering.datacaterer.core.ui.model
 
 import io.github.datacatering.datacaterer.core.ui.mapper.DateTimeFormat
-import io.github.datacatering.datacaterer.core.ui.plan.PlanRepository.{ExecutionsById, GroupedPlanRunsByName, PlanRunExecutionDetails}
+import io.github.datacatering.datacaterer.core.ui.plan.PlanRepository.{ExecutionsById, GroupedPlanRunsByName, PlanRunExecutionDetails, fieldRequestFormat}
 import org.joda.time.DateTime
 import spray.json.DefaultJsonProtocol._
 import spray.json.{JsFalse, JsNumber, JsString, JsTrue, JsValue, JsonFormat, RootJsonFormat}
@@ -24,10 +24,12 @@ trait JsonSupport {
     }
   }
 
-  implicit val fieldRequestFormat: RootJsonFormat[FieldRequest] = jsonFormat3(FieldRequest.apply)
+  implicit val fieldRequestsFormat: RootJsonFormat[FieldRequests] = rootFormat(lazyFormat(jsonFormat1(FieldRequests.apply)))
+  implicit val fieldRequestFormat: RootJsonFormat[FieldRequest] = rootFormat(lazyFormat(jsonFormat4(FieldRequest.apply)))
   implicit val recordCountRequestFormat: RootJsonFormat[RecordCountRequest] = jsonFormat7(RecordCountRequest.apply)
   implicit val waitRequestFormat: RootJsonFormat[WaitRequest] = jsonFormat1(WaitRequest.apply)
-  implicit val validationItemRequestFormat: RootJsonFormat[ValidationItemRequest] = jsonFormat3(ValidationItemRequest.apply)
+  implicit val validationItemRequestsFormat: RootJsonFormat[ValidationItemRequests] = rootFormat(lazyFormat(jsonFormat1(ValidationItemRequests.apply)))
+  implicit val validationItemRequestFormat: RootJsonFormat[ValidationItemRequest] = rootFormat(lazyFormat(jsonFormat4(ValidationItemRequest.apply)))
   implicit val foreignKeyItemRequestFormat: RootJsonFormat[ForeignKeyRequestItem] = jsonFormat2(ForeignKeyRequestItem.apply)
   implicit val foreignKeyRequestFormat: RootJsonFormat[ForeignKeyRequest] = jsonFormat2(ForeignKeyRequest.apply)
   implicit val dataSourceRequestFormat: RootJsonFormat[DataSourceRequest] = jsonFormat7(DataSourceRequest.apply)

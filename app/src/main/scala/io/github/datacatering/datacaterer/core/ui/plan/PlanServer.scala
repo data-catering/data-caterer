@@ -5,6 +5,8 @@ import akka.actor.typed.{Behavior, PostStop}
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.Http.ServerBinding
 
+import java.awt.Desktop
+import java.net.URI
 import scala.util.{Failure, Success}
 
 object PlanServer {
@@ -26,6 +28,7 @@ object PlanServer {
     val connectionRepository = ctx.spawn(ConnectionRepository(), "ConnectionRepository")
     val routes = new PlanRoutes(planRepository, planResponseHandler, connectionRepository)
 
+    //TODO should check if port 9090 is available, try other ports if not available
     val server = Http().newServerAt("localhost", 9090).bind(routes.planRoutes)
 
     ctx.pipeToSelf(server) {
@@ -49,7 +52,11 @@ object PlanServer {
         case StartFailed(cause) =>
           throw new RuntimeException("Server failed to start", cause)
         case Started(binding) =>
-          ctx.log.info("Server online at http://{}:{}/", binding.localAddress.getHostString, binding.localAddress.getPort)
+          val server = s"http://${binding.localAddress.getHostName}:${binding.localAddress.getPort}/"
+          ctx.log.info("Server online at {}", server)
+          if (Desktop.isDesktopSupported && Desktop.getDesktop.isSupported(Desktop.Action.BROWSE)) {
+            Desktop.getDesktop.browse(new URI(server))
+          }
           if (wasStopped) ctx.self ! Stop
           running(binding)
         case Stop =>

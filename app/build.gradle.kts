@@ -43,9 +43,9 @@ configurations {
 }
 
 dependencies {
-    compileOnly("org.scala-lang:scala-library:$scalaSpecificVersion")
-    compileOnly("org.apache.spark:spark-sql_$scalaVersion:$sparkVersion")
-    compileOnly(project(":api"))
+    basicImpl("org.scala-lang:scala-library:$scalaSpecificVersion")
+    basicImpl("org.apache.spark:spark-sql_$scalaVersion:$sparkVersion")
+    basicImpl(project(":api"))
 
     // connectors
     // postgres
@@ -148,6 +148,9 @@ sourceSets {
 tasks.shadowJar {
     isZip64 = true
     relocate("com.google.common", "shadow.com.google.common")
+    val newTransformer = com.github.jengelman.gradle.plugins.shadow.transformers.AppendingTransformer()
+    newTransformer.resource = "reference.conf"
+    transformers.add(newTransformer)
 }
 
 tasks.test {

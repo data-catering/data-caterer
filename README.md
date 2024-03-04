@@ -121,4 +121,27 @@ This is inspired by the [mkdocs-material project](https://github.com/squidfunk/m
 4. Persist data in files or database (Postgres)
 5. UI will show history of data generation/validation runs, delete generated data, create new scenarios, define data connections
 
+#### Distribution
 
+##### Jpackage
+
+```bash
+gradle clean shadowJar
+jpackage --input app/build/libs/ --name DataCaterer --main-jar app-0.6.0-all.jar --main-class io.github.datacatering.datacaterer.core.ui.AkkaHttpServer --type dmg \
+   --java-options "-XX:+IgnoreUnrecognizedVMOptions" \
+   --java-options "--add-opens=java.base/java.lang=ALL-UNNAMED" \
+   --java-options "--add-opens=java.base/java.lang.invoke=ALL-UNNAMED" \
+   --java-options "--add-opens=java.base/java.lang.reflect=ALL-UNNAMED" \
+   --java-options "--add-opens=java.base/java.io=ALL-UNNAMED" \
+   --java-options "--add-opens=java.base/java.net=ALL-UNNAMED" \
+   --java-options "--add-opens=java.base/java.nio=ALL-UNNAMED" \
+   --java-options "--add-opens=java.base/java.util=ALL-UNNAMED" \
+   --java-options "--add-opens=java.base/java.util.concurrent=ALL-UNNAMED" \
+   --java-options "--add-opens=java.base/java.util.concurrent.atomic=ALL-UNNAMED" \
+   --java-options "--add-opens=java.base/sun.nio.ch=ALL-UNNAMED" \
+   --java-options "--add-opens=java.base/sun.nio.cs=ALL-UNNAMED" \
+   --java-options "--add-opens=java.base/sun.security.action=ALL-UNNAMED" \
+   --java-options "--add-opens=java.base/sun.util.calendar=ALL-UNNAMED" \
+   --java-options "--add-opens=java.security.jgss/sun.security.krb5=ALL-UNNAMED" \
+   --java-options "-Djdk.reflect.useDirectMethodHandle=false"
+```

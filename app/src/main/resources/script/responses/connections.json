@@ -1,0 +1,1 @@
+{"connections":[{"name":"my-cassandra","options":{"url":"localhost:9042","keyspace":"","user":"cassandra","table":"","password":"cassandra"},"type":"cassandra"},{"name":"my-data-source-1","options":{"url":"localhost:9042","keyspace":"","user":"cassandra","table":"","password":"cassandra"},"type":"cassandra"}]}

@@ -65,7 +65,7 @@ h3 {
     font-size: 17px;
 }
 
-.topnav a:hover {
+.topnav a:not(.btn):hover {
     background-color: #ff9100;
     color: black;
     cursor: pointer;
@@ -83,3 +83,39 @@ h3 {
     display: none;
 }
 
+.accordion-button:after {
+    order: -1;
+    margin-left: 0;
+    margin-right: 0.5em;
+}
+
+.example-1-enabled {
+    background-color: rgba(51, 170, 51, 0.3) !important;
+}
+
+.example-2-enabled {
+    background-color: rgba(243, 245, 39, 0.3) !important;
+}
+
+.example-1-disabled {
+    background-color: rgba(39, 213, 245, 0.3) !important;
+}
+
+.example-2-disabled {
+    background-color: rgba(178, 39, 245, 0.3) !important;
+}
+
+.input-icon {
+    right: 0;
+    position: absolute;
+    z-index: 2;
+    display: block;
+    width: 2.375rem;
+    height: 2.375rem;
+    line-height: 2.375rem;
+    text-align: center;
+}
+
+/*.bootstrap-select .dropdown-menu{*/
+/*    position:relative;*/
+/*}*/

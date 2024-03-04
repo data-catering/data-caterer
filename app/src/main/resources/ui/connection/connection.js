@@ -4,11 +4,13 @@ import {
     createCloseButton,
     createFormFloating,
     createInput,
-    createSelect
-} from "./shared.js";
+    createSelect, createToast
+} from "../shared.js";
 
 const dataSourcePropertiesMap = new Map();
+// Data Source
 dataSourcePropertiesMap.set("cassandra", {
+    optGroupLabel: "Data Source",
     Name: "Cassandra",
     URL: "localhost:9042",
     User: "cassandra",
@@ -17,28 +19,81 @@ dataSourcePropertiesMap.set("cassandra", {
     Table: "",
 });
 dataSourcePropertiesMap.set("csv", {
+    optGroupLabel: "Data Source",
     Name: "CSV",
     Path: "/tmp/generated-data/csv",
 });
+dataSourcePropertiesMap.set("http", {
+    optGroupLabel: "Data Source",
+    Name: "HTTP",
+    Username: "",
+    Password: "",
+});
 dataSourcePropertiesMap.set("json", {
+    optGroupLabel: "Data Source",
     Name: "JSON",
     Path: "/tmp/generated-data/json",
 });
+dataSourcePropertiesMap.set("kafka", {
+    optGroupLabel: "Data Source",
+    Name: "Kafka",
+    URL: "localhost:9092",
+    Topic: "",
+});
 dataSourcePropertiesMap.set("orc", {
+    optGroupLabel: "Data Source",
     Name: "ORC",
     Path: "/tmp/generated-data/orc",
 });
 dataSourcePropertiesMap.set("parquet", {
+    optGroupLabel: "Data Source",
     Name: "Parquet",
     Path: "/tmp/generated-data/parquet",
 });
 dataSourcePropertiesMap.set("postgres", {
+    optGroupLabel: "Data Source",
     Name: "Postgres",
     URL: "jdbc:postgres://localhost:5432/customer", //later add in prefix text for jdbc URL
     User: "postgres",
     Password: "postgres",
     Schema: "",
     Table: "",
+});
+dataSourcePropertiesMap.set("solace", {
+    optGroupLabel: "Data Source",
+    Name: "Solace",
+    URL: "smf://host.docker.internal:55554",
+    Destination: "/JNDI/Q/test_queue",
+});
+
+// Metadata Source
+dataSourcePropertiesMap.set("marquez", {
+    optGroupLabel: "Metadata Source",
+    Name: "Marquez",
+    URL: "http://localhost:5001",
+    Namespace: "",
+    Dataset: "",
+});
+dataSourcePropertiesMap.set("openapi", {
+    optGroupLabel: "Metadata Source",
+    Name: "OpenAPI/Swagger",
+    Path: "",
+});
+dataSourcePropertiesMap.set("openmetadata", {
+    optGroupLabel: "Metadata Source",
+    Name: "Open Metadata",
+    URL: "http://localhost:8585/api",
+    AuthType: "openmetadata",
+    JWT: "",
+    TableFQN: "",
+});
+
+// Alert
+dataSourcePropertiesMap.set("slack", {
+    optGroupLabel: "Alert",
+    Name: "Slack",
+    Token: "",
+    Channels: "",
 });
 
 const addDataSourceButton = document.getElementById("add-data-source-button");
@@ -67,20 +122,23 @@ submitConnectionButton.addEventListener("click", async function () {
         let currConnectionOptions = {};
         let inputFields = Array.from(container.querySelectorAll(".input-field").values());
         for (let inputField of inputFields) {
-            let label = camelize(inputField.getAttribute("aria-label").toLowerCase());
-            if (label === "name") {
-                currConnection["name"] = inputField.value;
-            } else if (label === "dataSource") {
-                currConnection["type"] = inputField.value;
-            } else {
-                currConnectionOptions[label] = inputField.value;
+            let ariaLabel = inputField.getAttribute("aria-label");
+            if (ariaLabel) {
+                let label = camelize(ariaLabel.toLowerCase());
+                if (label === "name") {
+                    currConnection["name"] = inputField.value;
+                } else if (label === "dataSource") {
+                    currConnection["type"] = inputField.value;
+                } else {
+                    currConnectionOptions[label] = inputField.value;
+                }
             }
         }
         currConnection["options"] = currConnectionOptions;
         newConnections.push(currConnection);
     }
     //save data to file(s)
-    await fetch("http://localhost:9090/connection/create", {
+    await fetch("http://localhost:9090/connection", {
         method: "POST",
         headers: {
             "Content-Type": "application/json"
@@ -91,18 +149,42 @@ submitConnectionButton.addEventListener("click", async function () {
             console.error(err);
             alert(err);
         })
+        .then(r => {
+            if (r.ok) {
+                return r.text();
+            } else {
+                r.text().then(text => {
+                    new bootstrap.Toast(
+                        createToast(`Save connection(s)`, `Failed to save connection(s)! Error: ${text}`, "fail")
+                    ).show();
+                    throw new Error(text);
+                });
+            }
+        })
         .then(async r => {
             await getExistingConnections();
         });
 });
 
 //existing connection list populated via data from files
+//TODO allow for Slack and metadata source connections to be created here
 async function getExistingConnections() {
     accordionConnections.replaceChildren();
-    fetch("http://localhost:9090/connection/saved", {
+    fetch("http://localhost:9090/connections", {
         method: "GET",
     })
-        .then(r => r.json())
+        .then(r => {
+            if (r.ok) {
+                return r.json();
+            } else {
+                r.text().then(text => {
+                    new bootstrap.Toast(
+                        createToast(`Get connections`, `Failed to get connections! Error: ${text}`, "fail")
+                    ).show();
+                    throw new Error(text);
+                });
+            }
+        })
         .then(respJson => {
             let connections = respJson.connections;
             for (let connection of connections) {
@@ -135,7 +217,7 @@ function createDataSourceOptions(element) {
                 let optionCol = document.createElement("div");
                 optionCol.setAttribute("class", "col-md-auto");
                 optionCol.setAttribute("id", key);
-                if (key !== "Name") {
+                if (key !== "Name" && key !== "optGroupLabel") {
                     let newElement = createInput(key, key, "form-control input-field data-source-property", "text", value);
                     let formFloating = createFormFloating(key, newElement)
 
@@ -172,10 +254,11 @@ function createDataSourceOptions(element) {
     });
 }
 
+
 function createDataSourceElement(index, hr) {
     let divContainer = document.createElement("div");
     divContainer.setAttribute("id", "data-source-container-" + index);
-    divContainer.setAttribute("class", "row m-1 data-source-container");
+    divContainer.setAttribute("class", "row m-1 data-source-container align-items-center");
     let colName = document.createElement("div");
     colName.setAttribute("class", "col");
     let colSelect = document.createElement("div");
@@ -184,30 +267,44 @@ function createDataSourceElement(index, hr) {
     let dataSourceName = createInput(`data-source-name-${index}`, "Name", "form-control input-field data-source-property", "text", `my-data-source-${index}`);
     let formFloatingName = createFormFloating("Name", dataSourceName);
 
-    let dataSourceSelect = createSelect(`data-source-select-${index}`, "Data source", "form-select input-field data-source-property");
-    let formFloatingSelect = createFormFloating("Data source", dataSourceSelect);
+    let dataSourceSelect = createSelect(`data-source-select-${index}`, "Data source", "selectpicker form-control input-field data-source-property");
+    dataSourceSelect.setAttribute("data-live-search", "true");
+    dataSourceSelect.setAttribute("title", "Select data source type...");
+    dataSourceSelect.setAttribute("data-header", "Select data source type...");
 
-    let defaultSelectOption = document.createElement("option");
-    defaultSelectOption.setAttribute("value", "");
-    defaultSelectOption.setAttribute("selected", "");
-    defaultSelectOption.setAttribute("disabled", "");
-    defaultSelectOption.innerText = "Select data source type...";
-    dataSourceSelect.append(defaultSelectOption);
+    let dataSourceGroup = createOptGroup("Data Source");
+    let metadataSourceGroup = createOptGroup("Metadata Source");
+    let alertGroup = createOptGroup("Alert");
+    dataSourceSelect.append(dataSourceGroup, metadataSourceGroup, alertGroup);
 
     for (const key of dataSourcePropertiesMap.keys()) {
         let selectOption = document.createElement("option");
         selectOption.setAttribute("value", key);
         selectOption.innerText = dataSourcePropertiesMap.get(key).Name;
-        dataSourceSelect.append(selectOption);
+        let optGroupLabel = dataSourcePropertiesMap.get(key).optGroupLabel;
+        if (optGroupLabel === "Data Source") {
+            dataSourceGroup.append(selectOption);
+        } else if (optGroupLabel === "Metadata Source") {
+            metadataSourceGroup.append(selectOption);
+        } else if (optGroupLabel === "Alert") {
+            alertGroup.append(selectOption);
+        }
     }
     let closeButton = createCloseButton(divContainer);
 
     createDataSourceOptions(dataSourceSelect);
     colName.append(formFloatingName);
-    colSelect.append(formFloatingSelect);
+    colSelect.append(dataSourceSelect);
+    $(dataSourceSelect).selectpicker();
     if (hr) {
         divContainer.append(hr);
     }
     divContainer.append(closeButton, colName, colSelect);
     return divContainer;
+}
+
+function createOptGroup(label) {
+    let metadataSourceGroup = document.createElement("optgroup");
+    metadataSourceGroup.setAttribute("label", label);
+    return metadataSourceGroup;
 }

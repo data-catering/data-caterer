@@ -1,4 +1,4 @@
-import {createAccordionItem} from "./shared.js";
+import {createAccordionItem, createToast} from "../shared.js";
 
 let historyContainer = document.getElementById("history-container");
 const tableHeadersWithKey = [{
@@ -26,7 +26,18 @@ const tableHeadersWithKey = [{
 fetch("http://localhost:9090/run/history", {
     method: "GET"
 })
-    .then(resp => resp.json())
+    .then(r => {
+        if (r.ok) {
+            return r.json();
+        } else {
+            r.text().then(text => {
+                new bootstrap.Toast(
+                    createToast(`Plan run history`, `Failed to get plan run history! Error: ${text}`, "fail")
+                ).show();
+                throw new Error(text);
+            });
+        }
+    })
     .then(body => {
         let planHistories = Object.values(body.planExecutionByPlan);
         for (const planHistory of planHistories) {

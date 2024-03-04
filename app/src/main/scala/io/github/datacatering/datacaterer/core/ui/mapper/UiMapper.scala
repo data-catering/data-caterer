@@ -2,11 +2,14 @@ package io.github.datacatering.datacaterer.core.ui.mapper
 
 import io.github.datacatering.datacaterer.api.connection.{ConnectionTaskBuilder, FileBuilder, JdbcBuilder}
 import io.github.datacatering.datacaterer.api.model.Constants._
-import io.github.datacatering.datacaterer.api.model.{DataType, ForeignKeyRelation}
-import io.github.datacatering.datacaterer.api.{BasePlanRun, ColumnNamesValidationBuilder, ConnectionConfigWithTaskBuilder, CountBuilder, DataCatererConfigurationBuilder, FieldBuilder, GeneratorBuilder, GroupByValidationBuilder, PlanBuilder, PlanRun, ValidationBuilder}
-import io.github.datacatering.datacaterer.core.ui.model.{DataSourceRequest, ForeignKeyRequest, PlanRunRequest}
+import io.github.datacatering.datacaterer.api.model.DataType
+import io.github.datacatering.datacaterer.api.{BasePlanRun, ColumnNamesValidationBuilder, ColumnValidationBuilder, ConnectionConfigWithTaskBuilder, CountBuilder, DataCatererConfigurationBuilder, FieldBuilder, GeneratorBuilder, GroupByValidationBuilder, PlanBuilder, PlanRun, ValidationBuilder}
+import io.github.datacatering.datacaterer.core.ui.model.{DataSourceRequest, ForeignKeyRequest, PlanRunRequest, ValidationItemRequest, ValidationItemRequests}
+import org.apache.log4j.Logger
 
 object UiMapper {
+
+  private val LOGGER = Logger.getLogger(getClass.getName)
 
   def mapToPlanRun(planRunRequest: PlanRunRequest): PlanRun = {
     val plan = new BasePlanRun()
@@ -15,7 +18,9 @@ object UiMapper {
     val connections = planRunRequest.dataSources.map(dataSourceToConnection)
     val planBuilderWithForeignKeys = foreignKeyMapping(planRunRequest.foreignKeys, connections, planBuilder)
     // after initial connection mapping, need to get the upstream validations based on the connection mapping
-    plan.execute(planBuilderWithForeignKeys, configuration, connections.head, connections.tail: _*)
+    val connectionsWithUpstreamValidations = connectionsWithUpstreamValidationMapping(connections, planRunRequest.dataSources)
+
+    plan.execute(planBuilderWithForeignKeys, configuration, connectionsWithUpstreamValidations.head, connectionsWithUpstreamValidations.tail: _*)
     plan
   }
 
@@ -57,44 +62,46 @@ object UiMapper {
   }
 
   private def validationMapping(dataSourceRequest: DataSourceRequest): List[ValidationBuilder] = {
-    dataSourceRequest.validations.map(validations => {
-      validations.flatMap(validateItem => {
-        validateItem.`type` match {
-          case VALIDATION_COLUMN =>
-            //map type of column validation to builder method
-            //each option is a new validation
-            val mappedValids = validateItem.options.map(opts => {
-              val colName = opts(VALIDATION_COLUMN)
-              opts
-                .filter(o => !VALIDATION_SUPPORTING_OPTIONS.contains(o._1))
-                .map(opt => columnValidationMapping(opts, colName, opt))
-                .toList
-            }).getOrElse(List())
-            mappedValids
-          case VALIDATION_COLUMN_NAMES =>
-            val baseValid = ValidationBuilder().columnNames
-            validateItem.options.map(opts => {
-              opts
-                .filter(o => !VALIDATION_SUPPORTING_OPTIONS.contains(o._1))
-                .map(opt => columnNamesValidationMapping(baseValid, opts, opt))
-                .toList
-            }).getOrElse(List())
-          case VALIDATION_UPSTREAM =>
-            // require upstream ConnectionTaskBuilder
-            List()
-          case VALIDATION_GROUP_BY =>
-            validateItem.options.map(opts => {
-              val groupByCols = opts(VALIDATION_GROUP_BY_COLUMNS).split(VALIDATION_OPTION_DELIMITER)
-              val baseValid = ValidationBuilder().groupBy(groupByCols: _*)
-              opts
-                .filter(o => !VALIDATION_SUPPORTING_OPTIONS.contains(o._1))
-                .map(opt => groupByValidationMapping(baseValid, opt))
-                .toList
-            }).getOrElse(List())
-          case _ => List()
-        }
-      })
-    }).getOrElse(List())
+    dataSourceRequest.validations
+      .map(validations => validations.flatMap(validationItemRequestToValidationBuilders))
+      .getOrElse(List())
+  }
+
+  private def validationItemRequestToValidationBuilders(validateItem: ValidationItemRequest): List[ValidationBuilder] = {
+    validateItem.`type` match {
+      case VALIDATION_COLUMN =>
+        //map type of column validation to builder method
+        //each option is a new validation
+        val mappedValids = validateItem.options.map(opts => {
+          val colName = opts(VALIDATION_COLUMN)
+          opts
+            .filter(o => !VALIDATION_SUPPORTING_OPTIONS.contains(o._1))
+            .map(opt => {
+              val baseValid = ValidationBuilder().col(colName)
+              columnValidationMapping(baseValid, opts, colName, opt)
+            })
+            .toList
+        }).getOrElse(List())
+        mappedValids
+      case VALIDATION_COLUMN_NAMES =>
+        val baseValid = ValidationBuilder().columnNames
+        validateItem.options.map(opts => {
+          opts
+            .filter(o => !VALIDATION_SUPPORTING_OPTIONS.contains(o._1))
+            .map(opt => columnNamesValidationMapping(baseValid, opts, opt))
+            .toList
+        }).getOrElse(List())
+      case VALIDATION_UPSTREAM =>
+        // require upstream ConnectionTaskBuilder
+        List()
+      case VALIDATION_GROUP_BY =>
+        validateItem.options.map(opts => {
+          val groupByCols = opts(VALIDATION_GROUP_BY_COLUMNS).split(VALIDATION_OPTION_DELIMITER)
+          val baseValid = ValidationBuilder().groupBy(groupByCols: _*)
+          groupByValidationMapping(baseValid, validateItem.nested)
+        }).getOrElse(List())
+      case _ => List()
+    }
   }
 
   private def countMapping(dataSourceRequest: DataSourceRequest): CountBuilder = {
@@ -153,17 +160,88 @@ object UiMapper {
     }
   }
 
-  private def groupByValidationMapping(baseValid: GroupByValidationBuilder, opt: (String, String)) = {
-    val aggregateValidation = opt._1 match {
-      case VALIDATION_MIN => baseValid.min(opt._2)
-      case VALIDATION_MAX => baseValid.max(opt._2)
-      case VALIDATION_COUNT => baseValid.count(opt._2)
-      case VALIDATION_SUM => baseValid.sum(opt._2)
-      case VALIDATION_AVERAGE => baseValid.avg(opt._2)
-      case VALIDATION_STANDARD_DEVIATION => baseValid.stddev(opt._2)
-      case _ => baseValid.count()
-    }
-    aggregateValidation.greaterThan(0)
+  private def connectionsWithUpstreamValidationMapping(connections: List[ConnectionTaskBuilder[_]], dataSources: List[DataSourceRequest]): List[ConnectionTaskBuilder[_]] = {
+    val dataSourcesWithUpstreamValidation = dataSources.filter(ds => ds.validations.getOrElse(List()).exists(_.`type` == VALIDATION_UPSTREAM))
+      .map(ds => (ds.name, ds.validations.getOrElse(List())))
+      .toMap
+    dataSourcesWithUpstreamValidation.map(ds => {
+      val optConnection = connections.find(c => c.task.exists(_.task.name == ds._1))
+      optConnection match {
+        case Some(connection) =>
+          val upstreamValidations = ds._2.filter(_.`type` == VALIDATION_UPSTREAM)
+          val mappedValidations = upstreamValidationMapping(connection, upstreamValidations)
+          val allValidations = connection.getValidations ++ mappedValidations
+          connection.validations(allValidations: _*)
+        case None =>
+
+      }
+    })
+    connections.map(connection => {
+      val connectionTaskName = connection.task.map(_.task.name).getOrElse("")
+      val optDataSourceWithUpstreamValidation = dataSourcesWithUpstreamValidation.get(connectionTaskName)
+      optDataSourceWithUpstreamValidation match {
+        case Some(value) =>
+          val upstreamValidations = value.filter(_.`type` == VALIDATION_UPSTREAM)
+          val mappedValidations = upstreamValidationMapping(connection, upstreamValidations)
+          val allValidations = connection.getValidations ++ mappedValidations
+          connection.validations(allValidations: _*)
+        case None =>
+          LOGGER.debug(s"Task does not have any upstream validations defined, task-name=$connectionTaskName")
+          connection
+      }
+    })
+  }
+
+  private def upstreamValidationMapping(connection: ConnectionTaskBuilder[_], upstreamValidations: List[ValidationItemRequest]): List[ValidationBuilder] = {
+    upstreamValidations.map(upstreamValidation => {
+      val baseValid = ValidationBuilder().upstreamData(connection)
+
+      // check for join options
+      def getOption(k: String): Option[String] = upstreamValidation.options.flatMap(_.get(k))
+
+      val joinValidation = (getOption(VALIDATION_UPSTREAM_JOIN_TYPE), getOption(VALIDATION_UPSTREAM_JOIN_COLUMNS), getOption(VALIDATION_UPSTREAM_JOIN_EXPR)) match {
+        case (Some(joinType), Some(joinCols), _) => baseValid.joinType(joinType).joinColumns(joinCols.split(","): _*)
+        case (Some(joinType), None, Some(joinExpr)) => baseValid.joinType(joinType).joinExpr(joinExpr)
+        case (None, Some(joinCols), _) => baseValid.joinType(DEFAULT_VALIDATION_JOIN_TYPE).joinColumns(joinCols.split(","): _*)
+        case (None, None, Some(joinExpr)) => baseValid.joinType(DEFAULT_VALIDATION_JOIN_TYPE).joinExpr(joinExpr)
+        case _ => throw new RuntimeException("Unexpected upstream validation join options, need to define join columns or expression")
+      }
+      val upstreamWithValidations = upstreamValidation.nested.map(nest =>
+        nest.validations.flatMap(nestedValidation => {
+          validationItemRequestToValidationBuilders(nestedValidation)
+            .map(joinValidation.withValidation)
+        })
+      ).getOrElse(List())
+      upstreamWithValidations
+    })
+    List()
+  }
+
+  private def groupByValidationMapping(baseValid: GroupByValidationBuilder, optNestedValidations: Option[ValidationItemRequests]) = {
+    optNestedValidations.map(validationReqs => {
+      validationReqs.validations.flatMap(validationReq => {
+        // only column validations can be applied after group by
+        validationReq.options.map(opts => {
+          // check for aggType and aggCol
+          (opts.get("aggType"), opts.get("aggCol")) match {
+            case (Some(aggType), Some(aggCol)) =>
+              val aggregateValidation = aggType match {
+                case VALIDATION_MIN => baseValid.min(aggCol)
+                case VALIDATION_MAX => baseValid.max(aggCol)
+                case VALIDATION_COUNT => baseValid.count(aggCol)
+                case VALIDATION_SUM => baseValid.sum(aggCol)
+                case VALIDATION_AVERAGE => baseValid.avg(aggCol)
+                case VALIDATION_STANDARD_DEVIATION => baseValid.stddev(aggCol)
+                case _ => throw new RuntimeException(s"Unexpected aggregation type found in group by validation, aggregation-type=$aggType")
+              }
+              opts.filter(o => o._1 != "aggType" && o._1 != "aggCol")
+                .map(opt => columnValidationMapping(aggregateValidation, opts, opt._2, opt))
+                .toList
+            case _ => throw new RuntimeException("Keys 'aggType' and 'aggCol' are expected when defining a group by validation")
+          }
+        }).getOrElse(List())
+      })
+    }).getOrElse(List())
   }
 
   private def columnNamesValidationMapping(baseValid: ColumnNamesValidationBuilder, opts: Map[String, String], opt: (String, String)) = {
@@ -179,8 +257,7 @@ object UiMapper {
     }
   }
 
-  private def columnValidationMapping(opts: Map[String, String], colName: String, opt: (String, String)) = {
-    val baseValid = ValidationBuilder().col(colName)
+  private def columnValidationMapping(baseValid: ColumnValidationBuilder, opts: Map[String, String], colName: String, opt: (String, String)) = {
     opt._1 match {
       case VALIDATION_EQUAL => baseValid.isEqualCol(opt._2)
       case VALIDATION_NOT_EQUAL => baseValid.isNotEqualCol(opt._2)
@@ -202,6 +279,7 @@ object UiMapper {
         val max = opts(VALIDATION_MAX)
         baseValid.notBetweenCol(min, max)
       case VALIDATION_IN => baseValid.in(opt._2.split(VALIDATION_OPTION_DELIMITER): _*)
+      case VALIDATION_NOT_IN => baseValid.notIn(opt._2.split(VALIDATION_OPTION_DELIMITER): _*)
       case VALIDATION_MATCHES => baseValid.matches(opt._2)
       case VALIDATION_NOT_MATCHES => baseValid.notMatches(opt._2)
       case VALIDATION_STARTS_WITH => baseValid.startsWith(opt._2)
