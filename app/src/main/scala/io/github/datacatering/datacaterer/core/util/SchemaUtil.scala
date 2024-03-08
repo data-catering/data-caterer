@@ -1,6 +1,6 @@
 package io.github.datacatering.datacaterer.core.util
 
-import io.github.datacatering.datacaterer.api.model.Constants.{DEFAULT_FIELD_NULLABLE, FOREIGN_KEY_DELIMITER, FOREIGN_KEY_DELIMITER_REGEX, IS_PRIMARY_KEY, IS_UNIQUE, MAXIMUM, MINIMUM, ONE_OF_GENERATOR, PRIMARY_KEY_POSITION, RANDOM_GENERATOR, REGEX_GENERATOR, STATIC}
+import io.github.datacatering.datacaterer.api.model.Constants.{DEFAULT_FIELD_NULLABLE, FOREIGN_KEY_DELIMITER, FOREIGN_KEY_DELIMITER_REGEX, FOREIGN_KEY_PLAN_FILE_DELIMITER, FOREIGN_KEY_PLAN_FILE_DELIMITER_REGEX, IS_PRIMARY_KEY, IS_UNIQUE, MAXIMUM, MINIMUM, ONE_OF_GENERATOR, PRIMARY_KEY_POSITION, RANDOM_GENERATOR, REGEX_GENERATOR, STATIC}
 import io.github.datacatering.datacaterer.api.model.{Count, Field, ForeignKeyRelation, Generator, PerColumnCount, Schema, SinkOptions, Step, Task}
 import io.github.datacatering.datacaterer.core.exception.InvalidFieldConfigurationException
 import io.github.datacatering.datacaterer.core.model.Constants.{COUNT_BASIC, COUNT_COLUMNS, COUNT_GENERATED, COUNT_GENERATED_PER_COLUMN, COUNT_NUM_RECORDS, COUNT_PER_COLUMN, COUNT_TYPE}
@@ -12,11 +12,15 @@ import scala.language.implicitConversions
 
 object ForeignKeyRelationHelper {
   def fromString(str: String): ForeignKeyRelation = {
-    val strSpt = str.split(FOREIGN_KEY_DELIMITER_REGEX, 3)
-    if (strSpt.length == 2) {
-      ForeignKeyRelation(strSpt.head, strSpt.last, List())
-    } else {
-      ForeignKeyRelation(strSpt.head, strSpt(1), strSpt.last.split(",").toList)
+    val strSpt = str.split(FOREIGN_KEY_DELIMITER_REGEX)
+    val strSptPlanFile = str.split(FOREIGN_KEY_PLAN_FILE_DELIMITER_REGEX)
+
+    (strSpt.length, strSptPlanFile.length) match {
+      case (3, _) => ForeignKeyRelation(strSpt.head, strSpt(1), strSpt.last.split(",").toList)
+      case (2, _) => ForeignKeyRelation(strSpt.head, strSpt.last)
+      case (_, 3) => ForeignKeyRelation(strSptPlanFile.head, strSptPlanFile(1), strSptPlanFile.last.split(",").toList)
+      case (_, 2) => ForeignKeyRelation(strSptPlanFile.head, strSptPlanFile.last)
+      case _ => throw new RuntimeException(s"Unexpected foreign key relation format. Should have at least 2 or 3 parts delimited by either $FOREIGN_KEY_DELIMITER or $FOREIGN_KEY_PLAN_FILE_DELIMITER")
     }
   }
 

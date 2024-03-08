@@ -48,7 +48,7 @@ steps:
                   false
                 END
         - name: "updated_time"
-          type: "string"
+          type: "timestamp"
           generator:
             type: "sql"
             options:

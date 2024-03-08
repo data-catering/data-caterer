@@ -3,8 +3,11 @@ package io.github.datacatering.datacaterer.core.model
 import io.github.datacatering.datacaterer.api.model.Constants.FOREIGN_KEY_DELIMITER
 import io.github.datacatering.datacaterer.api.model.SinkOptions
 import io.github.datacatering.datacaterer.core.util.PlanImplicits.SinkOptionsOps
+import org.junit.runner.RunWith
 import org.scalatest.funsuite.AnyFunSuite
+import org.scalatestplus.junit.JUnitRunner
 
+@RunWith(classOf[JUnitRunner])
 class PlanImplicitsTest extends AnyFunSuite {
 
   test("Can map foreign key relations to relationships without column names") {
