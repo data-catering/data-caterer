@@ -111,7 +111,7 @@ class PlanProcessorTest extends SparkSuite {
 
   test("Can run Postgres plan run") {
 //    PlanProcessor.determineAndExecutePlan(Some(new TestValidation))
-    PlanProcessor.determineAndExecutePlan(Some(new TestOtherFileFormats))
+    PlanProcessor.determineAndExecutePlan(Some(new TestUniqueFields))
   }
 
   class TestPostgres extends PlanRun {
@@ -289,5 +289,13 @@ class PlanProcessorTest extends SparkSuite {
       .schema(basicSchema: _*)
 
     execute(icebergTask)
+  }
+
+  class TestUniqueFields extends PlanRun {
+    val jsonTask = json("my_first_json", "/tmp/data/unique_json", Map("saveMode" -> "overwrite"))
+      .schema(
+        field.name("account_id").regex("ACC[0-9]{8}").unique(true)
+      )
+    execute(jsonTask)
   }
 }

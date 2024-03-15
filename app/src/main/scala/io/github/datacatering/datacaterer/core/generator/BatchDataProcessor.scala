@@ -1,12 +1,12 @@
 package io.github.datacatering.datacaterer.core.generator
 
 import io.github.datacatering.datacaterer.api.model.Constants.{DEFAULT_ENABLE_GENERATE_DATA, ENABLE_DATA_GENERATION}
-import io.github.datacatering.datacaterer.core.util.GeneratorUtil.getDataSourceName
-import io.github.datacatering.datacaterer.core.util.RecordCountUtil.calculateNumBatches
-import io.github.datacatering.datacaterer.api.model.{FlagsConfig, FoldersConfig, GenerationConfig, MetadataConfig, Plan, Task, TaskSummary}
+import io.github.datacatering.datacaterer.api.model.{FlagsConfig, FoldersConfig, GenerationConfig, MetadataConfig, Plan, Step, Task, TaskSummary}
 import io.github.datacatering.datacaterer.core.model.DataSourceResult
 import io.github.datacatering.datacaterer.core.sink.SinkFactory
+import io.github.datacatering.datacaterer.core.util.GeneratorUtil.getDataSourceName
 import io.github.datacatering.datacaterer.core.util.PlanImplicits.StepOps
+import io.github.datacatering.datacaterer.core.util.RecordCountUtil.calculateNumBatches
 import io.github.datacatering.datacaterer.core.util.{ForeignKeyUtil, UniqueFieldsUtil}
 import net.datafaker.Faker
 import org.apache.log4j.Logger
@@ -45,7 +45,7 @@ class BatchDataProcessor(connectionConfigsByName: Map[String, Map[String, String
             val endIndex = stepRecords.currentNumRecords + stepRecords.numRecordsPerBatch
 
             val genDf = dataGeneratorFactory.generateDataForStep(s, task._1.dataSourceName, startIndex, endIndex)
-            val df = if (s.gatherPrimaryKeys.nonEmpty && flagsConfig.enableUniqueCheck) uniqueFieldUtil.getUniqueFieldsValues(dataSourceStepName, genDf) else genDf
+            val df = getUniqueGeneratedRecords(uniqueFieldUtil, s, dataSourceStepName, genDf)
 
             if (!df.storageLevel.useMemory) df.cache()
             val dfRecordCount = if (flagsConfig.enableCount) df.count() else stepRecords.numRecordsPerBatch
@@ -85,6 +85,16 @@ class BatchDataProcessor(connectionConfigsByName: Map[String, Map[String, String
       val sinkResult = sinkFactory.pushToSink(df._2, dataSourceName, stepWithDataSourceConfig, flagsConfig, startTime)
       DataSourceResult(dataSourceName, task, stepWithDataSourceConfig, sinkResult, batchNum)
     })
+  }
+
+  private def getUniqueGeneratedRecords(uniqueFieldUtil: UniqueFieldsUtil, s: Step, dataSourceStepName: String, genDf: DataFrame): DataFrame = {
+    if (s.gatherUniqueFields.nonEmpty || s.gatherPrimaryKeys.nonEmpty) {
+      LOGGER.info(s"Ensuring field values are unique since there are fields with isUnique or isPrimaryKey set to true, " +
+        s"data-source-step-name=$dataSourceStepName")
+      uniqueFieldUtil.getUniqueFieldsValues(dataSourceStepName, genDf)
+    } else {
+      genDf
+    }
   }
 
   private def getDataFaker(plan: Plan): Faker with Serializable = {
