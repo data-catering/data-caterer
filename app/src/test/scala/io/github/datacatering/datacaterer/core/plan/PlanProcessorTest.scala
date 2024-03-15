@@ -269,4 +269,12 @@ class PlanProcessorTest extends SparkSuite {
 
     execute(foreignPlan, config, firstJsonTask, secondJsonTask, thirdJsonTask)
   }
+
+  class TestUniqueFields extends PlanRun {
+    val jsonTask = json("my_first_json", "/tmp/data/unique_json", Map("saveMode" -> "overwrite"))
+      .schema(
+        field.name("account_id").regex("ACC[0-9]{8}").unique(true)
+      )
+    execute(jsonTask)
+  }
 }
