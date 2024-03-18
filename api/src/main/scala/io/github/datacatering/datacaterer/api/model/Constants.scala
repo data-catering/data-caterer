@@ -247,6 +247,8 @@ object Constants {
   lazy val DEFAULT_FOREIGN_KEY_COLUMN = "default_column"
   lazy val FOREIGN_KEY_DELIMITER = "||"
   lazy val FOREIGN_KEY_DELIMITER_REGEX = "\\|\\|"
+  lazy val FOREIGN_KEY_PLAN_FILE_DELIMITER = "."
+  lazy val FOREIGN_KEY_PLAN_FILE_DELIMITER_REGEX = "\\."
 
   //task defaults
   def DEFAULT_TASK_NAME: String = UUID.randomUUID().toString

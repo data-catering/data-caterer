@@ -110,8 +110,7 @@ class PlanProcessorTest extends SparkSuite {
   }
 
   ignore("Can run Postgres plan run") {
-//    PlanProcessor.determineAndExecutePlan(Some(new TestValidation))
-    PlanProcessor.determineAndExecutePlan(Some(new TestUniqueFields))
+    PlanProcessor.determineAndExecutePlan(Some(new TestValidation))
   }
 
   class TestPostgres extends PlanRun {
@@ -239,7 +238,6 @@ class PlanProcessorTest extends SparkSuite {
         validation.columnNames.countBetween(1, 2),
         validation.columnNames.matchOrder("account_id", "amount", "name"),
         validation.columnNames.matchSet("account_id", "my_name"),
-        validation.groupBy("account_id").sum("amount").isNotNull,
         validation.upstreamData(firstJsonTask).joinColumns("account_id")
           .withValidation(validation.col("my_first_json_customer_details.name").isEqualCol("name")),
         validation.upstreamData(firstJsonTask).joinColumns("account_id")

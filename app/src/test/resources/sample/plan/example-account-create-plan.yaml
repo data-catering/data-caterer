@@ -14,5 +14,5 @@ tasks:
 sinkOptions:
   foreignKeys:
     #    "postgres.accounts.account_number":
-    "postgres.transactions.account_number":
-      - "parquet.transactions.account_id"
+    - - "postgres.transactions.account_number"
+      - - "parquet.transactions.account_id"

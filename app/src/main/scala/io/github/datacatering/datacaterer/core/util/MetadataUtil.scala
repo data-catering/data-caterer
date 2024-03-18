@@ -51,7 +51,7 @@ object MetadataUtil {
     val columnLevelStatistics = sparkSession.sharedState.cacheManager.lookupCachedData(sourceData).get.cachedRepresentation.stats
     val rowCount = columnLevelStatistics.rowCount.getOrElse(BigInt(0))
     LOGGER.info(s"Computed metadata statistics for data source, name=$dataSourceName, format=$dataSourceFormat, " +
-      s"details=$dataSourceReadOptions, rows-analysed=$rowCount, size-in-bytes=${columnLevelStatistics.sizeInBytes}, " +
+      s"details=${ConfigUtil.cleanseOptions(dataSourceReadOptions)}, rows-analysed=$rowCount, size-in-bytes=${columnLevelStatistics.sizeInBytes}, " +
       s"num-columns-analysed=${columnLevelStatistics.attributeStats.size}")
 
     columnLevelStatistics.attributeStats.map(x => {
@@ -76,15 +76,16 @@ object MetadataUtil {
     //have to create temp view then analyze the column stats which can be found in the cached data
     sourceData.createOrReplaceTempView(TEMP_CACHED_TABLE_NAME)
     if (!sparkSession.catalog.isCached(TEMP_CACHED_TABLE_NAME)) sparkSession.catalog.cacheTable(TEMP_CACHED_TABLE_NAME)
+    val cleansedOptions = ConfigUtil.cleanseOptions(dataSourceReadOptions)
     val optColumnsToAnalyze = Some(sourceData.schema.fields.filter(f => analyzeSupportsType(f.dataType)).map(_.name).toSeq)
     val tryAnalyzeData = Try(AnalyzeColumnCommand(TableIdentifier(TEMP_CACHED_TABLE_NAME), optColumnsToAnalyze, false).run(sparkSession))
     tryAnalyzeData match {
       case Failure(exception) =>
         LOGGER.error(s"Failed to analyze all columns in data source, name=$dataSourceName, format=$dataSourceFormat, " +
-          s"options=$dataSourceReadOptions, error-message=${exception.getMessage}")
+          s"options=$cleansedOptions, error-message=${exception.getMessage}")
       case Success(_) =>
         LOGGER.debug(s"Successfully analyzed all columns in data source, name=$dataSourceName, " +
-          s"format=$dataSourceFormat, options=$dataSourceReadOptions")
+          s"format=$dataSourceFormat, options=$cleansedOptions")
     }
   }
 
