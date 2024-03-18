@@ -1,7 +1,7 @@
 import {createAccordionItem, createToast} from "../shared.js";
 
 let historyContainer = document.getElementById("history-container");
-const tableHeadersWithKey = [{
+const tableHeaders = [{
     field: "status",
     title: "Status",
     sortable: true,
@@ -14,16 +14,21 @@ const tableHeadersWithKey = [{
     title: "Created Time",
     sortable: true,
 }, {
-    field: "updatedTs",
-    title: "Last Update Time",
+    field: "timeTaken",
+    title: "Time Taken (s)",
     sortable: true,
 }, {
-    field: "failedReason",
-    title: "Fail Reason",
-    sortable: true,
-}]
+    field: "generationSummary",
+    title: "Data Generated",
+}, {
+    field: "validationSummary",
+    title: "Data Validated",
+}, {
+    field: "reportLink",
+    title: "Report",
+}];
 
-fetch("http://localhost:9090/run/history", {
+fetch("http://localhost:9898/run/history", {
     method: "GET"
 })
     .then(r => {
@@ -48,20 +53,49 @@ fetch("http://localhost:9090/run/history", {
             let planRunsByIdTable = document.createElement("table");
             planRunsByIdTable.setAttribute("id", planRunsByIdTableId + "-element");
             planRunsByIdTable.setAttribute("data-toggle", "table");
+            planRunsByIdTable.setAttribute("data-sort-name", "createdTs");
+            planRunsByIdTable.setAttribute("data-sort-order", "desc");
             const planHistoryByIdValues = Object.values(planHistoryById);
             const lastUpdatePerId = [];
+
             for (const runUpdatesById of planHistoryByIdValues) {
                 let runUpdates = runUpdatesById.runs;
-                lastUpdatePerId.push(runUpdates[runUpdates.length - 1]);
+                let latestRunUpdate = runUpdates[runUpdates.length - 1];
+                console.log(runUpdates);
+                latestRunUpdate["createdTs"] = latestRunUpdate["createdTs"].replace("T", " ").replace(/\+.*/, "");
+                latestRunUpdate["updatedTs"] = latestRunUpdate["updatedTs"].replace("T", " ").replace(/\+.*/, "");
+                let reportHref = `http://localhost:9898/report/${latestRunUpdate["id"]}/index.html`;
+                latestRunUpdate["reportLink"] = latestRunUpdate["reportLink"] === "" ? "" : `<a href=${reportHref} target="_blank" rel="noopener noreferrer">Report</a>`;
+                let generationSummary = Array.from(latestRunUpdate["generationSummary"])
+                    .filter(g => g.length > 3 && g[0] !== "")
+                    .map(g => `${g[0]} -> ${g[3]}`)
+                    .join("<br>");
+                latestRunUpdate["generationSummary"] = generationSummary.length > 0 ? generationSummary : "";
+                let validationSummary = Array.from(latestRunUpdate["validationSummary"])
+                    .filter(v => v.length > 3 && v[0] !== "")
+                    .map(v => v[3])
+                    .join("<br>");
+                latestRunUpdate["validationSummary"] = validationSummary.length > 0 ? validationSummary : "";
+                console.log(latestRunUpdate);
+                lastUpdatePerId.push(latestRunUpdate);
             }
-
-            $(planRunsByIdTable).bootstrapTable({
-                sortStable: true,
-                columns: tableHeadersWithKey,
-                data: Object.values(lastUpdatePerId),
-            });
 
             let planHistoryContainer = createAccordionItem(planName, planName, "", planRunsByIdTable);
             historyContainer.append(planHistoryContainer);
+            $(planRunsByIdTable).bootstrapTable({
+                sortStable: true,
+                columns: tableHeaders,
+                data: Object.values(lastUpdatePerId),
+                rowStyle: function (row, index) {
+                    if (row["status"] === "failed") {
+                        return { classes: "table-danger" }
+                    } else if (row["status"] === "finished") {
+                        return { classes: "table-success" }
+                    } else {
+                        return { classes: "table-warning" }
+                    }
+                }
+            });
         }
     });
+

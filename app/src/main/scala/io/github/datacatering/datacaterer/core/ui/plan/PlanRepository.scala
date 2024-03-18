@@ -3,12 +3,15 @@ package io.github.datacatering.datacaterer.core.ui.plan
 import akka.actor.typed.scaladsl.Behaviors
 import akka.actor.typed.{ActorRef, Behavior, SupervisorStrategy}
 import io.github.datacatering.datacaterer.core.model.Constants.{FAILED, FINISHED, PARSED_PLAN, STARTED}
+import io.github.datacatering.datacaterer.core.model.PlanRunResults
 import io.github.datacatering.datacaterer.core.plan.PlanProcessor
 import io.github.datacatering.datacaterer.core.ui.config.UiConfiguration.INSTALL_DIRECTORY
 import io.github.datacatering.datacaterer.core.ui.mapper.UiMapper
 import io.github.datacatering.datacaterer.core.ui.model.{JsonSupport, PlanRunExecution, PlanRunRequest, PlanRunRequests}
+import io.github.datacatering.datacaterer.core.ui.plan.ConnectionRepository.getClass
 import io.github.datacatering.datacaterer.core.ui.plan.PlanResponseHandler.{KO, OK, Response}
-import org.joda.time.DateTime
+import org.apache.log4j.Logger
+import org.joda.time.{DateTime, Seconds}
 import spray.json._
 
 import java.nio.file.{Files, Path, StandardOpenOption}
@@ -18,6 +21,8 @@ import scala.util.{Failure, Success, Try}
 
 
 object PlanRepository extends JsonSupport {
+
+  private val LOGGER = Logger.getLogger(getClass.getName)
 
   /*
   Data flow of plan run:
@@ -70,22 +75,21 @@ object PlanRepository extends JsonSupport {
           val planRunExecution = PlanRunExecution(planRunRequest.name, planRunRequest.id, STARTED)
           savePlanRunExecution(planRunRequest, planRunExecution)
 
-          val tryPlanRun = Try(UiMapper.mapToPlanRun(planRunWithConnectionInfo))
+          val tryPlanRun = Try(UiMapper.mapToPlanRun(planRunWithConnectionInfo, INSTALL_DIRECTORY))
           tryPlanRun match {
             case Failure(mapException) =>
               updatePlanRunExecution(planRunExecution, FAILED, Some(mapException.getMessage))
               replyTo ! KO(mapException.getMessage, mapException)
             case Success(planRun) =>
               updatePlanRunExecution(planRunExecution, PARSED_PLAN)
-              val runPlanFuture = Future {
-                PlanProcessor.determineAndExecutePlan(Some(planRun))
-              }
+              val runPlanFuture = Future { PlanProcessor.determineAndExecutePlan(Some(planRun)) }
+
               runPlanFuture.onComplete {
                 case Failure(planException) =>
                   updatePlanRunExecution(planRunExecution, FAILED, Some(planException.getMessage))
                   replyTo ! KO(planException.getMessage, planException)
                 case Success(results) =>
-                  updatePlanRunExecution(planRunExecution, FINISHED)
+                  updatePlanRunExecution(planRunExecution, FINISHED, None, Some(results))
                   replyTo ! OK
               }
           }
@@ -152,9 +156,19 @@ object PlanRepository extends JsonSupport {
     Files.readString(planFile).parseJson.convertTo[PlanRunRequest]
   }
 
-  private def updatePlanRunExecution(planRunExecution: PlanRunExecution, status: String, failedReason: Option[String] = None): Unit = {
+  private def updatePlanRunExecution(planRunExecution: PlanRunExecution, status: String, failedReason: Option[String] = None,
+                                     results: Option[PlanRunResults] = None): Unit = {
     val executionFile = Path.of(s"$executionSaveFolder/${planRunExecution.id}.csv")
-    val updatedPlanRun = planRunExecution.copy(status = status, updatedTs = DateTime.now(), failedReason = failedReason)
+    val cleanFailReason = failedReason.map(s => s.replaceAll("\n", " "))
+    val generationSummary = results.map(res => res.generationResults.map(_.summarise)).getOrElse(List())
+    val validationSummary = results.map(res => res.validationResults.map(_.summarise)).getOrElse(List())
+    val reportLink = results.map(_.optReportPath.getOrElse(""))
+    val updatedTs = DateTime.now()
+    val timeTaken = Seconds.secondsBetween(planRunExecution.createdTs, updatedTs).getSeconds.toString
+
+    val updatedPlanRun = planRunExecution.copy(status = status, updatedTs = updatedTs,
+      failedReason = cleanFailReason, generationSummary = generationSummary, validationSummary = validationSummary,
+      reportLink = reportLink, timeTaken = Some(timeTaken))
     Files.writeString(executionFile, updatedPlanRun.toString, StandardOpenOption.WRITE, StandardOpenOption.APPEND)
   }
 
@@ -172,7 +186,13 @@ object PlanRepository extends JsonSupport {
       .asScala
       .flatMap(execFile => {
         val lines = Files.readAllLines(execFile).asScala
-        lines.map(line => PlanRunExecution.fromString(line))
+        lines.map(line => {
+          val tryParse = Try(PlanRunExecution.fromString(line))
+          if (tryParse.isFailure) LOGGER.error(s"Failed to parse execution details for file, file-name=$execFile")
+          tryParse
+        })
+          .filter(_.isSuccess)
+          .map(_.get)
       }).toList
     val groupedExecutions = allPlanRunExecutions.groupBy(_.name)
       .map(grp => {

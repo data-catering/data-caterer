@@ -81,7 +81,7 @@ dataTypeOptionsMap.set("decimal", {
         max: 2147483647,
         help: "Precision for generated decimal values."
     },
-    numericScale: {default: 0, type: "number", min: 0, max: 2147483647, help: "Scale for geneated decimal values."}
+    numericScale: {default: 0, type: "number", min: 0, max: 2147483647, help: "Scale for generated decimal values."}
 });
 dataTypeOptionsMap.set("double", {...defaultDataTypeOptions, ...getNumberOptions()});
 dataTypeOptionsMap.set("float", {...defaultDataTypeOptions, ...getNumberOptions()});
@@ -152,15 +152,15 @@ validationTypeOptionsMap.set("column", {
         group: {type: "checkbox", innerText: "Not"},
         help: "Equal to value. Select 'Not' for not equals."
     },
-    null: {default: "", type: "text", disabled: ""},
-    notNull: {default: "", type: "text", disabled: ""},
+    null: {default: "", type: "text", disabled: "", help: "Values are null."},
+    notNull: {default: "", type: "text", disabled: "", help: "Values are not null."},
     contains: {
         default: "",
         type: "text",
         group: {type: "checkbox", innerText: "Not"},
         help: "Contains value. Select 'Not' for not contains."
     },
-    unique: {default: "", type: "text"},
+    unique: {default: "", type: "text", disabled: "", help: "Values are unique."},
     lessThan: {
         default: "",
         type: "text",
@@ -179,7 +179,12 @@ validationTypeOptionsMap.set("column", {
         group: {type: "checkbox", innerText: "Not"},
         help: "Between values. Select 'Not' for not between."
     },
-    in: {default: "", type: "text", group: {type: "checkbox", innerText: "Not"}, help: "In set of values. Select 'Not' for not in set."},
+    in: {
+        default: "",
+        type: "text",
+        group: {type: "checkbox", innerText: "Not"},
+        help: "In set of values. Select 'Not' for not in set."
+    },
     matches: {
         default: "",
         type: "text",
@@ -216,9 +221,18 @@ validationTypeOptionsMap.set("column", {
         group: {type: "checkbox", innerText: "Equal"},
         help: "Greater than size. Select 'Equal' for greater than or equal to size."
     },
-    luhnCheck: {default: "", type: "text", disabled: ""},
-    hasType: {default: "string", type: "text", choice: baseDataTypes},
-    sql: {default: "", type: "text"},
+    luhnCheck: {
+        default: "",
+        type: "text",
+        disabled: "",
+        help: "Values are valid credit card or identification numbers according to Luhn Algorithm."
+    },
+    hasType: {default: "string", type: "text", choice: baseDataTypes, help: "Values are of data type."},
+    sql: {
+        default: "",
+        type: "text",
+        help: "<a href='https://spark.apache.org/docs/latest/api/sql/' target='_blank' rel='noopener noreferrer'>Spark SQL</a> statement, returning boolean, for custom validation."
+    },
 });
 validationTypeOptionsMap.set("groupBy", {
     ...defaultValidationOptions,
@@ -235,9 +249,24 @@ validationTypeOptionsMap.set("groupBy", {
         addBlock: {type: "column"}
     },
     sum: {default: "", type: "text", help: "Column name of values to sum after group by.", addBlock: {type: "column"}},
-    min: {default: "", type: "text", help: "Column name to find minimum value after group by.", addBlock: {type: "column"}},
-    max: {default: "", type: "text", help: "Column name to find maximum value after group by.", addBlock: {type: "column"}},
-    average: {default: "", type: "text", help: "Column name to find average value after group by.", addBlock: {type: "column"}},
+    min: {
+        default: "",
+        type: "text",
+        help: "Column name to find minimum value after group by.",
+        addBlock: {type: "column"}
+    },
+    max: {
+        default: "",
+        type: "text",
+        help: "Column name to find maximum value after group by.",
+        addBlock: {type: "column"}
+    },
+    average: {
+        default: "",
+        type: "text",
+        help: "Column name to find average value after group by.",
+        addBlock: {type: "column"}
+    },
     standardDeviation: {
         default: "",
         type: "text",
@@ -341,7 +370,7 @@ configurationOptionsMap.set("flag", {
         default: "true",
         type: "text",
         choice: ["true", "false"],
-        help: "Run validations as described in plan. Results can be viewed from logs or from HTML report if <code>Sink Metadata</code> is enabled."
+        help: "Run validations as described in plan. Results can be viewed from logs or from HTML report."
     },
     "enableAlerts": {
         configName: "enableAlerts",
@@ -539,7 +568,7 @@ configurationOptionsMap.set("alert", {
         displayName: "Slack Token",
         default: "",
         type: "password",
-        help: "Slack token to connect to Slack. Check <a href=\"https://api.slack.com/authentication/token-types\">here</a> for more details."
+        help: "Slack token to connect to Slack. Check <a href='https://api.slack.com/authentication/token-types' target='_blank' rel='noopener noreferrer'>here</a> for more details."
     },
     "slackChannels": {
         configName: "slackChannels",
@@ -555,7 +584,7 @@ const reportConfigKeys = [["flag", "enableSaveReports"],
     ["flag", "enableValidation"],
     ["flag", "enableSinkMetadata"],
     ["flag", "enableAlerts"],
+    ["alert", "triggerOn"],
     ["metadata", "numGeneratedSamples"],
-    ["validation", "numSampleErrorRecords"],
-    ["alert", "triggerOn"]];
+    ["validation", "numSampleErrorRecords"]];
 reportConfigKeys.forEach(key => reportOptionsMap.set(key[1], configurationOptionsMap.get(key[0])[key[1]]));

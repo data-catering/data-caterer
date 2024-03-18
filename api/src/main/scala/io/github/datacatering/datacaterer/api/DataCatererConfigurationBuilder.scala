@@ -300,6 +300,9 @@ case class DataCatererConfigurationBuilder(build: DataCatererConfiguration = Dat
   def enableGenerateValidations(enable: Boolean): DataCatererConfigurationBuilder =
     this.modify(_.build.flagsConfig.enableGenerateValidations).setTo(enable)
 
+  def enableAlerts(enable: Boolean): DataCatererConfigurationBuilder =
+    this.modify(_.build.flagsConfig.enableAlerts).setTo(enable)
+
 
   def planFilePath(path: String): DataCatererConfigurationBuilder =
     this.modify(_.build.foldersConfig.planFilePath).setTo(path)
@@ -349,6 +352,12 @@ case class DataCatererConfigurationBuilder(build: DataCatererConfiguration = Dat
   def numErrorSampleRecords(numRecords: Int): DataCatererConfigurationBuilder =
     this.modify(_.build.validationConfig.numSampleErrorRecords).setTo(numRecords)
 
+  def enableDeleteRecordTrackingFiles(enable: Boolean): DataCatererConfigurationBuilder =
+    this.modify(_.build.validationConfig.enableDeleteRecordTrackingFiles).setTo(enable)
+
+
+  def alertTriggerOn(triggerOn: String): DataCatererConfigurationBuilder =
+    this.modify(_.build.alertConfig.triggerOn).setTo(triggerOn)
 
   def slackAlertToken(token: String): DataCatererConfigurationBuilder =
     this.modify(_.build.alertConfig.slackAlertConfig.token).setTo(token)

@@ -1,6 +1,6 @@
 package io.github.datacatering.datacaterer.core.ui.model
 
-import io.github.datacatering.datacaterer.api.model.Constants.{PLAN_RUN_EXECUTION_DELIMITER, PLAN_RUN_EXECUTION_DELIMITER_REGEX}
+import io.github.datacatering.datacaterer.api.model.Constants.{PLAN_RUN_EXECUTION_DELIMITER, PLAN_RUN_EXECUTION_DELIMITER_REGEX, PLAN_RUN_SUMMARY_DELIMITER}
 import io.github.datacatering.datacaterer.core.model.Constants.{TIMESTAMP_DATE_TIME_FORMATTER, TIMESTAMP_FORMAT}
 import org.joda.time.DateTime
 
@@ -79,10 +79,19 @@ case class PlanRunExecution(
                              runBy: String = "admin",
                              updatedBy: String = "admin",
                              createdTs: DateTime = DateTime.now(),
-                             updatedTs: DateTime = DateTime.now()
+                             updatedTs: DateTime = DateTime.now(),
+                             generationSummary: List[List[String]] = List(),
+                             validationSummary: List[List[String]] = List(),
+                             reportLink: Option[String] = None,
+                             timeTaken: Option[String] = None,
                            ) {
   override def toString: String = {
-    List(name, id, status, failedReason.getOrElse(""), runBy, updatedBy, createdTs.toString(TIMESTAMP_FORMAT), updatedTs.toString(TIMESTAMP_FORMAT))
+    List(name, id, status, failedReason.getOrElse(""), runBy, updatedBy,
+      createdTs.toString(TIMESTAMP_FORMAT), updatedTs.toString(TIMESTAMP_FORMAT),
+      generationSummary.map(_.mkString(",")).mkString(PLAN_RUN_SUMMARY_DELIMITER),
+      validationSummary.map(_.mkString(",")).mkString(PLAN_RUN_SUMMARY_DELIMITER),
+      reportLink.getOrElse(""), timeTaken.getOrElse("0")
+    )
       .mkString(PLAN_RUN_EXECUTION_DELIMITER) + "\n"
   }
 }
@@ -90,9 +99,12 @@ case class PlanRunExecution(
 object PlanRunExecution {
   def fromString(str: String): PlanRunExecution = {
     val spt = str.split(PLAN_RUN_EXECUTION_DELIMITER_REGEX)
-    assert(spt.length == 8, s"Unexpected number of columns saved for plan execution, $str")
+    assert(spt.length == 12, s"Unexpected number of columns saved for plan execution, $str")
     PlanRunExecution(spt.head, spt(1), spt(2), Some(spt(3)), spt(4), spt(5),
-      DateTime.parse(spt(6), TIMESTAMP_DATE_TIME_FORMATTER), DateTime.parse(spt(7), TIMESTAMP_DATE_TIME_FORMATTER))
+      DateTime.parse(spt(6), TIMESTAMP_DATE_TIME_FORMATTER), DateTime.parse(spt(7), TIMESTAMP_DATE_TIME_FORMATTER),
+      spt(8).split(PLAN_RUN_SUMMARY_DELIMITER).map(_.split(",").toList).toList,
+      spt(9).split(PLAN_RUN_SUMMARY_DELIMITER).map(_.split(",").toList).toList, Some(spt(10)), Some(spt(11))
+    )
   }
 }
 
@@ -111,7 +123,7 @@ object Connection {
     val spt = str.split(PLAN_RUN_EXECUTION_DELIMITER_REGEX)
     val options = spt.slice(2, spt.length).map(o => {
       val optSpt = o.split(":", 2)
-      (optSpt.head, optSpt.last)
+      if (optSpt.head == "password") (optSpt.head, "***") else (optSpt.head, optSpt.last)
     }).toMap
     if (spt.length > 1) {
       Connection(spt.head, spt(1), options)

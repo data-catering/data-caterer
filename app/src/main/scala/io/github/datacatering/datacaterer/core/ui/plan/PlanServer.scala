@@ -28,8 +28,8 @@ object PlanServer {
     val connectionRepository = ctx.spawn(ConnectionRepository(), "ConnectionRepository")
     val routes = new PlanRoutes(planRepository, planResponseHandler, connectionRepository)
 
-    //TODO should check if port 9090 is available, try other ports if not available
-    val server = Http().newServerAt("localhost", 9090).bind(routes.planRoutes)
+    //TODO should check if port 9898 is available, try other ports if not available
+    val server = Http().newServerAt("0.0.0.0", 9898).bind(routes.planRoutes)
 
     ctx.pipeToSelf(server) {
       case Failure(exception) => StartFailed(exception)

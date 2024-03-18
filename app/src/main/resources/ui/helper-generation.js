@@ -93,7 +93,6 @@ function createGenerationFields(dataSource, manualSchema) {
         let newField = createSchemaField(numFields);
         $(manualSchema).find(".accordion").first().append(newField);
         $(newField).find("[id^=field-name]").val(field.name)[0].dispatchEvent(new Event("input"));
-        console.log($(newField).find("select[class~=field-type]"));
         $(newField).find("select[class~=field-type]").val(field.type).selectpicker("refresh")[0].dispatchEvent(new Event("change"));
 
         if (field.options) {
@@ -110,7 +109,6 @@ function createGenerationFields(dataSource, manualSchema) {
             for (const nestedField of field.nested.fields) {
                 numFields += 1;
                 let newFieldBox = createManualSchema(numFields, "struct-schema");
-                console.log($(newField).find(".accordion-body"));
                 $(newField).find(".accordion-body").append(newFieldBox);
                 createGenerationFields(field.nested, newFieldBox);
             }
@@ -139,17 +137,14 @@ function getGenerationSchema(dataSourceSchemaContainer) {
         // need to only get first level of data-source-fields, get nested fields later
         let fieldAttributes = findNextLevelNodesByClass($(field), "data-source-field", ["data-field-container"]);
 
-        console.log(fieldAttributes);
         return fieldAttributes
             .map(attr => attr.getAttribute("aria-label") ? attr : $(attr).find(".data-source-field")[0])
             .reduce((options, attr) => {
-                console.log(attr);
                 let label = camelize(attr.getAttribute("aria-label"));
                 let fieldValue = attr.value;
                 if (label === "type" && fieldValue === "struct") {
                     // nested fields can be defined
                     let innerStructSchema = field.querySelector(".data-source-schema-container-struct-schema");
-                    console.log(innerStructSchema);
                     options[label] = fieldValue;
                     options["nested"] = {fields: getGenerationSchema(innerStructSchema)};
                 } else if (label === "name" || label === "type") {

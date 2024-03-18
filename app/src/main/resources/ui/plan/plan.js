@@ -6,7 +6,7 @@ let numPlans = 0;
 getExistingPlans();
 
 function getExistingPlans() {
-    fetch("http://localhost:9090/plans", {
+    fetch("http://localhost:9898/plans", {
         method: "GET"
     })
         .then(r => {
@@ -32,7 +32,7 @@ function getExistingPlans() {
                 let deleteButton = createButton(`plan-delete-${numPlans}`, "Plan delete", "btn btn-danger", "Delete");
 
                 editButton.addEventListener("click", function() {
-                    location.href = `http://localhost:9090/?plan-name=${plan.name}`;
+                    location.href = `http://localhost:9898/?plan-name=${plan.name}`;
                 });
 
                 let buttonGroup = createButtonGroup(editButton, executeButton, deleteButton);

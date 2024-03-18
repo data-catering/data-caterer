@@ -2,10 +2,24 @@ package io.github.datacatering.datacaterer.core.model
 
 import io.github.datacatering.datacaterer.api.model.Constants.DEFAULT_DATA_SOURCE_NAME
 import io.github.datacatering.datacaterer.api.model.{Field, Step, Task}
+import io.github.datacatering.datacaterer.core.util.ResultWriterUtil.getSuccessSymbol
 
 import java.time.{Duration, LocalDateTime}
 
-case class PlanRunResults(generationResults: List[DataSourceResult], validationResults: List[ValidationConfigResult], optReportPath: Option[String] = None)
+case class PlanRunResults(generationResults: List[DataSourceResult], validationResults: List[ValidationConfigResult], optReportPath: Option[String] = None) {
+
+  def summariseGenerationResults: (List[List[String]], Long) = {
+    val timeTaken = generationResults.map(_.sinkResult.durationInSeconds).max
+    val dataSourceSummary = generationResults.map(_.summarise)
+    (dataSourceSummary, timeTaken)
+  }
+
+  def summariseValidationResults: (List[List[String]], Long) = {
+    val timeTaken = validationResults.map(_.durationInSeconds).sum
+    val validationSummary = validationResults.map(_.summarise)
+    (validationSummary, timeTaken)
+  }
+}
 
 case class DataSourceResultSummary(
                                     name: String,
@@ -20,7 +34,16 @@ case class DataSourceResult(
                              step: Step = Step(),
                              sinkResult: SinkResult = SinkResult(),
                              batchNum: Int = 0
-                           )
+                           ) {
+
+  def summarise: List[String] = {
+    val format = sinkResult.format
+    val isSuccess = getSuccessSymbol(sinkResult.isSuccess)
+    val numRecords = sinkResult.count.toString
+    List(name, format, isSuccess, numRecords)
+  }
+
+}
 
 case class TaskResultSummary(
                               task: Task,

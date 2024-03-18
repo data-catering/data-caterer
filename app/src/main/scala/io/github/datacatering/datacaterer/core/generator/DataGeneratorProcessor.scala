@@ -64,7 +64,10 @@ class DataGeneratorProcessor(dataCatererConfiguration: DataCatererConfiguration)
       } else List()
 
       applyPostPlanProcessors(plan, sparkRecordListener, generationResult, validationResults)
-      PlanRunResults(generationResult, validationResults)
+      val optReportPath = if (flagsConfig.enableSaveReports) {
+        plan.runId.map(id => s"${foldersConfig.generatedReportsFolderPath}/$id").orElse(Some(foldersConfig.generatedReportsFolderPath))
+      } else None
+      PlanRunResults(generationResult, validationResults, optReportPath)
     }
   }
 

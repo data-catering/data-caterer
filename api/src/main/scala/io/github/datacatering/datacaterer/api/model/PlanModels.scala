@@ -10,7 +10,8 @@ case class Plan(
                  description: String = "Data generation plan",
                  tasks: List[TaskSummary] = List(),
                  sinkOptions: Option[SinkOptions] = None,
-                 validations: List[String] = List()
+                 validations: List[String] = List(),
+                 runId: Option[String] = None
                )
 
 case class SinkOptions(

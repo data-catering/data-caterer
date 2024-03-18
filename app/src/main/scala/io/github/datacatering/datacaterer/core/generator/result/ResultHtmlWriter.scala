@@ -687,8 +687,6 @@ class ResultHtmlWriter {
          |  var newFieldMetadata = document.getElementById('field-metadata-' + step).cloneNode(true);
          |  var currentFieldMetadata = document.getElementById('current-field-metadata');
          |  collapseOnClick(newFieldMetadata);
-         |  console.log(newFieldMetadata);
-         |  console.log(currentFieldMetadata);
          |  currentFieldMetadata.replaceChild(newFieldMetadata, currentFieldMetadata.children[0])
          |
          |  var closestCell = e.parentElement,

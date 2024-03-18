@@ -40,10 +40,11 @@ class DataGenerationResultWriter(val dataCatererConfiguration: DataCatererConfig
     val (stepSummary, taskSummary, dataSourceSummary) = getSummaries(generationResult)
     val fileSystem = FileSystem.get(sparkSession.sparkContext.hadoopConfiguration)
     fileSystem.setWriteChecksum(false)
+    val reportFolder = plan.runId.map(id => s"${foldersConfig.generatedReportsFolderPath}/$id").getOrElse(foldersConfig.generatedReportsFolderPath)
 
-    LOGGER.info(s"Writing data generation summary to HTML files, folder-path=${foldersConfig.generatedReportsFolderPath}")
+    LOGGER.info(s"Writing data generation summary to HTML files, folder-path=$reportFolder")
     val htmlWriter = new ResultHtmlWriter()
-    val fileWriter = writeToFile(fileSystem, foldersConfig.generatedReportsFolderPath) _
+    val fileWriter = writeToFile(fileSystem, reportFolder) _
 
     try {
       fileWriter(REPORT_HOME_HTML, htmlWriter.index(plan, stepSummary, taskSummary, dataSourceSummary,
@@ -53,14 +54,14 @@ class DataGenerationResultWriter(val dataCatererConfiguration: DataCatererConfig
       fileWriter(REPORT_DATA_SOURCES_HTML, htmlWriter.dataSourceDetails(stepSummary.flatMap(_.dataSourceResults)))
       fileWriter(REPORT_VALIDATIONS_HTML, htmlWriter.validations(validationResults))
 
-      copyHtmlResources(fileSystem)
+      copyHtmlResources(fileSystem, reportFolder)
     } catch {
       case ex: Exception =>
         LOGGER.error("Failed to write data generation summary to HTML files", ex)
     }
   }
 
-  private def copyHtmlResources(fileSystem: FileSystem): Unit = {
+  private def copyHtmlResources(fileSystem: FileSystem, folder: String): Unit = {
     val resources = List("main.css", "data_catering_transparent.svg")
     if (!foldersConfig.generatedReportsFolderPath.equalsIgnoreCase(DEFAULT_GENERATED_REPORTS_FOLDER_PATH)) {
       resources.foreach(resource => {
@@ -76,7 +77,7 @@ class DataGenerationResultWriter(val dataCatererConfiguration: DataCatererConfig
                 if (name.startsWith("jar:")) defaultResourcePath else value
             }
         }
-        val destination = s"file:///${foldersConfig.generatedReportsFolderPath}/$resource"
+        val destination = s"file:///$folder/$resource"
         fileSystem.copyFromLocalFile(resourcePath, new Path(destination))
       })
     }

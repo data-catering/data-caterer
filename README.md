@@ -24,6 +24,13 @@ Full docs can be found [**here**](https://data.catering).
 ## Quick start
 
 ```shell
+docker run -d -i -p 9898:9898 -e DEPLOY_MODE=standalone --name datacaterer datacatering/data-caterer:0.7.0
+# open localhost:9898 in your browser
+```
+
+OR
+
+```shell
 git clone git@github.com:data-catering/data-caterer-example.git
 cd data-caterer-example && ./run.sh
 #check results under docker/sample/report/index.html folder
@@ -123,11 +130,20 @@ This is inspired by the [mkdocs-material project](https://github.com/squidfunk/m
 
 #### Distribution
 
+##### Docker
+
+```shell
+gradle clean :api:shadowJar :app:shadowJar
+docker build --build-arg "APP_VERSION=0.7.0" --build-arg "SPARK_VERSION=3.5.0" --no-cache -t datacatering/data-caterer:0.7.0 .
+docker run -d -i -p 9898:9898 -e DEPLOY_MODE=standalone --name datacaterer datacatering/data-caterer:0.7.0
+curl localhost:9898
+```
+
 ##### Jpackage
 
 ```bash
-gradle clean shadowJar
-jpackage --input app/build/libs/ --name DataCaterer --main-jar app-0.6.0-all.jar --main-class io.github.datacatering.datacaterer.core.ui.AkkaHttpServer --type dmg \
+gradle clean :api:shadowJar :app:shadowJar
+jpackage --input app/build/libs/ --name DataCaterer --main-jar app-0.7.0-all.jar --main-class io.github.datacatering.datacaterer.core.ui.AkkaHttpServer --type dmg \
    --java-options "-XX:+IgnoreUnrecognizedVMOptions" \
    --java-options "--add-opens=java.base/java.lang=ALL-UNNAMED" \
    --java-options "--add-opens=java.base/java.lang.invoke=ALL-UNNAMED" \

@@ -7,6 +7,7 @@ import akka.http.scaladsl.model.StatusCodes.{BadRequest, InternalServerError}
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.{ExceptionHandler, Route}
 import akka.util.Timeout
+import io.github.datacatering.datacaterer.core.ui.config.UiConfiguration.INSTALL_DIRECTORY
 import io.github.datacatering.datacaterer.core.ui.model.{JsonSupport, PlanRunRequest, SaveConnectionsRequest}
 import org.apache.log4j.Logger
 
@@ -104,10 +105,18 @@ class PlanRoutes(
           }
         },
         path("""[a-z0-9-]+""".r) { connectionName =>
-          val connection = connectionRepository.ask(a => ConnectionRepository.GetConnection(connectionName, a))
-          rejectEmptyResponse {
-            complete(connection)
-          }
+          concat(
+            get {
+              val connection = connectionRepository.ask(a => ConnectionRepository.GetConnection(connectionName, a))
+              rejectEmptyResponse {
+                complete(connection)
+              }
+            },
+            delete {
+              connectionRepository ! ConnectionRepository.RemoveConnection(connectionName)
+              complete("Removed")
+            }
+          )
         }
       )
     },
@@ -137,6 +146,11 @@ class PlanRoutes(
       val plans = planRepository.ask(PlanRepository.GetPlans)
       rejectEmptyResponse {
         complete(plans)
+      }
+    },
+    pathPrefix("report" / """^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$""".r / Remaining) { (runId, resource) =>
+      get {
+        getFromFile(s"$INSTALL_DIRECTORY/report/$runId/$resource")
       }
     },
     path("shutdown") {

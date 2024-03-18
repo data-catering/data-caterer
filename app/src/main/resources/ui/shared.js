@@ -408,10 +408,13 @@ function createAttributeFormFloating(attrMetadata, attributeContainerId, inputCl
     } else if (attrMetadata["type"] === "badge") {
         return createBadge(attribute);
     } else {
-        inputAttr = createInput(attributeContainerId, attribute, `form-control input-field ${inputClass} is-invalid`, attrMetadata["type"], attrMetadata["default"]);
-        if (!attrMetadata["disabled"]) {
+        inputAttr = createInput(attributeContainerId, attribute, `form-control input-field ${inputClass}`, attrMetadata["type"], attrMetadata["default"]);
+        if (attrMetadata["disabled"] !== "") {
+            if (!attrMetadata["default"] || attrMetadata["default"] === "") {
+                inputAttr.classList.add("is-invalid");
+                createFieldValidationCheck(inputAttr);
+            }
             inputAttr.setAttribute("required", "");
-            createFieldValidationCheck(inputAttr);
         }
         inputAttr.dispatchEvent(new Event("input"));
     }
@@ -467,7 +470,7 @@ function addClickListenForAttributeMenu(addAttributeButton, menu, element, eleme
 export function createButtonGroup(...args) {
     let divContainer = document.createElement("div");
     divContainer.setAttribute("class", "d-flex position-absolute");
-    divContainer.setAttribute("style", "right:10px; z-index:1000;");
+    divContainer.setAttribute("style", "right:10px; z-index:3;");
     let buttonGroup = document.createElement("div");
     buttonGroup.setAttribute("class", "btn-group");
     buttonGroup.setAttribute("role", "group");
@@ -497,7 +500,7 @@ export function createToast(header, message, type) {
     toast.setAttribute("aria-live", "assertive");
     toast.setAttribute("aria-atomic", "true");
     let toastHeader = document.createElement("div");
-    toastHeader.setAttribute("class", "toast-header");
+    toastHeader.setAttribute("class", "toast-header mr-2");
     let icon = document.createElement("i");
     if (type === "success") {
         icon.setAttribute("class", "bi bi-check-square-fill");

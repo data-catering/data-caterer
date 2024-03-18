@@ -163,7 +163,7 @@ function createIconWithConnectionTooltip(dataConnectionSelect) {
     // on select change, update icon title
     dataConnectionSelect.addEventListener("change", (event) => {
         let connectionName = event.target.value;
-        fetch(`http://localhost:9090/connection/${connectionName}`, {method: "GET"})
+        fetch(`http://localhost:9898/connection/${connectionName}`, {method: "GET"})
             .then(r => {
                 if (r.ok) {
                     return r.json();
@@ -219,7 +219,7 @@ async function createDataConnectionInput(index) {
     baseTaskDiv.append(taskNameFormFloating, dataConnectionCol, iconCol);
 
     //get list of existing data connections
-    await fetch("http://localhost:9090/connections", {method: "GET"})
+    await fetch("http://localhost:9898/connections", {method: "GET"})
         .then(r => {
             if (r.ok) {
                 return r.json();
@@ -243,6 +243,7 @@ async function createDataConnectionInput(index) {
                 }
             }
         });
+    $(dataConnectionSelect).selectpicker();
 
     // if list of connections is empty, provide button to add new connection
     if (dataConnectionSelect.childElementCount > 0) {
@@ -331,11 +332,10 @@ function submitForm() {
     let form = document.getElementById("plan-form");
     let submitPlanButton = document.getElementById("submit-plan");
     submitPlanButton.addEventListener("click", function () {
-        let allCollapsedAccordionButton = $(document).find(".accordion-button.collapsed");
-        allCollapsedAccordionButton.click();
+        expandAllButton.dispatchEvent(new Event("click"));
         let isValid = form.checkValidity();
         if (isValid) {
-            allCollapsedAccordionButton.click();
+            wait(500).then(r => collapseAllButton.dispatchEvent(new Event("click")));
             $(form).submit();
         } else {
             form.reportValidity();
@@ -347,7 +347,7 @@ function submitForm() {
         // collect all the user inputs
         let {planName, runId, requestBody} = getPlanDetails(form);
         console.log(JSON.stringify(requestBody));
-        fetch("http://localhost:9090/run", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(requestBody)})
+        fetch("http://localhost:9898/run", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(requestBody)})
             .catch(err => {
                 console.error(err);
                 new bootstrap.Toast(
@@ -372,7 +372,7 @@ function submitForm() {
                 // poll every 1 second for status of plan run
                 let currentStatus = "started";
                 while (currentStatus !== "finished" && currentStatus !== "failed") {
-                    await fetch(`http://localhost:9090/run/status/${runId}`, {method: "GET", headers: {Accept: "application/json"}})
+                    await fetch(`http://localhost:9898/run/status/${runId}`, {method: "GET", headers: {Accept: "application/json"}})
                         .catch(err => {
                             console.error(err);
                             const toast = new bootstrap.Toast(createToast(planName, `Plan ${planName} failed! Error: ${err}`, "fail"));
@@ -421,7 +421,7 @@ function savePlan() {
         let form = document.getElementById("plan-form");
         let {planName, requestBody} = getPlanDetails(form);
         console.log(JSON.stringify(requestBody));
-        fetch("http://localhost:9090/plan", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(requestBody)})
+        fetch("http://localhost:9898/plan", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(requestBody)})
             .catch(err => {
                 console.error(err);
                 new bootstrap.Toast(createToast(planName, `Plan save failed! Error: ${err}`, "fail")).show();
@@ -461,7 +461,7 @@ const currUrlParams = window.location.search.substring(1);
 if (currUrlParams.includes("plan-name=")) {
     // then get the plan details and fill in the form
     let planName = currUrlParams.substring(currUrlParams.indexOf("=") + 1);
-    await fetch(`http://localhost:9090/plan/${planName}`, {method: "GET"})
+    await fetch(`http://localhost:9898/plan/${planName}`, {method: "GET"})
         .then(r => {
             if (r.ok) {
                 return r.json();
@@ -484,7 +484,7 @@ if (currUrlParams.includes("plan-name=")) {
                 let newDataSource = await createDataSourceForPlan(numDataSources);
                 tasksDetailsBody.append(newDataSource);
                 $(newDataSource).find(".task-name-field").val(dataSource.taskName);
-                $(newDataSource).find(".data-connection-name").val(dataSource.name);
+                $(newDataSource).find(".data-connection-name").val(dataSource.name).selectpicker("refresh")[0].dispatchEvent(new Event("change"));
 
                 createGenerationElements(dataSource, newDataSource, numDataSources);
                 createCountElementsFromPlan(dataSource, newDataSource);

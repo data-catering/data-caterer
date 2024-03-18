@@ -43,9 +43,9 @@ configurations {
 }
 
 dependencies {
-    basicImpl("org.scala-lang:scala-library:$scalaSpecificVersion")
-    basicImpl("org.apache.spark:spark-sql_$scalaVersion:$sparkVersion")
-    basicImpl(project(":api"))
+    compileOnly("org.scala-lang:scala-library:$scalaSpecificVersion")   //change to basicImpl for jpackage
+    compileOnly("org.apache.spark:spark-sql_$scalaVersion:$sparkVersion")
+    compileOnly(project(":api"))
 
     // connectors
     // postgres
@@ -68,7 +68,7 @@ dependencies {
     basicImpl("org.apache.iceberg:iceberg-spark-runtime-${sparkMajorVersion}_$scalaVersion:1.4.3") {
         exclude(group = "org.scala-lang")
     }
-//    // delta lake
+    // delta lake
 //    basicImpl("io.delta:delta-spark_$scalaVersion:3.1.0") {
 //        exclude(group = "org.scala-lang")
 //    }

@@ -37,7 +37,7 @@ trait JsonSupport {
   implicit val planRunRequestFormat: RootJsonFormat[PlanRunRequest] = jsonFormat5(PlanRunRequest.apply)
   implicit val planRunRequestsFormat: RootJsonFormat[PlanRunRequests] = jsonFormat1(PlanRunRequests.apply)
   implicit val dateTimeFormat: RootJsonFormat[DateTime] = DateTimeFormat
-  implicit val planRunExecutionFormat: RootJsonFormat[PlanRunExecution] = jsonFormat8(PlanRunExecution.apply)
+  implicit val planRunExecutionFormat: RootJsonFormat[PlanRunExecution] = jsonFormat12(PlanRunExecution.apply)
   implicit val executionsByIdFormat: RootJsonFormat[ExecutionsById] = jsonFormat2(ExecutionsById.apply)
   implicit val groupedPlanRunsByNameFormat: RootJsonFormat[GroupedPlanRunsByName] = jsonFormat2(GroupedPlanRunsByName.apply)
   implicit val planRunExecutionDetailsFormat: RootJsonFormat[PlanRunExecutionDetails] = jsonFormat1(PlanRunExecutionDetails.apply)

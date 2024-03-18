@@ -20,20 +20,24 @@ class SlackAlertProcessor(slackAlertConfig: SlackAlertConfig) {
                   validationResults: List[ValidationConfigResult],
                   optReportFolderPath: Option[String] = None
                 ): Unit = {
-    val slack = Slack.getInstance()
-    val methods = slack.methods(slackAlertConfig.token)
+    if (slackAlertConfig.token.nonEmpty && slackAlertConfig.channels.nonEmpty) {
+      val slack = Slack.getInstance()
+      val methods = slack.methods(slackAlertConfig.token)
 
-    slackAlertConfig.channels.foreach(channel => {
-      val messageHeader = "*Data Caterer Run Results*"
-      val dataGenResultStr = dataGenerationResultText(generationResult)
-      val validationResStr = validationResultText(validationResults)
-      val reportFooter = optReportFolderPath
-        .map(p => s"For more details, check the report generated here: `file:///$p/$REPORT_HOME_HTML` (copy and paste into browser URL)")
-        .getOrElse("No report generated. Please enable via: `plan.enableSaveReports(true)` if you want to find more details.")
+      slackAlertConfig.channels.foreach(channel => {
+        val messageHeader = "*Data Caterer Run Results*"
+        val dataGenResultStr = dataGenerationResultText(generationResult)
+        val validationResStr = validationResultText(validationResults)
+        val reportFooter = optReportFolderPath
+          .map(p => s"For more details, check the report generated here: `file:///$p/$REPORT_HOME_HTML` (copy and paste into browser URL)")
+          .getOrElse("No report generated. Please enable via: `plan.enableSaveReports(true)` if you want to find more details.")
 
-      val messageText = s"$messageHeader\n$dataGenResultStr\n$validationResStr\n---\n$reportFooter"
-      sendMessage(methods, channel, messageText)
-    })
+        val messageText = s"$messageHeader\n$dataGenResultStr\n$validationResStr\n---\n$reportFooter"
+        sendMessage(methods, channel, messageText)
+      })
+    } else {
+      LOGGER.debug("Slack token and/or channels are empty, unable to send any Slack alerts")
+    }
   }
 
   private def sendMessage(methods: MethodsClient, channel: String, messageText: String): Unit = {
@@ -59,13 +63,7 @@ class SlackAlertProcessor(slackAlertConfig: SlackAlertConfig) {
     if (generationResult.nonEmpty) {
       val timeTaken = generationResult.map(_.sinkResult.durationInSeconds).max
       val startGenerationText = s"*Data Generation Summary*\nTime taken: ${timeTaken}s"
-      val mappedResults = generationResult.map(dataSourceResult => {
-        val name = dataSourceResult.name
-        val format = dataSourceResult.sinkResult.format
-        val isSuccess = getSuccessSymbol(dataSourceResult.sinkResult.isSuccess)
-        val numRecords = dataSourceResult.sinkResult.count.toString
-        List(name, format, isSuccess, numRecords)
-      })
+      val mappedResults = generationResult.map(_.summarise)
       val header = List(List("Data Source Name", "Format", "Success", "Num Records"))
       startGenerationText + "\n" + formatTable(header ++ mappedResults)
     } else {
@@ -77,18 +75,7 @@ class SlackAlertProcessor(slackAlertConfig: SlackAlertConfig) {
     if (validationResults.nonEmpty) {
       val timeTaken = validationResults.map(_.durationInSeconds).sum
       val startValidationText = s"*Data Validation Summary*\nTime taken: ${timeTaken}s"
-      val mappedResults = validationResults.map(validationConfigResult => {
-        val validationName = validationConfigResult.name
-        val validationDesc = validationConfigResult.description
-        val validationRes = validationConfigResult.dataSourceValidationResults.flatMap(_.validationResults)
-        val validationSuccess = validationRes.map(_.isSuccess)
-        val numSuccess = validationSuccess.count(x => x)
-        val successRate = BigDecimal(numSuccess.toDouble / validationRes.size * 100).setScale(2, RoundingMode.HALF_UP)
-        val isSuccess = getSuccessSymbol(validationSuccess.forall(x => x))
-        val successRateVisual = s"$numSuccess/${validationRes.size} ($successRate%)"
-
-        List(validationName, validationDesc, isSuccess, successRateVisual)
-      })
+      val mappedResults = validationResults.map(_.summarise)
       val header = List(List("Name", "Description", "Success", "Success Rate"))
       startValidationText + "\n" + formatTable(header ++ mappedResults)
     } else {

@@ -89,7 +89,7 @@ class BatchDataProcessor(connectionConfigsByName: Map[String, Map[String, String
 
   private def getUniqueGeneratedRecords(uniqueFieldUtil: UniqueFieldsUtil, s: Step, dataSourceStepName: String, genDf: DataFrame): DataFrame = {
     if (s.gatherUniqueFields.nonEmpty || s.gatherPrimaryKeys.nonEmpty) {
-      LOGGER.info(s"Ensuring field values are unique since there are fields with isUnique or isPrimaryKey set to true, " +
+      LOGGER.debug(s"Ensuring field values are unique since there are fields with isUnique or isPrimaryKey set to true, " +
         s"data-source-step-name=$dataSourceStepName")
       uniqueFieldUtil.getUniqueFieldsValues(dataSourceStepName, genDf)
     } else {

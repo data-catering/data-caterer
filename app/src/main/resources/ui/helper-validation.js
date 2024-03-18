@@ -89,7 +89,7 @@ async function createNestedValidations(dataSource, manualValidation) {
         numValidations += 1;
         let newValidation = await createValidation(numValidations);
         $(manualValidation).children(".accordion").append(newValidation);
-        $(newValidation).find(".validation-type").val(validation.type)[0].dispatchEvent(new Event("change"));
+        $(newValidation).find("select[class~=validation-type]").val(validation.type).selectpicker("refresh")[0].dispatchEvent(new Event("change"));
         let validationOpts = validation.options;
         let mainContainer = $(newValidation).find(".data-validation-container")[0];
 
@@ -133,7 +133,7 @@ function getValidationsFromContainer(dataSourceValidations, visitedValidations) 
         let validationAttributes = findNextLevelNodesByClass($(validation), "data-validation-field", ["card", "data-validation-container", "data-source-validation-container-nested-validation"]);
 
         return validationAttributes
-            .filter(attr => attr.getAttribute("aria-label"))
+            .map(attr => attr.getAttribute("aria-label") ? attr : $(attr).find(".data-validation-field")[0])
             .reduce((options, attr) => {
                 let validationId = attr.getAttribute("id");
                 if (!visitedValidations.has(validationId)) {
@@ -141,7 +141,7 @@ function getValidationsFromContainer(dataSourceValidations, visitedValidations) 
                     let label = camelize(attr.getAttribute("aria-label"));
                     let fieldValue = attr.value;
                     if (label === "type" && (fieldValue === "upstream" || fieldValue === "groupBy")) {
-                        // nested fields can be defined
+                        // nested fields can be defined for upstream and groupBy
                         let nestedValidations = Array.from(validation.querySelectorAll(".data-source-validation-container-nested-validation").values());
                         let allNestedValidations = [];
                         for (let nestedValidation of nestedValidations) {
@@ -187,6 +187,8 @@ function getValidationsFromContainer(dataSourceValidations, visitedValidations) 
                                         currOpts.set(equalLabel, fieldValue);
                                         break;
                                 }
+                            } else {
+                                currOpts.set(label, fieldValue);
                             }
                         } else {
                             currOpts.set(label, fieldValue);
@@ -230,7 +232,7 @@ export function addColumnValidationBlock(newAttributeRow, mainContainer, attribu
         // check if attribute already exists
         if ($(newAttributeRow).find(`[aria-label=${attribute}]`).length === 0) {
             let validationMetadata = validationTypeOptionsMap.get("column")[attribute];
-            addNewDataTypeAttribute(attribute, validationMetadata, attributeContainerId, inputClass, newAttributeRow);
+            addNewDataTypeAttribute(attribute, validationMetadata, `${attributeContainerId}-${attribute}`, inputClass, newAttributeRow);
         }
     });
 }
@@ -280,6 +282,7 @@ function createValidation(index) {
     accordionItem.classList.add("accordion-data-validation-container");
     validationContainerHeadRow.append(validationTypeCol);
     createDataOrValidationTypeAttributes(validationContainerHeadRow, "validation-type");
+    $(validationTypeSelect).selectpicker();
     // on select change and input of default-attribute, update accordion button
     let accordionButton = $(accordionItem).find(".accordion-button")[0];
     validationTypeSelect.addEventListener("change", (event) => {

@@ -51,6 +51,7 @@ object ConnectionRepository extends JsonSupport {
           replyTo ! getAllConnections
           Behaviors.same
         case RemoveConnection(name) =>
+          removeConnection(name)
           Behaviors.same
       }
     }.onFailure(SupervisorStrategy.restart)
@@ -90,5 +91,11 @@ object ConnectionRepository extends JsonSupport {
       .toList
       .sortBy(_.name)
     GetConnectionsResponse(connections)
+  }
+
+  private def removeConnection(connectionName: String): Boolean = {
+    LOGGER.warn(s"Removing connections details from file system, connection-name=$connectionName")
+    val connectionFile = Path.of(s"$connectionSaveFolder/$connectionName.csv").toFile
+    if (connectionFile.exists()) connectionFile.delete() else false
   }
 }

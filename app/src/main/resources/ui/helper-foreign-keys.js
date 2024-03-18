@@ -46,7 +46,7 @@ export function createForeignKeysFromPlan(respJson) {
             foreignKeysContainer.append(newForeignKey);
 
             if (foreignKey.source) {
-                $(newForeignKey).find("select.foreign-key-source").val(foreignKey.source.taskName)[0].dispatchEvent(new Event("input"));
+                $(newForeignKey).find("select.foreign-key-source").val(foreignKey.source.taskName).selectpicker("refresh")[0].dispatchEvent(new Event("change"));
                 $(newForeignKey).find("input.foreign-key-source").val(foreignKey.source.columns)[0].dispatchEvent(new Event("input"));
             }
 
@@ -57,7 +57,7 @@ export function createForeignKeysFromPlan(respJson) {
                 for (const fkLink of foreignKey.links) {
                     let newForeignKeyLink = createForeignKeyInput(numForeignKeysLinks, "foreign-key-link");
                     foreignKeyLinkSources.insertBefore(newForeignKeyLink, foreignKeyLinkSources.lastChild);
-                    $(newForeignKeyLink).find("select.foreign-key-link").val(fkLink.taskName)[0].dispatchEvent(new Event("input"));
+                    $(newForeignKeyLink).find("select.foreign-key-link").val(fkLink.taskName).selectpicker("refresh")[0].dispatchEvent(new Event("change"));
                     $(newForeignKeyLink).find("input.foreign-key-link").val(fkLink.columns)[0].dispatchEvent(new Event("input"));
                 }
             }

@@ -420,6 +420,45 @@ object Constants {
   lazy val VALIDATION_COLUMN_NAME_MATCH_ORDER = "column_name_match_order"
   lazy val VALIDATION_COLUMN_NAME_MATCH_SET = "column_name_match_set"
 
+  //configuration names
+  //flags config
+  lazy val CONFIG_FLAGS_COUNT = "enableCount"
+  lazy val CONFIG_FLAGS_GENERATE_DATA = "enableGenerateData"
+  lazy val CONFIG_FLAGS_RECORD_TRACKING = "enableRecordTracking"
+  lazy val CONFIG_FLAGS_DELETE_GENERATED_RECORDS = "enableDeleteGeneratedRecords"
+  lazy val CONFIG_FLAGS_GENERATE_PLAN_AND_TASKS = "enableGeneratePlanAndTasks"
+  lazy val CONFIG_FLAGS_FAIL_ON_ERROR = "enableFailOnError"
+  lazy val CONFIG_FLAGS_UNIQUE_CHECK = "enableUniqueCheck"
+  lazy val CONFIG_FLAGS_SINK_METADATA = "enableSinkMetadata"
+  lazy val CONFIG_FLAGS_SAVE_REPORTS = "enableSaveReports"
+  lazy val CONFIG_FLAGS_VALIDATION = "enableValidation"
+  lazy val CONFIG_FLAGS_GENERATE_VALIDATIONS = "enableGenerateValidations"
+  lazy val CONFIG_FLAGS_ALERTS = "enableAlerts"
+  //folder config
+  lazy val CONFIG_FOLDER_PLAN_FILE_PATH = "planFilePath"
+  lazy val CONFIG_FOLDER_TASK_FOLDER_PATH = "taskFolderPath"
+  lazy val CONFIG_FOLDER_GENERATED_PLAN_AND_TASK_FOLDER_PATH = "generatedPlanAndTasksFolderPath"
+  lazy val CONFIG_FOLDER_GENERATED_REPORTS_FOLDER_PATH = "generatedReportsFolderPath"
+  lazy val CONFIG_FOLDER_RECORD_TRACKING_FOLDER_PATH = "recordTrackingFolderPath"
+  lazy val CONFIG_FOLDER_VALIDATION_FOLDER_PATH = "validationFolderPath"
+  lazy val CONFIG_FOLDER_RECORD_TRACKING_FOR_VALIDATION_FOLDER_PATH = "recordTrackingForValidationFolderPath"
+  //metadata config
+  lazy val CONFIG_METADATA_NUM_RECORDS_FROM_DATA_SOURCE = "numRecordsFromDataSource"
+  lazy val CONFIG_METADATA_NUM_RECORDS_FOR_ANALYSIS = "numRecordsForAnalysis"
+  lazy val CONFIG_METADATA_ONE_OF_DISTINCT_COUNT_VS_COUNT_THRESHOLD = "oneOfDistinctCountVsCountThreshold"
+  lazy val CONFIG_METADATA_ONE_OF_MIN_COUNT = "oneOfMinCount"
+  lazy val CONFIG_METADATA_NUM_GENERATED_SAMPLES = "numGeneratedSamples"
+  //generation config
+  lazy val CONFIG_GENERATION_NUM_RECORDS_PER_BATCH = "numRecordsPerBatch"
+  lazy val CONFIG_GENERATION_NUM_RECORDS_PER_STEP = "numRecordsPerStep"
+  //validation config
+  lazy val CONFIG_VALIDATION_NUM_SAMPLE_ERROR_RECORDS = "numSampleErrorRecords"
+  lazy val CONFIG_VALIDATION_ENABLE_DELETE_RECORD_TRACKING_FILES = "enableDeleteRecordTrackingFiles"
+  //alert config
+  lazy val CONFIG_ALERT_TRIGGER_ON = "triggerOn"
+  lazy val CONFIG_ALERT_SLACK_TOKEN = "slackToken"
+  lazy val CONFIG_ALERT_SLACK_CHANNELS = "slackChannels"
+
   //alert trigger on
   lazy val ALERT_TRIGGER_ON_ALL = "all"
   lazy val ALERT_TRIGGER_ON_FAILURE = "failure"
@@ -435,5 +474,6 @@ object Constants {
   //ui
   lazy val PLAN_RUN_EXECUTION_DELIMITER = "||"
   lazy val PLAN_RUN_EXECUTION_DELIMITER_REGEX = "\\|\\|"
+  lazy val PLAN_RUN_SUMMARY_DELIMITER = "&&"
 
 }

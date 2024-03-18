@@ -1,4 +1,3 @@
-
 /*
 Configuration for job execution. Includes:
 - Flags for enabling/disabling features
@@ -10,7 +9,7 @@ Configuration for job execution. Includes:
 - Runtime
  */
 import {createAccordionItem, createFormFloating, createFormText, createInput, createSelect} from "./shared.js";
-import {configurationOptionsMap} from "./configuration-data.js";
+import {configurationOptionsMap, reportOptionsMap} from "./configuration-data.js";
 
 export function createConfiguration() {
     let configurationContainer = document.createElement("div");
@@ -23,8 +22,11 @@ export function createConfiguration() {
         let configOptionsContainer = document.createElement("div");
         configOptionsContainer.setAttribute("class", "m-1 configuration-options-container");
         for (let [optKey, options] of Object.entries(configOptions)) {
-            let newConfigOptionRow = createNewConfigRow(configKey, optKey, options);
-            configOptionsContainer.append(newConfigOptionRow);
+            // check if config is already included in the alert section, if not, add it
+            if (!reportOptionsMap.has(optKey)) {
+                let newConfigOptionRow = createNewConfigRow(configKey, optKey, options);
+                configOptionsContainer.append(newConfigOptionRow);
+            }
         }
         let accordionItem = createAccordionItem(`config-${configIndex}`, header, "", configOptionsContainer);
         configurationContainer.append(accordionItem);
@@ -54,7 +56,7 @@ export function getConfiguration() {
     let mappedConfiguration = new Map();
     configurationOptionContainers.forEach(configurationOptionContainer => {
         let inputConfigurations = Array.from(configurationOptionContainer.querySelectorAll(".input-configuration").values());
-        let baseConfig = inputConfigurations[0].getAttribute("configuration-parent");
+        let baseConfig = $(inputConfigurations).closest("[configuration-parent]").attr("configuration-parent");
         let options = new Map();
         for (let option of inputConfigurations) {
             if (option.getAttribute("type") === "checkbox") {
@@ -109,7 +111,8 @@ function createConfigurationOption(configKey, config, options) {
         let selectInput = createSelect(`select-${config}`, configLabel, "selectpicker form-control input-field input-configuration m-1");
         selectInput.setAttribute("configuration-parent", configKey);
         selectInput.setAttribute("configuration", options.configName);
-        $(selectInput).selectpicker();
+        selectInput.setAttribute("title", `Select ${configLabel} option...`);
+        selectInput.setAttribute("data-header", `Select ${configLabel} option...`);
         for (let choice of options.choice) {
             let option = document.createElement("option");
             option.setAttribute("value", choice.toString());
@@ -119,9 +122,8 @@ function createConfigurationOption(configKey, config, options) {
             }
             selectInput.append(option);
         }
-        let formFloatingAttr = createFormFloating(configLabel, selectInput);
-        // formFloatingAttr.setAttribute("class", "");
-        colWrapper.append(formFloatingAttr);
+        colWrapper.append(selectInput);
+        $(selectInput).selectpicker();
     } else {
         let formInput = createInput(`config-${config}`, config, "form-control input-field input-configuration", options.type, options["default"]);
         formInput.setAttribute("configuration-parent", configKey);
@@ -133,7 +135,6 @@ function createConfigurationOption(configKey, config, options) {
             }
         }
         let formFloatingAttr = createFormFloating(configLabel, formInput);
-        // formFloatingAttr.setAttribute("class", "form-floating");
         colWrapper.append(formFloatingAttr);
     }
     return colWrapper;
