@@ -52,7 +52,7 @@ object PlanServer {
         case StartFailed(cause) =>
           throw new RuntimeException("Server failed to start", cause)
         case Started(binding) =>
-          val server = s"http://${binding.localAddress.getHostName}:${binding.localAddress.getPort}/"
+          val server = s"http://localhost:${binding.localAddress.getPort}/"
           ctx.log.info("Server online at {}", server)
           if (Desktop.isDesktopSupported && Desktop.getDesktop.isSupported(Desktop.Action.BROWSE)) {
             Desktop.getDesktop.browse(new URI(server))

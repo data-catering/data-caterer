@@ -243,10 +243,10 @@ async function createDataConnectionInput(index) {
                 }
             }
         });
-    $(dataConnectionSelect).selectpicker();
 
     // if list of connections is empty, provide button to add new connection
     if (dataConnectionSelect.childElementCount > 0) {
+        $(dataConnectionSelect).selectpicker();
         return baseTaskDiv;
     } else {
         let createNewConnection = document.createElement("a");
