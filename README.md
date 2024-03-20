@@ -23,12 +23,17 @@ Full docs can be found [**here**](https://data.catering).
 
 ## Quick start
 
-```shell
-docker run -d -i -p 9898:9898 -e DEPLOY_MODE=standalone --name datacaterer datacatering/data-caterer:0.7.0
-# open localhost:9898 in your browser
-```
+Ensure you have `docker` installed and running.
 
-OR
+1. [Mac download](https://nightly.link/data-catering/data-caterer/workflows/build/main/data-caterer-mac.zip)
+2. [Windows download](https://nightly.link/data-catering/data-caterer/workflows/build/main/data-caterer-windows.zip)
+3. Docker
+   ```shell
+   docker run -d -i -p 9898:9898 -e DEPLOY_MODE=standalone --name datacaterer datacatering/data-caterer:0.7.0
+   ```
+   [Open localhost:9898](http://localhost:9898).
+
+### Run Scala/Java examples
 
 ```shell
 git clone git@github.com:data-catering/data-caterer-example.git
