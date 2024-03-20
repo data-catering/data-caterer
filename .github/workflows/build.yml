@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - main
-      - dev
 
 jobs:
   build:
@@ -14,20 +13,20 @@ jobs:
       - uses: actions/checkout@v3
         with:
           fetch-depth: 2
-#      - name: Login to DockerHub
-#        uses: docker/login-action@v2
-#        with:
-#          username: ${{ secrets.DOCKER_HUB_USER }}
-#          password: ${{ secrets.DOCKER_HUB_TOKEN }}
-#      - name: Build and push images
-#        run: bash docker-action.sh
-#        env:
-#          PACKAGE_TOKEN: ${{ secrets.PACKAGE_TOKEN }}
-#          MAVEN_USERNAME: ${{ secrets.MAVEN_USERNAME }}
-#          MAVEN_PASSWORD: ${{ secrets.MAVEN_PASSWORD }}
-#          ORG_GRADLE_PROJECT_signingKey: ${{ secrets.ORG_GRADLE_PROJECT_SIGNINGKEY }}
-#          ORG_GRADLE_PROJECT_signingKeyId: ${{ secrets.ORG_GRADLE_PROJECT_SIGNINGKEYID }}
-#          ORG_GRADLE_PROJECT_signingPassword: ${{ secrets.ORG_GRADLE_PROJECT_SIGNINGPASSWORD }}
+      - name: Login to DockerHub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKER_HUB_USER }}
+          password: ${{ secrets.DOCKER_HUB_TOKEN }}
+      - name: Build and push images
+        run: bash docker-action.sh
+        env:
+          PACKAGE_TOKEN: ${{ secrets.PACKAGE_TOKEN }}
+          MAVEN_USERNAME: ${{ secrets.MAVEN_USERNAME }}
+          MAVEN_PASSWORD: ${{ secrets.MAVEN_PASSWORD }}
+          ORG_GRADLE_PROJECT_signingKey: ${{ secrets.ORG_GRADLE_PROJECT_SIGNINGKEY }}
+          ORG_GRADLE_PROJECT_signingKeyId: ${{ secrets.ORG_GRADLE_PROJECT_SIGNINGKEYID }}
+          ORG_GRADLE_PROJECT_signingPassword: ${{ secrets.ORG_GRADLE_PROJECT_SIGNINGPASSWORD }}
       - name: Build jpackage jar
         run: JPACKAGE_BUILD=true ./gradlew clean :api:shadowJar :app:shadowJar
       - name: Upload jpackage jar
@@ -62,7 +61,7 @@ jobs:
       - name: Upload dmg
         uses: actions/upload-artifact@v4
         with:
-          name: dmg
+          name: data-caterer-mac
           path: "DataCaterer-1.0.0.dmg"
           overwrite: true
 
@@ -89,7 +88,7 @@ jobs:
       - name: Upload installer
         uses: actions/upload-artifact@v4
         with:
-          name: msi
+          name: data-caterer-windows
           path: "DataCaterer-1.0.0.exe"
           overwrite: true
 
@@ -116,6 +115,6 @@ jobs:
       - name: Upload deb
         uses: actions/upload-artifact@v4
         with:
-          name: deb
+          name: data-caterer-linux
           path: "DataCaterer-1.0.0.deb"
           overwrite: true
