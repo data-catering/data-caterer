@@ -93,7 +93,7 @@ function createGenerationFields(dataSource, manualSchema) {
         let newField = createSchemaField(numFields);
         $(manualSchema).find(".accordion").first().append(newField);
         $(newField).find("[id^=field-name]").val(field.name)[0].dispatchEvent(new Event("input"));
-        $(newField).find("select[class~=field-type]").val(field.type).selectpicker("refresh")[0].dispatchEvent(new Event("change"));
+        $(newField).find("select[class~=field-type]").selectpicker("val", field.type)[0].dispatchEvent(new Event("change"));
 
         if (field.options) {
             for (const [optKey, optVal] of Object.entries(field.options)) {
@@ -124,7 +124,6 @@ export function createGenerationElements(dataSource, newDataSource, numDataSourc
 
         createGenerationFields(dataSource, manualSchema);
     }
-    $(".selectpicker").selectpicker();
 }
 
 function getGenerationSchema(dataSourceSchemaContainer) {

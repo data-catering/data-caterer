@@ -487,7 +487,7 @@ if (currUrlParams.includes("plan-name=")) {
                 let newDataSource = await createDataSourceForPlan(numDataSources);
                 tasksDetailsBody.append(newDataSource);
                 $(newDataSource).find(".task-name-field").val(dataSource.taskName);
-                $(newDataSource).find(".data-connection-name").val(dataSource.name).selectpicker("refresh")[0].dispatchEvent(new Event("change"));
+                $(newDataSource).find(".data-connection-name").selectpicker("val", dataSource.name)[0].dispatchEvent(new Event("change"));
 
                 createGenerationElements(dataSource, newDataSource, numDataSources);
                 createCountElementsFromPlan(dataSource, newDataSource);
@@ -498,7 +498,3 @@ if (currUrlParams.includes("plan-name=")) {
             wait(500).then(r => $(document).find('button[aria-controls="report-body"]:not(.collapsed),button[aria-controls="configuration-body"]:not(.collapsed)').click());
         });
 }
-
-$(function () {
-    $(".selectpicker").selectpicker();
-});

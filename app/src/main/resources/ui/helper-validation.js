@@ -89,7 +89,7 @@ async function createNestedValidations(dataSource, manualValidation) {
         numValidations += 1;
         let newValidation = await createValidation(numValidations);
         $(manualValidation).children(".accordion").append(newValidation);
-        $(newValidation).find("select[class~=validation-type]").val(validation.type).selectpicker("refresh")[0].dispatchEvent(new Event("change"));
+        $(newValidation).find("select[class~=validation-type]").selectpicker("val", validation.type)[0].dispatchEvent(new Event("change"));
         let validationOpts = validation.options;
         let mainContainer = $(newValidation).find(".data-validation-container")[0];
 

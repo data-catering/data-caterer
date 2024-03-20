@@ -58,7 +58,7 @@ object ConnectionRepository extends JsonSupport {
   }
 
   private def saveConnection(connection: Connection): Unit = {
-    LOGGER.info(s"Saving connection, connection-name=${connection.name}, connection-type=${connection.`type`}")
+    LOGGER.debug(s"Saving connection, connection-name=${connection.name}, connection-type=${connection.`type`}")
     Path.of(connectionSaveFolder).toFile.mkdirs()
     val connectionFile = Path.of(s"$connectionSaveFolder/${connection.name}.csv")
     Files.writeString(connectionFile, connection.toString, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING)
@@ -73,7 +73,7 @@ object ConnectionRepository extends JsonSupport {
   }
 
   private def getAllConnections: GetConnectionsResponse = {
-    LOGGER.info(s"Getting all connection details")
+    LOGGER.debug(s"Getting all connection details")
     val connectionPath = Path.of(connectionSaveFolder)
     if (!connectionPath.toFile.exists()) connectionPath.toFile.mkdirs()
     val connections = Files.list(connectionPath)
