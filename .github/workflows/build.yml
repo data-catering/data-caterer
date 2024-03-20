@@ -31,11 +31,11 @@ jobs:
       - name: Build jpackage jar
         run: JPACKAGE_BUILD=true ./gradlew clean :api:shadowJar :app:shadowJar
       - name: Upload jpackage jar
-        uses: actions/upload-artifact@v1
+        uses: actions/upload-artifact@v4
         with:
           name: jars
           path: "app/build/libs/*.jar"
-          overwrite: "true"
+          overwrite: true
 
   osx:
     needs: build
@@ -56,13 +56,15 @@ jobs:
         uses: actions/download-artifact@v3
         with:
           name: jars
+          path: app/build/libs/
       - name: Package jar as dmg installer
         run: 'jpackage "@misc/jpackage/jpackage.cfg" "@misc/jpackage/jpackage-mac.cfg"'
       - name: Upload dmg
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: dmg
           path: "DataCaterer-1.0.0.dmg"
+          overwrite: true
 
   windows:
     needs: build
@@ -81,13 +83,15 @@ jobs:
         uses: actions/download-artifact@v3
         with:
           name: jars
+          path: app/build/libs/
       - name: Package jar as exe
         run: 'jpackage "@misc/jpackage/jpackage.cfg" "@misc/jpackage/jpackage-windows.cfg"'
       - name: Upload installer
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: msi
           path: "DataCaterer-1.0.0.exe"
+          overwrite: true
 
   linux:
     needs: build
@@ -106,10 +110,12 @@ jobs:
         uses: actions/download-artifact@v3
         with:
           name: jars
+          path: app/build/libs/
       - name: Package jar as debian package
         run: 'jpackage "@misc/jpackage/jpackage.cfg" "@misc/jpackage/jpackage-linux.cfg"'
       - name: Upload deb
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: deb
           path: "DataCaterer-1.0.0.deb"
+          overwrite: true
