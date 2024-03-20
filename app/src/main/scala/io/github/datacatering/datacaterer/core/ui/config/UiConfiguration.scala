@@ -9,14 +9,15 @@ object UiConfiguration {
   def getInstallDirectory: String = {
     val osName = System.getProperty("os.name").toLowerCase
     if (osName.contains("win")) {
-      "/Program Files/data-caterer"
+      val appDataDir = System.getenv("APPDATA")
+      s"$appDataDir/DataCaterer"
     } else if (osName.contains("nix") || osName.contains("nux") || osName.contains("aix")) {
-      "/opt/data-caterer"
+      "/opt/DataCaterer"
     } else if (osName.contains("mac")) {
-      "/Applications/data-caterer"
+      "/Applications/DataCaterer.app"
     } else {
-      LOGGER.warn(s"Unknown operating system name, defaulting install directory to '/tmp/data-caterer', os.name=$osName")
-      "/tmp/data-caterer"
+      LOGGER.warn(s"Unknown operating system name, defaulting install directory to '/tmp/DataCaterer', os.name=$osName")
+      "/tmp/DataCaterer"
     }
   }
 

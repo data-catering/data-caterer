@@ -112,9 +112,11 @@ jobs:
           path: app/build/libs/
       - name: Package jar as debian package
         run: 'jpackage "@misc/jpackage/jpackage.cfg" "@misc/jpackage/jpackage-linux.cfg"'
+      - name: List directory
+        run: ls -lart
       - name: Upload deb
         uses: actions/upload-artifact@v4
         with:
           name: data-caterer-linux
-          path: "DataCaterer-1.0.0.deb"
+          path: "DataCaterer_1.0.0-1_amd64.deb"
           overwrite: true
