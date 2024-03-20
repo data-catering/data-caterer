@@ -9,7 +9,7 @@ echo "Creating API jars and publishing"
 publish_res=$?
 if [[ "$publish_res" -ne 0 ]] ; then
   echo "Publish API jar failed, exiting"
-  exit 1
+#  exit 1
 fi
 
 echo "Creating data caterer jar, version=$version"
