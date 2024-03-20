@@ -83,13 +83,13 @@ jobs:
         with:
           name: jars
           path: app/build/libs/
-      - name: Package jar as exe
+      - name: Package jar as msi
         run: 'jpackage "@misc/jpackage/jpackage.cfg" "@misc/jpackage/jpackage-windows.cfg"'
       - name: Upload installer
         uses: actions/upload-artifact@v4
         with:
           name: data-caterer-windows
-          path: "DataCaterer-1.0.0.exe"
+          path: "DataCaterer-1.0.0.msi"
           overwrite: true
 
   linux:

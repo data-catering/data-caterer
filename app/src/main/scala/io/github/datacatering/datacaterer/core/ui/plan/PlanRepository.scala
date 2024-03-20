@@ -8,7 +8,7 @@ import io.github.datacatering.datacaterer.core.plan.PlanProcessor
 import io.github.datacatering.datacaterer.core.ui.config.UiConfiguration.INSTALL_DIRECTORY
 import io.github.datacatering.datacaterer.core.ui.mapper.UiMapper
 import io.github.datacatering.datacaterer.core.ui.model.{JsonSupport, PlanRunExecution, PlanRunRequest, PlanRunRequests}
-import io.github.datacatering.datacaterer.core.ui.plan.ConnectionRepository.getClass
+import io.github.datacatering.datacaterer.core.ui.plan.ConnectionRepository.{LOGGER, getClass}
 import io.github.datacatering.datacaterer.core.ui.plan.PlanResponseHandler.{KO, OK, Response}
 import org.apache.log4j.Logger
 import org.joda.time.{DateTime, Seconds}
@@ -117,6 +117,7 @@ object PlanRepository extends JsonSupport {
   }
 
   private def savePlanRunExecution(planRunRequest: PlanRunRequest, planRunExecution: PlanRunExecution): Unit = {
+    LOGGER.debug(s"Saving plan run execution details, plan-name=${planRunRequest.name}, plan-run-id=${planRunRequest.id}")
     savePlan(planRunRequest)
     try {
       Path.of(executionSaveFolder).toFile.mkdirs()
@@ -128,6 +129,7 @@ object PlanRepository extends JsonSupport {
   }
 
   private def savePlan(planRunRequest: PlanRunRequest): Unit = {
+    LOGGER.debug(s"Saving plan details, plan-name=${planRunRequest.name}")
     try {
       Path.of(planSaveFolder).toFile.mkdirs()
       val planFile = Path.of(s"$planSaveFolder/${planRunRequest.name}.json")
@@ -138,6 +140,7 @@ object PlanRepository extends JsonSupport {
   }
 
   private def getPlans: PlanRunRequests = {
+    LOGGER.debug("Getting all plans")
     val planFolder = Path.of(planSaveFolder)
     if (!planFolder.toFile.exists()) planFolder.toFile.mkdirs()
     val plans = Files.list(planFolder)
@@ -152,12 +155,14 @@ object PlanRepository extends JsonSupport {
   }
 
   private def getPlan(name: String): PlanRunRequest = {
+    LOGGER.debug(s"Getting plan details, plan-name=$name")
     val planFile = Path.of(s"$planSaveFolder/$name.json")
     Files.readString(planFile).parseJson.convertTo[PlanRunRequest]
   }
 
   private def updatePlanRunExecution(planRunExecution: PlanRunExecution, status: String, failedReason: Option[String] = None,
                                      results: Option[PlanRunResults] = None): Unit = {
+    LOGGER.debug(s"Update plan execution, plan-name=${planRunExecution.name}, plan-run-id=${planRunExecution.id}, status=$status")
     val executionFile = Path.of(s"$executionSaveFolder/${planRunExecution.id}.csv")
     val cleanFailReason = failedReason.map(s => s.replaceAll("\n", " "))
     val generationSummary = results.map(res => res.generationResults.map(_.summarise)).getOrElse(List())
@@ -173,12 +178,14 @@ object PlanRepository extends JsonSupport {
   }
 
   private def getPlanRunStatus(id: String): PlanRunExecution = {
+    LOGGER.debug(s"Getting current plan status, plan-run-id=$id")
     val executionFile = Path.of(s"$executionSaveFolder/$id.csv")
     val latestUpdate = Files.readAllLines(executionFile).asScala.last
     PlanRunExecution.fromString(latestUpdate)
   }
 
   private def getAllPlanExecutions: PlanRunExecutionDetails = {
+    LOGGER.debug("Getting all plan executions")
     val executionPath = Path.of(executionSaveFolder)
     if (!executionPath.toFile.exists()) executionPath.toFile.mkdirs()
     val allPlanRunExecutions = Files.list(executionPath)

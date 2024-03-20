@@ -65,7 +65,7 @@ object ConnectionRepository extends JsonSupport {
   }
 
   def getConnection(name: String): Connection = {
-    LOGGER.info(s"Getting connection details, connection-name=$name")
+    LOGGER.debug(s"Getting connection details, connection-name=$name")
     val connectionFile = Path.of(s"$connectionSaveFolder/$name.csv")
     val connection = Connection.fromString(Files.readString(connectionFile))
     val mappedPw = connection.options.map(o => if (o._1 == "password") (o._1, "***") else o)
