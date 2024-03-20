@@ -24,6 +24,13 @@ Full docs can be found [**here**](https://data.catering).
 ## Quick start
 
 ```shell
+docker run -d -i -p 9898:9898 -e DEPLOY_MODE=standalone --name datacaterer datacatering/data-caterer:0.7.0
+# open localhost:9898 in your browser
+```
+
+OR
+
+```shell
 git clone git@github.com:data-catering/data-caterer-example.git
 cd data-caterer-example && ./run.sh
 #check results under docker/sample/report/index.html folder
@@ -112,3 +119,34 @@ This is inspired by the [mkdocs-material project](https://github.com/squidfunk/m
 ### Roadmap
 
 [Can check here for full list.](https://data.catering/use-case/roadmap/)
+
+#### UI
+
+1. Allow the application to run with UI enabled
+2. Runs as long-lived app with UI that interacts with existing app as single container
+3. Ability to run as UI, Spark job or both
+4. Persist data in files or database (Postgres)
+5. UI will show history of data generation/validation runs, delete generated data, create new scenarios, define data connections
+
+#### Distribution
+
+##### Docker
+
+```shell
+gradle clean :api:shadowJar :app:shadowJar
+docker build --build-arg "APP_VERSION=0.7.0" --build-arg "SPARK_VERSION=3.5.0" --no-cache -t datacatering/data-caterer:0.7.0 .
+docker run -d -i -p 9898:9898 -e DEPLOY_MODE=standalone -v data-caterer-data:/opt/data-caterer --name datacaterer datacatering/data-caterer:0.7.0
+#open localhost:9898
+```
+
+##### Jpackage
+
+```bash
+JPACKAGE_BUILD=true gradle clean :api:shadowJar :app:shadowJar
+# Mac
+jpackage "@misc/jpackage/jpackage.cfg" "@misc/jpackage/jpackage-mac.cfg"
+# Windows
+jpackage "@misc/jpackage/jpackage.cfg" "@misc/jpackage/jpackage-windows.cfg"
+# Linux
+jpackage "@misc/jpackage/jpackage.cfg" "@misc/jpackage/jpackage-linux.cfg"
+```

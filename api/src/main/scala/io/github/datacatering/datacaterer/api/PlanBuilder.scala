@@ -18,6 +18,9 @@ case class PlanBuilder(plan: Plan = Plan(), tasks: List[TasksBuilder] = List()) 
   def description(desc: String): PlanBuilder =
     this.modify(_.plan.description).setTo(desc)
 
+  def runId(runId: String): PlanBuilder =
+    this.modify(_.plan.runId).setTo(Some(runId))
+
   def taskSummaries(taskSummaries: TaskSummaryBuilder*): PlanBuilder = {
     val tasksToAdd = taskSummaries.filter(_.task.isDefined)
       .map(x => TasksBuilder(List(x.task.get), x.taskSummary.dataSourceName))

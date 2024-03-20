@@ -1,6 +1,7 @@
 package io.github.datacatering.datacaterer.core.model
 
 import io.github.datacatering.datacaterer.api.model.Constants.{CASSANDRA, CSV, HTTP, JDBC, JMS, JSON, KAFKA, ORC, PARQUET}
+import org.joda.time.format.DateTimeFormat
 
 object Constants {
 
@@ -34,6 +35,7 @@ object Constants {
 
   //status
   lazy val STARTED = "started"
+  lazy val PARSED_PLAN = "parsed_plan"
   lazy val FINISHED = "finished"
   lazy val FAILED = "failed"
 
@@ -54,5 +56,9 @@ object Constants {
 
   //misc
   lazy val APPLICATION_CONFIG_PATH = "APPLICATION_CONFIG_PATH"
+
+  //ui
+  lazy val TIMESTAMP_FORMAT = "yyyy-MM-dd HH:mm:ss.SSS"
+  lazy val TIMESTAMP_DATE_TIME_FORMATTER = DateTimeFormat.forPattern(TIMESTAMP_FORMAT)
 
 }

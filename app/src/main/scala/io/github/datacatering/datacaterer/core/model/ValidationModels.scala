@@ -1,9 +1,11 @@
 package io.github.datacatering.datacaterer.core.model
 
 import io.github.datacatering.datacaterer.api.model.{ExpressionValidation, Validation}
+import io.github.datacatering.datacaterer.core.util.ResultWriterUtil.getSuccessSymbol
 import org.apache.spark.sql.DataFrame
 
 import java.time.{Duration, LocalDateTime}
+import scala.math.BigDecimal.RoundingMode
 
 case class ValidationConfigResult(
                                    name: String = "default_validation_result",
@@ -13,6 +15,19 @@ case class ValidationConfigResult(
                                    endTime: LocalDateTime = LocalDateTime.now()
                                  ) {
   def durationInSeconds: Long = Duration.between(startTime, endTime).toSeconds
+
+  def summarise: List[String] = {
+    val validationRes = dataSourceValidationResults.flatMap(_.validationResults)
+    if (validationRes.nonEmpty) {
+      val validationSuccess = validationRes.map(_.isSuccess)
+      val numSuccess = validationSuccess.count(x => x)
+      val successRate = BigDecimal(numSuccess.toDouble / validationRes.size * 100).setScale(2, RoundingMode.HALF_UP)
+      val isSuccess = getSuccessSymbol(validationSuccess.forall(x => x))
+      val successRateVisual = s"$numSuccess/${validationRes.size} ($successRate%)"
+
+      List(name, description, isSuccess, successRateVisual)
+    } else List()
+  }
 }
 
 case class DataSourceValidationResult(

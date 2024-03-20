@@ -150,7 +150,7 @@ class FullExamplePlanRun extends PlanRun {
 
   val conf = configuration
     .postgres("customer_postgres")
-    .json("account_json")
+    .json("account_json", "/tmp/json")
 
   val p = plan.taskSummaries(
     taskSummary.dataSource("customer_postgres").task(postgresTask),

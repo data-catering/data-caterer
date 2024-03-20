@@ -8,12 +8,14 @@ object Constants {
 
   //supported data formats
   lazy val CASSANDRA = "org.apache.spark.sql.cassandra"
+  lazy val CASSANDRA_NAME = "cassandra"
   lazy val JDBC = "jdbc"
   lazy val POSTGRES = "postgres"
   lazy val MYSQL = "mysql"
   lazy val HTTP = "http"
   lazy val JMS = "jms"
   lazy val KAFKA = "kafka"
+  lazy val SOLACE = "solace"
   lazy val RATE = "rate"
   //file formats
   lazy val CSV = "csv"
@@ -21,6 +23,8 @@ object Constants {
   lazy val JSON = "json"
   lazy val ORC = "orc"
   lazy val PARQUET = "parquet"
+  lazy val HUDI = "hudi"
+  lazy val ICEBERG = "iceberg"
   lazy val XML = "xml"
   //jdbc drivers
   lazy val POSTGRES_DRIVER = "org.postgresql.Driver"
@@ -33,6 +37,8 @@ object Constants {
   lazy val CASSANDRA_KEYSPACE = "keyspace"
   lazy val CASSANDRA_TABLE = "table"
   lazy val JDBC_TABLE = "dbtable"
+  lazy val SCHEMA = "schema"
+  lazy val TABLE = "table"
   lazy val JDBC_QUERY = "query"
   lazy val URL = "url"
   lazy val USERNAME = "user"
@@ -50,9 +56,7 @@ object Constants {
   lazy val EXPECTATIONS_FILE = "expectationsFile"
   lazy val DATA_CONTRACT_FILE = "dataContractFile"
   lazy val ROWS_PER_SECOND = "rowsPerSecond"
-  lazy val HTTP_METHOD = "httpMethod"
-  lazy val HTTP_CONTENT_TYPE = "httpContentType"
-  lazy val HTTP_HEADER = "httpHeader"
+  lazy val HUDI_TABLE_NAME = "hoodie.table.name"
 
   //field metadata
   lazy val FIELD_DATA_TYPE = "type"
@@ -198,8 +202,14 @@ object Constants {
     "spark.sql.shuffle.partitions" -> "10",
     "spark.sql.catalog.postgres" -> "",
     "spark.sql.catalog.cassandra" -> "com.datastax.spark.connector.datasource.CassandraCatalog",
+//    "spark.serializer" -> "org.apache.spark.serializer.KryoSerializer",
+//    "spark.sql.catalog.hudi" -> "org.apache.spark.sql.hudi.catalog.HoodieCatalog",
+//    "spark.kryo.registrator" -> "org.apache.spark.HoodieSparkKryoRegistrar",
+//    "spark.sql.extensions" -> "org.apache.spark.sql.hudi.HoodieSparkSessionExtension,io.delta.sql.DeltaSparkSessionExtension",
     "spark.hadoop.fs.s3a.directory.marker.retention" -> "keep",
-    "spark.hadoop.fs.s3a.bucket.all.committer.magic.enabled" -> "true"
+    "spark.hadoop.fs.s3a.bucket.all.committer.magic.enabled" -> "true",
+    "spark.hadoop.fs.hdfs.impl" -> "org.apache.hadoop.hdfs.DistributedFileSystem",
+    "spark.hadoop.fs.file.impl" -> "org.apache.hadoop.fs.LocalFileSystem",
   )
 
   //jdbc defaults
@@ -349,14 +359,107 @@ object Constants {
   lazy val AGGREGATION_STDDEV = "stddev"
 
   //validation types
-  lazy val VALIDATION_EXPRESSION = "expr"
+  lazy val VALIDATION_COLUMN = "column"
+  lazy val VALIDATION_COLUMN_NAMES = "columnNames"
+  lazy val VALIDATION_UPSTREAM = "upstream"
   lazy val VALIDATION_GROUP_BY = "groupBy"
+  //column validations
+  lazy val VALIDATION_EQUAL = "equal"
+  lazy val VALIDATION_NOT_EQUAL = "notEqual"
+  lazy val VALIDATION_NULL = "null"
+  lazy val VALIDATION_NOT_NULL = "notNull"
+  lazy val VALIDATION_CONTAINS = "contains"
+  lazy val VALIDATION_NOT_CONTAINS = "notContains"
   lazy val VALIDATION_UNIQUE = "unique"
+  lazy val VALIDATION_LESS_THAN = "lessThan"
+  lazy val VALIDATION_LESS_THAN_OR_EQUAL = "equalOrLessThan"
+  lazy val VALIDATION_GREATER_THAN = "greaterThan"
+  lazy val VALIDATION_GREATER_THAN_OR_EQUAL = "equalOrGreaterThan"
+  lazy val VALIDATION_BETWEEN = "between"
+  lazy val VALIDATION_NOT_BETWEEN = "notBetween"
+  lazy val VALIDATION_IN = "in"
+  lazy val VALIDATION_NOT_IN = "notIn"
+  lazy val VALIDATION_MATCHES = "matches"
+  lazy val VALIDATION_NOT_MATCHES = "notMatches"
+  lazy val VALIDATION_STARTS_WITH = "startsWith"
+  lazy val VALIDATION_NOT_STARTS_WITH = "notStartsWith"
+  lazy val VALIDATION_ENDS_WITH = "endsWith"
+  lazy val VALIDATION_NOT_ENDS_WITH = "notEndsWith"
+  lazy val VALIDATION_SIZE = "size"
+  lazy val VALIDATION_NOT_SIZE = "notSize"
+  lazy val VALIDATION_LESS_THAN_SIZE = "lessThanSize"
+  lazy val VALIDATION_LESS_THAN_OR_EQUAL_SIZE = "equalOrLessThanSize"
+  lazy val VALIDATION_GREATER_THAN_SIZE = "greaterThanSize"
+  lazy val VALIDATION_GREATER_THAN_OR_EQUAL_SIZE = "equalOrGreaterThanSize"
+  lazy val VALIDATION_LUHN_CHECK = "luhnCheck"
+  lazy val VALIDATION_HAS_TYPE = "hasType"
+  lazy val VALIDATION_SQL = "sql"
+  //group by validations
+  lazy val VALIDATION_MIN = "min"
+  lazy val VALIDATION_MAX = "max"
+  lazy val VALIDATION_COUNT = "count"
+  lazy val VALIDATION_SUM = "sum"
+  lazy val VALIDATION_AVERAGE = "average"
+  lazy val VALIDATION_STANDARD_DEVIATION = "standardDeviation"
+  lazy val VALIDATION_GROUP_BY_COLUMNS = "groupByColumns"
+  //upstream validations
+  lazy val VALIDATION_UPSTREAM_TASK_NAME = "upstreamTaskName"
+  lazy val VALIDATION_UPSTREAM_JOIN_COLUMNS = "joinColumns"
+  lazy val VALIDATION_UPSTREAM_JOIN_TYPE = "joinType"
+  lazy val VALIDATION_UPSTREAM_JOIN_EXPR = "joinExpr"
+  //column name validations
+  lazy val VALIDATION_COLUMN_NAMES_COUNT_EQUAL = "countEqual"
+  lazy val VALIDATION_COLUMN_NAMES_COUNT_BETWEEN = "countBetween"
+  lazy val VALIDATION_COLUMN_NAMES_MATCH_ORDER = "matchOrder"
+  lazy val VALIDATION_COLUMN_NAMES_MATCH_SET = "matchSet"
+
+  lazy val VALIDATION_OPTION_DELIMITER = ","
+  lazy val VALIDATION_SUPPORTING_OPTIONS = List(VALIDATION_COLUMN, VALIDATION_MIN, VALIDATION_MAX, VALIDATION_GROUP_BY_COLUMNS)
+
   lazy val VALIDATION_PREFIX_JOIN_EXPRESSION = "expr:"
   lazy val VALIDATION_COLUMN_NAME_COUNT_EQUAL = "column_count_equal"
   lazy val VALIDATION_COLUMN_NAME_COUNT_BETWEEN = "column_count_between"
   lazy val VALIDATION_COLUMN_NAME_MATCH_ORDER = "column_name_match_order"
   lazy val VALIDATION_COLUMN_NAME_MATCH_SET = "column_name_match_set"
+
+  //configuration names
+  //flags config
+  lazy val CONFIG_FLAGS_COUNT = "enableCount"
+  lazy val CONFIG_FLAGS_GENERATE_DATA = "enableGenerateData"
+  lazy val CONFIG_FLAGS_RECORD_TRACKING = "enableRecordTracking"
+  lazy val CONFIG_FLAGS_DELETE_GENERATED_RECORDS = "enableDeleteGeneratedRecords"
+  lazy val CONFIG_FLAGS_GENERATE_PLAN_AND_TASKS = "enableGeneratePlanAndTasks"
+  lazy val CONFIG_FLAGS_FAIL_ON_ERROR = "enableFailOnError"
+  lazy val CONFIG_FLAGS_UNIQUE_CHECK = "enableUniqueCheck"
+  lazy val CONFIG_FLAGS_SINK_METADATA = "enableSinkMetadata"
+  lazy val CONFIG_FLAGS_SAVE_REPORTS = "enableSaveReports"
+  lazy val CONFIG_FLAGS_VALIDATION = "enableValidation"
+  lazy val CONFIG_FLAGS_GENERATE_VALIDATIONS = "enableGenerateValidations"
+  lazy val CONFIG_FLAGS_ALERTS = "enableAlerts"
+  //folder config
+  lazy val CONFIG_FOLDER_PLAN_FILE_PATH = "planFilePath"
+  lazy val CONFIG_FOLDER_TASK_FOLDER_PATH = "taskFolderPath"
+  lazy val CONFIG_FOLDER_GENERATED_PLAN_AND_TASK_FOLDER_PATH = "generatedPlanAndTasksFolderPath"
+  lazy val CONFIG_FOLDER_GENERATED_REPORTS_FOLDER_PATH = "generatedReportsFolderPath"
+  lazy val CONFIG_FOLDER_RECORD_TRACKING_FOLDER_PATH = "recordTrackingFolderPath"
+  lazy val CONFIG_FOLDER_VALIDATION_FOLDER_PATH = "validationFolderPath"
+  lazy val CONFIG_FOLDER_RECORD_TRACKING_FOR_VALIDATION_FOLDER_PATH = "recordTrackingForValidationFolderPath"
+  //metadata config
+  lazy val CONFIG_METADATA_NUM_RECORDS_FROM_DATA_SOURCE = "numRecordsFromDataSource"
+  lazy val CONFIG_METADATA_NUM_RECORDS_FOR_ANALYSIS = "numRecordsForAnalysis"
+  lazy val CONFIG_METADATA_ONE_OF_DISTINCT_COUNT_VS_COUNT_THRESHOLD = "oneOfDistinctCountVsCountThreshold"
+  lazy val CONFIG_METADATA_ONE_OF_MIN_COUNT = "oneOfMinCount"
+  lazy val CONFIG_METADATA_NUM_GENERATED_SAMPLES = "numGeneratedSamples"
+  //generation config
+  lazy val CONFIG_GENERATION_NUM_RECORDS_PER_BATCH = "numRecordsPerBatch"
+  lazy val CONFIG_GENERATION_NUM_RECORDS_PER_STEP = "numRecordsPerStep"
+  //validation config
+  lazy val CONFIG_VALIDATION_NUM_SAMPLE_ERROR_RECORDS = "numSampleErrorRecords"
+  lazy val CONFIG_VALIDATION_ENABLE_DELETE_RECORD_TRACKING_FILES = "enableDeleteRecordTrackingFiles"
+  //alert config
+  lazy val CONFIG_ALERT_TRIGGER_ON = "triggerOn"
+  lazy val CONFIG_ALERT_SLACK_TOKEN = "slackToken"
+  lazy val CONFIG_ALERT_SLACK_CHANNELS = "slackChannels"
 
   //alert trigger on
   lazy val ALERT_TRIGGER_ON_ALL = "all"
@@ -369,4 +472,10 @@ object Constants {
 
   //trial
   lazy val API_KEY = "API_KEY"
+
+  //ui
+  lazy val PLAN_RUN_EXECUTION_DELIMITER = "||"
+  lazy val PLAN_RUN_EXECUTION_DELIMITER_REGEX = "\\|\\|"
+  lazy val PLAN_RUN_SUMMARY_DELIMITER = "&&"
+
 }

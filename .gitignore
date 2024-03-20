@@ -9,6 +9,8 @@ build
 *.ipr
 *.iws
 tmp
+*.dmg
+*.exe
 
 app/out
 app/src/test/resources/sample/parquet

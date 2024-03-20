@@ -270,6 +270,25 @@ class PlanProcessorTest extends SparkSuite {
     execute(foreignPlan, config, firstJsonTask, secondJsonTask, thirdJsonTask)
   }
 
+  class TestOtherFileFormats extends PlanRun {
+    val basicSchema = List(
+      field.name("account_id").regex("ACC[0-9]{8}"),
+      field.name("amount").`type`(IntegerType).min(1).max(1),
+      field.name("name").expression("#{Name.name}"),
+    )
+
+//    val hudiTask = hudi("my_hudi", "/tmp/data/hudi", "accounts", Map("saveMode" -> "overwrite"))
+//      .schema(basicSchema: _*)
+//
+//    val deltaTask = delta("my_delta", "/tmp/data/delta", Map("saveMode" -> "overwrite"))
+//      .schema(basicSchema: _*)
+//
+    val icebergTask = iceberg("my_iceberg", "/tmp/data/iceberg", Map("saveMode" -> "overwrite"))
+      .schema(basicSchema: _*)
+
+    execute(icebergTask)
+  }
+
   class TestUniqueFields extends PlanRun {
     val jsonTask = json("my_first_json", "/tmp/data/unique_json", Map("saveMode" -> "overwrite"))
       .schema(

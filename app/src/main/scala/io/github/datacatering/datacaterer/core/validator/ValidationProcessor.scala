@@ -38,7 +38,7 @@ class ValidationProcessor(
   private val LOGGER = Logger.getLogger(getClass.getName)
 
   def executeValidations: List[ValidationConfigResult] = {
-    LOGGER.info("Executing data validations")
+    LOGGER.debug("Executing data validations")
     val validationResults = getValidations.map(vc => {
       val startTime = LocalDateTime.now()
       val dataSourceValidationResults = vc.dataSources.flatMap(dataSource => {

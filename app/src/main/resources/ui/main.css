@@ -1,0 +1,121 @@
+:root {
+    font-family: 'SansSerif', sans-serif;
+}
+
+body {
+    margin: 0;
+}
+
+h2 {
+    margin: 5px;
+}
+
+h3 {
+    margin: 5px;
+}
+
+.top-banner {
+    height: fit-content;
+    background-color: #ff6e42;
+    padding: 0 .2rem;
+    display: flex;
+}
+
+.top-banner span {
+    color: #f2f2f2;
+    font-size: 17px;
+    padding: 5px 6px;
+    display: flex;
+    align-items: center;
+}
+
+.logo {
+    padding: 5px;
+    height: 45px;
+    width: auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.logo:hover {
+    background-color: #ff9100;
+    color: black;
+}
+
+.top-banner img {
+    height: 35px;
+    width: auto;
+    display: flex;
+    justify-content: center;
+    vertical-align: middle;
+}
+
+.topnav {
+    overflow: hidden;
+    background-color: #ff6e42;
+}
+
+.topnav a {
+    float: left;
+    color: #f2f2f2;
+    text-align: center;
+    padding: 8px 10px;
+    text-decoration: none;
+    font-size: 17px;
+}
+
+.topnav a:not(.btn):hover {
+    background-color: #ff9100;
+    color: black;
+    cursor: pointer;
+}
+
+.topnav a.active {
+    color: black;
+}
+
+.button-with-menu {
+    position: relative;
+}
+
+.existing-attribute {
+    display: none;
+}
+
+.accordion-button:after {
+    order: -1;
+    margin-left: 0;
+    margin-right: 0.5em;
+}
+
+.example-1-enabled {
+    background-color: rgba(51, 170, 51, 0.3) !important;
+}
+
+.example-2-enabled {
+    background-color: rgba(243, 245, 39, 0.3) !important;
+}
+
+.example-1-disabled {
+    background-color: rgba(39, 213, 245, 0.3) !important;
+}
+
+.example-2-disabled {
+    background-color: rgba(178, 39, 245, 0.3) !important;
+}
+
+.input-icon {
+    right: 0;
+    position: absolute;
+    z-index: 2;
+    display: block;
+    width: 2.375rem;
+    height: 2.375rem;
+    line-height: 2.375rem;
+    text-align: center;
+}
+
+/*.bootstrap-select .dropdown-menu{*/
+/*    position:relative;*/
+/*}*/

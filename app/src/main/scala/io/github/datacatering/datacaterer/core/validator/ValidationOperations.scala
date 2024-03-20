@@ -47,6 +47,7 @@ object ValidationHelper {
 
 class ExpressionValidationOps(expressionValidation: ExpressionValidation) extends ValidationOps(expressionValidation) {
   override def validate(df: DataFrame, dfCount: Long): ValidationResult = {
+    //TODO allow for pre-filter? can technically be done via custom sql validation using CASE WHERE ... ELSE true END
     val dfWithSelectExpr = df.selectExpr(expressionValidation.selectExpr: _*)
     validateWithExpression(dfWithSelectExpr, dfCount, expressionValidation.whereExpr)
   }
@@ -54,6 +55,7 @@ class ExpressionValidationOps(expressionValidation: ExpressionValidation) extend
 
 class GroupByValidationOps(groupByValidation: GroupByValidation) extends ValidationOps(groupByValidation) {
   override def validate(df: DataFrame, dfCount: Long): ValidationResult = {
+    //TODO allow for pre and post group filter?
     val groupByDf = df.groupBy(groupByValidation.groupByCols.map(col): _*)
     val (aggregateDf, validationCount) = if ((groupByValidation.aggCol == VALIDATION_UNIQUE || groupByValidation.aggCol.isEmpty) && groupByValidation.aggType == AGGREGATION_COUNT) {
       val countDf = groupByDf.count()

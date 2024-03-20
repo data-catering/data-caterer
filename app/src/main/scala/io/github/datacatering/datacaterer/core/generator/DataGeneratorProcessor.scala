@@ -4,7 +4,7 @@ import io.github.datacatering.datacaterer.api.model.{DataCatererConfiguration, P
 import io.github.datacatering.datacaterer.core.alert.AlertProcessor
 import io.github.datacatering.datacaterer.core.generator.result.DataGenerationResultWriter
 import io.github.datacatering.datacaterer.core.listener.SparkRecordListener
-import io.github.datacatering.datacaterer.core.model.{DataSourceResult, ValidationConfigResult}
+import io.github.datacatering.datacaterer.core.model.{DataSourceResult, PlanRunResults, ValidationConfigResult}
 import io.github.datacatering.datacaterer.core.parser.PlanParser
 import io.github.datacatering.datacaterer.core.util.PlanImplicits.TaskOps
 import io.github.datacatering.datacaterer.core.validator.ValidationProcessor
@@ -23,7 +23,7 @@ class DataGeneratorProcessor(dataCatererConfiguration: DataCatererConfiguration)
   private lazy val sparkRecordListener = new SparkRecordListener(flagsConfig.enableCount)
   sparkSession.sparkContext.addSparkListener(sparkRecordListener)
 
-  def generateData(): Unit = {
+  def generateData(): PlanRunResults = {
     val plan = PlanParser.parsePlan(foldersConfig.planFilePath)
     val enabledPlannedTasks = plan.tasks.filter(_.enabled)
     val enabledTaskMap = enabledPlannedTasks.map(t => (t.name, t)).toMap
@@ -33,13 +33,13 @@ class DataGeneratorProcessor(dataCatererConfiguration: DataCatererConfiguration)
     generateData(plan.copy(tasks = enabledPlannedTasks), enabledTasks, None)
   }
 
-  def generateData(plan: Plan, tasks: List[Task], optValidations: Option[List[ValidationConfiguration]]): Unit = {
+  def generateData(plan: Plan, tasks: List[Task], optValidations: Option[List[ValidationConfiguration]]): PlanRunResults = {
     val tasksByName = tasks.map(t => (t.name, t)).toMap
     val summaryWithTask = plan.tasks.map(t => (t, tasksByName(t.name)))
     generateDataWithResult(plan, summaryWithTask, optValidations)
   }
 
-  private def generateDataWithResult(plan: Plan, summaryWithTask: List[(TaskSummary, Task)], optValidations: Option[List[ValidationConfiguration]]): Unit = {
+  private def generateDataWithResult(plan: Plan, summaryWithTask: List[(TaskSummary, Task)], optValidations: Option[List[ValidationConfiguration]]): PlanRunResults = {
     if (flagsConfig.enableDeleteGeneratedRecords) {
       LOGGER.warn("Both enableGenerateData and enableDeleteGeneratedData are true. Please only enable one at a time. Will continue with generating data")
     }
@@ -51,6 +51,7 @@ class DataGeneratorProcessor(dataCatererConfiguration: DataCatererConfiguration)
 
     if (summaryWithTask.isEmpty) {
       LOGGER.warn("No tasks found or no tasks enabled. No data will be generated or validated")
+      PlanRunResults(List(), List())
     } else {
       val generationResult = if (flagsConfig.enableGenerateData) {
         LOGGER.info(s"Following tasks are enabled and will be executed: num-tasks=${summaryWithTask.size}, tasks=$stepNames")
@@ -63,6 +64,10 @@ class DataGeneratorProcessor(dataCatererConfiguration: DataCatererConfiguration)
       } else List()
 
       applyPostPlanProcessors(plan, sparkRecordListener, generationResult, validationResults)
+      val optReportPath = if (flagsConfig.enableSaveReports) {
+        plan.runId.map(id => s"${foldersConfig.generatedReportsFolderPath}/$id").orElse(Some(foldersConfig.generatedReportsFolderPath))
+      } else None
+      PlanRunResults(generationResult, validationResults, optReportPath)
     }
   }
 
