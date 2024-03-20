@@ -135,29 +135,18 @@ This is inspired by the [mkdocs-material project](https://github.com/squidfunk/m
 ```shell
 gradle clean :api:shadowJar :app:shadowJar
 docker build --build-arg "APP_VERSION=0.7.0" --build-arg "SPARK_VERSION=3.5.0" --no-cache -t datacatering/data-caterer:0.7.0 .
-docker run -d -i -p 9898:9898 -e DEPLOY_MODE=standalone --name datacaterer datacatering/data-caterer:0.7.0
-curl localhost:9898
+docker run -d -i -p 9898:9898 -e DEPLOY_MODE=standalone -v data-caterer-data:/opt/data-caterer --name datacaterer datacatering/data-caterer:0.7.0
+#open localhost:9898
 ```
 
 ##### Jpackage
 
 ```bash
-gradle clean :api:shadowJar :app:shadowJar
-jpackage --input app/build/libs/ --name DataCaterer --main-jar app-0.7.0-all.jar --main-class io.github.datacatering.datacaterer.core.ui.AkkaHttpServer --type dmg \
-   --java-options "-XX:+IgnoreUnrecognizedVMOptions" \
-   --java-options "--add-opens=java.base/java.lang=ALL-UNNAMED" \
-   --java-options "--add-opens=java.base/java.lang.invoke=ALL-UNNAMED" \
-   --java-options "--add-opens=java.base/java.lang.reflect=ALL-UNNAMED" \
-   --java-options "--add-opens=java.base/java.io=ALL-UNNAMED" \
-   --java-options "--add-opens=java.base/java.net=ALL-UNNAMED" \
-   --java-options "--add-opens=java.base/java.nio=ALL-UNNAMED" \
-   --java-options "--add-opens=java.base/java.util=ALL-UNNAMED" \
-   --java-options "--add-opens=java.base/java.util.concurrent=ALL-UNNAMED" \
-   --java-options "--add-opens=java.base/java.util.concurrent.atomic=ALL-UNNAMED" \
-   --java-options "--add-opens=java.base/sun.nio.ch=ALL-UNNAMED" \
-   --java-options "--add-opens=java.base/sun.nio.cs=ALL-UNNAMED" \
-   --java-options "--add-opens=java.base/sun.security.action=ALL-UNNAMED" \
-   --java-options "--add-opens=java.base/sun.util.calendar=ALL-UNNAMED" \
-   --java-options "--add-opens=java.security.jgss/sun.security.krb5=ALL-UNNAMED" \
-   --java-options "-Djdk.reflect.useDirectMethodHandle=false"
+JPACKAGE_BUILD=true gradle clean :api:shadowJar :app:shadowJar
+# Mac
+jpackage "@misc/jpackage/jpackage.cfg" "@misc/jpackage/jpackage-mac.cfg"
+# Windows
+jpackage "@misc/jpackage/jpackage.cfg" "@misc/jpackage/jpackage-windows.cfg"
+# Linux
+jpackage "@misc/jpackage/jpackage.cfg" "@misc/jpackage/jpackage-linux.cfg"
 ```

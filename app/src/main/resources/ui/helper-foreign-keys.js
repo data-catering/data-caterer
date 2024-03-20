@@ -39,14 +39,14 @@ export function createForeignKeys() {
 
 export function createForeignKeysFromPlan(respJson) {
     if (respJson.foreignKeys) {
-        let foreignKeysContainer = document.querySelector(".foreign-keys-container");
+        let foreignKeysAccordion = document.querySelector(".foreign-keys-container").querySelector(".accordion");
         for (const foreignKey of respJson.foreignKeys) {
             numForeignKeys += 1;
             let newForeignKey = createForeignKey(numForeignKeys);
-            foreignKeysContainer.append(newForeignKey);
+            foreignKeysAccordion.append(newForeignKey);
 
             if (foreignKey.source) {
-                $(newForeignKey).find("select.foreign-key-source").val(foreignKey.source.taskName).selectpicker("refresh")[0].dispatchEvent(new Event("change"));
+                $(newForeignKey).find("select.foreign-key-source").selectpicker("val", foreignKey.source.taskName);
                 $(newForeignKey).find("input.foreign-key-source").val(foreignKey.source.columns)[0].dispatchEvent(new Event("input"));
             }
 
@@ -57,7 +57,7 @@ export function createForeignKeysFromPlan(respJson) {
                 for (const fkLink of foreignKey.links) {
                     let newForeignKeyLink = createForeignKeyInput(numForeignKeysLinks, "foreign-key-link");
                     foreignKeyLinkSources.insertBefore(newForeignKeyLink, foreignKeyLinkSources.lastChild);
-                    $(newForeignKeyLink).find("select.foreign-key-link").val(fkLink.taskName).selectpicker("refresh")[0].dispatchEvent(new Event("change"));
+                    $(newForeignKeyLink).find("select.foreign-key-link").selectpicker("val", fkLink.taskName);
                     $(newForeignKeyLink).find("input.foreign-key-link").val(fkLink.columns)[0].dispatchEvent(new Event("input"));
                 }
             }
@@ -113,6 +113,18 @@ function createForeignKey(index) {
     return accordionItem;
 }
 
+function updateForeignKeyTasks(taskNameSelect) {
+    taskNameSelect.replaceChildren();
+    let taskNames = Array.from(document.querySelectorAll(".task-name-field").values());
+    for (const taskName of taskNames) {
+        let selectOption = document.createElement("option");
+        selectOption.setAttribute("value", taskName.value);
+        selectOption.innerText = taskName.value;
+        taskNameSelect.append(selectOption);
+    }
+    $(taskNameSelect).selectpicker("destroy").selectpicker("render");
+}
+
 function createForeignKeyInput(index, name) {
     let foreignKey = document.createElement("div");
     foreignKey.setAttribute("class", `row m-1 align-items-center ${name}-source`);
@@ -120,18 +132,6 @@ function createForeignKeyInput(index, name) {
     let taskNameSelect = createSelect(`${name}-${index}`, "Task", `selectpicker form-control input-field ${name}`);
     taskNameSelect.setAttribute("title", "Select a task...");
     taskNameSelect.setAttribute("data-header", "Select a task...");
-    // get the latest list of task names
-    taskNameSelect.addEventListener("click", function () {
-        taskNameSelect.replaceChildren();
-        let taskNames = Array.from(document.querySelectorAll(".task-name-field").values());
-        for (const taskName of taskNames) {
-            let selectOption = document.createElement("option");
-            selectOption.setAttribute("value", taskName.value);
-            selectOption.innerText = taskName.value;
-            taskNameSelect.append(selectOption);
-        }
-    });
-    taskNameSelect.dispatchEvent(new Event("click"));
     let taskNameCol = document.createElement("div");
     taskNameCol.setAttribute("class", "col");
     taskNameCol.append(taskNameSelect);
@@ -147,6 +147,12 @@ function createForeignKeyInput(index, name) {
         foreignKey.append(closeButton);
     }
     $(taskNameSelect).selectpicker();
+    // get the latest list of task names
+    $(document).find(".task-name-field").on("change", function () {
+        updateForeignKeyTasks(taskNameSelect);
+    });
+    updateForeignKeyTasks(taskNameSelect);
+    // $(document).find(".task-name-field")[0].dispatchEvent(new Event("change"));
     return foreignKey;
 }
 

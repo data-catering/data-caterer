@@ -4,7 +4,7 @@ import io.github.datacatering.datacaterer.api.connection.{ConnectionTaskBuilder,
 import io.github.datacatering.datacaterer.api.model.Constants._
 import io.github.datacatering.datacaterer.api.model.DataType
 import io.github.datacatering.datacaterer.api.{BasePlanRun, ColumnNamesValidationBuilder, ColumnValidationBuilder, ConnectionConfigWithTaskBuilder, CountBuilder, DataCatererConfigurationBuilder, FieldBuilder, GeneratorBuilder, GroupByValidationBuilder, PlanBuilder, PlanRun, ValidationBuilder}
-import io.github.datacatering.datacaterer.core.ui.model.{ConfigurationRequest, DataSourceRequest, ForeignKeyRequest, PlanRunRequest, ValidationItemRequest, ValidationItemRequests}
+import io.github.datacatering.datacaterer.core.ui.model.{ConfigurationRequest, DataSourceRequest, FieldRequest, ForeignKeyRequest, PlanRunRequest, ValidationItemRequest, ValidationItemRequests}
 import org.apache.log4j.Logger
 
 object UiMapper {
@@ -38,7 +38,6 @@ object UiMapper {
       .count(countBuilder)
       .validations(mappedValidations: _*)
       .enableDataGeneration(mappedFields.nonEmpty)
-      .enableDataValidation(mappedValidations.nonEmpty)
   }
 
   def foreignKeyMapping(foreignKeyRequests: List[ForeignKeyRequest], connections: List[ConnectionTaskBuilder[_]], planBuilder: PlanBuilder): PlanBuilder = {
@@ -249,10 +248,16 @@ object UiMapper {
   }
 
   private def fieldMapping(dataSourceRequest: DataSourceRequest): List[FieldBuilder] = {
-    dataSourceRequest.fields.getOrElse(List()).map(field => {
-      assert(field.name.nonEmpty, s"Field name cannot be empty, data-source-name=${dataSourceRequest.name}")
-      assert(field.`type`.nonEmpty, s"Field type cannot be empty, data-source-name=${dataSourceRequest.name}, field-name=${field.name}")
-      FieldBuilder().name(field.name).`type`(DataType.fromString(field.`type`)).options(field.options.getOrElse(Map()))
+    dataSourceRequest.fields.map(fields => fieldMapping(dataSourceRequest.name, fields)).getOrElse(List())
+  }
+
+  private def fieldMapping(dataSourceName: String, fields: List[FieldRequest]): List[FieldBuilder] = {
+    fields.map(field => {
+      assert(field.name.nonEmpty, s"Field name cannot be empty, data-source-name=$dataSourceName")
+      assert(field.`type`.nonEmpty, s"Field type cannot be empty, data-source-name=$dataSourceName, field-name=${field.name}")
+      val baseBuild = FieldBuilder().name(field.name).`type`(DataType.fromString(field.`type`)).options(field.options.getOrElse(Map()))
+      val optNested = field.nested.map(nestedFields => fieldMapping(dataSourceName, nestedFields.fields))
+      optNested.map(nested => baseBuild.schema(nested: _*)).getOrElse(baseBuild)
     })
   }
 
@@ -284,30 +289,20 @@ object UiMapper {
   }
 
   private def connectionsWithUpstreamValidationMapping(connections: List[ConnectionTaskBuilder[_]], dataSources: List[DataSourceRequest]): List[ConnectionTaskBuilder[_]] = {
-    val dataSourcesWithUpstreamValidation = dataSources.filter(ds => ds.validations.getOrElse(List()).exists(_.`type` == VALIDATION_UPSTREAM))
-      .map(ds => (ds.name, ds.validations.getOrElse(List())))
+    val dataSourcesWithUpstreamValidation = dataSources
+      .filter(ds => ds.validations.getOrElse(List()).exists(_.`type` == VALIDATION_UPSTREAM))
+      .map(ds => (ds.taskName, ds.validations.getOrElse(List())))
       .toMap
-    dataSourcesWithUpstreamValidation.map(ds => {
-      val optConnection = connections.find(c => c.task.exists(_.task.name == ds._1))
-      optConnection match {
-        case Some(connection) =>
-          val upstreamValidations = ds._2.filter(_.`type` == VALIDATION_UPSTREAM)
-          val mappedValidations = upstreamValidationMapping(connection, upstreamValidations)
-          val allValidations = connection.getValidations ++ mappedValidations
-          connection.validations(allValidations: _*)
-        case None =>
 
-      }
-    })
     connections.map(connection => {
       val connectionTaskName = connection.task.map(_.task.name).getOrElse("")
       val optDataSourceWithUpstreamValidation = dataSourcesWithUpstreamValidation.get(connectionTaskName)
       optDataSourceWithUpstreamValidation match {
         case Some(value) =>
           val upstreamValidations = value.filter(_.`type` == VALIDATION_UPSTREAM)
-          val mappedValidations = upstreamValidationMapping(connection, upstreamValidations)
+          val mappedValidations = upstreamValidationMapping(connections, upstreamValidations)
           val allValidations = connection.getValidations ++ mappedValidations
-          connection.validations(allValidations: _*)
+          connection.validations(allValidations: _*).enableDataValidation(allValidations.nonEmpty)
         case None =>
           LOGGER.debug(s"Task does not have any upstream validations defined, task-name=$connectionTaskName")
           connection
@@ -315,29 +310,36 @@ object UiMapper {
     })
   }
 
-  private def upstreamValidationMapping(connection: ConnectionTaskBuilder[_], upstreamValidations: List[ValidationItemRequest]): List[ValidationBuilder] = {
-    upstreamValidations.map(upstreamValidation => {
-      val baseValid = ValidationBuilder().upstreamData(connection)
-
-      // check for join options
+  private def upstreamValidationMapping(connections: List[ConnectionTaskBuilder[_]], upstreamValidations: List[ValidationItemRequest]): List[ValidationBuilder] = {
+    upstreamValidations.flatMap(upstreamValidation => {
       def getOption(k: String): Option[String] = upstreamValidation.options.flatMap(_.get(k))
+      val upstreamTaskName = getOption(VALIDATION_UPSTREAM_TASK_NAME).getOrElse("")
+      val upstreamConnection = connections.find(_.task.exists(_.task.name == upstreamTaskName))
 
-      val joinValidation = (getOption(VALIDATION_UPSTREAM_JOIN_TYPE), getOption(VALIDATION_UPSTREAM_JOIN_COLUMNS), getOption(VALIDATION_UPSTREAM_JOIN_EXPR)) match {
-        case (Some(joinType), Some(joinCols), _) => baseValid.joinType(joinType).joinColumns(joinCols.split(","): _*)
-        case (Some(joinType), None, Some(joinExpr)) => baseValid.joinType(joinType).joinExpr(joinExpr)
-        case (None, Some(joinCols), _) => baseValid.joinType(DEFAULT_VALIDATION_JOIN_TYPE).joinColumns(joinCols.split(","): _*)
-        case (None, None, Some(joinExpr)) => baseValid.joinType(DEFAULT_VALIDATION_JOIN_TYPE).joinExpr(joinExpr)
-        case _ => throw new RuntimeException("Unexpected upstream validation join options, need to define join columns or expression")
+      if (upstreamConnection.isDefined) {
+        val baseValid = ValidationBuilder().upstreamData(upstreamConnection.get)
+
+        // check for join options
+        val joinValidation = (getOption(VALIDATION_UPSTREAM_JOIN_TYPE), getOption(VALIDATION_UPSTREAM_JOIN_COLUMNS), getOption(VALIDATION_UPSTREAM_JOIN_EXPR)) match {
+          case (Some(joinType), Some(joinCols), _) => baseValid.joinType(joinType).joinColumns(joinCols.split(","): _*)
+          case (Some(joinType), None, Some(joinExpr)) => baseValid.joinType(joinType).joinExpr(joinExpr)
+          case (None, Some(joinCols), _) => baseValid.joinType(DEFAULT_VALIDATION_JOIN_TYPE).joinColumns(joinCols.split(","): _*)
+          case (None, None, Some(joinExpr)) => baseValid.joinType(DEFAULT_VALIDATION_JOIN_TYPE).joinExpr(joinExpr)
+          case _ => throw new RuntimeException("Unexpected upstream validation join options, need to define join columns or expression")
+        }
+        val upstreamWithValidations = upstreamValidation.nested.map(nest =>
+          nest.validations.flatMap(nestedValidation => {
+            validationItemRequestToValidationBuilders(nestedValidation)
+              .map(joinValidation.withValidation)
+          })
+        ).getOrElse(List())
+        upstreamWithValidations
+      } else {
+        LOGGER.error(s"Validation upstream task name is not defined in task list, unable to execute upstream validations, " +
+          s"validation-upstream-task-name=$upstreamTaskName")
+        List()
       }
-      val upstreamWithValidations = upstreamValidation.nested.map(nest =>
-        nest.validations.flatMap(nestedValidation => {
-          validationItemRequestToValidationBuilders(nestedValidation)
-            .map(joinValidation.withValidation)
-        })
-      ).getOrElse(List())
-      upstreamWithValidations
     })
-    List()
   }
 
   private def groupByValidationMapping(baseValid: GroupByValidationBuilder, optNestedValidations: Option[ValidationItemRequests]) = {

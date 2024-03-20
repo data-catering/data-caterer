@@ -8,7 +8,7 @@ ALL_OPTS="$ADDITIONAL_OPTS --conf \"spark.driver.extraJavaOptions=$JAVA_OPTS\" -
 
 if [[ "$DEPLOY_MODE" -eq "standalone" ]] ; then
   echo "Running Data Caterer as a standalone application"
-  java -cp "/opt/spark/jars/*:/opt/app/job.jar" io.github.datacatering.datacaterer.core.ui.AkkaHttpServer
+  java -cp "/opt/spark/jars/*:/opt/app/job.jar" io.github.datacatering.datacaterer.core.ui.DataCatererUI
 else
   echo "Running Data Caterer as a Spark job"
   CMD=(

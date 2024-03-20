@@ -36,10 +36,10 @@ export function createConfiguration() {
 
 export function createConfigurationFromPlan(respJson) {
     if (respJson.configuration) {
-        let configContainer = document.getElementById("configuration-details-body");
+        let configContainer = $(document).find("#configuration-details-body,#report-details-body");
         for (const [configParent, configValues] of Object.entries(respJson.configuration)) {
             for (const [optKey, optValue] of Object.entries(configValues)) {
-                let currentConfigElement = $(configContainer).find(`[configuration-parent=${configParent}][configuration=${optKey}]`);
+                let currentConfigElement = $(configContainer).find(`[configuration-parent="${configParent}"][configuration="${optKey}"]`);
                 let typeAttr = currentConfigElement.attr("type");
                 if (typeAttr && typeAttr === "checkbox") {
                     currentConfigElement.prop("checked", optValue === "true");
@@ -56,17 +56,17 @@ export function getConfiguration() {
     let mappedConfiguration = new Map();
     configurationOptionContainers.forEach(configurationOptionContainer => {
         let inputConfigurations = Array.from(configurationOptionContainer.querySelectorAll(".input-configuration").values());
-        let baseConfig = $(inputConfigurations).closest("[configuration-parent]").attr("configuration-parent");
-        let options = new Map();
         for (let option of inputConfigurations) {
+            let baseConfig = option.getAttribute("configuration-parent");
+            let options = (mappedConfiguration.get(baseConfig) || new Map());
             if (option.getAttribute("type") === "checkbox") {
                 let optionEnabled = option.checked ? "true" : "false";
                 options.set(option.getAttribute("configuration"), optionEnabled);
             } else {
                 options.set(option.getAttribute("configuration"), option.value);
             }
+            mappedConfiguration.set(baseConfig, options);
         }
-        mappedConfiguration.set(baseConfig, options);
     });
     return mappedConfiguration;
 }

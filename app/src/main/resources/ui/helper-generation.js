@@ -106,12 +106,9 @@ function createGenerationFields(dataSource, manualSchema) {
         }
         // there are nested fields
         if (field.nested && field.nested.fields) {
-            for (const nestedField of field.nested.fields) {
-                numFields += 1;
-                let newFieldBox = createManualSchema(numFields, "struct-schema");
-                $(newField).find(".accordion-body").append(newFieldBox);
-                createGenerationFields(field.nested, newFieldBox);
-            }
+            let newFieldBox = createManualSchema(numFields, "struct-schema");
+            $(newField).find(".accordion-body").append(newFieldBox);
+            createGenerationFields(field.nested, newFieldBox);
         }
     }
     let collapseShow = $(document).find(".accordion-button.collapse.show");

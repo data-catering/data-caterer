@@ -31,7 +31,7 @@ import {
 import {createGenerationElements, createManualSchema, getGeneration} from "./helper-generation.js";
 import {createManualValidation, createValidationFromPlan, getValidations} from "./helper-validation.js";
 import {createCountElementsFromPlan, getRecordCount} from "./helper-record-count.js";
-import {reportOptionsMap} from "./configuration-data.js";
+import {configurationOptionsMap, reportConfigKeys, reportOptionsMap} from "./configuration-data.js";
 
 const addTaskButton = document.getElementById("add-task-button");
 const tasksDiv = document.getElementById("tasks-details-body");
@@ -284,13 +284,16 @@ async function createDataSourceConfiguration(index, closeButton, divider) {
 
 function createReportConfiguration() {
     let reportDetailsBody = document.getElementById("report-details-body");
-    for (let [key, value] of reportOptionsMap.entries()) {
-        let configRow = createNewConfigRow("report", key, value);
+    let configOptionsContainer = document.createElement("div");
+    configOptionsContainer.setAttribute("class", "m-1 configuration-options-container");
+    reportDetailsBody.append(configOptionsContainer);
+    for (let [idx, entry] of Object.entries(reportConfigKeys)) {
+        let configRow = createNewConfigRow(entry[0], entry[1], configurationOptionsMap.get(entry[0])[entry[1]]);
         let inputVal = $(configRow).find("input, select")[0];
         if (inputVal) {
             inputVal.id = inputVal.id + "-report";
         }
-        reportDetailsBody.append(configRow);
+        configOptionsContainer.append(configRow);
     }
 }
 
@@ -492,6 +495,7 @@ if (currUrlParams.includes("plan-name=")) {
             }
             createForeignKeysFromPlan(respJson);
             createConfigurationFromPlan(respJson);
+            wait(500).then(r => $(document).find('button[aria-controls="report-body"]:not(.collapsed),button[aria-controls="configuration-body"]:not(.collapsed)').click());
         });
 }
 

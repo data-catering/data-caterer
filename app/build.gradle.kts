@@ -35,17 +35,26 @@ tasks.withType<ScalaCompile> {
 }
 
 val basicImpl: Configuration by configurations.creating
+val jpackageDep: Configuration by configurations.creating
 
 configurations {
+    compileOnly {
+        if (System.getenv("JPACKAGE_BUILD") != "true") {
+            extendsFrom(jpackageDep)
+        }
+    }
     implementation {
         extendsFrom(basicImpl)
+        if (System.getenv("JPACKAGE_BUILD") == "true") {
+            extendsFrom(jpackageDep)
+        }
     }
 }
 
 dependencies {
-    compileOnly("org.scala-lang:scala-library:$scalaSpecificVersion")   //change to basicImpl for jpackage
-    compileOnly("org.apache.spark:spark-sql_$scalaVersion:$sparkVersion")
-    compileOnly(project(":api"))
+    jpackageDep("org.scala-lang:scala-library:$scalaSpecificVersion")
+    jpackageDep("org.apache.spark:spark-sql_$scalaVersion:$sparkVersion")
+    jpackageDep(project(":api"))
 
     // connectors
     // postgres

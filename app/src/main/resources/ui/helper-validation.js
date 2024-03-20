@@ -218,8 +218,6 @@ export function addColumnValidationBlock(newAttributeRow, mainContainer, attribu
     let cardBody = document.createElement("div");
     cardBody.setAttribute("class", "card-body data-validation-container");
     cardBody.append(newAttributeRow);
-    let closeButton = createCloseButton(cardDiv);
-    newAttributeRow.insertBefore(closeButton, newAttributeRow.firstChild);
     cardDiv.append(cardBody);
     mainContainer.append(cardDiv);
 
@@ -227,6 +225,8 @@ export function addColumnValidationBlock(newAttributeRow, mainContainer, attribu
     let {buttonWithMenuDiv, addAttributeButton, menu} = createButtonWithMenu(mainContainer);
     addItemsToAttributeMenu(validationTypeOptionsMap.get("column"), menu);
     newAttributeRow.append(buttonWithMenuDiv);
+    let closeButton = createCloseButton(cardDiv);
+    newAttributeRow.append(closeButton);
     menu.addEventListener("click", (event) => {
         let attribute = event.target.getAttribute("value");
         // check if attribute already exists

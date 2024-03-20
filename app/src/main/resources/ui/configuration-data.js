@@ -26,7 +26,7 @@ const defaultDataTypeOptions = {
         max: 9223372036854775807,
         help: "Seed for generating consistent random values."
     },
-    sql: {default: "", type: "text", help: "SQL expression for generating data."},
+    sql: {default: "", type: "text", help: "<a href='https://spark.apache.org/docs/latest/api/sql/' target='_blank' rel='noopener noreferrer'>Spark SQL</a> expression for generating data."},
     oneOf: {default: [], type: "text", help: "Generated values will be one of the defined values. Comma separated."},
     omit: {
         default: "false",
@@ -56,7 +56,7 @@ dataTypeOptionsMap.set("string", {
     ...defaultDataTypeOptions,
     minLen: {default: 1, type: "number", min: 0, max: 1000, help: "Minimum length of generated values."},
     maxLen: {default: 10, type: "number", min: 0, max: 1000, help: "Maximum length of generated values."},
-    expression: {default: "", type: "text", help: "Faker expression to generate values."},
+    expression: {default: "", type: "text", help: "<a href='https://www.datafaker.net/documentation/providers/' target='_blank' rel='noopener noreferrer'>Faker expression</a> to generate values."},
     enableNull: {default: "false", type: "text", choice: ["true", "false"], help: "Enable generation of null values."},
     nullProbability: {
         default: 0.0,
@@ -417,58 +417,39 @@ configurationOptionsMap.set("flag", {
         help: "Enable/disable plan and task automatic generation based off data source connections."
     },
 });
-configurationOptionsMap.set("folder", {
-    "generatedReportsFolderPath": {
-        configName: "generatedReportsFolderPath",
-        displayName: "Generated Reports Folder Path",
-        default: "",
-        type: "text",
-        help: "Folder path where generated HTML reports will be saved."
+configurationOptionsMap.set("generation", {
+    "numRecordsPerBatch": {
+        configName: "numRecordsPerBatch",
+        displayName: "Records Per Batch",
+        default: 100000,
+        type: "number",
+        min: 0,
+        help: "Number of records across all data sources to generate per batch."
     },
-    "validationFolderPath": {
-        configName: "validationFolderPath",
-        displayName: "Validation Folder Path",
-        default: "",
-        type: "text",
-        help: "If using YAML validation file(s), folder path that contains all validation files (can have nested directories)."
+    "numRecordsPerStep": {
+        configName: "numRecordsPerStep",
+        displayName: "Records Per Step",
+        default: -1,
+        type: "number",
+        help: "Overrides the count defined in each step with this value if defined (i.e. if set to 1000, for each step, 1000 records will be generated)."
     },
-    "planFilePath": {
-        configName: "planFilePath",
-        displayName: "Plan File Path",
-        default: "",
-        type: "text",
-        help: "If using YAML plan file, path to use when generating and/or validating data."
+});
+configurationOptionsMap.set("validation", {
+    "numSampleErrorRecords": {
+        configName: "numSampleErrorRecords",
+        displayName: "Error Samples",
+        default: 5,
+        type: "number",
+        help: "Number of sample error records to show in HTML report. Useful for debugging."
     },
-    "taskFolderPath": {
-        configName: "taskFolderPath",
-        displayName: "Task Folder Path",
-        default: "",
+    "enableDeleteRecordTrackingFiles": {
+        configName: "enableDeleteRecordTrackingFiles",
+        displayName: "Delete Record Tracking Files",
+        default: "true",
         type: "text",
-        help: "If using YAML task file(s), folder path that contains all the task files (can have nested directories)."
-    },
-    "generatedPlanAndTasksFolderPath": {
-        configName: "generatedPlanAndTasksFolderPath",
-        displayName: "Generated Plan And Tasks Folder Path",
-        default: "",
-        type: "text",
+        choice: ["true", "false"],
         paid: "true",
-        help: "Folder path where generated plan and task files will be saved."
-    },
-    "recordTrackingFolderPath": {
-        configName: "recordTrackingFolderPath",
-        displayName: "Record Tracking Folder Path",
-        default: "",
-        type: "text",
-        paid: "true",
-        help: "Folder path where record tracking files will be saved."
-    },
-    "recordTrackingForValidationFolderPath": {
-        configName: "recordTrackingForValidationFolderPath",
-        displayName: "Record Tracking For Validation Folder Path",
-        default: "",
-        type: "text",
-        paid: "true",
-        help: "Folder path where record tracking for validation files will be saved."
+        help: "Enable/disable to delete record tracking files at end of execution."
     },
 });
 configurationOptionsMap.set("metadata", {
@@ -519,41 +500,6 @@ configurationOptionsMap.set("metadata", {
         help: "Minimum number of records required before considering if a field can be of type oneOf."
     },
 });
-configurationOptionsMap.set("generation", {
-    "numRecordsPerBatch": {
-        configName: "numRecordsPerBatch",
-        displayName: "Records Per Batch",
-        default: 100000,
-        type: "number",
-        min: 0,
-        help: "Number of records across all data sources to generate per batch."
-    },
-    "numRecordsPerStep": {
-        configName: "numRecordsPerStep",
-        displayName: "Records Per Step",
-        default: -1,
-        type: "number",
-        help: "Overrides the count defined in each step with this value if defined (i.e. if set to 1000, for each step, 1000 records will be generated)."
-    },
-});
-configurationOptionsMap.set("validation", {
-    "numSampleErrorRecords": {
-        configName: "numSampleErrorRecords",
-        displayName: "Error Samples",
-        default: 5,
-        type: "number",
-        help: "Number of sample error records to show in HTML report. Useful for debugging."
-    },
-    "enableDeleteRecordTrackingFiles": {
-        configName: "enableDeleteRecordTrackingFiles",
-        displayName: "Delete Record Tracking Files",
-        default: "true",
-        type: "text",
-        choice: ["true", "false"],
-        paid: "true",
-        help: "Enable/disable to delete record tracking files at end of execution."
-    },
-});
 configurationOptionsMap.set("alert", {
     "triggerOn": {
         configName: "triggerOn",
@@ -578,9 +524,63 @@ configurationOptionsMap.set("alert", {
         help: "Define one or more Slack channels to send alerts to. Comma separated."
     },
 });
+configurationOptionsMap.set("folder", {
+    "generatedReportsFolderPath": {
+        configName: "generatedReportsFolderPath",
+        displayName: "Generated Reports Folder Path",
+        default: "/opt/app/report",
+        type: "text",
+        help: "Folder path where generated HTML reports will be saved."
+    },
+    "validationFolderPath": {
+        configName: "validationFolderPath",
+        displayName: "Validation Folder Path",
+        default: "/opt/app/validation",
+        type: "text",
+        help: "If using YAML validation file(s), folder path that contains all validation files (can have nested directories)."
+    },
+    "planFilePath": {
+        configName: "planFilePath",
+        displayName: "Plan File Path",
+        default: "/opt/app/plan/customer-create-plan.yaml",
+        type: "text",
+        help: "If using YAML plan file, path to use when generating and/or validating data."
+    },
+    "taskFolderPath": {
+        configName: "taskFolderPath",
+        displayName: "Task Folder Path",
+        default: "/opt/app/task",
+        type: "text",
+        help: "If using YAML task file(s), folder path that contains all the task files (can have nested directories)."
+    },
+    "generatedPlanAndTasksFolderPath": {
+        configName: "generatedPlanAndTasksFolderPath",
+        displayName: "Generated Plan And Tasks Folder Path",
+        default: "/tmp",
+        type: "text",
+        paid: "true",
+        help: "Folder path where generated plan and task files will be saved."
+    },
+    "recordTrackingFolderPath": {
+        configName: "recordTrackingFolderPath",
+        displayName: "Record Tracking Folder Path",
+        default: "/opt/app/record-tracking",
+        type: "text",
+        paid: "true",
+        help: "Folder path where record tracking files will be saved."
+    },
+    "recordTrackingForValidationFolderPath": {
+        configName: "recordTrackingForValidationFolderPath",
+        displayName: "Record Tracking For Validation Folder Path",
+        default: "/opt/app/record-tracking-validation",
+        type: "text",
+        paid: "true",
+        help: "Folder path where record tracking for validation files will be saved."
+    },
+});
 
 export const reportOptionsMap = new Map();
-const reportConfigKeys = [["flag", "enableSaveReports"],
+export const reportConfigKeys = [["flag", "enableSaveReports"],
     ["flag", "enableValidation"],
     ["flag", "enableSinkMetadata"],
     ["flag", "enableAlerts"],
