@@ -255,9 +255,12 @@ object UiMapper {
     fields.map(field => {
       assert(field.name.nonEmpty, s"Field name cannot be empty, data-source-name=$dataSourceName")
       assert(field.`type`.nonEmpty, s"Field type cannot be empty, data-source-name=$dataSourceName, field-name=${field.name}")
-      val baseBuild = FieldBuilder().name(field.name).`type`(DataType.fromString(field.`type`)).options(field.options.getOrElse(Map()))
+      val options = field.options.getOrElse(Map())
+      val baseBuild = FieldBuilder().name(field.name).`type`(DataType.fromString(field.`type`)).options(options)
+      val withRegex = options.get(REGEX_GENERATOR).map(regex => baseBuild.regex(regex)).getOrElse(baseBuild)
+      val withOneOf = options.get(ONE_OF_GENERATOR).map(oneOf => withRegex.oneOf(oneOf.split(ONE_OF_GENERATOR_DELIMITER).map(_.trim): _*)).getOrElse(withRegex)
       val optNested = field.nested.map(nestedFields => fieldMapping(dataSourceName, nestedFields.fields))
-      optNested.map(nested => baseBuild.schema(nested: _*)).getOrElse(baseBuild)
+      optNested.map(nested => withOneOf.schema(nested: _*)).getOrElse(withOneOf)
     })
   }
 

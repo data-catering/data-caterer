@@ -24,6 +24,9 @@ const tableHeaders = [{
     field: "validationSummary",
     title: "Data Validated",
 }, {
+    field: "failedReason",
+    title: "Fail Reason",
+}, {
     field: "reportLink",
     title: "Report",
 }];
@@ -36,9 +39,7 @@ fetch("http://localhost:9898/run/history", {
             return r.json();
         } else {
             r.text().then(text => {
-                new bootstrap.Toast(
-                    createToast(`Plan run history`, `Failed to get plan run history! Error: ${text}`, "fail")
-                ).show();
+                createToast(`Plan run history`, `Failed to get plan run history! Error: ${text}`, "fail");
                 throw new Error(text);
             });
         }

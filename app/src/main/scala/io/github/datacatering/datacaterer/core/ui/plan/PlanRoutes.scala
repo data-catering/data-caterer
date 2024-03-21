@@ -135,10 +135,18 @@ class PlanRoutes(
           }
         },
         path("""[a-z0-9-]+""".r) { planName =>
-          val plan = planRepository.ask(PlanRepository.GetPlan(planName, _))
-          rejectEmptyResponse {
-            complete(plan)
-          }
+          concat(
+            get {
+              val plan = planRepository.ask(PlanRepository.GetPlan(planName, _))
+              rejectEmptyResponse {
+                complete(plan)
+              }
+            },
+            delete {
+              planRepository ! PlanRepository.RemovePlan(planName)
+              complete("Plan removed")
+            }
+          )
         }
       )
     },

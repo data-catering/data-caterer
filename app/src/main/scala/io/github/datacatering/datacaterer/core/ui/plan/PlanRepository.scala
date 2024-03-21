@@ -54,7 +54,7 @@ object PlanRepository extends JsonSupport {
 
   final case class GetPlanRuns(replyTo: ActorRef[PlanRunExecutionDetails]) extends PlanCommand
 
-  final case class ClearDataFromPlan(name: String) extends PlanCommand
+  final case class RemovePlan(name: String) extends PlanCommand
 
   private val executionSaveFolder = s"$INSTALL_DIRECTORY/execution"
   private val planSaveFolder = s"$INSTALL_DIRECTORY/plan"
@@ -95,7 +95,6 @@ object PlanRepository extends JsonSupport {
           }
           Behaviors.same
         case SavePlan(planRunRequest) =>
-          println(planRunRequest)
           savePlan(planRunRequest)
           Behaviors.same
         case GetPlans(replyTo) =>
@@ -107,7 +106,8 @@ object PlanRepository extends JsonSupport {
         case GetPlanRunStatus(id, replyTo) =>
           replyTo ! getPlanRunStatus(id)
           Behaviors.same
-        case ClearDataFromPlan(_) =>
+        case RemovePlan(name) =>
+          removePlan(name)
           Behaviors.same
         case GetPlanRuns(replyTo) =>
           replyTo ! getAllPlanExecutions
@@ -212,5 +212,11 @@ object PlanRepository extends JsonSupport {
       .sortBy(_.name)
 
     PlanRunExecutionDetails(groupedExecutions)
+  }
+
+  private def removePlan(name: String): Unit = {
+    LOGGER.debug(s"Removing plan, plan-name=$name")
+    val planFile = Path.of(s"$planSaveFolder/$name.json").toFile
+    if (planFile.exists()) planFile.delete()
   }
 }

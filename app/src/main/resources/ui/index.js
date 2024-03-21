@@ -19,7 +19,7 @@ import {
     createFormFloating,
     createInput,
     createSelect,
-    createToast
+    createToast, executePlan, wait
 } from "./shared.js";
 import {createForeignKeys, createForeignKeysFromPlan, getForeignKeys} from "./helper-foreign-keys.js";
 import {
@@ -169,9 +169,7 @@ function createIconWithConnectionTooltip(dataConnectionSelect) {
                     return r.json();
                 } else {
                     r.text().then(text => {
-                        new bootstrap.Toast(
-                            createToast(`Get connection ${connectionName}`, `Failed to get connection ${connectionName}! Error: ${err}`, "fail")
-                        ).show();
+                        createToast(`Get connection ${connectionName}`, `Failed to get connection ${connectionName}! Error: ${err}`, "fail");
                         throw new Error(text);
                     });
                 }
@@ -225,9 +223,7 @@ async function createDataConnectionInput(index) {
                 return r.json();
             } else {
                 r.text().then(text => {
-                    new bootstrap.Toast(
-                        createToast("Get connections", `Get connections failed! Error: ${err}`, "fail")
-                    ).show();
+                    createToast("Get connections", `Get connections failed! Error: ${err}`, "fail");
                     throw new Error(text);
                 });
             }
@@ -349,72 +345,7 @@ function submitForm() {
         e.preventDefault();
         // collect all the user inputs
         let {planName, runId, requestBody} = getPlanDetails(form);
-        console.log(JSON.stringify(requestBody));
-        fetch("http://localhost:9898/run", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(requestBody)})
-            .catch(err => {
-                console.error(err);
-                new bootstrap.Toast(
-                    createToast(`Plan run ${planName}`, `Failed to run plan ${planName}! Error: ${err}`)
-                ).show();
-            })
-            .then(r => {
-                if (r.ok) {
-                    return r.text();
-                } else {
-                    r.text().then(text => {
-                        new bootstrap.Toast(
-                            createToast(`Plan run ${planName}`, `Failed to run plan ${planName}! Error: ${text}`, "fail")
-                        ).show();
-                        throw new Error(text);
-                    });
-                }
-            })
-            .then(async r => {
-                const toast = new bootstrap.Toast(createToast("Plan run", `Plan run started! Msg: ${r}`));
-                toast.show();
-                // poll every 1 second for status of plan run
-                let currentStatus = "started";
-                while (currentStatus !== "finished" && currentStatus !== "failed") {
-                    await fetch(`http://localhost:9898/run/status/${runId}`, {method: "GET", headers: {Accept: "application/json"}})
-                        .catch(err => {
-                            console.error(err);
-                            const toast = new bootstrap.Toast(createToast(planName, `Plan ${planName} failed! Error: ${err}`, "fail"));
-                            toast.show();
-                            reject("Plan run failed");
-                        })
-                        .then(resp => {
-                            if (resp.ok) {
-                                return resp.json();
-                            } else {
-                                resp.text().then(text => {
-                                    new bootstrap.Toast(
-                                        createToast(planName, `Plan ${planName} failed! Error: ${text}`, "fail")
-                                    ).show();
-                                    throw new Error(text);
-                                });
-                            }
-                        })
-                        .then(respJson => {
-                            let latestStatus = respJson.status;
-                            if (latestStatus !== currentStatus) {
-                                currentStatus = latestStatus;
-                                let type = "running";
-                                let msg = `Plan ${planName} update, status: ${latestStatus}`;
-                                if (currentStatus === "finished") {
-                                    type = "success";
-                                    msg = `Successfully completed ${planName}.`;
-                                } else if (currentStatus === "failed") {
-                                    type = "fail";
-                                    let failReason = respJson.failedReason.length > 200 ? respJson.failedReason.substring(0, 200) + "..." : respJson.failedReason;
-                                    msg = `Plan ${planName} failed! Error: ${failReason}`;
-                                }
-                                const toast = new bootstrap.Toast(createToast(planName, msg, type));
-                                toast.show();
-                            }
-                        });
-                    await wait(500);
-                }
-            });
+        executePlan(requestBody, planName, runId);
     });
 }
 
@@ -427,36 +358,27 @@ function savePlan() {
         fetch("http://localhost:9898/plan", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(requestBody)})
             .catch(err => {
                 console.error(err);
-                new bootstrap.Toast(createToast(planName, `Plan save failed! Error: ${err}`, "fail")).show();
+                createToast(planName, `Plan save failed! Error: ${err}`, "fail");
             })
             .then(r => {
                 if (r.ok) {
                     return r.text();
                 } else {
                     r.text().then(text => {
-                        new bootstrap.Toast(
-                            createToast(planName, `Plan ${planName} save failed! Error: ${text}`, "fail")
-                        ).show();
+                        createToast(planName, `Plan ${planName} save failed! Error: ${text}`, "fail");
                         throw new Error(text);
                     });
                 }
             })
             .then(resp => {
                 if (resp.includes("fail")) {
-                    new bootstrap.Toast(createToast(planName, `Plan ${planName} save failed!`, "fail")).show();
+                    createToast(planName, `Plan ${planName} save failed!`, "fail");
                 } else {
-                    new bootstrap.Toast(createToast(planName, `Plan ${planName} saved.`, "success")).show();
+                    createToast(planName, `Plan ${planName} saved.`, "success");
                 }
             })
     });
 }
-
-
-const wait = function (ms = 1000) {
-    return new Promise(resolve => {
-        setTimeout(resolve, ms);
-    });
-};
 
 // check if sent over from edit plan with plan-name
 const currUrlParams = window.location.search.substring(1);
@@ -470,9 +392,7 @@ if (currUrlParams.includes("plan-name=")) {
                 return r.json();
             } else {
                 r.text().then(text => {
-                    new bootstrap.Toast(
-                        createToast(planName, `Plan ${planName} failed! Error: ${text}`, "fail")
-                    ).show();
+                    createToast(planName, `Plan ${planName} failed! Error: ${text}`, "fail");
                     throw new Error(text);
                 });
             }

@@ -106,7 +106,6 @@ class PlanProcessorTest extends SparkSuite {
   ignore("Write YAML for plan") {
     val docPlanRun = new DocumentationPlanRun()
     val planWrite = ObjectMapperUtil.yamlObjectMapper.writeValueAsString(docPlanRun._plan)
-    println(planWrite)
   }
 
   ignore("Can run Postgres plan run") {

@@ -31,7 +31,6 @@ export function createManualSchema(index, additionalName) {
         numFields += 1;
         let newField = createSchemaField(numFields);
         schemaAccordion.append(newField);
-        $(".selectpicker").selectpicker();
     });
 
     divContainer.append(addFieldButton, schemaAccordion);

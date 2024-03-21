@@ -6,6 +6,8 @@ object UiConfiguration {
 
   private val LOGGER = Logger.getLogger(getClass.getName)
 
+  val INSTALL_DIRECTORY: String = getInstallDirectory
+
   def getInstallDirectory: String = {
     val osName = System.getProperty("os.name").toLowerCase
     if (osName.contains("win")) {
@@ -25,7 +27,5 @@ object UiConfiguration {
   private def setHadoopHome(): Unit = {
     System.setProperty("hadoop.home.dir", "/")
   }
-
-  lazy val INSTALL_DIRECTORY = getInstallDirectory
 
 }

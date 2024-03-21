@@ -311,7 +311,7 @@ export function createAddAttributeButton(addAttributeId) {
 }
 
 export function addItemsToAttributeMenu(attributesForDataType, menu) {
-    for (let [key] of Object.entries(attributesForDataType)) {
+    for (let [key, value] of Object.entries(attributesForDataType)) {
         if (!key.startsWith("defaultChild") && key !== "addBlock") {
             let menuItem = document.createElement("li");
             menuItem.setAttribute("id", key);
@@ -320,10 +320,18 @@ export function addItemsToAttributeMenu(attributesForDataType, menu) {
             menuItemContent.setAttribute("class", "dropdown-item");
             menuItemContent.setAttribute("type", "button");
             menuItemContent.setAttribute("value", key);
-            menuItemContent.innerText = key;
+            menuItemContent.innerText = value.displayName;
             menuItem.append(menuItemContent);
             menu.append(menuItem);
         }
+    }
+}
+
+export function addHelp(attrMetadata, child, parent) {
+    if (attrMetadata.help) {
+        let helpDiv = createFormText(child.getAttribute("id"), attrMetadata.help, "span");
+        child.setAttribute("aria-describedby", helpDiv.getAttribute("id"));
+        parent.append(helpDiv);
     }
 }
 
@@ -332,32 +340,25 @@ export function addNewDataTypeAttribute(attribute, attrMetadata, attributeContai
     // add attribute field to field container
     let newAttributeRow = document.createElement("div");
     newAttributeRow.setAttribute("class", "row g-3 m-1 align-items-center user-added-attribute");
+    let attrType = attrMetadata["type"];
 
-    if (attrMetadata["type"] === "min-max") {
+    if (attrType === "min-max") {
         let formFloatingAttrMin = createAttributeFormFloating(attrMetadata, attributeContainerId, inputClass, attribute + "Min", "col-4");
         let formFloatingAttrMax = createAttributeFormFloating(attrMetadata, attributeContainerId, inputClass, attribute + "Max", "col-3");
         newAttributeRow.append(formFloatingAttrMin, formFloatingAttrMax);
-        if (attrMetadata.help) {
-            let helpDiv = createFormText(formFloatingAttrMin.getAttribute("id"), attrMetadata.help, "span");
-            formFloatingAttrMin.setAttribute("aria-describedby", helpDiv.getAttribute("id"));
-            newAttributeRow.append(helpDiv);
-        }
+        addHelp(attrMetadata, formFloatingAttrMin, newAttributeRow);
         if (!hasAddBlockColumn) elementContainer.append(newAttributeRow);
     } else {
         let formFloatingAttr = createAttributeFormFloating(attrMetadata, attributeContainerId, inputClass, attribute, "col-7");
         newAttributeRow.append(formFloatingAttr);
-        if (attrMetadata.help) {
-            let helpDiv = createFormText(formFloatingAttr.getAttribute("id"), attrMetadata.help, "span");
-            formFloatingAttr.setAttribute("aria-describedby", helpDiv.getAttribute("id"));
-            newAttributeRow.append(helpDiv);
-        }
+        addHelp(attrMetadata, formFloatingAttr, newAttributeRow);
         if (!hasAddBlockColumn) elementContainer.append(newAttributeRow);
     }
 
     if (hasAddBlockColumn) {
         // need to use card for appending to mainContainer
         addColumnValidationBlock(newAttributeRow, elementContainer, attributeContainerId, inputClass);
-    } else {
+    } else if (!attrMetadata.required) {
         let closeButton = createCloseButton(newAttributeRow);
         let closeCol = document.createElement("div");
         closeCol.setAttribute("class", "col-md-auto");
@@ -386,35 +387,83 @@ export function findNextLevelNodesByClass($elem, className, notInsideClassName) 
     return nodesArray;
 }
 
-function createAttributeFormFloating(attrMetadata, attributeContainerId, inputClass, attribute, col) {
+function createAttributeWithChoice(attributeContainerId, label, inputClass, attrMetadata) {
+    let baseInput = createSelect(attributeContainerId, label, `selectpicker form-control input-field ${inputClass}`);
+    for (let choice of attrMetadata.choice) {
+        let option = document.createElement("option");
+        option.setAttribute("value", choice.toString());
+        option.innerText = choice.toString();
+        if (choice === attrMetadata["default"]) {
+            option.setAttribute("selected", "");
+        }
+        baseInput.append(option);
+    }
+    // doesn't need form floating
+    let inputCol = document.createElement("div");
+    inputCol.setAttribute("class", "col");
+    inputCol.append(baseInput);
+    $(baseInput).selectpicker();
+    return inputCol;
+}
+
+function createAttributeWithGroup(attributeContainerId, attribute, attrMetadata, formFloatingInput, col) {
+    let startInputDiv = document.createElement("div");
+    startInputDiv.setAttribute("class", "input-group-text");
+    let startInput = createInput(`${attributeContainerId}-option-input`, attribute, "form-check-input mt-0", attrMetadata.group.type);
+    if (attrMetadata.group.type === "checkbox" && attrMetadata.group.checked) startInput.setAttribute("checked", "");
+
+    let startInputLabel = document.createElement("label");
+    startInputLabel.setAttribute("class", "form-check-label");
+    startInputLabel.setAttribute("for", `${attributeContainerId}-option-input`);
+    startInputLabel.innerText = attrMetadata.group.innerText;
+    startInputDiv.append(startInput, startInputLabel);
+    return createInputGroup(startInputDiv, formFloatingInput, col ? col : "col-8");
+}
+
+function createAttributeWithPassword(inputAttr, formFloatingInput) {
+    // add toggle visibility
+    inputAttr.setAttribute("type", "password");
+    let iconHolder = document.createElement("span");
+    iconHolder.setAttribute("class", "input-group-text");
+    let icon = document.createElement("i");
+    icon.setAttribute("class", "fa fa-eye-slash");
+    icon.setAttribute("style", "width: 20px;");
+    iconHolder.append(icon);
+    iconHolder.addEventListener("click", function () {
+        if (inputAttr.getAttribute("type") === "password") {
+            inputAttr.setAttribute("type", "text");
+            icon.setAttribute("class", "fa fa-eye");
+        } else {
+            inputAttr.setAttribute("type", "password");
+            icon.setAttribute("class", "fa fa-eye-slash");
+        }
+    });
+    let inputGroup = document.createElement("div");
+    inputGroup.setAttribute("class", "input-group");
+    inputGroup.append(formFloatingInput.firstElementChild, iconHolder);
+    let optionCol = document.createElement("div");
+    optionCol.setAttribute("class", "col-7");
+    optionCol.append(inputGroup);
+    return optionCol;
+}
+
+export function createAttributeFormFloating(attrMetadata, attributeContainerId, inputClass, attribute, col) {
     let inputAttr;
     if (attrMetadata.choice) {
-        let baseInput = createSelect(attributeContainerId, attribute, `selectpicker form-control input-field ${inputClass}`);
-        for (let choice of attrMetadata.choice) {
-            let option = document.createElement("option");
-            option.setAttribute("value", choice.toString());
-            option.innerText = choice.toString();
-            if (choice === attrMetadata["default"]) {
-                option.setAttribute("selected", "");
-            }
-            baseInput.append(option);
-        }
-        // doesn't need form floating
-        let inputCol = document.createElement("div");
-        inputCol.setAttribute("class", "col");
-        inputCol.append(baseInput);
-        $(baseInput).selectpicker();
-        inputAttr = inputCol;
+        inputAttr = createAttributeWithChoice(attributeContainerId, attribute, inputClass, attrMetadata);
     } else if (attrMetadata["type"] === "badge") {
         return createBadge(attribute);
     } else {
         inputAttr = createInput(attributeContainerId, attribute, `form-control input-field ${inputClass}`, attrMetadata["type"], attrMetadata["default"]);
+
         if (attrMetadata["disabled"] !== "") {
-            if (!attrMetadata["default"] || attrMetadata["default"] === "") {
-                inputAttr.classList.add("is-invalid");
+            if (attrMetadata["required"] === "") {
+                if (!attrMetadata["default"] || attrMetadata["default"] === "") {
+                    inputAttr.classList.add("is-invalid");
+                }
                 createFieldValidationCheck(inputAttr);
+                inputAttr.setAttribute("required", "");
             }
-            inputAttr.setAttribute("required", "");
         }
         inputAttr.dispatchEvent(new Event("input"));
     }
@@ -424,21 +473,16 @@ function createAttributeFormFloating(attrMetadata, attributeContainerId, inputCl
             inputAttr.setAttribute(key, value);
         }
     }
-    let formFloatingInput = attrMetadata.choice ? inputAttr : createFormFloating(attribute, inputAttr);
+
+    let displayName = attrMetadata["displayName"] !== "" ? attrMetadata["displayName"] : attribute;
+    let formFloatingInput = attrMetadata.choice ? inputAttr : createFormFloating(displayName, inputAttr);
+
     // if group is defined, there is additional input required
     // if help is defined, add to container
     if (attrMetadata.group) {
-        let startInputDiv = document.createElement("div");
-        startInputDiv.setAttribute("class", "input-group-text");
-        let startInput = createInput(`${attributeContainerId}-option-input`, attribute, "form-check-input mt-0", attrMetadata.group.type);
-        if (attrMetadata.group.type === "checkbox" && attrMetadata.group.checked) startInput.setAttribute("checked", "");
-
-        let startInputLabel = document.createElement("label");
-        startInputLabel.setAttribute("class", "form-check-label");
-        startInputLabel.setAttribute("for", `${attributeContainerId}-option-input`);
-        startInputLabel.innerText = attrMetadata.group.innerText;
-        startInputDiv.append(startInput, startInputLabel);
-        return createInputGroup(startInputDiv, formFloatingInput, col ? col : "col-8");
+        return createAttributeWithGroup(attributeContainerId, attribute, attrMetadata, formFloatingInput, col);
+    } else if (attrMetadata["type"] === "password") {
+        return createAttributeWithPassword(inputAttr, formFloatingInput);
     } else {
         if (col) {
             formFloatingInput.setAttribute("class", col);
@@ -525,5 +569,101 @@ export function createToast(header, message, type) {
     toastHeader.append(icon, strong, small, button);
     toast.append(toastHeader, toastBody);
     document.getElementById("toast-container").append(toast);
-    return toast;
+    new bootstrap.Toast(toast).show();
 }
+
+export function executePlan(requestBody, planName, runId) {
+    fetch("http://localhost:9898/run", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify(requestBody)
+    })
+        .catch(err => {
+            console.error(err);
+            createToast(`Plan run ${planName}`, `Failed to run plan ${planName}! Error: ${err}`, "fail");
+        })
+        .then(r => {
+            if (r.ok) {
+                return r.text();
+            } else {
+                r.text().then(text => {
+                    createToast(planName, `Failed to run plan ${planName}! Error: ${text}`, "fail");
+                    throw new Error(text);
+                });
+            }
+        })
+        .then(async r => {
+            createToast(planName, `Started to run plan ${planName}!`);
+            // poll every 1 second for status of plan run
+            let currentStatus = "started";
+            while (currentStatus !== "finished" && currentStatus !== "failed") {
+                await fetch(`http://localhost:9898/run/status/${runId}`, {
+                    method: "GET",
+                    headers: {Accept: "application/json"}
+                })
+                    .catch(err => {
+                        console.error(err);
+                        createToast(planName, `Plan ${planName} failed! Error: ${err}`, "fail");
+                        reject("Plan run failed");
+                    })
+                    .then(resp => {
+                        if (resp.ok) {
+                            return resp.json();
+                        } else {
+                            resp.text().then(text => {
+                                createToast(planName, `Plan ${planName} failed! Error: ${text}`, "fail");
+                                throw new Error(text);
+                            });
+                        }
+                    })
+                    .then(respJson => {
+                        let latestStatus = respJson.status;
+                        if (latestStatus !== currentStatus) {
+                            currentStatus = latestStatus;
+                            let type = "running";
+                            let msg = `Plan ${planName} update, status: ${latestStatus}`;
+                            if (currentStatus === "finished") {
+                                type = "success";
+                                msg = `Successfully completed ${planName}.`;
+                            } else if (currentStatus === "failed") {
+                                type = "fail";
+                                let failReason = respJson.failedReason.length > 200 ? respJson.failedReason.substring(0, 200) + "..." : respJson.failedReason;
+                                msg = `Plan ${planName} failed! Error: ${failReason}`;
+                            }
+                            createToast(planName, msg, type);
+                        }
+                    });
+                await wait(500);
+            }
+        });
+}
+
+export function syntaxHighlight(json) {
+    let prettyPrintJson = JSON.stringify(json, null, 2);
+    prettyPrintJson = prettyPrintJson.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    let highlightedJson = prettyPrintJson.replace(/("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g, function (match) {
+        var cls = 'number';
+        if (/^"/.test(match)) {
+            if (/:$/.test(match)) {
+                cls = 'key';
+            } else {
+                cls = 'string';
+            }
+        } else if (/true|false/.test(match)) {
+            cls = 'boolean';
+        } else if (/null/.test(match)) {
+            cls = 'null';
+        }
+        return '<span class="' + cls + '">' + match + '</span>';
+    });
+
+    let preElement = document.createElement("pre");
+    preElement.innerHTML = highlightedJson;
+    return preElement;
+}
+
+export const wait = function (ms = 1000) {
+    return new Promise(resolve => {
+        setTimeout(resolve, ms);
+    });
+};

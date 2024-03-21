@@ -1,4 +1,5 @@
 import {
+    addNewDataTypeAttribute,
     camelize,
     createAccordionItem,
     createButton,
@@ -7,7 +8,8 @@ import {
     createFormFloating,
     createInput,
     createSelect,
-    createToast
+    createToast,
+    syntaxHighlight
 } from "../shared.js";
 
 const dataSourcePropertiesMap = new Map();
@@ -16,18 +18,64 @@ dataSourcePropertiesMap.set("cassandra", {
     optGroupLabel: "Data Source",
     Name: "Cassandra",
     properties: {
-        URL: "localhost:9042",
-        User: "cassandra",
-        Password: "cassandra",
-        Keyspace: "",
-        Table: "",
+        url: {
+            displayName: "URL",
+            default: "localhost:9042",
+            type: "text",
+            help: "Hostname and port to connect to Cassandra.",
+            required: ""
+        },
+        username: {
+            displayName: "Username",
+            default: "cassandra",
+            type: "text",
+            help: "Username to connect to Cassandra.",
+            required: ""
+        },
+        password: {
+            displayName: "Password",
+            default: "cassandra",
+            type: "password",
+            help: "Password to connect to Cassandra.",
+            required: ""
+        },
+        keyspace: {
+            displayName: "Keyspace",
+            default: "",
+            type: "text",
+            help: "Keyspace to generate/validate data to/from."
+        },
+        table: {
+            displayName: "Table",
+            default: "",
+            type: "text",
+            help: "Table to generate/validate data to/from."
+        }
     }
 });
 dataSourcePropertiesMap.set("csv", {
     optGroupLabel: "Data Source",
     Name: "CSV",
     properties: {
-        Path: "/tmp/generated-data/csv",
+        path: {
+            displayName: "Path",
+            default: "/tmp/generated-data/csv",
+            type: "text",
+            help: "File pathway to save CSV.",
+            required: ""
+        },
+        partitions: {
+            displayName: "Num Partitions",
+            default: "1",
+            type: "number",
+            help: "Number of file partitions."
+        },
+        partitionBy: {
+            displayName: "Partition By",
+            default: "",
+            type: "text",
+            help: "Column name(s) to partition by (comma separated)."
+        }
     }
 });
 dataSourcePropertiesMap.set("http", {
@@ -35,15 +83,43 @@ dataSourcePropertiesMap.set("http", {
     Name: "HTTP",
     disabled: "",
     properties: {
-        Username: "",
-        Password: "",
+        username: {
+            displayName: "Username",
+            default: "",
+            type: "text",
+            help: "Username to connect to HTTP API."
+        },
+        password: {
+            displayName: "Password",
+            default: "",
+            type: "password",
+            help: "Password to connect to HTTP API."
+        },
     }
 });
 dataSourcePropertiesMap.set("json", {
     optGroupLabel: "Data Source",
     Name: "JSON",
     properties: {
-        Path: "/tmp/generated-data/json",
+        path: {
+            displayName: "Path",
+            default: "/tmp/generated-data/json",
+            type: "text",
+            help: "File pathway to save JSON.",
+            required: ""
+        },
+        partitions: {
+            displayName: "Num Partitions",
+            default: "1",
+            type: "number",
+            help: "Number of file partitions."
+        },
+        partitionBy: {
+            displayName: "Partition By",
+            default: "",
+            type: "text",
+            help: "Column name(s) to partition by (comma separated)."
+        }
     }
 });
 dataSourcePropertiesMap.set("kafka", {
@@ -51,44 +127,148 @@ dataSourcePropertiesMap.set("kafka", {
     Name: "Kafka",
     disabled: "",
     properties: {
-        URL: "localhost:9092",
-        Topic: "",
+        url: {
+            displayName: "URL",
+            default: "localhost:9092",
+            type: "text",
+            help: "Bootstrap URL to connect to Kafka.",
+            required: ""
+        },
+        topic: {
+            displayName: "Topic",
+            default: "",
+            type: "text",
+            help: "Topic to generate/validate data to/from.",
+            required: ""
+        },
     }
 });
 dataSourcePropertiesMap.set("mysql", {
     optGroupLabel: "Data Source",
     Name: "MySQL",
     properties: {
-        URL: "jdbc:mysql://localhost:3306/customer",
-        User: "root",
-        Password: "root",
-        Schema: "",
-        Table: "",
+        url: {
+            displayName: "URL",
+            default: "jdbc:mysql://localhost:3306/customer",
+            type: "text",
+            help: "URL to connect to MySQL.",
+            required: ""
+        },
+        username: {
+            displayName: "Username",
+            default: "root",
+            type: "text",
+            help: "Username to connect to MySQL.",
+            required: ""
+        },
+        password: {
+            displayName: "Password",
+            default: "root",
+            type: "password",
+            help: "Password to connect to MySQL.",
+            required: ""
+        },
+        schema: {
+            displayName: "Schema",
+            default: "",
+            type: "text",
+            help: "Schema to generate/validate data to/from."
+        },
+        table: {
+            displayName: "Table",
+            default: "",
+            type: "text",
+            help: "Table to generate/validate data to/from."
+        }
     }
 });
 dataSourcePropertiesMap.set("orc", {
     optGroupLabel: "Data Source",
     Name: "ORC",
     properties: {
-        Path: "/tmp/generated-data/orc",
+        path: {
+            displayName: "Path",
+            default: "/tmp/generated-data/orc",
+            type: "text",
+            help: "File pathway to save ORC.",
+            required: ""
+        },
+        partitions: {
+            displayName: "Num Partitions",
+            default: "1",
+            type: "number",
+            help: "Number of file partitions."
+        },
+        partitionBy: {
+            displayName: "Partition By",
+            default: "",
+            type: "text",
+            help: "Column name(s) to partition by (comma separated)."
+        }
     }
 });
 dataSourcePropertiesMap.set("parquet", {
     optGroupLabel: "Data Source",
     Name: "Parquet",
     properties: {
-        Path: "/tmp/generated-data/parquet",
+        path: {
+            displayName: "Path",
+            default: "/tmp/generated-data/parquet",
+            type: "text",
+            help: "File pathway to save Parquet.",
+            required: ""
+        },
+        partitions: {
+            displayName: "Num Partitions",
+            default: "1",
+            type: "number",
+            help: "Number of file partitions."
+        },
+        partitionBy: {
+            displayName: "Partition By",
+            default: "",
+            type: "text",
+            help: "Column name(s) to partition by (comma separated)."
+        }
     }
 });
 dataSourcePropertiesMap.set("postgres", {
     optGroupLabel: "Data Source",
     Name: "Postgres",
     properties: {
-        URL: "jdbc:postgres://localhost:5432/customer", //later add in prefix text for jdbc URL
-        User: "postgres",
-        Password: "postgres",
-        Schema: "",
-        Table: "",
+        url: {
+            displayName: "URL",
+            default: "jdbc:postgres://localhost:5432/customer",
+            type: "text",
+            help: "URL to connect to Postgres.",
+            required: ""
+        },
+        username: {
+            displayName: "Username",
+            default: "postgres",
+            type: "text",
+            help: "Username to connect to Postgres.",
+            required: ""
+        },
+        password: {
+            displayName: "Password",
+            default: "postgres",
+            type: "password",
+            help: "Password to connect to Postgres.",
+            required: ""
+        },
+        schema: {
+            displayName: "Schema",
+            default: "",
+            type: "text",
+            help: "Schema to generate/validate data to/from."
+        },
+        table: {
+            displayName: "Table",
+            default: "",
+            type: "text",
+            help: "Table to generate/validate data to/from."
+        }
     }
 });
 dataSourcePropertiesMap.set("solace", {
@@ -96,8 +276,20 @@ dataSourcePropertiesMap.set("solace", {
     Name: "Solace",
     disabled: "",
     properties: {
-        URL: "smf://host.docker.internal:55554",
-        Destination: "/JNDI/Q/test_queue",
+        url: {
+            displayName: "URL",
+            default: "smf://host.docker.internal:55554",
+            type: "text",
+            help: "URL to connect to Solace.",
+            required: ""
+        },
+        destination: {
+            displayName: "Destination",
+            default: "/JNDI/Q/test_queue",
+            type: "text",
+            help: "JNDI destination to generate/validate data to/from.",
+            required: ""
+        }
     }
 });
 
@@ -107,9 +299,25 @@ dataSourcePropertiesMap.set("marquez", {
     Name: "Marquez",
     disabled: "",
     properties: {
-        URL: "http://localhost:5001",
-        Namespace: "",
-        Dataset: "",
+        url: {
+            displayName: "URL",
+            default: "http://localhost:5001",
+            type: "text",
+            help: "API URL to connect to Marquez.",
+            required: ""
+        },
+        namespace: {
+            displayName: "Namespace",
+            default: "",
+            type: "text",
+            help: "Namespace to gather metadata from."
+        },
+        dataset: {
+            displayName: "Dataset",
+            default: "",
+            type: "text",
+            help: "Dataset to gather metadata from."
+        }
     }
 });
 dataSourcePropertiesMap.set("openapi", {
@@ -117,7 +325,13 @@ dataSourcePropertiesMap.set("openapi", {
     Name: "OpenAPI/Swagger",
     disabled: "",
     properties: {
-        Path: "",
+        path: {
+            displayName: "Path",
+            default: "",
+            type: "text",
+            help: "Path/URL to gather metadata from.",
+            required: ""
+        }
     }
 });
 dataSourcePropertiesMap.set("openmetadata", {
@@ -125,10 +339,32 @@ dataSourcePropertiesMap.set("openmetadata", {
     Name: "Open Metadata",
     disabled: "",
     properties: {
-        URL: "http://localhost:8585/api",
-        AuthType: "openmetadata",
-        JWT: "",
-        TableFQN: "",
+        url: {
+            displayName: "URL",
+            default: "http://localhost:8585/api",
+            type: "text",
+            help: "API URL to connect to OpenMetadata.",
+            required: ""
+        },
+        authType: {
+            displayName: "Auth Type",
+            default: "openmetadata",
+            type: "text",
+            help: "Authentication mechanism used to connect to OpenMetadata.",
+            required: ""
+        },
+        jwt: {
+            displayName: "JWT",
+            default: "",
+            type: "password",
+            help: "JWT token."
+        },
+        tableFQN: {
+            displayName: "Table FQN",
+            default: "",
+            type: "text",
+            help: "Table FQN to gather metadata from."
+        }
     }
 });
 
@@ -139,6 +375,20 @@ dataSourcePropertiesMap.set("slack", {
     properties: {
         Token: "",
         Channels: "",
+        token: {
+            displayName: "Token",
+            default: "",
+            type: "password",
+            help: "Token to authenticate with Slack.",
+            required: ""
+        },
+        channels: {
+            displayName: "Channels",
+            default: "",
+            type: "text",
+            help: "Channel(s) to send alerts to (comma separated).",
+            required: ""
+        }
     }
 });
 
@@ -170,13 +420,12 @@ submitConnectionButton.addEventListener("click", async function () {
         for (let inputField of inputFields) {
             let ariaLabel = inputField.getAttribute("aria-label");
             if (ariaLabel) {
-                let label = camelize(ariaLabel.toLowerCase());
-                if (label === "name") {
+                if (ariaLabel === "Name") {
                     currConnection["name"] = inputField.value;
-                } else if (label === "dataSource") {
+                } else if (ariaLabel === "Data source") {
                     currConnection["type"] = inputField.value;
                 } else {
-                    currConnectionOptions[label] = inputField.value;
+                    currConnectionOptions[ariaLabel] = inputField.value;
                 }
             }
         }
@@ -200,9 +449,7 @@ submitConnectionButton.addEventListener("click", async function () {
                 return r.text();
             } else {
                 r.text().then(text => {
-                    new bootstrap.Toast(
-                        createToast(`Save connection(s)`, `Failed to save connection(s)! Error: ${text}`, "fail")
-                    ).show();
+                    createToast(`Save connection(s)`, `Failed to save connection(s)! Error: ${text}`, "fail");
                     throw new Error(text);
                 });
             }
@@ -224,9 +471,7 @@ async function getExistingConnections() {
                 return r.json();
             } else {
                 r.text().then(text => {
-                    new bootstrap.Toast(
-                        createToast(`Get connections`, `Failed to get connections! Error: ${text}`, "fail")
-                    ).show();
+                    createToast(`Get connections`, `Failed to get connections! Error: ${text}`, "fail");
                     throw new Error(text);
                 });
             }
@@ -235,8 +480,7 @@ async function getExistingConnections() {
             let connections = respJson.connections;
             for (let connection of connections) {
                 numExistingConnections += 1;
-                let jsonConnection = JSON.stringify(connection);
-                let accordionItem = createAccordionItem(numExistingConnections, connection.name, jsonConnection);
+                let accordionItem = createAccordionItem(numExistingConnections, connection.name, "", syntaxHighlight(connection));
                 // add in button to delete connection
                 let deleteButton = createButton(`connection-delete-${connection.name}`, "Connection delete", "btn btn-danger", "Delete");
 
@@ -262,48 +506,10 @@ function createDataSourceOptions(element) {
         let dataSourceProps = dataSourcePropertiesMap.get(this.value);
         if (dataSourceProps && dataSourceProps !== "") {
             let currentDataSourceIndexRow = $(element).closest(".data-source-container");
-            let dataSourceOptionsRow = document.createElement("div");
-            dataSourceOptionsRow.setAttribute("class", "row mt-2 mb-3");
-            dataSourceOptionsRow.setAttribute("id", "connection-row");
-            let existingOptions = currentDataSourceIndexRow.find("#connection-row");
-            if (existingOptions.length) {
-                currentDataSourceIndexRow[0].removeChild(existingOptions[0]);
-            }
+            currentDataSourceIndexRow.find(".row").remove();
 
             for (const [key, value] of Object.entries(dataSourceProps.properties)) {
-                let optionCol = document.createElement("div");
-                optionCol.setAttribute("class", "col-md-auto");
-                optionCol.setAttribute("id", key);
-                let newElement = createInput(key, key, "form-control input-field data-source-property", "text", value);
-                let formFloating = createFormFloating(key, newElement);
-
-                if (key === "Password") {
-                    // add toggle visibility
-                    newElement.setAttribute("type", "password");
-                    let iconHolder = document.createElement("span");
-                    iconHolder.setAttribute("class", "input-group-text");
-                    let icon = document.createElement("i");
-                    icon.setAttribute("class", "fa fa-eye-slash");
-                    icon.setAttribute("style", "width: 20px;");
-                    iconHolder.append(icon);
-                    iconHolder.addEventListener("click", function () {
-                        if (newElement.getAttribute("type") === "password") {
-                            newElement.setAttribute("type", "text");
-                            icon.setAttribute("class", "fa fa-eye");
-                        } else {
-                            newElement.setAttribute("type", "password");
-                            icon.setAttribute("class", "fa fa-eye-slash");
-                        }
-                    });
-                    let inputGroup = document.createElement("div");
-                    inputGroup.setAttribute("class", "input-group");
-                    inputGroup.append(formFloating.firstElementChild, iconHolder);
-                    optionCol.append(inputGroup);
-                } else {
-                    optionCol = formFloating;
-                }
-                dataSourceOptionsRow.append(optionCol);
-                currentDataSourceIndexRow.append(dataSourceOptionsRow);
+                addNewDataTypeAttribute(key, value, `connection-config-${numExistingConnections}-${key}`, "data-source-property", currentDataSourceIndexRow);
             }
         }
     });
@@ -361,7 +567,7 @@ function createDataSourceElement(index, hr) {
     if (hr) {
         divContainer.append(hr);
     }
-    divContainer.append(closeButton, colName, colSelect);
+    divContainer.append(colName, colSelect, closeButton);
     return divContainer;
 }
 
