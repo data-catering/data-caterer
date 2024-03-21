@@ -96,7 +96,7 @@ jobs:
           url: "https://github.com/cdarlint/winutils/blob/master/hadoop-3.3.5/bin/hadoop.dll"
           target: app/build/libs/bin/
       - name: List directory
-        run: ls -lart app/build/libs/bin
+        run: ls app/build/libs/bin
       - name: Package jar as exe
         run: 'jpackage "@misc/jpackage/jpackage.cfg" "@misc/jpackage/jpackage-windows.cfg"'
       - name: Upload installer
