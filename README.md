@@ -23,11 +23,14 @@ Full docs can be found [**here**](https://data.catering).
 
 ## Quick start
 
-Ensure you have `docker` installed and running.
-
 1. [Mac download](https://nightly.link/data-catering/data-caterer/workflows/build/main/data-caterer-mac.zip)
 2. [Windows download](https://nightly.link/data-catering/data-caterer/workflows/build/main/data-caterer-windows.zip)
-3. Docker
+   1. After downloaded, go to 'Downloads' folder and 'Extract All'
+   2. Double-click 'DataCaterer-1.0.0' to install Data Caterer
+   3. Go to '/Program Files/DataCaterer' folder and run DataCaterer application
+   4. If browser doesn't open, go to [http://localhost:9898](http://localhost:9898) in your preferred browser
+3. [Linux download](https://nightly.link/data-catering/data-caterer/workflows/build/main/data-caterer-linux.zip)
+4. Docker
    ```shell
    docker run -d -i -p 9898:9898 -e DEPLOY_MODE=standalone --name datacaterer datacatering/data-caterer:0.7.0
    ```
