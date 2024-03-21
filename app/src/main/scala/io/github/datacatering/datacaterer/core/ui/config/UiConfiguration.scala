@@ -14,7 +14,6 @@ object UiConfiguration {
     val osName = System.getProperty("os.name").toLowerCase
     if (osName.contains("win")) {
       val appDataDir = System.getenv("APPDATA")
-      setHadoopHome(appDataDir)
       s"$appDataDir/DataCaterer"
     } else if (osName.contains("nix") || osName.contains("nux") || osName.contains("aix")) {
       "/opt/DataCaterer"
@@ -24,12 +23,6 @@ object UiConfiguration {
       LOGGER.warn(s"Unknown operating system name, defaulting install directory to '/tmp/DataCaterer', os.name=$osName")
       "/tmp/DataCaterer"
     }
-  }
-
-  private def setHadoopHome(appDataDir: String): Unit = {
-    val hadoopPath = Path.of(s"$appDataDir/DataCaterer/hadoop").toFile
-    if (!hadoopPath.exists()) hadoopPath.mkdirs()
-    System.setProperty("hadoop.home.dir", s"$appDataDir/DataCaterer/hadoop")
   }
 
 }
