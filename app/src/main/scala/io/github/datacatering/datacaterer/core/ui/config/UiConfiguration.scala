@@ -2,7 +2,7 @@ package io.github.datacatering.datacaterer.core.ui.config
 
 import org.apache.log4j.Logger
 
-import java.nio.file.Paths
+import java.nio.file.{Path, Paths}
 
 object UiConfiguration {
 
@@ -27,7 +27,9 @@ object UiConfiguration {
   }
 
   private def setHadoopHome(appDataDir: String): Unit = {
-    System.setProperty("hadoop.home.dir", s"$appDataDir/hadoop")
+    val hadoopPath = Path.of(s"$appDataDir/DataCaterer/hadoop").toFile
+    if (!hadoopPath.exists()) hadoopPath.mkdirs()
+    System.setProperty("hadoop.home.dir", s"$appDataDir/DataCaterer/hadoop")
   }
 
 }
