@@ -83,6 +83,20 @@ jobs:
         with:
           name: jars
           path: app/build/libs/
+      - name: Download winutils.exe
+        uses: suisei-cn/actions-download-file@818d6b7dc8fe73f2f924b6241f2b1134ca1377d9
+        id: downloadwinutils
+        with:
+          url: "https://github.com/cdarlint/winutils/blob/master/hadoop-3.3.5/bin/winutils.exe"
+          target: app/build/libs/bin/
+      - name: Download hadoop.dll
+        uses: suisei-cn/actions-download-file@818d6b7dc8fe73f2f924b6241f2b1134ca1377d9
+        id: downloaddll
+        with:
+          url: "https://github.com/cdarlint/winutils/blob/master/hadoop-3.3.5/bin/hadoop.dll"
+          target: app/build/libs/bin/
+      - name: List directory
+        run: ls -lart app/build/libs/bin
       - name: Package jar as exe
         run: 'jpackage "@misc/jpackage/jpackage.cfg" "@misc/jpackage/jpackage-windows.cfg"'
       - name: Upload installer
