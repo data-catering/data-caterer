@@ -280,7 +280,7 @@ const defaultValidationOptions = {
 }
 validationTypeOptionsMap.set("column", {
     ...defaultValidationOptions,
-    defaultChildColumn: {default: "", type: "text", required: "", help: "Column to validate."},
+    defaultChildColumn: {displayName: "Column", default: "", type: "text", required: "", help: "Column to validate."},
     equal: {
         displayName: "Equal",
         default: "",
@@ -403,6 +403,7 @@ validationTypeOptionsMap.set("column", {
 validationTypeOptionsMap.set("groupBy", {
     ...defaultValidationOptions,
     defaultChildGroupByColumns: {
+        displayName: "Group By Column(s)",
         default: "",
         type: "text",
         required: "",
@@ -459,6 +460,7 @@ validationTypeOptionsMap.set("groupBy", {
 validationTypeOptionsMap.set("upstream", {
     ...defaultValidationOptions,
     defaultChildUpstreamTaskName: {
+        displayName: "Upstream Task Name",
         default: "",
         type: "text",
         required: "",
