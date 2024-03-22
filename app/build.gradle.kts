@@ -54,7 +54,6 @@ configurations {
 dependencies {
     jpackageDep("org.scala-lang:scala-library:$scalaSpecificVersion")
     jpackageDep("org.apache.spark:spark-sql_$scalaVersion:$sparkVersion")
-    jpackageDep("com.globalmentor:hadoop-bare-naked-local-fs:0.1.0")
     jpackageDep(project(":api"))
 
     // connectors
@@ -95,6 +94,9 @@ dependencies {
     basicImpl("com.typesafe.akka:akka-stream_$scalaVersion:2.8.5")
     basicImpl("com.typesafe.akka:akka-actor-typed_$scalaVersion:2.8.5")
     basicImpl("com.typesafe.akka:akka-http-spray-json_$scalaVersion:10.5.3")
+
+    // needed to work on Windows
+    basicImpl("com.globalmentor:hadoop-bare-naked-local-fs:0.1.0")
 
     // misc
     basicImpl("joda-time:joda-time:2.12.5")
