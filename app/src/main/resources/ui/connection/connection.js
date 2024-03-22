@@ -425,7 +425,9 @@ submitConnectionButton.addEventListener("click", async function () {
                 } else if (ariaLabel === "Data source") {
                     currConnection["type"] = inputField.value;
                 } else {
-                    currConnectionOptions[ariaLabel] = inputField.value;
+                    if (inputField.value !== "") {
+                        currConnectionOptions[ariaLabel] = inputField.value;
+                    }
                 }
             }
         }
