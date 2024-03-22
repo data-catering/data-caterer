@@ -77,6 +77,7 @@ fetch("http://localhost:9898/run/history", {
                     .map(v => v[3])
                     .join("<br>");
                 latestRunUpdate["validationSummary"] = validationSummary.length > 0 ? validationSummary : "";
+                latestRunUpdate["failedReason"] = latestRunUpdate["failedReason"].length > 500 ? latestRunUpdate["failedReason"].slice(0, 500) : latestRunUpdate["failedReason"];
                 console.log(latestRunUpdate);
                 lastUpdatePerId.push(latestRunUpdate);
             }
