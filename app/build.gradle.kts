@@ -54,6 +54,7 @@ configurations {
 dependencies {
     jpackageDep("org.scala-lang:scala-library:$scalaSpecificVersion")
     jpackageDep("org.apache.spark:spark-sql_$scalaVersion:$sparkVersion")
+    jpackageDep("com.globalmentor:hadoop-bare-naked-local-fs:0.1.0")
     jpackageDep(project(":api"))
 
     // connectors

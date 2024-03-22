@@ -209,7 +209,7 @@ object Constants {
     "spark.hadoop.fs.s3a.directory.marker.retention" -> "keep",
     "spark.hadoop.fs.s3a.bucket.all.committer.magic.enabled" -> "true",
     "spark.hadoop.fs.hdfs.impl" -> "org.apache.hadoop.hdfs.DistributedFileSystem",
-    "spark.hadoop.fs.file.impl" -> "org.apache.hadoop.fs.LocalFileSystem",
+    "spark.hadoop.fs.file.impl" -> "com.globalmentor.apache.hadoop.fs.BareLocalFileSystem",
   )
 
   //jdbc defaults
