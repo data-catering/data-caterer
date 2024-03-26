@@ -1,6 +1,6 @@
 package io.github.datacatering.datacaterer.core.generator.provider
 
-import io.github.datacatering.datacaterer.api.model.Constants.{ARRAY_MINIMUM_LENGTH, DISTINCT_COUNT, ENABLED_EDGE_CASE, ENABLED_NULL, EXPRESSION, IS_UNIQUE, MAXIMUM, MEAN, MINIMUM, PROBABILITY_OF_EDGE_CASE, PROBABILITY_OF_NULL, ROW_COUNT, STANDARD_DEVIATION}
+import io.github.datacatering.datacaterer.api.model.Constants.{ARRAY_MINIMUM_LENGTH, DISTINCT_COUNT, DISTRIBUTION, DISTRIBUTION_EXPONENTIAL, DISTRIBUTION_NORMAL, DISTRIBUTION_RATE_PARAMETER, ENABLED_EDGE_CASE, ENABLED_NULL, EXPRESSION, IS_UNIQUE, MAXIMUM, MEAN, MINIMUM, PROBABILITY_OF_EDGE_CASE, PROBABILITY_OF_NULL, ROW_COUNT, STANDARD_DEVIATION}
 import io.github.datacatering.datacaterer.core.generator.provider.RandomDataGenerator._
 import io.github.datacatering.datacaterer.core.model.Constants.INDEX_INC_COL
 import org.apache.spark.sql.types._
@@ -328,5 +328,37 @@ class RandomDataGeneratorTest extends AnyFunSuite {
 
     assert(intGenerator.edgeCases.nonEmpty)
     assert(intGenerator.generateSqlExpression == s"CAST(100 + $INDEX_INC_COL + 1 AS INT)")
+  }
+
+  test("Can create random int generator with normal distribution") {
+    val metadata = new MetadataBuilder().putString(DISTRIBUTION, DISTRIBUTION_NORMAL).build()
+    val intGenerator = new RandomIntDataGenerator(StructField("random_int", IntegerType, false, metadata))
+
+    assert(intGenerator.edgeCases.nonEmpty)
+    assert(intGenerator.generateSqlExpression == s"CAST(ROUND(RANDN() + 0, 0) AS INT)")
+  }
+
+  test("Can create random int generator with exponential distribution") {
+    val metadata = new MetadataBuilder().putString(DISTRIBUTION, DISTRIBUTION_EXPONENTIAL).build()
+    val intGenerator = new RandomIntDataGenerator(StructField("random_int", IntegerType, false, metadata))
+
+    assert(intGenerator.edgeCases.nonEmpty)
+    assert(intGenerator.generateSqlExpression == s"CAST(ROUND(GREATEST(0, LEAST(100000, 100000 * (-LN(1 - RAND()) / 1.0) + 0)), 0) AS INT)")
+  }
+
+  test("Can create random int generator with exponential distribution within max and min") {
+    val metadata = new MetadataBuilder().putString(DISTRIBUTION, DISTRIBUTION_EXPONENTIAL).putString(MAXIMUM, "100").putString(MINIMUM, "10").build()
+    val intGenerator = new RandomIntDataGenerator(StructField("random_int", IntegerType, false, metadata))
+
+    assert(intGenerator.edgeCases.nonEmpty)
+    assert(intGenerator.generateSqlExpression == s"CAST(ROUND(GREATEST(10, LEAST(100, 90 * (-LN(1 - RAND()) / 1.0) + 10)), 0) AS INT)")
+  }
+
+  test("Can create random int generator with exponential distribution with rate parameter") {
+    val metadata = new MetadataBuilder().putString(DISTRIBUTION, DISTRIBUTION_EXPONENTIAL).putString(DISTRIBUTION_RATE_PARAMETER, "2").build()
+    val intGenerator = new RandomIntDataGenerator(StructField("random_int", IntegerType, false, metadata))
+
+    assert(intGenerator.edgeCases.nonEmpty)
+    assert(intGenerator.generateSqlExpression == s"CAST(ROUND(GREATEST(0, LEAST(100000, 100000 * (-LN(1 - RAND()) / 2.0) + 0)), 0) AS INT)")
   }
 }

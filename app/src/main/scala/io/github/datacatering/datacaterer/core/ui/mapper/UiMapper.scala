@@ -236,9 +236,13 @@ object UiMapper {
 
       val perColumnNames = recordCountRequest.perColumnNames.getOrElse(List())
       if (perColumnNames.nonEmpty) {
-        (recordCountRequest.perColumnRecords, recordCountRequest.perColumnRecordsMin, recordCountRequest.perColumnRecordsMax) match {
-          case (Some(records), None, None) => baseRecordCount.recordsPerColumn(records, perColumnNames: _*)
-          case (None, Some(min), Some(max)) => baseRecordCount.recordsPerColumnGenerator(GeneratorBuilder().min(min).max(max), perColumnNames: _*)
+        (recordCountRequest.perColumnRecords, recordCountRequest.perColumnRecordsMin, recordCountRequest.perColumnRecordsMax,
+          recordCountRequest.perColumnRecordsDistribution, recordCountRequest.perColumnRecordsDistributionRateParam) match {
+          case (Some(records), None, None, None, None) => baseRecordCount.recordsPerColumn(records, perColumnNames: _*)
+          case (None, Some(min), Some(max), None, None) => baseRecordCount.recordsPerColumnGenerator(GeneratorBuilder().min(min).max(max), perColumnNames: _*)
+          case (None, Some(min), Some(max), Some(DISTRIBUTION_EXPONENTIAL), Some(rate)) => baseRecordCount.recordsPerColumnExponentialDistribution(min, max, rate.toDouble, perColumnNames: _*)
+          case (None, None, None, Some(DISTRIBUTION_EXPONENTIAL), Some(rate)) => baseRecordCount.recordsPerColumnExponentialDistribution(rate.toDouble, perColumnNames: _*)
+          case (None, Some(min), Some(max), Some(DISTRIBUTION_NORMAL), None) => baseRecordCount.recordsPerColumnNormalDistribution(min, max, perColumnNames: _*)
           case _ => baseRecordCount.recordsPerColumn(DEFAULT_PER_COLUMN_COUNT_RECORDS, perColumnNames: _*)
         }
       } else {
@@ -288,6 +292,9 @@ object UiMapper {
         ConnectionConfigWithTaskBuilder().http(dataSourceRequest.name, opt(USERNAME), opt(PASSWORD), opt)
       case Some(x) =>
         throw new IllegalArgumentException(s"Unsupported data source from UI, data-source-type=$x")
+      case _ =>
+        throw new IllegalArgumentException(s"No data source type defined, unable to create connections, " +
+          s"data-source-name=${dataSourceRequest.name}, task-name=${dataSourceRequest.taskName}")
     }
   }
 
@@ -328,7 +335,7 @@ object UiMapper {
           case (Some(joinType), None, Some(joinExpr)) => baseValid.joinType(joinType).joinExpr(joinExpr)
           case (None, Some(joinCols), _) => baseValid.joinType(DEFAULT_VALIDATION_JOIN_TYPE).joinColumns(joinCols.split(","): _*)
           case (None, None, Some(joinExpr)) => baseValid.joinType(DEFAULT_VALIDATION_JOIN_TYPE).joinExpr(joinExpr)
-          case _ => throw new RuntimeException("Unexpected upstream validation join options, need to define join columns or expression")
+          case _ => throw new IllegalArgumentException("Unexpected upstream validation join options, need to define join columns or expression")
         }
         val upstreamWithValidations = upstreamValidation.nested.map(nest =>
           nest.validations.flatMap(nestedValidation => {

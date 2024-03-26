@@ -86,8 +86,10 @@ class DataGeneratorFactory(faker: Faker)(implicit val sparkSession: SparkSession
       val metadata = Metadata.fromJson(OBJECT_MAPPER.writeValueAsString(perColumnCount.generator.get.options))
       val countStructField = StructField(RECORD_COUNT_GENERATOR_COL, IntegerType, false, metadata)
       val generatedCount = getDataGenerator(perColumnCount.generator, countStructField, faker).asInstanceOf[DataGenerator[Int]]
-      val numList = generateDataWithSchema(generatedCount, fieldsToBeGenerated)
-      df.withColumn(PER_COLUMN_COUNT, numList())
+      val numList = generateDataWithSchema(fieldsToBeGenerated)
+      df.withColumn(PER_COLUMN_COUNT_GENERATED, expr(generatedCount.generateSqlExpressionWrapper))
+        .withColumn(PER_COLUMN_COUNT, numList(col(PER_COLUMN_COUNT_GENERATED)))
+        .drop(PER_COLUMN_COUNT_GENERATED)
     } else if (perColumnCount.count.isDefined) {
       val numList = generateDataWithSchema(perColumnCount.count.get, fieldsToBeGenerated)
       df.withColumn(PER_COLUMN_COUNT, numList())
@@ -100,9 +102,9 @@ class DataGeneratorFactory(faker: Faker)(implicit val sparkSession: SparkSession
     explodeCount.select(PER_COLUMN_INDEX_COL + ".*", perColumnCount.columnNames: _*)
   }
 
-  private def generateDataWithSchema(countGenerator: DataGenerator[Int], dataGenerators: List[DataGenerator[_]]): UserDefinedFunction = {
-    udf(() => {
-      (1L to countGenerator.generate)
+  private def generateDataWithSchema(dataGenerators: List[DataGenerator[_]]): UserDefinedFunction = {
+    udf((sqlGen: Int) => {
+      (1L to sqlGen)
         .toList
         .map(_ => Row.fromSeq(dataGenerators.map(_.generateWrapper())))
     }, ArrayType(StructType(dataGenerators.map(_.structField))))

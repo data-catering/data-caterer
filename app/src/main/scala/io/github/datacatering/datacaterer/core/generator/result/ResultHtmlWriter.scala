@@ -2,7 +2,7 @@ package io.github.datacatering.datacaterer.core.generator.result
 
 import io.github.datacatering.datacaterer.api.model.Constants.HISTOGRAM
 import io.github.datacatering.datacaterer.core.model.Constants.{REPORT_DATA_SOURCES_HTML, REPORT_FIELDS_HTML, REPORT_HOME_HTML, REPORT_VALIDATIONS_HTML}
-import io.github.datacatering.datacaterer.api.model.{FlagsConfig, Generator, Plan, Step, Validation}
+import io.github.datacatering.datacaterer.api.model.{FlagsConfig, Generator, Plan, Step, Validation, ValidationConfig}
 import io.github.datacatering.datacaterer.core.listener.{SparkRecordListener, SparkTaskRecordSummary}
 import io.github.datacatering.datacaterer.core.model.{DataSourceResult, DataSourceResultSummary, StepResultSummary, TaskResultSummary, ValidationConfigResult}
 import io.github.datacatering.datacaterer.core.util.PlanImplicits.CountOps
@@ -423,7 +423,7 @@ class ResultHtmlWriter {
     </html>
   }
 
-  def validations(validationResults: List[ValidationConfigResult]): Node = {
+  def validations(validationResults: List[ValidationConfigResult], validationConfig: ValidationConfig): Node = {
     <html>
       <head>
         <title>
@@ -472,7 +472,7 @@ class ResultHtmlWriter {
                     {keyValueTable(getValidationOptions(validationRes.validation))}
                   </td>
                   <td>
-                    {if (validationRes.isSuccess) "" else keyValueTable(validationRes.sampleErrorValues.get.take(5).map(e => List(e.json)).toList)}
+                    {if (validationRes.isSuccess) "" else keyValueTable(validationRes.sampleErrorValues.get.take(validationConfig.numSampleErrorRecords).map(e => List(e.json)).toList)}
                   </td>
                 </tr>
               })

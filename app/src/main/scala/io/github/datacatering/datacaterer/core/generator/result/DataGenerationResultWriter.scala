@@ -22,6 +22,7 @@ class DataGenerationResultWriter(val dataCatererConfiguration: DataCatererConfig
   private lazy val LOGGER = Logger.getLogger(getClass.getName)
   private lazy val OBJECT_MAPPER = ObjectMapperUtil.jsonObjectMapper
   private val foldersConfig = dataCatererConfiguration.foldersConfig
+  private val validationConfig = dataCatererConfiguration.validationConfig
 
   override val enabled: Boolean = dataCatererConfiguration.flagsConfig.enableSaveReports
 
@@ -52,7 +53,7 @@ class DataGenerationResultWriter(val dataCatererConfiguration: DataCatererConfig
       fileWriter("tasks.html", htmlWriter.taskDetails(taskSummary))
       fileWriter(REPORT_FIELDS_HTML, htmlWriter.stepDetails(stepSummary))
       fileWriter(REPORT_DATA_SOURCES_HTML, htmlWriter.dataSourceDetails(stepSummary.flatMap(_.dataSourceResults)))
-      fileWriter(REPORT_VALIDATIONS_HTML, htmlWriter.validations(validationResults))
+      fileWriter(REPORT_VALIDATIONS_HTML, htmlWriter.validations(validationResults, validationConfig))
 
       copyHtmlResources(fileSystem, reportFolder)
     } catch {

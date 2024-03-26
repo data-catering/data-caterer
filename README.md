@@ -7,7 +7,7 @@
 Generator data for databases, files, JMS or HTTP request through a Scala/Java API or YAML input and executed via Spark.
 Run data validations after generating data to ensure it is consumed correctly.
 
-Full docs can be found [**here**](https://data.catering).
+Full docs can be found [**here**](https://data.catering). Demo of the UI found [**here**](https://data.catering/sample/ui/index.html).
 
 ## Features
 

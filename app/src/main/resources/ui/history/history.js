@@ -62,7 +62,6 @@ fetch("http://localhost:9898/run/history", {
             for (const runUpdatesById of planHistoryByIdValues) {
                 let runUpdates = runUpdatesById.runs;
                 let latestRunUpdate = runUpdates[runUpdates.length - 1];
-                console.log(runUpdates);
                 latestRunUpdate["createdTs"] = latestRunUpdate["createdTs"].replace("T", " ").replace(/\+.*/, "");
                 latestRunUpdate["updatedTs"] = latestRunUpdate["updatedTs"].replace("T", " ").replace(/\+.*/, "");
                 let reportHref = `http://localhost:9898/report/${latestRunUpdate["id"]}/index.html`;
@@ -78,7 +77,6 @@ fetch("http://localhost:9898/run/history", {
                     .join("<br>");
                 latestRunUpdate["validationSummary"] = validationSummary.length > 0 ? validationSummary : "";
                 latestRunUpdate["failedReason"] = latestRunUpdate["failedReason"].length > 500 ? latestRunUpdate["failedReason"].slice(0, 500) : latestRunUpdate["failedReason"];
-                console.log(latestRunUpdate);
                 lastUpdatePerId.push(latestRunUpdate);
             }
 

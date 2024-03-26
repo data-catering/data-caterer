@@ -153,10 +153,13 @@ export function createAccordionItem(index, buttonText, bodyText, bodyContainer, 
     return accordionItem;
 }
 
-export function createRadioButtons(index, name, options) {
+export function createRadioButtons(index, name, options, classes) {
     let radioButtonContainer = document.createElement("div");
     radioButtonContainer.setAttribute("id", `${name}-${index}`);
     radioButtonContainer.setAttribute("radioGroup", `${name}-${index}`);
+    if (classes) {
+        radioButtonContainer.setAttribute("class", classes);
+    }
     for (const [i, option] of options.entries()) {
         let snakeCaseOption = option.text.toLowerCase().replaceAll(" ", "-");
         let formCheck = document.createElement("div");

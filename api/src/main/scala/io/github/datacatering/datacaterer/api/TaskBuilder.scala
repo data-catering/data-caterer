@@ -343,6 +343,19 @@ case class CountBuilder(count: Count = Count()) {
     this.modify(_.count.records).setTo(Some(records))
       .modify(_.count.perColumn).setTo(Some(perColCount.generator(generator, cols: _*).perColumnCount))
 
+  @varargs def recordsPerColumnNormalDistribution(min: Long, max: Long, cols: String*): CountBuilder = {
+    val generator = GeneratorBuilder().min(min).max(max).normalDistribution()
+    this.modify(_.count.perColumn).setTo(Some(perColCount.generator(generator, cols: _*).perColumnCount))
+  }
+
+  @varargs def recordsPerColumnExponentialDistribution(min: Long, max: Long, rateParameter: Double, cols: String*): CountBuilder = {
+    val generator = GeneratorBuilder().min(min).max(max).exponentialDistribution(rateParameter)
+    this.modify(_.count.perColumn).setTo(Some(perColCount.generator(generator, cols: _*).perColumnCount))
+  }
+
+  @varargs def recordsPerColumnExponentialDistribution(rateParameter: Double, cols: String*): CountBuilder =
+    recordsPerColumnExponentialDistribution(0, 100, rateParameter, cols: _*)
+
   private def perColCount: PerColumnCountBuilder = {
     count.perColumn match {
       case Some(value) => PerColumnCountBuilder(value)
@@ -856,4 +869,21 @@ case class GeneratorBuilder(generator: Generator = Generator()) {
    */
   def mean(mean: Double): GeneratorBuilder =
     this.modify(_.generator.options)(_ ++ Map(MEAN -> mean.toString))
+
+  /**
+   * The distribution of the data is exponential.
+   *
+   * @param rate Rate parameter to control skewness of distribution.
+   * @return GeneratorBuilder
+   */
+  def exponentialDistribution(rate: Double): GeneratorBuilder =
+    this.modify(_.generator.options)(_ ++ Map(DISTRIBUTION -> DISTRIBUTION_EXPONENTIAL, DISTRIBUTION_RATE_PARAMETER -> rate.toString))
+
+  /**
+   * The distribution of the data is normal.
+   *
+   * @return GeneratorBuilder
+   */
+  def normalDistribution(): GeneratorBuilder =
+    this.modify(_.generator.options)(_ ++ Map(DISTRIBUTION -> DISTRIBUTION_NORMAL))
 }

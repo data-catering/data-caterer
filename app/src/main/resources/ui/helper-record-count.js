@@ -1,4 +1,11 @@
-import {createButton, createFormFloating, createFormText, createInput, createRadioButtons} from "./shared.js";
+import {
+    createButton,
+    createFormFloating,
+    createFormText,
+    createInput,
+    createRadioButtons,
+    createSelect
+} from "./shared.js";
 
 
 export function createRecordCount(index) {
@@ -15,7 +22,7 @@ export function createRecordCount(index) {
     let estimatedRecordCountContainer = document.createElement("div");
     estimatedRecordCountContainer.setAttribute("class", "col");
     let estimatedRecordCount = document.createElement("p");
-    estimatedRecordCount.innerText = "Estimate number of records: 1000";
+    estimatedRecordCount.innerHTML = "<strong>Estimate number of records: 1000</strong>";
     estimatedRecordCountContainer.append(estimatedRecordCount);
     let baseRecordRadio = createBaseRecordCountContainer(index);
     let perColumnContainer = createPerColumnCountContainer(index, estimatedRecordCountContainer);
@@ -28,7 +35,7 @@ export function createRecordCount(index) {
     recordCountRow.append(baseRecordRadio, advancedButton, perColumnContainer);
     $(recordCountRow).find("input[type=radio].base-record-count-radio,input[type=radio].per-column-record-count-radio").change(function () {
         let newEstimate = estimateRecordCount(recordCountRow)["estimateRecords"];
-        estimatedRecordCount.innerText = "Estimate number of records: " + newEstimate;
+        estimatedRecordCount.innerHTML = "<strong>Estimate number of records: " + newEstimate + "</strong>";
     });
     estimateRecordCount(recordCountRow);
     recordCountContainer.append(recordCountHeader, recordCountRow);
@@ -57,6 +64,10 @@ export function createCountElementsFromPlan(dataSource, newDataSource) {
                 $(newDataSource).find(".per-unique-set-of-values").prop("checked", true);
                 $(newDataSource).find("[id^=per-column-record-count]").val(dsCount.perColumnRecords);
             }
+            $(newDataSource).find("[id^=per-column-distribution-select]").selectpicker("val", dsCount.perColumnRecordsDistribution)[0].dispatchEvent(new Event("change"));
+            if (dsCount.perColumnRecordsDistribution === "exponential") {
+                $(newDataSource).find("[id^=per-column-distribution-rate]").val(dsCount.perColumnRecordsDistributionRateParam);
+            }
         }
     }
 }
@@ -79,14 +90,43 @@ function createPerColumnCountContainer(index, estimatedRecordCountContainer) {
         text: "Per unique set of values",
         child: perColumnRecordCol
     }, {text: "Per unique set of values between", child: perColumnBetweenContainer}];
-    let perColumnRadio = createRadioButtons(index, "per-column-record-count-radio", perColumnOptions);
+    let perColumnRadio = createRadioButtons(index, "per-column-record-count-radio", perColumnOptions, "col-6");
     // above per column radio is choice of columns
     let perColumnText = createInput(`per-column-names-${index}`, "Column(s)", "form-control input-field record-count-field", "text", "");
     let perColumnFormFloating = createFormFloating("Column(s)", perColumnText);
+    // per column distribution alongside radio buttons
+    let perColumnDistributionSelect = createSelect(`per-column-distribution-select-${index}`, "Distribution", "selectpicker form-control input-field record-count-distribution-field col")
+    perColumnDistributionSelect.setAttribute("title", "Select data distribution...");
+    perColumnDistributionSelect.setAttribute("data-header", "Select data distribution...");
+    ["Uniform", "Exponential", "Normal"].forEach(dist => {
+        let option = document.createElement("option");
+        option.setAttribute("value", dist.toLowerCase());
+        option.innerText = dist;
+        perColumnDistributionSelect.append(option);
+    });
+
+    let perColumnOptionsRow = document.createElement("div");
+    perColumnOptionsRow.setAttribute("class", "row g-3 m-1 align-items-center");
+    perColumnOptionsRow.append(perColumnRadio, perColumnDistributionSelect);
+    $(perColumnDistributionSelect).selectpicker("val", "uniform");
+
+    let perColumnDistributionRateParam = createInput(`per-column-distribution-rate-param-${index}`, "Rate Parameter", "form-control input-field record-count-distribution-field", "number", "1.0");
+    perColumnDistributionRateParam.setAttribute("min", "0");
+    perColumnDistributionRateParam.setAttribute("step", "0.00000001");
+    let formFloatingRate = createFormFloating("Rate Parameter", perColumnDistributionRateParam);
+    perColumnDistributionSelect.addEventListener("change", (event) => {
+        if (event.target.value === "exponential") {
+            // add extra input for rate parameter
+            perColumnOptionsRow.append(formFloatingRate);
+        } else {
+            // check if rate parameter exists, if it does, remove it
+            perColumnOptionsRow.removeChild(formFloatingRate);
+        }
+    });
 
     let columnInputRow = document.createElement("div");
     columnInputRow.setAttribute("class", "row g-3 m-1 align-items-center");
-    let columnInputHelpDiv = createFormText(perColumnFormFloating.getAttribute("id"), "Choose which columns to use for creating multiple records with different values for each unique group.", "span");
+    let columnInputHelpDiv = createFormText(perColumnFormFloating.getAttribute("id"), "Choose which column(s) to use for creating multiple records each unique group of values.", "span");
     columnInputHelpDiv.setAttribute("class", "col-6");
     columnInputRow.append(perColumnFormFloating, columnInputHelpDiv);
 
@@ -105,7 +145,7 @@ function createPerColumnCountContainer(index, estimatedRecordCountContainer) {
     let perColumnContainer = document.createElement("div");
     perColumnContainer.setAttribute("id", "count-advanced-collapse-" + index);
     perColumnContainer.setAttribute("class", "collapse");
-    perColumnInnerContainer.append(columnInputRow, perColumnRadio, estimatedRecordCountContainer);
+    perColumnInnerContainer.append(columnInputRow, perColumnOptionsRow, estimatedRecordCountContainer);
     perColumnContainer.append(perColumnInnerContainer);
     return perColumnContainer;
 }
@@ -157,6 +197,8 @@ function estimateRecordCount(recordCountRow) {
         let perColumNames = $(recordCountRow).find("[id^=per-column-names]").val();
         recordCountSummary["perColumnNames"] = perColumNames ? perColumNames.split(",") : [];
     }
+    recordCountSummary["perColumnRecordsDistribution"] = $(recordCountRow).find("[id^=per-column-distribution-select]").val();
+    recordCountSummary["perColumnRecordsDistributionRateParam"] = $(recordCountRow).find("[id^=per-column-distribution-rate-param]").val();
 
     recordCountSummary["estimateRecords"] = baseRecordCount * perColumnCount;
     return recordCountSummary;

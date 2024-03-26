@@ -1,8 +1,8 @@
 package io.github.datacatering.datacaterer.core.generator.provider
 
-import io.github.datacatering.datacaterer.api.model.Constants.{ARRAY_MAXIMUM_LENGTH, ARRAY_MINIMUM_LENGTH, DEFAULT_VALUE, DISTINCT_COUNT, EXPRESSION, MAXIMUM, MAXIMUM_LENGTH, MEAN, MINIMUM, MINIMUM_LENGTH, NUMERIC_PRECISION, NUMERIC_SCALE, ROW_COUNT, STANDARD_DEVIATION}
-import io.github.datacatering.datacaterer.core.model.Constants._
+import io.github.datacatering.datacaterer.api.model.Constants.{ARRAY_MAXIMUM_LENGTH, ARRAY_MINIMUM_LENGTH, DEFAULT_VALUE, DISTINCT_COUNT, DISTRIBUTION, DISTRIBUTION_EXPONENTIAL, DISTRIBUTION_NORMAL, DISTRIBUTION_RATE_PARAMETER, EXPRESSION, MAXIMUM, MAXIMUM_LENGTH, MEAN, MINIMUM, MINIMUM_LENGTH, NUMERIC_PRECISION, NUMERIC_SCALE, ROW_COUNT, STANDARD_DEVIATION}
 import io.github.datacatering.datacaterer.core.exception.UnsupportedDataGeneratorType
+import io.github.datacatering.datacaterer.core.model.Constants._
 import io.github.datacatering.datacaterer.core.util.GeneratorUtil
 import net.datafaker.Faker
 import org.apache.spark.sql.Row
@@ -363,12 +363,20 @@ object RandomDataGenerator {
     val standardDeviation = tryGetValue(metadata, STANDARD_DEVIATION, 1.0)
     val distinctCount = tryGetValue(metadata, DISTINCT_COUNT, 0)
     val count = tryGetValue(metadata, ROW_COUNT, 0)
+    // allow for different distributions (exponential, gaussian)
+    val distribution = tryGetValue(metadata, DISTRIBUTION, "")
+    val rateParameter = tryGetValue(metadata, DISTRIBUTION_RATE_PARAMETER, 1.0)
 
     val baseFormula = if (defaultValue.toLowerCase.startsWith("nextval") || (distinctCount == count && distinctCount > 0)) {
       s"$max + $INDEX_INC_COL + 1" //index col starts at 0
     } else if (metadata.contains(STANDARD_DEVIATION) && metadata.contains(MEAN)) {
       val randNormal = sqlRand.replace("RAND", "RANDN")
       s"$randNormal * $standardDeviation + $mean"
+    } else if (distribution.equalsIgnoreCase(DISTRIBUTION_NORMAL)) {
+      val randNormal = sqlRand.replace("RAND", "RANDN")
+      s"$randNormal + $min"
+    } else if (distribution.equalsIgnoreCase(DISTRIBUTION_EXPONENTIAL)) {
+      s"GREATEST($min, LEAST($max, $diff * (-LN(1 - $sqlRand) / $rateParameter) + $min))"
     } else {
       s"$sqlRand * $diff + $min"
     }

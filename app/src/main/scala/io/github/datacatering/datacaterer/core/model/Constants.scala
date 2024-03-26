@@ -13,6 +13,7 @@ object Constants {
 
   //special column names
   lazy val PER_COLUMN_COUNT = "_per_col_count"
+  lazy val PER_COLUMN_COUNT_GENERATED = "_per_col_count_gen"
   lazy val JOIN_FOREIGN_KEY_COL = "_join_foreign_key"
   lazy val PER_COLUMN_INDEX_COL = "_per_col_index"
   lazy val RECORD_COUNT_GENERATOR_COL = "record_count_generator"

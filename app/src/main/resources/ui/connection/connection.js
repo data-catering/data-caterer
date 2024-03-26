@@ -373,8 +373,6 @@ dataSourcePropertiesMap.set("slack", {
     optGroupLabel: "Alert",
     Name: "Slack",
     properties: {
-        Token: "",
-        Channels: "",
         token: {
             displayName: "Token",
             default: "",

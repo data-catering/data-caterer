@@ -26,7 +26,7 @@ trait JsonSupport {
 
   implicit val fieldRequestsFormat: RootJsonFormat[FieldRequests] = rootFormat(lazyFormat(jsonFormat1(FieldRequests.apply)))
   implicit val fieldRequestFormat: RootJsonFormat[FieldRequest] = rootFormat(lazyFormat(jsonFormat4(FieldRequest.apply)))
-  implicit val recordCountRequestFormat: RootJsonFormat[RecordCountRequest] = jsonFormat7(RecordCountRequest.apply)
+  implicit val recordCountRequestFormat: RootJsonFormat[RecordCountRequest] = jsonFormat9(RecordCountRequest.apply)
   implicit val waitRequestFormat: RootJsonFormat[WaitRequest] = jsonFormat1(WaitRequest.apply)
   implicit val validationItemRequestsFormat: RootJsonFormat[ValidationItemRequests] = rootFormat(lazyFormat(jsonFormat1(ValidationItemRequests.apply)))
   implicit val validationItemRequestFormat: RootJsonFormat[ValidationItemRequest] = rootFormat(lazyFormat(jsonFormat4(ValidationItemRequest.apply)))

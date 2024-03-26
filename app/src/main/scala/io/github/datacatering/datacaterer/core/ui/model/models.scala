@@ -41,6 +41,8 @@ case class RecordCountRequest(
                                perColumnRecords: Option[Long] = None,
                                perColumnRecordsMin: Option[Long] = None,
                                perColumnRecordsMax: Option[Long] = None,
+                               perColumnRecordsDistribution: Option[String] = None,
+                               perColumnRecordsDistributionRateParam: Option[String] = None,
                              )
 
 case class ValidationItemRequest(
