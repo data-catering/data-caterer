@@ -57,7 +57,7 @@ jobs:
           name: jars
           path: app/build/libs/
       - name: Package jar as dmg installer
-        run: 'jpackage "@misc/jpackage/jpackage.cfg" "@misc/jpackage/jpackage-mac.cfg"'
+        run: 'jpackage --main-jar app-${APP_VERSION}-all.jar "@misc/jpackage/jpackage.cfg" "@misc/jpackage/jpackage-mac.cfg"'
       - name: Upload dmg
         uses: actions/upload-artifact@v4
         with:
@@ -86,7 +86,7 @@ jobs:
           name: jars
           path: app/build/libs/
       - name: Package jar as exe
-        run: 'jpackage "@misc/jpackage/jpackage.cfg" "@misc/jpackage/jpackage-windows.cfg"'
+        run: 'jpackage --main-jar app-${APP_VERSION}-all.jar "@misc/jpackage/jpackage.cfg" "@misc/jpackage/jpackage-windows.cfg"'
       - name: Upload installer
         uses: actions/upload-artifact@v4
         with:
@@ -115,7 +115,7 @@ jobs:
           name: jars
           path: app/build/libs/
       - name: Package jar as debian package
-        run: 'jpackage "@misc/jpackage/jpackage.cfg" "@misc/jpackage/jpackage-linux.cfg"'
+        run: 'jpackage --main-jar app-${APP_VERSION}-all.jar "@misc/jpackage/jpackage.cfg" "@misc/jpackage/jpackage-linux.cfg"'
       - name: List directory
         run: ls -lart
       - name: Upload deb
