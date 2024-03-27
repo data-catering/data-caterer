@@ -64,12 +64,12 @@ case class ForeignKeyRequest(
 case class ForeignKeyRequestItem(taskName: String, columns: String)
 
 case class ConfigurationRequest(
-                                 flag: Map[String, String],
-                                 folder: Map[String, String],
-                                 metadata: Map[String, String],
-                                 generation: Map[String, String],
-                                 validation: Map[String, String],
-                                 alert: Map[String, String],
+                                 flag: Map[String, String] = Map(),
+                                 folder: Map[String, String] = Map(),
+                                 metadata: Map[String, String] = Map(),
+                                 generation: Map[String, String] = Map(),
+                                 validation: Map[String, String] = Map(),
+                                 alert: Map[String, String] = Map(),
                                )
 
 

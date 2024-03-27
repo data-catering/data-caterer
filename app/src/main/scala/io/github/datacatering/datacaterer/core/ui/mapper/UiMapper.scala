@@ -22,6 +22,9 @@ object UiMapper {
     // after initial connection mapping, need to get the upstream validations based on the connection mapping
     val connectionsWithUpstreamValidations = connectionsWithUpstreamValidationMapping(connections, planRunRequest.dataSources)
 
+    if (connectionsWithUpstreamValidations.isEmpty) {
+      throw new IllegalArgumentException("Have to define at least one data source to run the plan")
+    }
     plan.execute(planBuilderWithForeignKeys, configuration, connectionsWithUpstreamValidations.head, connectionsWithUpstreamValidations.tail: _*)
     plan
   }
@@ -74,7 +77,7 @@ object UiMapper {
     withAlertConf
   }
 
-  private def mapFlagsConfiguration(configurationRequest: ConfigurationRequest, baseConfig: DataCatererConfigurationBuilder): DataCatererConfigurationBuilder = {
+  def mapFlagsConfiguration(configurationRequest: ConfigurationRequest, baseConfig: DataCatererConfigurationBuilder): DataCatererConfigurationBuilder = {
     configurationRequest.flag.foldLeft(baseConfig)((conf, c) => {
       val boolVal = c._2.toBoolean
       c._1 match {
@@ -97,7 +100,7 @@ object UiMapper {
     })
   }
 
-  private def mapAlertConfiguration(configurationRequest: ConfigurationRequest, baseConfig: DataCatererConfigurationBuilder): DataCatererConfigurationBuilder = {
+  def mapAlertConfiguration(configurationRequest: ConfigurationRequest, baseConfig: DataCatererConfigurationBuilder): DataCatererConfigurationBuilder = {
     configurationRequest.alert.foldLeft(baseConfig)((conf, c) => {
       c._1 match {
         case CONFIG_ALERT_TRIGGER_ON => conf.alertTriggerOn(c._2)
@@ -110,7 +113,7 @@ object UiMapper {
     })
   }
 
-  private def mapValidationConfiguration(configurationRequest: ConfigurationRequest, baseConfig: DataCatererConfigurationBuilder): DataCatererConfigurationBuilder = {
+  def mapValidationConfiguration(configurationRequest: ConfigurationRequest, baseConfig: DataCatererConfigurationBuilder): DataCatererConfigurationBuilder = {
     configurationRequest.validation.foldLeft(baseConfig)((conf, c) => {
       c._1 match {
         case CONFIG_VALIDATION_NUM_SAMPLE_ERROR_RECORDS => conf.numErrorSampleRecords(c._2.toInt)
@@ -122,7 +125,7 @@ object UiMapper {
     })
   }
 
-  private def mapGenerationConfiguration(configurationRequest: ConfigurationRequest, baseConfig: DataCatererConfigurationBuilder): DataCatererConfigurationBuilder = {
+  def mapGenerationConfiguration(configurationRequest: ConfigurationRequest, baseConfig: DataCatererConfigurationBuilder): DataCatererConfigurationBuilder = {
     configurationRequest.generation.foldLeft(baseConfig)((conf, c) => {
       c._1 match {
         case CONFIG_GENERATION_NUM_RECORDS_PER_BATCH => conf.numRecordsPerBatch(c._2.toLong)
@@ -136,7 +139,7 @@ object UiMapper {
     })
   }
 
-  private def mapMetadataConfiguration(configurationRequest: ConfigurationRequest, baseConfig: DataCatererConfigurationBuilder): DataCatererConfigurationBuilder = {
+  def mapMetadataConfiguration(configurationRequest: ConfigurationRequest, baseConfig: DataCatererConfigurationBuilder): DataCatererConfigurationBuilder = {
     configurationRequest.metadata.foldLeft(baseConfig)((conf, c) => {
       c._1 match {
         case CONFIG_METADATA_NUM_RECORDS_FROM_DATA_SOURCE => conf.numRecordsFromDataSourceForDataProfiling(c._2.toInt)
@@ -151,7 +154,7 @@ object UiMapper {
     })
   }
 
-  private def mapFolderConfiguration(configurationRequest: ConfigurationRequest, installDirectory: String, baseConfig: DataCatererConfigurationBuilder): DataCatererConfigurationBuilder = {
+  def mapFolderConfiguration(configurationRequest: ConfigurationRequest, installDirectory: String, baseConfig: DataCatererConfigurationBuilder): DataCatererConfigurationBuilder = {
     val nonEmptyFolderConfig = configurationRequest.folder.filter(_._2.nonEmpty).foldLeft(baseConfig)((conf, c) => {
       c._1 match {
         case CONFIG_FOLDER_PLAN_FILE_PATH => conf.planFilePath(c._2)
@@ -183,7 +186,7 @@ object UiMapper {
     })
   }
 
-  private def validationMapping(dataSourceRequest: DataSourceRequest): List[ValidationBuilder] = {
+  def validationMapping(dataSourceRequest: DataSourceRequest): List[ValidationBuilder] = {
     dataSourceRequest.validations
       .map(validations => validations.flatMap(validationItemRequestToValidationBuilders))
       .getOrElse(List())
@@ -199,18 +202,20 @@ object UiMapper {
           opts
             .filter(o => !VALIDATION_SUPPORTING_OPTIONS.contains(o._1))
             .map(opt => {
-              val baseValid = ValidationBuilder().col(colName)
+              val baseValid = validationWithDescriptionAndErrorThreshold(opts).col(colName)
               columnValidationMapping(baseValid, opts, colName, opt)
             })
             .toList
         }).getOrElse(List())
         mappedValids
       case VALIDATION_COLUMN_NAMES =>
-        val baseValid = ValidationBuilder().columnNames
         validateItem.options.map(opts => {
           opts
             .filter(o => !VALIDATION_SUPPORTING_OPTIONS.contains(o._1))
-            .map(opt => columnNamesValidationMapping(baseValid, opts, opt))
+            .map(opt => {
+              val baseValid = validationWithDescriptionAndErrorThreshold(opts).columnNames
+              columnNamesValidationMapping(baseValid, opts, opt)
+            })
             .toList
         }).getOrElse(List())
       case VALIDATION_UPSTREAM =>
@@ -219,14 +224,22 @@ object UiMapper {
       case VALIDATION_GROUP_BY =>
         validateItem.options.map(opts => {
           val groupByCols = opts(VALIDATION_GROUP_BY_COLUMNS).split(VALIDATION_OPTION_DELIMITER)
-          val baseValid = ValidationBuilder().groupBy(groupByCols: _*)
+          val baseValid = validationWithDescriptionAndErrorThreshold(opts).groupBy(groupByCols: _*)
           groupByValidationMapping(baseValid, validateItem.nested)
         }).getOrElse(List())
       case _ => List()
     }
   }
 
-  private def countMapping(dataSourceRequest: DataSourceRequest): CountBuilder = {
+  private def validationWithDescriptionAndErrorThreshold(options: Map[String, String]): ValidationBuilder = {
+    val optDescription = options.get(VALIDATION_DESCRIPTION)
+    val optErrorThreshold = options.get(VALIDATION_ERROR_THRESHOLD)
+    val baseValidation = ValidationBuilder()
+    val validWithDesc = optDescription.map(desc => baseValidation.description(desc)).getOrElse(baseValidation)
+    optErrorThreshold.map(error => validWithDesc.errorThreshold(error.toDouble)).getOrElse(validWithDesc)
+  }
+
+  def countMapping(dataSourceRequest: DataSourceRequest): CountBuilder = {
     dataSourceRequest.count.map(recordCountRequest => {
       val baseRecordCount = (recordCountRequest.records, recordCountRequest.recordsMin, recordCountRequest.recordsMax) match {
         case (Some(records), None, None) => CountBuilder().records(records)
@@ -251,7 +264,7 @@ object UiMapper {
     }).getOrElse(CountBuilder())
   }
 
-  private def fieldMapping(dataSourceRequest: DataSourceRequest): List[FieldBuilder] = {
+  def fieldMapping(dataSourceRequest: DataSourceRequest): List[FieldBuilder] = {
     dataSourceRequest.fields.map(fields => fieldMapping(dataSourceRequest.name, fields)).getOrElse(List())
   }
 
@@ -268,27 +281,27 @@ object UiMapper {
     })
   }
 
-  private def connectionMapping(dataSourceRequest: DataSourceRequest): ConnectionTaskBuilder[_] = {
+  def connectionMapping(dataSourceRequest: DataSourceRequest): ConnectionTaskBuilder[_] = {
     dataSourceRequest.`type` match {
       case Some(CASSANDRA_NAME) => createCassandraConnection(dataSourceRequest)
       case Some(POSTGRES) => createJdbcConnection(dataSourceRequest, POSTGRES)
-      case Some(MYSQL) => createJdbcConnection(dataSourceRequest, POSTGRES)
+      case Some(MYSQL) => createJdbcConnection(dataSourceRequest, MYSQL)
       case Some(CSV) => createFileConnection(dataSourceRequest, CSV)
       case Some(JSON) => createFileConnection(dataSourceRequest, JSON)
       case Some(PARQUET) => createFileConnection(dataSourceRequest, PARQUET)
       case Some(ORC) => createFileConnection(dataSourceRequest, ORC)
       case Some(SOLACE) =>
         val opt = dataSourceRequest.options.getOrElse(Map())
-        checkOptions(dataSourceRequest.name, List(URL, USERNAME, PASSWORD, JMS_VPN_NAME, JMS_CONNECTION_FACTORY, JMS_INITIAL_CONTEXT_FACTORY), opt)
+        checkOptions(dataSourceRequest.name, List(URL, USERNAME, PASSWORD, JMS_DESTINATION_NAME, JMS_VPN_NAME, JMS_CONNECTION_FACTORY, JMS_INITIAL_CONTEXT_FACTORY), opt)
         ConnectionConfigWithTaskBuilder().solace(dataSourceRequest.name, opt(URL), opt(USERNAME), opt(PASSWORD),
           opt(JMS_VPN_NAME), opt(JMS_CONNECTION_FACTORY), opt(JMS_INITIAL_CONTEXT_FACTORY), opt)
       case Some(KAFKA) =>
         val opt = dataSourceRequest.options.getOrElse(Map())
-        checkOptions(dataSourceRequest.name, List(URL), opt)
+        checkOptions(dataSourceRequest.name, List(URL, KAFKA_TOPIC), opt)
         ConnectionConfigWithTaskBuilder().kafka(dataSourceRequest.name, opt(URL), opt)
       case Some(HTTP) =>
         val opt = dataSourceRequest.options.getOrElse(Map())
-        checkOptions(dataSourceRequest.name, List(URL, USERNAME, PASSWORD), opt)
+        checkOptions(dataSourceRequest.name, List(USERNAME, PASSWORD), opt)
         ConnectionConfigWithTaskBuilder().http(dataSourceRequest.name, opt(USERNAME), opt(PASSWORD), opt)
       case Some(x) =>
         throw new IllegalArgumentException(s"Unsupported data source from UI, data-source-type=$x")
@@ -298,7 +311,7 @@ object UiMapper {
     }
   }
 
-  private def connectionsWithUpstreamValidationMapping(connections: List[ConnectionTaskBuilder[_]], dataSources: List[DataSourceRequest]): List[ConnectionTaskBuilder[_]] = {
+  def connectionsWithUpstreamValidationMapping(connections: List[ConnectionTaskBuilder[_]], dataSources: List[DataSourceRequest]): List[ConnectionTaskBuilder[_]] = {
     val dataSourcesWithUpstreamValidation = dataSources
       .filter(ds => ds.validations.getOrElse(List()).exists(_.`type` == VALIDATION_UPSTREAM))
       .map(ds => (ds.taskName, ds.validations.getOrElse(List())))
@@ -323,11 +336,12 @@ object UiMapper {
   private def upstreamValidationMapping(connections: List[ConnectionTaskBuilder[_]], upstreamValidations: List[ValidationItemRequest]): List[ValidationBuilder] = {
     upstreamValidations.flatMap(upstreamValidation => {
       def getOption(k: String): Option[String] = upstreamValidation.options.flatMap(_.get(k))
+
       val upstreamTaskName = getOption(VALIDATION_UPSTREAM_TASK_NAME).getOrElse("")
       val upstreamConnection = connections.find(_.task.exists(_.task.name == upstreamTaskName))
 
       if (upstreamConnection.isDefined) {
-        val baseValid = ValidationBuilder().upstreamData(upstreamConnection.get)
+        val baseValid = validationWithDescriptionAndErrorThreshold(upstreamValidation.options.getOrElse(Map())).upstreamData(upstreamConnection.get)
 
         // check for join options
         val joinValidation = (getOption(VALIDATION_UPSTREAM_JOIN_TYPE), getOption(VALIDATION_UPSTREAM_JOIN_COLUMNS), getOption(VALIDATION_UPSTREAM_JOIN_EXPR)) match {
@@ -358,7 +372,7 @@ object UiMapper {
         // only column validations can be applied after group by
         validationReq.options.map(opts => {
           // check for aggType and aggCol
-          (opts.get("aggType"), opts.get("aggCol")) match {
+          (opts.get(VALIDATION_AGGREGATION_TYPE), opts.get(VALIDATION_AGGREGATION_COLUMN)) match {
             case (Some(aggType), Some(aggCol)) =>
               val aggregateValidation = aggType match {
                 case VALIDATION_MIN => baseValid.min(aggCol)
@@ -367,9 +381,9 @@ object UiMapper {
                 case VALIDATION_SUM => baseValid.sum(aggCol)
                 case VALIDATION_AVERAGE => baseValid.avg(aggCol)
                 case VALIDATION_STANDARD_DEVIATION => baseValid.stddev(aggCol)
-                case _ => throw new RuntimeException(s"Unexpected aggregation type found in group by validation, aggregation-type=$aggType")
+                case _ => throw new IllegalArgumentException(s"Unexpected aggregation type found in group by validation, aggregation-type=$aggType")
               }
-              opts.filter(o => o._1 != "aggType" && o._1 != "aggCol")
+              opts.filter(o => o._1 != VALIDATION_AGGREGATION_TYPE && o._1 != VALIDATION_AGGREGATION_COLUMN)
                 .map(opt => columnValidationMapping(aggregateValidation, opts, opt._2, opt))
                 .toList
             case _ => throw new RuntimeException("Keys 'aggType' and 'aggCol' are expected when defining a group by validation")
@@ -388,7 +402,9 @@ object UiMapper {
         baseValid.countBetween(min.toInt, max.toInt)
       case VALIDATION_COLUMN_NAMES_MATCH_ORDER => baseValid.matchOrder(opt._2.split(VALIDATION_OPTION_DELIMITER): _*)
       case VALIDATION_COLUMN_NAMES_MATCH_SET => baseValid.matchSet(opt._2.split(VALIDATION_OPTION_DELIMITER): _*)
-      case _ => baseValid.countEqual(1)
+      case _ =>
+        LOGGER.warn("Unknown column name validation type, defaulting to column name count equal to 1")
+        baseValid.countEqual(1)
     }
   }
 
@@ -400,7 +416,7 @@ object UiMapper {
       case VALIDATION_NOT_NULL => baseValid.isNotNull
       case VALIDATION_CONTAINS => baseValid.contains(opt._2)
       case VALIDATION_NOT_CONTAINS => baseValid.notContains(opt._2)
-      case VALIDATION_UNIQUE => ValidationBuilder().unique(colName)
+      case VALIDATION_UNIQUE => validationWithDescriptionAndErrorThreshold(opts).unique(colName)
       case VALIDATION_LESS_THAN => baseValid.lessThan(opt._2)
       case VALIDATION_LESS_THAN_OR_EQUAL => baseValid.lessThanOrEqual(opt._2)
       case VALIDATION_GREATER_THAN => baseValid.greaterThan(opt._2)

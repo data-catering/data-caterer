@@ -368,6 +368,9 @@ object Constants {
   lazy val VALIDATION_COLUMN_NAMES = "columnNames"
   lazy val VALIDATION_UPSTREAM = "upstream"
   lazy val VALIDATION_GROUP_BY = "groupBy"
+  //validation support
+  lazy val VALIDATION_DESCRIPTION = "description"
+  lazy val VALIDATION_ERROR_THRESHOLD = "errorThreshold"
   //column validations
   lazy val VALIDATION_EQUAL = "equal"
   lazy val VALIDATION_NOT_EQUAL = "notEqual"
@@ -400,6 +403,8 @@ object Constants {
   lazy val VALIDATION_HAS_TYPE = "hasType"
   lazy val VALIDATION_SQL = "sql"
   //group by validations
+  lazy val VALIDATION_AGGREGATION_TYPE = "aggType"
+  lazy val VALIDATION_AGGREGATION_COLUMN = "aggCol"
   lazy val VALIDATION_MIN = "min"
   lazy val VALIDATION_MAX = "max"
   lazy val VALIDATION_COUNT = "count"
@@ -419,7 +424,7 @@ object Constants {
   lazy val VALIDATION_COLUMN_NAMES_MATCH_SET = "matchSet"
 
   lazy val VALIDATION_OPTION_DELIMITER = ","
-  lazy val VALIDATION_SUPPORTING_OPTIONS = List(VALIDATION_COLUMN, VALIDATION_MIN, VALIDATION_MAX, VALIDATION_GROUP_BY_COLUMNS)
+  lazy val VALIDATION_SUPPORTING_OPTIONS = List(VALIDATION_COLUMN, VALIDATION_MIN, VALIDATION_MAX, VALIDATION_GROUP_BY_COLUMNS, VALIDATION_DESCRIPTION, VALIDATION_ERROR_THRESHOLD)
 
   lazy val VALIDATION_PREFIX_JOIN_EXPRESSION = "expr:"
   lazy val VALIDATION_COLUMN_NAME_COUNT_EQUAL = "column_count_equal"
