@@ -7,6 +7,7 @@ import io.github.datacatering.datacaterer.core.util.{ObjectMapperUtil, SparkSuit
 import org.junit.runner.RunWith
 import org.scalatestplus.junit.JUnitRunner
 
+import java.nio.file.{Files, Path}
 import java.sql.{Date, Timestamp}
 
 @RunWith(classOf[JUnitRunner])
@@ -67,8 +68,9 @@ class PlanProcessorTest extends SparkSuite {
       val foreignKeySetup = plan
         .addForeignKeyRelationship(
           jsonTask, List("account_id", "_join_txn_name"),
-          List((csvTxns, List("account_id", "name")))
+          List((csvTxns, List("account_id", "name")), (csvTxns, List("account_id", "name")))
         )
+        .addForeignKeyRelationship(jsonTask, List("account_id"), List(), List((csvTxns, List("account_id"))))
       val conf = configuration
         .generatedReportsFolderPath(s"$scalaBaseFolder/report")
         .enableValidation(true)
@@ -106,6 +108,7 @@ class PlanProcessorTest extends SparkSuite {
   ignore("Write YAML for plan") {
     val docPlanRun = new DocumentationPlanRun()
     val planWrite = ObjectMapperUtil.yamlObjectMapper.writeValueAsString(docPlanRun._plan)
+    Files.writeString(Path.of("/tmp/my-plan.yaml"), planWrite)
   }
 
   ignore("Can run Postgres plan run") {

@@ -37,7 +37,8 @@ class ForeignKeyUtilTest extends SparkSuite {
 
   test("Can link foreign keys between data sets") {
     val sinkOptions = SinkOptions(None, None,
-      List(s"postgres${FOREIGN_KEY_DELIMITER}account${FOREIGN_KEY_DELIMITER}account_id" -> List(s"postgres${FOREIGN_KEY_DELIMITER}transaction${FOREIGN_KEY_DELIMITER}account_id"))
+      List((s"postgres${FOREIGN_KEY_DELIMITER}account${FOREIGN_KEY_DELIMITER}account_id",
+        List(s"postgres${FOREIGN_KEY_DELIMITER}transaction${FOREIGN_KEY_DELIMITER}account_id"), List()))
     )
     val plan = Plan("foreign keys", "simple plan", List(), Some(sinkOptions))
     val accountsList = List(
@@ -65,7 +66,8 @@ class ForeignKeyUtilTest extends SparkSuite {
 
   test("Can link foreign keys between data sets with multiple columns") {
     val sinkOptions = SinkOptions(None, None,
-      List(s"postgres${FOREIGN_KEY_DELIMITER}account${FOREIGN_KEY_DELIMITER}account_id,name" -> List(s"postgres${FOREIGN_KEY_DELIMITER}transaction${FOREIGN_KEY_DELIMITER}account_id,name"))
+      List((s"postgres${FOREIGN_KEY_DELIMITER}account${FOREIGN_KEY_DELIMITER}account_id,name",
+        List(s"postgres${FOREIGN_KEY_DELIMITER}transaction${FOREIGN_KEY_DELIMITER}account_id,name"), List()))
     )
     val plan = Plan("foreign keys", "simple plan", List(TaskSummary("my_task", "postgres")), Some(sinkOptions))
     val accountsList = List(
@@ -104,7 +106,8 @@ class ForeignKeyUtilTest extends SparkSuite {
 
   test("Can link foreign keys between data sets with multiple records per column") {
     val sinkOptions = SinkOptions(None, None,
-      List(s"postgres${FOREIGN_KEY_DELIMITER}account${FOREIGN_KEY_DELIMITER}account_id" -> List(s"postgres${FOREIGN_KEY_DELIMITER}transaction${FOREIGN_KEY_DELIMITER}account_id"))
+      List((s"postgres${FOREIGN_KEY_DELIMITER}account${FOREIGN_KEY_DELIMITER}account_id",
+        List(s"postgres${FOREIGN_KEY_DELIMITER}transaction${FOREIGN_KEY_DELIMITER}account_id"), List()))
     )
     val plan = Plan("foreign keys", "simple plan", List(TaskSummary("my_task", "postgres")), Some(sinkOptions))
     val accountsList = List(

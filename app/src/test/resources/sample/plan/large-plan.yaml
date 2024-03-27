@@ -12,3 +12,4 @@ sinkOptions:
   foreignKeys:
     - - "json.file_account.account_id"
       - - "csv.transactions.account_id"
+      - []

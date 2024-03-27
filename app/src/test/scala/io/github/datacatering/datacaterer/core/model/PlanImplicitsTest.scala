@@ -12,10 +12,10 @@ class PlanImplicitsTest extends AnyFunSuite {
 
   test("Can map foreign key relations to relationships without column names") {
     val sinkOptions = SinkOptions(foreignKeys =
-      List(
-        s"my_postgres${FOREIGN_KEY_DELIMITER}public.categories${FOREIGN_KEY_DELIMITER}id" ->
-          List(s"my_csv${FOREIGN_KEY_DELIMITER}account${FOREIGN_KEY_DELIMITER}account_id")
-      )
+      List((
+        s"my_postgres${FOREIGN_KEY_DELIMITER}public.categories${FOREIGN_KEY_DELIMITER}id",
+          List(s"my_csv${FOREIGN_KEY_DELIMITER}account${FOREIGN_KEY_DELIMITER}account_id"), List()
+      ))
     )
     val result = sinkOptions.foreignKeysWithoutColumnNames
 

@@ -17,7 +17,7 @@ case class Plan(
 case class SinkOptions(
                         seed: Option[String] = None,
                         locale: Option[String] = None,
-                        foreignKeys: List[(String, List[String])] = List()
+                        foreignKeys: List[(String, List[String], List[String])] = List()
                       )
 
 case class ForeignKeyRelation(

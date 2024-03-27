@@ -38,14 +38,27 @@ case class PlanBuilder(plan: Plan = Plan(), tasks: List[TasksBuilder] = List()) 
   def locale(locale: String): PlanBuilder =
     this.modify(_.plan.sinkOptions).setTo(Some(getSinkOpt.locale(locale).sinkOptions))
 
-  @varargs def addForeignKeyRelationship(foreignKey: ForeignKeyRelation, relations: ForeignKeyRelation*): PlanBuilder =
-    this.modify(_.plan.sinkOptions).setTo(Some(getSinkOpt.foreignKey(foreignKey, relations.toList).sinkOptions))
+  @varargs def addForeignKeyRelationship(foreignKey: ForeignKeyRelation, generationLinks: ForeignKeyRelation*): PlanBuilder =
+    this.modify(_.plan.sinkOptions).setTo(Some(getSinkOpt.foreignKey(foreignKey, generationLinks.toList).sinkOptions))
+
+  def addForeignKeyRelationship(foreignKey: ForeignKeyRelation, generationLinks: List[ForeignKeyRelation], deleteLinks: List[ForeignKeyRelation]): PlanBuilder =
+    this.modify(_.plan.sinkOptions).setTo(Some(getSinkOpt.foreignKey(foreignKey, generationLinks, deleteLinks).sinkOptions))
 
   def addForeignKeyRelationship(connectionTaskBuilder: ConnectionTaskBuilder[_], columns: List[String],
-                                relations: List[(ConnectionTaskBuilder[_], List[String])]): PlanBuilder = {
+                                generationLinks: List[(ConnectionTaskBuilder[_], List[String])]): PlanBuilder = {
     val baseRelation = toForeignKeyRelation(connectionTaskBuilder, columns)
-    val otherRelations = relations.map(r => toForeignKeyRelation(r._1, r._2))
+    val otherRelations = generationLinks.map(r => toForeignKeyRelation(r._1, r._2))
     addForeignKeyRelationship(baseRelation, otherRelations: _*)
+  }
+
+  def addForeignKeyRelationship(connectionTaskBuilder: ConnectionTaskBuilder[_], columns: List[String],
+                                generationLinks: List[(ConnectionTaskBuilder[_], List[String])],
+                                deleteLinks: List[(ConnectionTaskBuilder[_], List[String])],
+                               ): PlanBuilder = {
+    val baseRelation = toForeignKeyRelation(connectionTaskBuilder, columns)
+    val mappedGeneration = generationLinks.map(r => toForeignKeyRelation(r._1, r._2))
+    val mappedDelete = deleteLinks.map(r => toForeignKeyRelation(r._1, r._2))
+    addForeignKeyRelationship(baseRelation, mappedGeneration, mappedDelete)
   }
 
   def addForeignKeyRelationship(connectionTaskBuilder: ConnectionTaskBuilder[_], columns: java.util.List[String],

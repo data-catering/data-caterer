@@ -16,3 +16,4 @@ sinkOptions:
     #    "postgres.accounts.account_number":
     - - "postgres.transactions.account_number"
       - - "parquet.transactions.account_id"
+      - []
