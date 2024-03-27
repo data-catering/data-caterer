@@ -86,7 +86,7 @@ jobs:
           name: jars
           path: app/build/libs/
       - name: Package jar as exe
-        run: 'jpackage --main-jar app-${APP_VERSION}-all.jar "@misc/jpackage/jpackage.cfg" "@misc/jpackage/jpackage-windows.cfg"'
+        run: 'jpackage --main-jar app-${{ env.APP_VERSION }}-all.jar "@misc/jpackage/jpackage.cfg" "@misc/jpackage/jpackage-windows.cfg"'
       - name: Upload installer
         uses: actions/upload-artifact@v4
         with:
