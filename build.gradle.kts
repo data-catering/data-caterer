@@ -13,6 +13,11 @@ version = project.properties["version"].toString()
 
 idea.project.settings {
     runConfigurations {
+        create("DataCatererUI", Application::class.java) {
+            mainClass = "io.github.datacatering.datacaterer.core.ui.DataCatererUI"
+            moduleName = "data-caterer.app.main"
+            includeProvidedDependencies = true
+        }
         create("GenerateFromManualJson", Application::class.java) {
             mainClass = "io.github.datacatering.datacaterer.App"
             moduleName = "data-caterer.app.main"
