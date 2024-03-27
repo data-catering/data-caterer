@@ -74,7 +74,7 @@ jobs:
         with:
           fetch-depth: 2
       - name: Set version
-        run: echo "APP_VERSION=$(grep version gradle.properties | cut -d= -f2)" >> $GITHUB_ENV
+        run: echo "APP_VERSION=$(grep version gradle.properties | cut -d= -f2)" >> $env:GITHUB_ENV
       - uses: actions/setup-java@v1
         with:
           java-version: '21'
@@ -86,7 +86,7 @@ jobs:
           name: jars
           path: app/build/libs/
       - name: Package jar as exe
-        run: 'jpackage --main-jar "app-${{ env.APP_VERSION }}-all.jar" "@misc/jpackage/jpackage.cfg" "@misc/jpackage/jpackage-windows.cfg"'
+        run: 'jpackage --main-jar app-$env:APP_VERSION-all.jar "@misc/jpackage/jpackage.cfg" "@misc/jpackage/jpackage-windows.cfg"'
       - name: Upload installer
         uses: actions/upload-artifact@v4
         with:
