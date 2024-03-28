@@ -198,4 +198,21 @@ class PlanBuilderTest extends AnyFunSuite {
     assert(fk.nonEmpty)
     assert(fk.size == 1)
   }
+
+  test("Don't throw runtime exception when delete foreign key column, defined by SQL, is not defined in data sources") {
+    val jsonTask = ConnectionConfigWithTaskBuilder().file("my_json", "json").schema(FieldBuilder().name("account_id"))
+    val csvTask = ConnectionConfigWithTaskBuilder().file("my_csv", "csv").schema(FieldBuilder().name("account_number"))
+    val result = PlanBuilder().addForeignKeyRelationship(
+      jsonTask, List("account_id"),
+      List(),
+      List(csvTask -> List("account_id AS account_number"))
+    ).plan
+
+    assert(result.sinkOptions.isDefined)
+    val fk = result.sinkOptions.get.foreignKeys
+    assert(fk.nonEmpty)
+    assert(fk.size == 1)
+    assert(fk.head._2.isEmpty)
+    assert(fk.head._3.size == 1)
+  }
 }

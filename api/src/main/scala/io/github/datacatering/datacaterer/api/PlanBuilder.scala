@@ -57,7 +57,7 @@ case class PlanBuilder(plan: Plan = Plan(), tasks: List[TasksBuilder] = List()) 
                                ): PlanBuilder = {
     val baseRelation = toForeignKeyRelation(connectionTaskBuilder, columns)
     val mappedGeneration = generationLinks.map(r => toForeignKeyRelation(r._1, r._2))
-    val mappedDelete = deleteLinks.map(r => toForeignKeyRelation(r._1, r._2))
+    val mappedDelete = deleteLinks.map(r => toForeignKeyRelation(r._1, r._2, true))
     addForeignKeyRelationship(baseRelation, mappedGeneration, mappedDelete)
   }
 
@@ -97,14 +97,14 @@ case class PlanBuilder(plan: Plan = Plan(), tasks: List[TasksBuilder] = List()) 
                                 relations: java.util.List[(ConnectionTaskBuilder[_], java.util.List[String])]): PlanBuilder =
     addForeignKeyRelationship(foreignKey, toScalaList(relations).map(r => toForeignKeyRelation(r._1, toScalaList(r._2))): _*)
 
-  private def toForeignKeyRelation(connectionTaskBuilder: ConnectionTaskBuilder[_], columns: List[String]) = {
+  private def toForeignKeyRelation(connectionTaskBuilder: ConnectionTaskBuilder[_], columns: List[String], isDeleteFk: Boolean = false) = {
     val dataSource = connectionTaskBuilder.connectionConfigWithTaskBuilder.dataSourceName
     val colNames = columns.mkString(",")
     connectionTaskBuilder.step match {
       case Some(value) =>
         val fields = value.step.schema.fields.getOrElse(List())
         val hasColumns = columns.forall(c => fields.exists(_.name == c))
-        if (!hasColumns && !value.step.options.contains(METADATA_SOURCE_TYPE)) {
+        if (!hasColumns && !value.step.options.contains(METADATA_SOURCE_TYPE) && !isDeleteFk) {
           throw new RuntimeException(s"Column name defined in foreign key relationship does not exist, data-source=$dataSource, column-name=$colNames")
         }
         ForeignKeyRelation(dataSource, value.step.name, columns)
