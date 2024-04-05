@@ -56,7 +56,7 @@ const defaultDataTypeOptions = {
         default: "false",
         type: "text",
         choice: ["true", "false"],
-        help: "Exclude the column from the final output. Can be used for intermediate data generation."
+        help: "Exclude the field from the final output. Can be used for intermediate data generation."
     },
 };
 
@@ -64,14 +64,14 @@ function getNumberOptions(min, max) {
     let minMaxOpt = min && max ? {min: min, max: max} : {};
     return {
         min: {
-            displayName: "Max",
+            displayName: "Min",
             default: 0,
             type: "number", ...minMaxOpt,
             help: "Minimum generated value.",
             required: ""
         },
         max: {
-            displayName: "Min",
+            displayName: "Max",
             default: 1000,
             type: "number", ...minMaxOpt,
             help: "Maximum generated value.",
@@ -261,7 +261,11 @@ dataTypeOptionsMap.set("array", {
 });
 dataTypeOptionsMap.set("struct", {...defaultDataTypeOptions, addBlock: {type: "field"}});
 
-
+export const validationTypeDisplayNameMap = new Map();
+validationTypeDisplayNameMap.set("column", "Field");
+validationTypeDisplayNameMap.set("groupBy", "Group By/Aggregate");
+validationTypeDisplayNameMap.set("upstream", "Upstream");
+validationTypeDisplayNameMap.set("columnNames", "Field Names");
 export const validationTypeOptionsMap = new Map();
 const defaultValidationOptions = {
     description: {
@@ -280,7 +284,7 @@ const defaultValidationOptions = {
 }
 validationTypeOptionsMap.set("column", {
     ...defaultValidationOptions,
-    defaultChildColumn: {displayName: "Column", default: "", type: "text", required: "", help: "Column to validate."},
+    defaultChildField: {displayName: "Field", default: "", type: "text", required: "", help: "Field to validate."},
     equal: {
         displayName: "Equal",
         default: "",
@@ -403,24 +407,24 @@ validationTypeOptionsMap.set("column", {
 validationTypeOptionsMap.set("groupBy", {
     ...defaultValidationOptions,
     defaultChildGroupByColumns: {
-        displayName: "Group By Column(s)",
+        displayName: "Group By Field(s)",
         default: "",
         type: "text",
         required: "",
-        help: "Column name(s) to group by. Comma separated."
+        help: "Field name(s) to group by. Comma separated."
     },
     count: {
         displayName: "Count",
         default: "",
         type: "text",
-        help: "Column name to count number of groups after group by.",
+        help: "Field name to count number of groups after group by.",
         addBlock: {type: "column"}
     },
     sum: {
         displayName: "Sum",
         default: "",
         type: "text",
-        help: "Column name of values to sum after group by.",
+        help: "Field name of values to sum after group by.",
         addBlock: {type: "column"},
         required: ""
     },
@@ -428,7 +432,7 @@ validationTypeOptionsMap.set("groupBy", {
         displayName: "Min",
         default: "",
         type: "text",
-        help: "Column name to find minimum value after group by.",
+        help: "Field name to find minimum value after group by.",
         addBlock: {type: "column"},
         required: ""
     },
@@ -436,7 +440,7 @@ validationTypeOptionsMap.set("groupBy", {
         displayName: "Max",
         default: "",
         type: "text",
-        help: "Column name to find maximum value after group by.",
+        help: "Field name to find maximum value after group by.",
         addBlock: {type: "column"},
         required: ""
     },
@@ -444,7 +448,7 @@ validationTypeOptionsMap.set("groupBy", {
         displayName: "Average",
         default: "",
         type: "text",
-        help: "Column name to find average value after group by.",
+        help: "Field name to find average value after group by.",
         addBlock: {type: "column"},
         required: ""
     },
@@ -452,7 +456,7 @@ validationTypeOptionsMap.set("groupBy", {
         displayName: "Standard Deviation",
         default: "",
         type: "text",
-        help: "Column name to find standard deviation value after group by.",
+        help: "Field name to find standard deviation value after group by.",
         addBlock: {type: "column"},
         required: ""
     },
@@ -468,7 +472,7 @@ validationTypeOptionsMap.set("upstream", {
         help: "Name of upstream data generation task."
     },
     addBlock: {type: "validation"},
-    joinColumns: {displayName: "Join Column(s)", default: "", type: "text", help: "Column name(s) to join by.", required: ""},
+    joinColumns: {displayName: "Join Field(s)", default: "", type: "text", help: "Field name(s) to join by.", required: ""},
     joinType: {
         displayName: "Join Type",
         default: "outer",
@@ -480,26 +484,26 @@ validationTypeOptionsMap.set("upstream", {
 });
 validationTypeOptionsMap.set("columnNames", {
     ...defaultValidationOptions,
-    countEqual: {displayName: "Count Equal", default: 0, type: "number", help: "Number of columns has to equal value.", required: ""},
+    countEqual: {displayName: "Count Equal", default: 0, type: "number", help: "Number of fields has to equal value.", required: ""},
     countBetween: {
         displayName: "Count Between",
         default: 0,
         type: "min-max",
-        help: "Number of columns has to be between min and max value (inclusive).",
+        help: "Number of field has to be between min and max value (inclusive).",
         required: ""
     },
     matchOrder: {
         displayName: "Match Order",
         default: "",
         type: "text",
-        help: "All column names match particular ordering and is complete. Comma separated.",
+        help: "All field names match particular ordering and is complete. Comma separated.",
         required: ""
     },
     matchSet: {
         displayName: "Match Set",
         default: "",
         type: "text",
-        help: "Column names contains set of expected names. Order is not checked. Comma separated.",
+        help: "Field names contains set of expected names. Order is not checked. Comma separated.",
         required: ""
     },
 });
@@ -537,7 +541,7 @@ configurationOptionsMap.set("flag", {
         default: "false",
         type: "text",
         choice: ["true", "false"],
-        help: "Enable/disable generating unique values for columns marked as unique. Can be disabled to improve performance but not guarantee uniqueness."
+        help: "Enable/disable generating unique values for fields marked as unique. Can be disabled to improve performance but not guarantee uniqueness."
     },
     "enableSinkMetadata": {
         configName: "enableSinkMetadata",

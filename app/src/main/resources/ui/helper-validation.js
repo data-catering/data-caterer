@@ -19,7 +19,7 @@ import {
     createSelect,
     findNextLevelNodesByClass
 } from "./shared.js";
-import {validationTypeOptionsMap} from "./configuration-data.js";
+import {validationTypeDisplayNameMap, validationTypeOptionsMap} from "./configuration-data.js";
 
 export let numValidations = 0;
 
@@ -37,7 +37,6 @@ export function createManualValidation(index, additionalName) {
         numValidations += 1;
         let newValidation = createValidation(numValidations);
         validationAccordion.append(newValidation);
-        $(".selectpicker").selectpicker();
     });
 
     divContainer.append(addValidationButton, validationAccordion);
@@ -94,7 +93,7 @@ async function createNestedValidations(dataSource, manualValidation) {
         let mainContainer = $(newValidation).find(".data-validation-container")[0];
 
         if (validation.type === "column" && validationOpts.column) {
-            $(newValidation).find("[aria-label=Column]").val(validationOpts.column)[0].dispatchEvent(new Event("input"));
+            $(newValidation).find("[aria-label=Field]").val(validationOpts.column)[0].dispatchEvent(new Event("input"));
         } else if (validation.type === "groupBy" && validationOpts.groupByColumns) {
             createGroupByValidationFromPlan(newValidation, validationOpts, validation);
         } else if (validation.type === "upstream" && validationOpts.upstreamTaskName) {
@@ -272,7 +271,7 @@ function createValidation(index) {
     for (const key of validationTypeOptionsMap.keys()) {
         let selectOption = document.createElement("option");
         selectOption.setAttribute("value", key);
-        selectOption.innerText = key;
+        selectOption.innerText = validationTypeDisplayNameMap.get(key);
         validationTypeSelect.append(selectOption);
     }
 
@@ -286,7 +285,7 @@ function createValidation(index) {
     // on select change and input of default-attribute, update accordion button
     let accordionButton = $(accordionItem).find(".accordion-button")[0];
     validationTypeSelect.addEventListener("change", (event) => {
-        accordionButton.innerText = event.target.value;
+        accordionButton.innerText = event.target.options[event.target.selectedIndex].innerText;
         updateValidationAccordionHeaderOnInput(validationContainerHeadRow, accordionButton);
     });
     updateValidationAccordionHeaderOnInput(validationContainerHeadRow, accordionButton);

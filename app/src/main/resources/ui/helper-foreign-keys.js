@@ -13,7 +13,7 @@ import {
     createFieldValidationCheck,
     createFormFloating,
     createInput,
-    createSelect
+    createSelect, wait
 } from "./shared.js";
 
 export let numForeignKeys = 0;
@@ -27,9 +27,9 @@ export function createForeignKeys() {
     foreignKeyAccordion.setAttribute("style", "--bs-accordion-active-bg: mistyrose");
 
     let addForeignKeyButton = createButton("add-foreign-key-btn", "add-foreign-key", "btn btn-secondary", "+ Relationship");
-    addForeignKeyButton.addEventListener("click", function () {
+    addForeignKeyButton.addEventListener("click", async function () {
         numForeignKeys += 1;
-        let newForeignKey = createForeignKey(numForeignKeys);
+        let newForeignKey = await createForeignKey(numForeignKeys);
         foreignKeyAccordion.append(newForeignKey);
     });
 
@@ -37,12 +37,26 @@ export function createForeignKeys() {
     return foreignKeyContainer;
 }
 
-export function createForeignKeysFromPlan(respJson) {
+async function createForeignKeyLinksFromPlan(newForeignKey, foreignKey, linkType) {
+    // clear out default links
+    let foreignKeyLinkSources = newForeignKey.querySelector(`.foreign-key-${linkType}-link-sources`);
+    if (foreignKeyLinkSources.length) {
+        foreignKeyLinkSources.removeChild(foreignKeyLinkSources.querySelectorAll(`.foreign-key-${linkType}-link-source`)[0]);
+    }
+    for (const fkLink of Array.from(foreignKey[`${linkType}Links`])) {
+        let newForeignKeyLink = await createForeignKeyInput(numForeignKeysLinks, `foreign-key-${linkType}-link`);
+        foreignKeyLinkSources.insertBefore(newForeignKeyLink, foreignKeyLinkSources.lastChild);
+        $(newForeignKeyLink).find(`select.foreign-key-${linkType}-link`).selectpicker("val", fkLink.taskName);
+        $(newForeignKeyLink).find(`input.foreign-key-${linkType}-link`).val(fkLink.columns)[0].dispatchEvent(new Event("input"));
+    }
+}
+
+export async function createForeignKeysFromPlan(respJson) {
     if (respJson.foreignKeys) {
         let foreignKeysAccordion = document.querySelector(".foreign-keys-container").querySelector(".accordion");
         for (const foreignKey of respJson.foreignKeys) {
             numForeignKeys += 1;
-            let newForeignKey = createForeignKey(numForeignKeys);
+            let newForeignKey = await createForeignKey(numForeignKeys);
             foreignKeysAccordion.append(newForeignKey);
 
             if (foreignKey.source) {
@@ -50,19 +64,24 @@ export function createForeignKeysFromPlan(respJson) {
                 $(newForeignKey).find("input.foreign-key-source").val(foreignKey.source.columns)[0].dispatchEvent(new Event("input"));
             }
 
-            if (foreignKey.links) {
-                // clear out default links
-                let foreignKeyLinkSources = newForeignKey.querySelector(".foreign-key-link-sources");
-                foreignKeyLinkSources.removeChild(foreignKeyLinkSources.querySelectorAll(".foreign-key-link-source")[0]);
-                for (const fkLink of foreignKey.links) {
-                    let newForeignKeyLink = createForeignKeyInput(numForeignKeysLinks, "foreign-key-link");
-                    foreignKeyLinkSources.insertBefore(newForeignKeyLink, foreignKeyLinkSources.lastChild);
-                    $(newForeignKeyLink).find("select.foreign-key-link").selectpicker("val", fkLink.taskName);
-                    $(newForeignKeyLink).find("input.foreign-key-link").val(fkLink.columns)[0].dispatchEvent(new Event("input"));
-                }
+            if (foreignKey.generationLinks) {
+                await createForeignKeyLinksFromPlan(newForeignKey, foreignKey, "generation");
+            }
+            if (foreignKey.deleteLinks) {
+                await createForeignKeyLinksFromPlan(newForeignKey, foreignKey, "delete");
             }
         }
     }
+}
+
+function getForeignKeyLinksToArray(fkContainer, className) {
+    let fkGenerationLinks = $(fkContainer).find(className);
+    let fkGenerationLinkArray = [];
+    for (let fkLink of fkGenerationLinks) {
+        let fkLinkDetails = getForeignKeyDetail(fkLink);
+        fkGenerationLinkArray.push(fkLinkDetails);
+    }
+    return fkGenerationLinkArray;
 }
 
 export function getForeignKeys() {
@@ -70,17 +89,34 @@ export function getForeignKeys() {
     return foreignKeyContainers.map(fkContainer => {
         let fkSource = $(fkContainer).find(".foreign-key-main-source");
         let fkSourceDetails = getForeignKeyDetail(fkSource[0]);
-        let fkLinks = $(fkContainer).find(".foreign-key-link-source");
-        let fkLinkArray = [];
-        for (let fkLink of fkLinks) {
-            let fkLinkDetails = getForeignKeyDetail(fkLink);
-            fkLinkArray.push(fkLinkDetails);
-        }
-        return {source: fkSourceDetails, links: fkLinkArray};
+        let fkGenerationLinkArray = getForeignKeyLinksToArray(fkContainer, ".foreign-key-generation-link-source");
+        let fkDeleteLinkArray = getForeignKeyLinksToArray(fkContainer, ".foreign-key-delete-link-source");
+        return {source: fkSourceDetails, generationLinks: fkGenerationLinkArray, deleteLinks: fkDeleteLinkArray};
     });
 }
 
-function createForeignKey(index) {
+async function createForeignKeyLinks(index, linkType) {
+    // links to either data generation link or delete link
+    let buttonText = linkType.charAt(0).toUpperCase() + linkType.slice(1);
+    let linkSourceFkHeader = document.createElement("h5");
+    linkSourceFkHeader.innerText = "Links to";
+    let linkSourceForeignKeys = document.createElement("div");
+    linkSourceForeignKeys.setAttribute("class", `foreign-key-${linkType}-link-sources`);
+    let addLinkForeignKeyButton = createButton(`add-foreign-key-${linkType}-link-btn-${index}`, "add-link", "btn btn-secondary", "+ Link");
+    addLinkForeignKeyButton.addEventListener("click", async function () {
+        numForeignKeysLinks += 1;
+        let newForeignKeyLink = await createForeignKeyInput(numForeignKeysLinks, `foreign-key-${linkType}-link`);
+        linkSourceForeignKeys.insertBefore(newForeignKeyLink, addLinkForeignKeyButton);
+    });
+
+    linkSourceForeignKeys.append(addLinkForeignKeyButton);
+
+    let bodyContainer = document.createElement("div");
+    bodyContainer.append(linkSourceFkHeader, linkSourceForeignKeys);
+    return createAccordionItem(`foreign-key-${linkType}-${index}`, buttonText, "", bodyContainer);
+}
+
+async function createForeignKey(index) {
     let foreignKeyContainer = document.createElement("div");
     foreignKeyContainer.setAttribute("class", "foreign-key-container");
     // main source
@@ -88,33 +124,27 @@ function createForeignKey(index) {
     mainSourceFkHeader.innerText = "Source";
     let mainSourceForeignKey = document.createElement("div");
     mainSourceForeignKey.setAttribute("class", "foreign-key-main-source");
-    let mainForeignKeySource = createForeignKeyInput(index, "foreign-key-source");
+    let mainForeignKeySource = await createForeignKeyInput(index, "foreign-key-source");
     mainSourceForeignKey.append(mainForeignKeySource);
-    // links to...
-    let linkSourceFkHeader = document.createElement("h5");
-    linkSourceFkHeader.innerText = "Links to";
-    let linkSourceForeignKeys = document.createElement("div");
-    linkSourceForeignKeys.setAttribute("class", "foreign-key-link-sources");
-    let addLinkForeignKeyButton = createButton("add-foreign-key-link-btn", "add-link", "btn btn-secondary", "+ Link");
-    addLinkForeignKeyButton.addEventListener("click", function () {
-        numForeignKeysLinks += 1;
-        let newForeignKeyLink = createForeignKeyInput(numForeignKeysLinks, "foreign-key-link");
-        linkSourceForeignKeys.insertBefore(newForeignKeyLink, addLinkForeignKeyButton);
-    });
 
-    linkSourceForeignKeys.append(addLinkForeignKeyButton);
-    numForeignKeysLinks += 1;
-    let newForeignKeyLink = createForeignKeyInput(numForeignKeysLinks, "foreign-key-link");
+    let foreignKeyLinkAccordion = document.createElement("div");
+    foreignKeyLinkAccordion.setAttribute("class", "accordion mt-2");
+    // foreignKeyLinkAccordion.setAttribute("style", "--bs-accordion-active-bg: mistyrose");
 
-    linkSourceForeignKeys.insertBefore(newForeignKeyLink, addLinkForeignKeyButton);
+    let generationAccordionItem = await createForeignKeyLinks(index, "generation");
+    let deleteAccordionItem = await createForeignKeyLinks(index, "delete");
+    foreignKeyLinkAccordion.append(generationAccordionItem, deleteAccordionItem);
+
     let accordionItem = createAccordionItem(`foreign-key-${index}`, `Relationship ${index}`, "", foreignKeyContainer, "show");
     addAccordionCloseButton(accordionItem);
-    foreignKeyContainer.append(mainSourceFkHeader, mainSourceForeignKey, linkSourceFkHeader, linkSourceForeignKeys);
+    foreignKeyContainer.append(mainSourceFkHeader, mainSourceForeignKey, foreignKeyLinkAccordion);
     return accordionItem;
 }
 
-function updateForeignKeyTasks(taskNameSelect) {
-    taskNameSelect.replaceChildren();
+async function updateForeignKeyTasks(taskNameSelect) {
+    await wait(100);
+    let previousSelectedVal = $(taskNameSelect).val();
+    $(taskNameSelect).empty();
     let taskNames = Array.from(document.querySelectorAll(".task-name-field").values());
     for (const taskName of taskNames) {
         let selectOption = document.createElement("option");
@@ -123,9 +153,13 @@ function updateForeignKeyTasks(taskNameSelect) {
         taskNameSelect.append(selectOption);
     }
     $(taskNameSelect).selectpicker("destroy").selectpicker("render");
+    let hasPreviousSelectedVal = $(taskNameSelect).find(`[value="${previousSelectedVal}"]`);
+    if (previousSelectedVal !== "" && hasPreviousSelectedVal.length) {
+        $(previousSelectedVal).selectpicker("val", previousSelectedVal);
+    }
 }
 
-function createForeignKeyInput(index, name) {
+async function createForeignKeyInput(index, name) {
     let foreignKey = document.createElement("div");
     foreignKey.setAttribute("class", `row m-1 align-items-center ${name}-source`);
     // input is task name -> column(s)
@@ -142,7 +176,7 @@ function createForeignKeyInput(index, name) {
     let columnNameFloating = createFormFloating("Column(s)", columnNamesInput);
 
     foreignKey.append(taskNameCol, columnNameFloating);
-    if (name === "foreign-key-link") {
+    if (name === "foreign-key-generation-link" || name === "foreign-key-delete-link") {
         let closeButton = createCloseButton(foreignKey);
         foreignKey.append(closeButton);
     }
@@ -151,8 +185,10 @@ function createForeignKeyInput(index, name) {
     $(document).find(".task-name-field").on("change", function () {
         updateForeignKeyTasks(taskNameSelect);
     });
-    updateForeignKeyTasks(taskNameSelect);
-    // $(document).find(".task-name-field")[0].dispatchEvent(new Event("change"));
+    $(document).find("#add-task-button").on("click", function () {
+        updateForeignKeyTasks(taskNameSelect);
+    });
+    await updateForeignKeyTasks(taskNameSelect);
     return foreignKey;
 }
 

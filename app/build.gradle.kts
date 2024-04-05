@@ -114,6 +114,7 @@ dependencies {
     basicImpl("com.fasterxml.jackson.module:jackson-module-scala_$scalaVersion:2.15.3") {
         exclude(group = "org.scala-lang")
     }
+    basicImpl("org.apache.parquet:parquet-jackson:1.13.1")
     basicImpl("org.scala-lang.modules:scala-xml_$scalaVersion:2.2.0") {
         exclude(group = "org.scala-lang")
     }

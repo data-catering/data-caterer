@@ -1,4 +1,4 @@
-import {createAccordionItem, createToast} from "../shared.js";
+import {createAccordionItem, createButton, createButtonGroup, createToast} from "../shared.js";
 
 let historyContainer = document.getElementById("history-container");
 const tableHeaders = [{
@@ -81,7 +81,19 @@ fetch("http://localhost:9898/run/history", {
             }
 
             let planHistoryContainer = createAccordionItem(planName, planName, "", planRunsByIdTable);
+
+            let editButton = createButton(`plan-edit-${planRunsByIdTableId}`, "Plan edit", "btn btn-primary", "Edit");
+            editButton.addEventListener("click", function() {
+                location.href = `http://localhost:9898/?plan-name=${planName}`;
+            });
+            let buttonGroup = createButtonGroup(editButton);
+            let header = planHistoryContainer.querySelector(".accordion-header");
+            let divContainer = document.createElement("div");
+            divContainer.setAttribute("class", "d-flex align-items-center");
+            divContainer.append(header.firstChild, buttonGroup);
+            header.replaceChildren(divContainer);
             historyContainer.append(planHistoryContainer);
+
             $(planRunsByIdTable).bootstrapTable({
                 sortStable: true,
                 columns: tableHeaders,

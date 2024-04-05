@@ -274,6 +274,7 @@ async function createDataSourceConfiguration(index, closeButton, divider) {
     if (divider) {
         divContainer.append(divider);
     }
+    dataConnectionFormFloating.append(closeButton);
     divContainer.append(dataConnectionFormFloating, dataConfigAccordion);
     return divContainer;
 }
@@ -296,6 +297,7 @@ function createReportConfiguration() {
 createReportConfiguration();
 submitForm();
 savePlan();
+deleteDataRun();
 
 function getPlanDetails(form) {
     let planName = form.querySelector("#plan-name").value;
@@ -327,25 +329,45 @@ function getPlanDetails(form) {
     return {planName, runId, requestBody};
 }
 
+function checkFormValidity(form) {
+    expandAllButton.dispatchEvent(new Event("click"));
+    let isValid = form.checkValidity();
+    if (isValid) {
+        wait(500).then(r => collapseAllButton.dispatchEvent(new Event("click")));
+        return true;
+    } else {
+        form.reportValidity();
+        return false;
+    }
+}
+
+function getPlanDetailsAndRun(form) {
+    // collect all the user inputs
+    let {planName, runId, requestBody} = getPlanDetails(form);
+    console.log(JSON.stringify(requestBody));
+    executePlan(requestBody, planName, runId);
+}
+
 function submitForm() {
     let form = document.getElementById("plan-form");
     let submitPlanButton = document.getElementById("submit-plan");
     submitPlanButton.addEventListener("click", function () {
-        expandAllButton.dispatchEvent(new Event("click"));
-        let isValid = form.checkValidity();
-        if (isValid) {
-            wait(500).then(r => collapseAllButton.dispatchEvent(new Event("click")));
-            $(form).submit();
-        } else {
-            form.reportValidity();
+        let isValidForm = checkFormValidity(form);
+        if (isValidForm) {
+            getPlanDetailsAndRun(form);
         }
     });
+}
 
-    $(form).submit(async function (e) {
-        e.preventDefault();
-        // collect all the user inputs
-        let {planName, runId, requestBody} = getPlanDetails(form);
-        executePlan(requestBody, planName, runId);
+function deleteDataRun() {
+    let form = document.getElementById("plan-form");
+    let deleteDataButton = document.getElementById("delete-data");
+    deleteDataButton.addEventListener("click", function () {
+        let isValidForm = checkFormValidity(form);
+        if (isValidForm) {
+            let {planName, runId, requestBody} = getPlanDetails(form);
+            executePlan(requestBody, planName, runId, "delete");
+        }
     });
 }
 
@@ -413,7 +435,7 @@ if (currUrlParams.includes("plan-name=")) {
                 createCountElementsFromPlan(dataSource, newDataSource);
                 await createValidationFromPlan(dataSource, newDataSource);
             }
-            createForeignKeysFromPlan(respJson);
+            await createForeignKeysFromPlan(respJson);
             createConfigurationFromPlan(respJson);
             wait(500).then(r => $(document).find('button[aria-controls="report-body"]:not(.collapsed),button[aria-controls="configuration-body"]:not(.collapsed)').click());
         });
