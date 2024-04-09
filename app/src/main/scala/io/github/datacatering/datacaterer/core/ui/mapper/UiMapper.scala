@@ -4,7 +4,7 @@ import io.github.datacatering.datacaterer.api.connection.{ConnectionTaskBuilder,
 import io.github.datacatering.datacaterer.api.model.Constants._
 import io.github.datacatering.datacaterer.api.model.DataType
 import io.github.datacatering.datacaterer.api.{BasePlanRun, ColumnNamesValidationBuilder, ColumnValidationBuilder, ConnectionConfigWithTaskBuilder, CountBuilder, DataCatererConfigurationBuilder, FieldBuilder, GeneratorBuilder, GroupByValidationBuilder, PlanBuilder, PlanRun, ValidationBuilder}
-import io.github.datacatering.datacaterer.core.ui.model.{ConfigurationRequest, DataSourceRequest, FieldRequest, ForeignKeyRequest, PlanRunRequest, ValidationItemRequest, ValidationItemRequests}
+import io.github.datacatering.datacaterer.core.ui.model.{ConfigurationRequest, DataSourceRequest, FieldRequest, ForeignKeyRequest, ForeignKeyRequestItem, PlanRunRequest, ValidationItemRequest, ValidationItemRequests}
 import org.apache.log4j.Logger
 
 object UiMapper {
@@ -47,14 +47,19 @@ object UiMapper {
     val mappedWithConnections = foreignKeyRequests.map(fkr => {
       val sourceConnection = getConnectionByTaskName(connections, fkr.source.get.taskName)
       val sourceColumns = fkr.source.get.columns.split(VALIDATION_OPTION_DELIMITER).toList
-      val linkConnections = fkr.links.map(link => {
-        val matchingConnection = getConnectionByTaskName(connections, link.taskName)
-        (matchingConnection, link.columns.split(VALIDATION_OPTION_DELIMITER).toList)
-      })
+      val generationLinkConnections = mapForeignKeyLinks(connections, fkr.generationLinks)
+      val deleteLinkConnections = mapForeignKeyLinks(connections, fkr.deleteLinks)
 
-      (sourceConnection, sourceColumns, linkConnections)
+      (sourceConnection, sourceColumns, generationLinkConnections, deleteLinkConnections)
     })
-    mappedWithConnections.foldLeft(planBuilder)((pb, fk) => pb.addForeignKeyRelationship(fk._1, fk._2, fk._3))
+    mappedWithConnections.foldLeft(planBuilder)((pb, fk) => pb.addForeignKeyRelationship(fk._1, fk._2, fk._3, fk._4))
+  }
+
+  private def mapForeignKeyLinks(connections: List[ConnectionTaskBuilder[_]], links: List[ForeignKeyRequestItem]) = {
+    links.map(link => {
+      val matchingConnection = getConnectionByTaskName(connections, link.taskName)
+      (matchingConnection, link.columns.split(VALIDATION_OPTION_DELIMITER).toList)
+    })
   }
 
   private def getConnectionByTaskName(connections: List[ConnectionTaskBuilder[_]], taskName: String): ConnectionTaskBuilder[_] = {
@@ -265,7 +270,7 @@ object UiMapper {
   }
 
   def fieldMapping(dataSourceRequest: DataSourceRequest): List[FieldBuilder] = {
-    dataSourceRequest.fields.map(fields => fieldMapping(dataSourceRequest.name, fields)).getOrElse(List())
+    dataSourceRequest.fields.map(fields => fieldMapping(dataSourceRequest.name, fields.optFields.getOrElse(List()))).getOrElse(List())
   }
 
   private def fieldMapping(dataSourceName: String, fields: List[FieldRequest]): List[FieldBuilder] = {
@@ -276,7 +281,7 @@ object UiMapper {
       val baseBuild = FieldBuilder().name(field.name).`type`(DataType.fromString(field.`type`)).options(options)
       val withRegex = options.get(REGEX_GENERATOR).map(regex => baseBuild.regex(regex)).getOrElse(baseBuild)
       val withOneOf = options.get(ONE_OF_GENERATOR).map(oneOf => withRegex.oneOf(oneOf.split(ONE_OF_GENERATOR_DELIMITER).map(_.trim): _*)).getOrElse(withRegex)
-      val optNested = field.nested.map(nestedFields => fieldMapping(dataSourceName, nestedFields.fields))
+      val optNested = field.nested.map(nestedFields => fieldMapping(dataSourceName, nestedFields.optFields.getOrElse(List())))
       optNested.map(nested => withOneOf.schema(nested: _*)).getOrElse(withOneOf)
     })
   }

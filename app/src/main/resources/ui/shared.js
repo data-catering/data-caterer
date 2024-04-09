@@ -665,6 +665,89 @@ export function syntaxHighlight(json) {
     return preElement;
 }
 
+export async function getDataConnectionsAndAddToSelect(dataConnectionSelect, baseTaskDiv, groupType) {
+    //get list of existing data connections
+    return await fetch(`http://localhost:9898/connections?groupType=${groupType}`, {method: "GET"})
+        .then(r => {
+            if (r.ok) {
+                return r.json();
+            } else {
+                r.text().then(text => {
+                    createToast("Get connections", `Get connections failed! Error: ${err}`, "fail");
+                    throw new Error(text);
+                });
+            }
+        })
+        .then(respJson => {
+            if (respJson) {
+                let connections = respJson.connections;
+                for (let connection of connections) {
+                    let option = document.createElement("option");
+                    option.setAttribute("value", connection.name);
+                    option.innerText = connection.name;
+                    dataConnectionSelect.append(option);
+                }
+            }
+
+            // if list of connections is empty, provide button to add new connection
+            if (respJson.connections.length === 0) {
+                let buttonContainer = document.createElement("div");
+                buttonContainer.setAttribute("class", "col-md-auto");
+                let createNewConnection = document.createElement("a");
+                createNewConnection.setAttribute("type", "button");
+                createNewConnection.setAttribute("class", "btn btn-primary");
+                createNewConnection.setAttribute("href", "/connection");
+                createNewConnection.innerText = "Create new connection";
+                buttonContainer.append(createNewConnection);
+                return buttonContainer;
+            } else {
+                $(dataConnectionSelect).selectpicker();
+                return baseTaskDiv;
+            }
+        });
+}
+
+export function createIconWithConnectionTooltip(dataConnectionSelect) {
+    let iconDiv = document.createElement("i");
+    iconDiv.setAttribute("class", "bi bi-info-circle");
+    iconDiv.setAttribute("data-bs-toggle", "tooltip");
+    iconDiv.setAttribute("data-bs-placement", "top");
+    iconDiv.setAttribute("data-bs-container", "body");
+    iconDiv.setAttribute("data-bs-html", "true");
+    iconDiv.setAttribute("data-bs-title", "Connection options");
+    new bootstrap.Tooltip(iconDiv);
+    // on select change, update icon title
+    dataConnectionSelect.addEventListener("change", (event) => {
+        let connectionName = event.target.value;
+        fetch(`http://localhost:9898/connection/${connectionName}`, {method: "GET"})
+            .then(r => {
+                if (r.ok) {
+                    return r.json();
+                } else {
+                    r.text().then(text => {
+                        createToast(`Get connection ${connectionName}`, `Failed to get connection ${connectionName}! Error: ${err}`, "fail");
+                        throw new Error(text);
+                    });
+                }
+            })
+            .then(respJson => {
+                if (respJson) {
+                    let optionsToShow = {};
+                    optionsToShow["type"] = respJson.type;
+                    for (let [key, value] of Object.entries(respJson.options)) {
+                        if (key !== "user" && key !== "password") {
+                            optionsToShow[key] = value;
+                        }
+                    }
+                    let summary = Object.entries(optionsToShow).map(kv => `${kv[0]}: ${kv[1]}`).join("<br>");
+                    iconDiv.setAttribute("data-bs-title", summary);
+                    new bootstrap.Tooltip(iconDiv);
+                }
+            });
+    });
+    return iconDiv;
+}
+
 export const wait = function (ms = 1000) {
     return new Promise(resolve => {
         setTimeout(resolve, ms);

@@ -90,10 +90,10 @@ dependencies {
     basicImpl("com.slack.api:slack-api-client:1.36.1")
 
     // UI/HTTP server
-    basicImpl("com.typesafe.akka:akka-http_$scalaVersion:10.5.3")
-    basicImpl("com.typesafe.akka:akka-stream_$scalaVersion:2.8.5")
-    basicImpl("com.typesafe.akka:akka-actor-typed_$scalaVersion:2.8.5")
-    basicImpl("com.typesafe.akka:akka-http-spray-json_$scalaVersion:10.5.3")
+    basicImpl("org.apache.pekko:pekko-http_$scalaVersion:1.0.1")
+    basicImpl("org.apache.pekko:pekko-stream_$scalaVersion:1.0.2")
+    basicImpl("org.apache.pekko:pekko-actor-typed_$scalaVersion:1.0.2")
+    basicImpl("org.apache.pekko:pekko-http-spray-json_$scalaVersion:1.0.1")
 
     // needed to work on Windows
     basicImpl("com.globalmentor:hadoop-bare-naked-local-fs:0.1.0")

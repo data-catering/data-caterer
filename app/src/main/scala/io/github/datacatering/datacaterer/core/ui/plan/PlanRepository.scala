@@ -1,16 +1,15 @@
 package io.github.datacatering.datacaterer.core.ui.plan
 
-import akka.actor.typed.scaladsl.Behaviors
-import akka.actor.typed.{ActorRef, Behavior, SupervisorStrategy}
 import io.github.datacatering.datacaterer.core.model.Constants.{FAILED, FINISHED, PARSED_PLAN, STARTED}
 import io.github.datacatering.datacaterer.core.model.PlanRunResults
 import io.github.datacatering.datacaterer.core.plan.PlanProcessor
 import io.github.datacatering.datacaterer.core.ui.config.UiConfiguration.INSTALL_DIRECTORY
 import io.github.datacatering.datacaterer.core.ui.mapper.UiMapper
 import io.github.datacatering.datacaterer.core.ui.model.{JsonSupport, PlanRunExecution, PlanRunRequest, PlanRunRequests}
-import io.github.datacatering.datacaterer.core.ui.plan.ConnectionRepository.{LOGGER, getClass}
 import io.github.datacatering.datacaterer.core.ui.plan.PlanResponseHandler.{KO, OK, Response}
 import org.apache.log4j.Logger
+import org.apache.pekko.actor.typed.scaladsl.Behaviors
+import org.apache.pekko.actor.typed.{ActorRef, Behavior, SupervisorStrategy}
 import org.joda.time.{DateTime, Seconds}
 import spray.json._
 
@@ -64,35 +63,7 @@ object PlanRepository extends JsonSupport {
     Behaviors.supervise[PlanCommand] {
       Behaviors.receiveMessage {
         case RunPlan(planRunRequest, replyTo) =>
-          // get connection info
-          val dataSourcesWithConnectionInfo = planRunRequest.dataSources.map(ds => {
-            val connectionInfo = ConnectionRepository.getConnection(ds.name)
-            ds.copy(`type` = Some(connectionInfo.`type`), options = Some(connectionInfo.options))
-          })
-          val planRunWithConnectionInfo = planRunRequest.copy(dataSources = dataSourcesWithConnectionInfo)
-          // create new run id
-          // save to file
-          val planRunExecution = PlanRunExecution(planRunRequest.name, planRunRequest.id, STARTED)
-          savePlanRunExecution(planRunRequest, planRunExecution)
-
-          val tryPlanRun = Try(UiMapper.mapToPlanRun(planRunWithConnectionInfo, INSTALL_DIRECTORY))
-          tryPlanRun match {
-            case Failure(mapException) =>
-              updatePlanRunExecution(planRunExecution, FAILED, Some(mapException.getMessage))
-              replyTo ! KO(mapException.getMessage, mapException)
-            case Success(planRun) =>
-              updatePlanRunExecution(planRunExecution, PARSED_PLAN)
-              val runPlanFuture = Future { PlanProcessor.determineAndExecutePlan(Some(planRun)) }
-
-              runPlanFuture.onComplete {
-                case Failure(planException) =>
-                  updatePlanRunExecution(planRunExecution, FAILED, Some(planException.getMessage))
-                  replyTo ! KO(planException.getMessage, planException)
-                case Success(results) =>
-                  updatePlanRunExecution(planRunExecution, FINISHED, None, Some(results))
-                  replyTo ! OK
-              }
-          }
+          runPlan(planRunRequest, replyTo)
           Behaviors.same
         case SavePlan(planRunRequest) =>
           savePlan(planRunRequest)
@@ -116,11 +87,46 @@ object PlanRepository extends JsonSupport {
     }.onFailure(SupervisorStrategy.restart)
   }
 
+  private def runPlan(planRunRequest: PlanRunRequest, replyTo: ActorRef[Response]): Unit = {
+    // get connection info
+    val dataSourcesWithConnectionInfo = planRunRequest.dataSources.map(ds => {
+      val connectionInfo = ConnectionRepository.getConnection(ds.name)
+      ds.copy(`type` = Some(connectionInfo.`type`), options = Some(connectionInfo.options))
+    })
+    val planRunWithConnectionInfo = planRunRequest.copy(dataSources = dataSourcesWithConnectionInfo)
+    // create new run id
+    // save to file
+    val planRunExecution = PlanRunExecution(planRunRequest.name, planRunRequest.id, STARTED)
+    savePlanRunExecution(planRunRequest, planRunExecution)
+
+    val tryPlanRun = Try(UiMapper.mapToPlanRun(planRunWithConnectionInfo, INSTALL_DIRECTORY))
+    tryPlanRun match {
+      case Failure(mapException) =>
+        updatePlanRunExecution(planRunExecution, FAILED, Some(mapException.getMessage))
+        replyTo ! KO(mapException.getMessage, mapException)
+      case Success(planRun) =>
+        updatePlanRunExecution(planRunExecution, PARSED_PLAN)
+        val runPlanFuture = Future {
+          PlanProcessor.determineAndExecutePlan(Some(planRun))
+        }
+
+        runPlanFuture.onComplete {
+          case Failure(planException) =>
+            updatePlanRunExecution(planRunExecution, FAILED, Some(planException.getMessage))
+            replyTo ! KO(planException.getMessage, planException)
+          case Success(results) =>
+            updatePlanRunExecution(planRunExecution, FINISHED, None, Some(results))
+            replyTo ! OK
+        }
+    }
+  }
+
   private def savePlanRunExecution(planRunRequest: PlanRunRequest, planRunExecution: PlanRunExecution): Unit = {
     LOGGER.debug(s"Saving plan run execution details, plan-name=${planRunRequest.name}, plan-run-id=${planRunRequest.id}")
     savePlan(planRunRequest)
     try {
-      Path.of(executionSaveFolder).toFile.mkdirs()
+      val basePath = Path.of(executionSaveFolder).toFile
+      if (!basePath.exists()) basePath.mkdirs()
       val executionFile = Path.of(s"$executionSaveFolder/${planRunExecution.id}.csv")
       Files.writeString(executionFile, planRunExecution.toString, StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE)
     } catch {
@@ -131,7 +137,8 @@ object PlanRepository extends JsonSupport {
   private def savePlan(planRunRequest: PlanRunRequest): Unit = {
     LOGGER.debug(s"Saving plan details, plan-name=${planRunRequest.name}")
     try {
-      Path.of(planSaveFolder).toFile.mkdirs()
+      val basePath = Path.of(planSaveFolder).toFile
+      if (!basePath.exists()) basePath.mkdirs()
       val planFile = Path.of(s"$planSaveFolder/${planRunRequest.name}.json")
       Files.writeString(planFile, planRunRequest.toJson.compactPrint, StandardOpenOption.CREATE, StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING)
     } catch {
@@ -217,6 +224,10 @@ object PlanRepository extends JsonSupport {
   private def removePlan(name: String): Unit = {
     LOGGER.debug(s"Removing plan, plan-name=$name")
     val planFile = Path.of(s"$planSaveFolder/$name.json").toFile
-    if (planFile.exists()) planFile.delete()
+    if (planFile.exists()) {
+      planFile.delete()
+    } else {
+      LOGGER.warn(s"Plan file does not exist, unable to delete, plan-name=$name")
+    }
   }
 }

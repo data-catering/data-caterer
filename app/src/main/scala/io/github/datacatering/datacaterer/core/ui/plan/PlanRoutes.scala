@@ -1,15 +1,13 @@
 package io.github.datacatering.datacaterer.core.ui.plan
 
-import akka.actor.typed.{ActorRef, ActorSystem}
-import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport._
-import akka.http.scaladsl.model.HttpResponse
-import akka.http.scaladsl.model.StatusCodes.{BadRequest, InternalServerError}
-import akka.http.scaladsl.server.Directives._
-import akka.http.scaladsl.server.{ExceptionHandler, Route}
-import akka.util.Timeout
 import io.github.datacatering.datacaterer.core.ui.config.UiConfiguration.INSTALL_DIRECTORY
 import io.github.datacatering.datacaterer.core.ui.model.{JsonSupport, PlanRunRequest, SaveConnectionsRequest}
 import org.apache.log4j.Logger
+import org.apache.pekko.actor.typed.scaladsl.AskPattern.{Askable, schedulerFromActorSystem}
+import org.apache.pekko.actor.typed.{ActorRef, ActorSystem}
+import org.apache.pekko.http.scaladsl.model.{HttpResponse, StatusCodes}
+import org.apache.pekko.http.scaladsl.server.{Directives, ExceptionHandler, Route}
+import org.apache.pekko.util.Timeout
 
 import scala.concurrent.duration.DurationInt
 import scala.concurrent.{ExecutionContext, ExecutionContextExecutor}
@@ -19,9 +17,7 @@ class PlanRoutes(
                   planRepository: ActorRef[PlanRepository.PlanCommand],
                   planResponseHandler: ActorRef[PlanResponseHandler.Response],
                   connectionRepository: ActorRef[ConnectionRepository.ConnectionCommand]
-                )(implicit system: ActorSystem[_]) extends JsonSupport {
-
-  import akka.actor.typed.scaladsl.AskPattern.{Askable, schedulerFromActorSystem}
+                )(implicit system: ActorSystem[_]) extends Directives with JsonSupport {
 
   private val LOGGER = Logger.getLogger(getClass.getName)
 
@@ -34,7 +30,7 @@ class PlanRoutes(
     ExceptionHandler {
       case ex: Exception =>
         extractUri { uri =>
-          complete(HttpResponse(InternalServerError, entity = s"Failed to execute request, uri=$uri, error-message=${ex.getMessage}"))
+          complete(HttpResponse(StatusCodes.InternalServerError, entity = s"Failed to execute request, uri=$uri, error-message=${ex.getMessage}"))
         }
     }
 
@@ -64,7 +60,7 @@ class PlanRoutes(
       if (hasOnlyAlphanumericAndDash) {
         getFromResource(s"ui/${fileName.mkString("/")}")
       } else {
-        complete(HttpResponse(BadRequest, entity = s"Unable to fetch resource for request"))
+        complete(HttpResponse(StatusCodes.BadRequest, entity = s"Unable to fetch resource for request"))
       }
     },
     path("data_catering_transparent.svg") {
@@ -101,7 +97,7 @@ class PlanRoutes(
         post {
           entity(as[SaveConnectionsRequest]) { connections =>
             connectionRepository ! ConnectionRepository.SaveConnections(connections)
-            complete("Saved connections")
+            complete(connections.connections.map(_.name).mkString(", "))
           }
         },
         path("""[a-z0-9-]+""".r) { connectionName =>
@@ -121,9 +117,11 @@ class PlanRoutes(
       )
     },
     pathPrefix("connections") {
-      val connections = connectionRepository.ask(ConnectionRepository.GetConnections)
-      rejectEmptyResponse {
-        complete(connections)
+      parameter("groupType".optional) { connectionGroupType =>
+        val connections = connectionRepository.ask(ConnectionRepository.GetConnections(connectionGroupType, _))
+        rejectEmptyResponse {
+          complete(connections)
+        }
       }
     },
     pathPrefix("plan") {

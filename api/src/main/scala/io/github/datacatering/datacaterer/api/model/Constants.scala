@@ -306,6 +306,9 @@ object Constants {
   lazy val DATAHUB = "datahub"
   lazy val DEFAULT_METADATA_SOURCE_NAME = "default_metadata_source"
 
+  //alert source
+  lazy val SLACK = "slack"
+
   //openlineage
   lazy val OPEN_LINEAGE_NAMESPACE = "namespace"
   lazy val OPEN_LINEAGE_DATASET = "dataset"

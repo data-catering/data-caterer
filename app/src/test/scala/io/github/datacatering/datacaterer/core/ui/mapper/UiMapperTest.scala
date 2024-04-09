@@ -238,12 +238,12 @@ class UiMapperTest extends AnyFunSuite {
   }
 
   test("Can convert UI field mapping") {
-    val dataSourceRequest = DataSourceRequest("plan-name", "task-1", fields = Some(List(
+    val dataSourceRequest = DataSourceRequest("plan-name", "task-1", fields = Some(FieldRequests(Some(List(
       FieldRequest("name", "string"),
       FieldRequest("account_id", "string", Some(Map(REGEX_GENERATOR -> "acc[0-9]{1}"))),
       FieldRequest("status", "string", Some(Map(ONE_OF_GENERATOR -> "open,closed"))),
-      FieldRequest("details", "struct", nested = Some(FieldRequests(List(FieldRequest("age", "integer"))))),
-    )))
+      FieldRequest("details", "struct", nested = Some(FieldRequests(Some(List(FieldRequest("age", "integer")))))),
+    )))))
     val res = UiMapper.fieldMapping(dataSourceRequest)
     assert(res.size == 4)
     val nameField = res.find(_.field.name == "name")

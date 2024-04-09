@@ -11,6 +11,7 @@ import {
 export function createRecordCount(index) {
     let recordCountContainer = document.createElement("div");
     recordCountContainer.setAttribute("id", "record-count-container");
+    recordCountContainer.setAttribute("class", "card card-body")
     let recordCountHeader = document.createElement("h5");
     recordCountHeader.innerText = "Record count";
     let recordCountRow = document.createElement("div");

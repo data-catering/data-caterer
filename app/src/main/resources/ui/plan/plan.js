@@ -46,7 +46,7 @@ function getExistingPlans() {
                 });
                 deleteButton.addEventListener("click", async function () {
                     await fetch(`http://localhost:9898/plan/${plan.name}`, {method: "DELETE"});
-                    createToast(plan.name, `Plan ${plan.name} deleted!`);
+                    createToast(plan.name, `Plan ${plan.name} deleted!`, "success");
                     planList.removeChild(accordionItem);
                 });
 

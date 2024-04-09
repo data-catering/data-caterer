@@ -1,22 +1,14 @@
 package io.github.datacatering.datacaterer.core.ui.plan
 
-import akka.actor.typed.scaladsl.Behaviors
-import akka.actor.typed.{ActorRef, Behavior, SupervisorStrategy}
-import io.github.datacatering.datacaterer.core.model.Constants.{FAILED, FINISHED, PARSED_PLAN, STARTED}
-import io.github.datacatering.datacaterer.core.plan.PlanProcessor
 import io.github.datacatering.datacaterer.core.ui.config.UiConfiguration.INSTALL_DIRECTORY
-import io.github.datacatering.datacaterer.core.ui.mapper.UiMapper
-import io.github.datacatering.datacaterer.core.ui.model.{Connection, GetConnectionsResponse, JsonSupport, PlanRunExecution, PlanRunRequest, SaveConnectionsRequest}
-import io.github.datacatering.datacaterer.core.ui.plan.PlanResponseHandler.{KO, OK, Response}
+import io.github.datacatering.datacaterer.core.ui.model.{Connection, GetConnectionsResponse, JsonSupport, SaveConnectionsRequest}
 import org.apache.log4j.Logger
-import org.joda.time.DateTime
+import org.apache.pekko.actor.typed.scaladsl.Behaviors
+import org.apache.pekko.actor.typed.{ActorRef, Behavior, SupervisorStrategy}
 
 import java.nio.file.{Files, Path, StandardOpenOption}
-import java.util.UUID
-import scala.collection.JavaConverters.{asScalaIteratorConverter, iterableAsScalaIterableConverter}
-import scala.collection.mutable
-import scala.concurrent.{ExecutionContext, ExecutionContextExecutor, Future}
-import scala.util.{Failure, Success, Try}
+import scala.collection.JavaConverters.asScalaIteratorConverter
+import scala.util.Try
 
 
 object ConnectionRepository extends JsonSupport {
@@ -32,7 +24,7 @@ object ConnectionRepository extends JsonSupport {
 
   final case class GetConnection(name: String, replyTo: ActorRef[Connection]) extends ConnectionCommand
 
-  final case class GetConnections(replyTo: ActorRef[GetConnectionsResponse]) extends ConnectionCommand
+  final case class GetConnections(optConnectionGroupType: Option[String], replyTo: ActorRef[GetConnectionsResponse]) extends ConnectionCommand
 
   final case class RemoveConnection(name: String) extends ConnectionCommand
 
@@ -47,8 +39,8 @@ object ConnectionRepository extends JsonSupport {
         case GetConnection(name, replyTo) =>
           replyTo ! getConnection(name)
           Behaviors.same
-        case GetConnections(replyTo) =>
-          replyTo ! getAllConnections
+        case GetConnections(optConnectionGroupType, replyTo) =>
+          replyTo ! getAllConnections(optConnectionGroupType)
           Behaviors.same
         case RemoveConnection(name) =>
           removeConnection(name)
@@ -58,8 +50,10 @@ object ConnectionRepository extends JsonSupport {
   }
 
   private def saveConnection(connection: Connection): Unit = {
-    LOGGER.debug(s"Saving connection, connection-name=${connection.name}, connection-type=${connection.`type`}")
-    Path.of(connectionSaveFolder).toFile.mkdirs()
+    LOGGER.debug(s"Saving connection, connection-name=${connection.name}, connection-type=${connection.`type`}," +
+      s"connection-group=${connection.groupType}")
+    val basePath = Path.of(connectionSaveFolder).toFile
+    if (!basePath.exists()) basePath.mkdirs()
     val connectionFile = Path.of(s"$connectionSaveFolder/${connection.name}.csv")
     Files.writeString(connectionFile, connection.toString, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING)
   }
@@ -68,12 +62,12 @@ object ConnectionRepository extends JsonSupport {
     LOGGER.debug(s"Getting connection details, connection-name=$name")
     val connectionFile = Path.of(s"$connectionSaveFolder/$name.csv")
     val connection = Connection.fromString(Files.readString(connectionFile))
-    val mappedPw = connection.options.map(o => if (o._1 == "password") (o._1, "***") else o)
+    val mappedPw = connection.options.map(o => if (o._1.contains("password") || o._1.contains("token")) (o._1, "***") else o)
     connection.copy(options = mappedPw)
   }
 
-  private def getAllConnections: GetConnectionsResponse = {
-    LOGGER.debug(s"Getting all connection details")
+  private def getAllConnections(optConnectionGroupType: Option[String]): GetConnectionsResponse = {
+    LOGGER.debug(s"Getting all connection details, connection-group=${optConnectionGroupType.getOrElse("")}")
     val connectionPath = Path.of(connectionSaveFolder)
     if (!connectionPath.toFile.exists()) connectionPath.toFile.mkdirs()
     val connections = Files.list(connectionPath)
@@ -89,6 +83,7 @@ object ConnectionRepository extends JsonSupport {
       .filter(_.isSuccess)
       .map(_.get)
       .toList
+      .filter(conn => optConnectionGroupType.forall(conn.groupType.contains))
       .sortBy(_.name)
     GetConnectionsResponse(connections)
   }
@@ -96,6 +91,11 @@ object ConnectionRepository extends JsonSupport {
   private def removeConnection(connectionName: String): Boolean = {
     LOGGER.warn(s"Removing connections details from file system, connection-name=$connectionName")
     val connectionFile = Path.of(s"$connectionSaveFolder/$connectionName.csv").toFile
-    if (connectionFile.exists()) connectionFile.delete() else false
+    if (connectionFile.exists()) {
+      connectionFile.delete()
+    } else {
+      LOGGER.warn(s"Connection file does not exist, unable to delete, connection-name=$connectionName")
+      false
+    }
   }
 }

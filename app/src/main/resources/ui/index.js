@@ -17,9 +17,13 @@ import {
     createCloseButton,
     createFieldValidationCheck,
     createFormFloating,
+    createIconWithConnectionTooltip,
     createInput,
     createSelect,
-    createToast, executePlan, wait
+    createToast,
+    executePlan,
+    getDataConnectionsAndAddToSelect,
+    wait
 } from "./shared.js";
 import {createForeignKeys, createForeignKeysFromPlan, getForeignKeys} from "./helper-foreign-keys.js";
 import {
@@ -28,10 +32,10 @@ import {
     createNewConfigRow,
     getConfiguration
 } from "./helper-configuration.js";
-import {createGenerationElements, createManualSchema, getGeneration} from "./helper-generation.js";
+import {createAutoSchema, createGenerationElements, createManualSchema, getGeneration} from "./helper-generation.js";
 import {createManualValidation, createValidationFromPlan, getValidations} from "./helper-validation.js";
-import {createCountElementsFromPlan, getRecordCount} from "./helper-record-count.js";
-import {configurationOptionsMap, reportConfigKeys, reportOptionsMap} from "./configuration-data.js";
+import {createCountElementsFromPlan, createRecordCount, getRecordCount} from "./helper-record-count.js";
+import {configurationOptionsMap, reportConfigKeys} from "./configuration-data.js";
 
 const addTaskButton = document.getElementById("add-task-button");
 const tasksDiv = document.getElementById("tasks-details-body");
@@ -101,12 +105,12 @@ function createDataConfigElement(index, name) {
     dataConfigContainer.setAttribute("id", `data-source-${name}-config-container`);
     dataConfigContainer.setAttribute("class", "mt-1");
 
-    let checkboxOptions = ["auto", "manual"];
+    let checkboxOptions = ["auto", "auto-from-metadata-source", "manual"];
     for (let checkboxOption of checkboxOptions) {
         let formCheck = document.createElement("div");
-        formCheck.setAttribute("class", "form-check");
+        formCheck.setAttribute("class", `form-check ${checkboxOption}`);
         let checkboxInput = document.createElement("input");
-        let checkboxId = `${checkboxOption}-${name}-checkbox`;
+        let checkboxId = `${checkboxOption}-${name}-checkbox-${index}`;
         checkboxInput.setAttribute("class", "form-check-input");
         checkboxInput.setAttribute("type", "checkbox");
         checkboxInput.setAttribute("value", checkboxOption);
@@ -116,31 +120,69 @@ function createDataConfigElement(index, name) {
         let label = document.createElement("label");
         label.setAttribute("class", "form-check-label");
         label.setAttribute("for", checkboxId);
-        label.innerText = checkboxOption.charAt(0).toUpperCase() + checkboxOption.slice(1);
+        label.innerText = checkboxOption.charAt(0).toUpperCase() + checkboxOption.replaceAll("-", " ").slice(1);
 
         formCheck.append(checkboxInput, label);
         dataConfigContainer.append(formCheck);
         addDataConfigCheckboxListener(index, checkboxInput, name);
     }
-    return createAccordionItem(`${index}-${name}`, nameCapitalize, "", dataConfigContainer);
+
+    // generation accordion item
+    let accordionItem = createAccordionItem(`${index}-${name}`, nameCapitalize, "", dataConfigContainer);
+    // if generation, then add in record count
+    if (name === "generation") {
+        dataConfigContainer.append(createRecordCount(index));
+    }
+
+    return accordionItem;
 }
 
 function addDataConfigCheckboxListener(index, element, name) {
     let configContainer = element.parentElement.parentElement;
-    if (element.getAttribute("value") === "manual") {
-        element.addEventListener("change", (event) => {
-            manualCheckboxListenerDisplay(index, event, configContainer, name);
-        });
-    }
+    let autoOrManualValue = element.getAttribute("value");
+    element.addEventListener("change", async (event) => {
+        await checkboxListenerDisplay(index, event, configContainer, name, autoOrManualValue);
+    });
 }
 
-function manualCheckboxListenerDisplay(index, event, configContainer, name) {
-    let querySelector = name === "generation" ? "#data-source-schema-container" : "#data-source-validation-container";
+async function checkboxListenerDisplay(index, event, configContainer, name, autoOrManualValue) {
+    let querySelector;
+    let newElement;
+
+    function setEnableAutoGeneratePlanAndTasks() {
+        //set auto generate plan and tasks to true in advanced config
+        if (event.target.checked) {
+            $(document).find("[configuration=enableGeneratePlanAndTasks]").prop("checked", true);
+        } else {
+            $(document).find("[configuration=enableGeneratePlanAndTasks]").prop("checked", false);
+        }
+    }
+
+    if (name === "generation" && autoOrManualValue === "manual") {
+        querySelector = `#data-source-schema-container-${index}`;
+        newElement = createManualSchema(index);
+    } else if (name === "generation" && autoOrManualValue === "auto-from-metadata-source") {
+        querySelector = `#data-source-auto-schema-container-${index}`;
+        newElement = await createAutoSchema(index);
+    } else if (name === "validation" && autoOrManualValue === "manual") {
+        querySelector = `#data-source-validation-container-${index}`;
+        newElement = createManualValidation(index);
+    } else if (name === "validation" && autoOrManualValue === "auto-from-metadata-source") {
+        querySelector = `#data-source-auto-validation-container-${index}`;
+        newElement = createManualValidation(index);
+    } else {
+        querySelector = "unknown";
+        setEnableAutoGeneratePlanAndTasks();
+    }
     let schemaContainer = configContainer.querySelector(querySelector);
-    if (event.currentTarget.checked) {
-        if (schemaContainer === null) {
-            let newElement = name === "generation" ? createManualSchema(index) : createManualValidation(index);
-            configContainer.append(newElement);
+
+    if (event.target.checked) {
+        if (schemaContainer === null && newElement) {
+            if (name === "generation" && autoOrManualValue === "manual") {
+                configContainer.insertBefore(newElement, configContainer.lastElementChild);
+            } else {
+                $(configContainer).find(".manual").after(newElement);
+            }
         } else {
             schemaContainer.style.display = "inherit";
         }
@@ -149,47 +191,6 @@ function manualCheckboxListenerDisplay(index, event, configContainer, name) {
             schemaContainer.style.display = "none";
         }
     }
-}
-
-function createIconWithConnectionTooltip(dataConnectionSelect) {
-    let iconDiv = document.createElement("i");
-    iconDiv.setAttribute("class", "bi bi-info-circle");
-    iconDiv.setAttribute("data-bs-toggle", "tooltip");
-    iconDiv.setAttribute("data-bs-placement", "top");
-    iconDiv.setAttribute("data-bs-container", "body");
-    iconDiv.setAttribute("data-bs-html", "true");
-    iconDiv.setAttribute("data-bs-title", "Connection options");
-    new bootstrap.Tooltip(iconDiv);
-    // on select change, update icon title
-    dataConnectionSelect.addEventListener("change", (event) => {
-        let connectionName = event.target.value;
-        fetch(`http://localhost:9898/connection/${connectionName}`, {method: "GET"})
-            .then(r => {
-                if (r.ok) {
-                    return r.json();
-                } else {
-                    r.text().then(text => {
-                        createToast(`Get connection ${connectionName}`, `Failed to get connection ${connectionName}! Error: ${err}`, "fail");
-                        throw new Error(text);
-                    });
-                }
-            })
-            .then(respJson => {
-                if (respJson) {
-                    let optionsToShow = {};
-                    optionsToShow["type"] = respJson.type;
-                    for (let [key, value] of Object.entries(respJson.options)) {
-                        if (key !== "user" && key !== "password") {
-                            optionsToShow[key] = value;
-                        }
-                    }
-                    let summary = Object.entries(optionsToShow).map(kv => `${kv[0]}: ${kv[1]}`).join("<br>");
-                    iconDiv.setAttribute("data-bs-title", summary);
-                    new bootstrap.Tooltip(iconDiv);
-                }
-            });
-    });
-    return iconDiv;
 }
 
 async function createDataConnectionInput(index) {
@@ -216,42 +217,7 @@ async function createDataConnectionInput(index) {
     // $(inputGroup).find(".input-group").addClass("align-items-center");
     baseTaskDiv.append(taskNameFormFloating, dataConnectionCol, iconCol);
 
-    //get list of existing data connections
-    await fetch("http://localhost:9898/connections", {method: "GET"})
-        .then(r => {
-            if (r.ok) {
-                return r.json();
-            } else {
-                r.text().then(text => {
-                    createToast("Get connections", `Get connections failed! Error: ${err}`, "fail");
-                    throw new Error(text);
-                });
-            }
-        })
-        .then(respJson => {
-            if (respJson) {
-                let connections = respJson.connections;
-                for (let connection of connections) {
-                    let option = document.createElement("option");
-                    option.setAttribute("value", connection.name);
-                    option.innerText = connection.name;
-                    dataConnectionSelect.append(option);
-                }
-            }
-        });
-
-    // if list of connections is empty, provide button to add new connection
-    if (dataConnectionSelect.childElementCount > 0) {
-        $(dataConnectionSelect).selectpicker();
-        return baseTaskDiv;
-    } else {
-        let createNewConnection = document.createElement("a");
-        createNewConnection.setAttribute("type", "button");
-        createNewConnection.setAttribute("class", "btn btn-primary");
-        createNewConnection.setAttribute("href", "/connection");
-        createNewConnection.innerText = "Create new connection";
-        return createNewConnection;
-    }
+    return await getDataConnectionsAndAddToSelect(dataConnectionSelect, baseTaskDiv, "dataSource");
 }
 
 /*
@@ -431,7 +397,7 @@ if (currUrlParams.includes("plan-name=")) {
                 $(newDataSource).find(".task-name-field").val(dataSource.taskName);
                 $(newDataSource).find(".data-connection-name").selectpicker("val", dataSource.name)[0].dispatchEvent(new Event("change"));
 
-                createGenerationElements(dataSource, newDataSource, numDataSources);
+                await createGenerationElements(dataSource, newDataSource, numDataSources);
                 createCountElementsFromPlan(dataSource, newDataSource);
                 await createValidationFromPlan(dataSource, newDataSource);
             }

@@ -1,9 +1,9 @@
 package io.github.datacatering.datacaterer.core.ui.plan
 
-import akka.actor.typed.scaladsl.Behaviors
-import akka.actor.typed.{Behavior, PostStop}
-import akka.http.scaladsl.Http
-import akka.http.scaladsl.Http.ServerBinding
+import org.apache.pekko.actor.typed.{Behavior, PostStop}
+import org.apache.pekko.actor.typed.scaladsl.Behaviors
+import org.apache.pekko.http.scaladsl.Http
+import org.apache.pekko.http.scaladsl.Http.ServerBinding
 
 import java.awt.Desktop
 import java.net.URI
