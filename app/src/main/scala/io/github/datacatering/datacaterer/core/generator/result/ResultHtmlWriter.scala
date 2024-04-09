@@ -1,9 +1,9 @@
 package io.github.datacatering.datacaterer.core.generator.result
 
 import io.github.datacatering.datacaterer.api.model.Constants.HISTOGRAM
-import io.github.datacatering.datacaterer.core.model.Constants.{REPORT_DATA_SOURCES_HTML, REPORT_FIELDS_HTML, REPORT_HOME_HTML, REPORT_VALIDATIONS_HTML}
 import io.github.datacatering.datacaterer.api.model.{FlagsConfig, Generator, Plan, Step, Validation, ValidationConfig}
 import io.github.datacatering.datacaterer.core.listener.{SparkRecordListener, SparkTaskRecordSummary}
+import io.github.datacatering.datacaterer.core.model.Constants.{REPORT_DATA_SOURCES_HTML, REPORT_FIELDS_HTML, REPORT_HOME_HTML, REPORT_VALIDATIONS_HTML}
 import io.github.datacatering.datacaterer.core.model.{DataSourceResult, DataSourceResultSummary, StepResultSummary, TaskResultSummary, ValidationConfigResult}
 import io.github.datacatering.datacaterer.core.util.PlanImplicits.CountOps
 import org.joda.time.DateTime

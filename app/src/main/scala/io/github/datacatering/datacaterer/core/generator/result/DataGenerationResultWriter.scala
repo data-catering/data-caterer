@@ -2,12 +2,12 @@ package io.github.datacatering.datacaterer.core.generator.result
 
 import com.fasterxml.jackson.annotation.JsonInclude.Include
 import io.github.datacatering.datacaterer.api.model.Constants.DEFAULT_GENERATED_REPORTS_FOLDER_PATH
-import io.github.datacatering.datacaterer.core.model.Constants.{REPORT_DATA_SOURCES_HTML, REPORT_FIELDS_HTML, REPORT_HOME_HTML, REPORT_VALIDATIONS_HTML}
-import io.github.datacatering.datacaterer.core.util.FileUtil.writeStringToFile
 import io.github.datacatering.datacaterer.api.model.{DataCatererConfiguration, Field, Plan, Step, Task}
 import io.github.datacatering.datacaterer.core.listener.SparkRecordListener
+import io.github.datacatering.datacaterer.core.model.Constants.{REPORT_DATA_SOURCES_HTML, REPORT_FIELDS_HTML, REPORT_HOME_HTML, REPORT_VALIDATIONS_HTML}
 import io.github.datacatering.datacaterer.core.model.{DataSourceResult, DataSourceResultSummary, StepResultSummary, TaskResultSummary, ValidationConfigResult}
 import io.github.datacatering.datacaterer.core.plan.PostPlanProcessor
+import io.github.datacatering.datacaterer.core.util.FileUtil.writeStringToFile
 import io.github.datacatering.datacaterer.core.util.ObjectMapperUtil
 import org.apache.hadoop.fs.{FileSystem, Path}
 import org.apache.log4j.Logger

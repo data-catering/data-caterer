@@ -1,7 +1,7 @@
 package io.github.datacatering.datacaterer.core.parser
 
-import io.github.datacatering.datacaterer.core.util.FileUtil.{getDirectory, getFileContentFromFileSystem, isCloudStoragePath}
 import io.github.datacatering.datacaterer.core.exception.ParseFileException
+import io.github.datacatering.datacaterer.core.util.FileUtil.{getDirectory, getFileContentFromFileSystem, isCloudStoragePath}
 import io.github.datacatering.datacaterer.core.util.ObjectMapperUtil
 import org.apache.hadoop.fs.{FileSystem, Path}
 import org.apache.log4j.Logger

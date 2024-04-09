@@ -1,7 +1,7 @@
 package io.github.datacatering.datacaterer.core.util
 
 import io.github.datacatering.datacaterer.api.model.{Task, TaskSummary}
-import PlanImplicits.StepOps
+import io.github.datacatering.datacaterer.core.util.PlanImplicits.StepOps
 import org.apache.spark.sql.{DataFrame, SparkSession}
 
 class UniqueFieldsUtil(executableTasks: List[(TaskSummary, Task)])(implicit sparkSession: SparkSession) {

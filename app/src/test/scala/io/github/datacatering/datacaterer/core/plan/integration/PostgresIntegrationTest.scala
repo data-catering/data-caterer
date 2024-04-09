@@ -3,9 +3,7 @@ package io.github.datacatering.datacaterer.core.plan.integration
 import com.dimafeng.testcontainers.GenericContainer
 import com.dimafeng.testcontainers.GenericContainer.FileSystemBind
 import com.dimafeng.testcontainers.scalatest.TestContainerForAll
-import org.junit.runner.RunWith
 import org.scalatest.funsuite.AnyFunSuite
-import org.scalatestplus.junit.JUnitRunner
 import org.testcontainers.containers.BindMode
 
 //@RunWith(classOf[JUnitRunner])

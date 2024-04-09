@@ -3,9 +3,9 @@ package io.github.datacatering.datacaterer.core.util
 import io.github.datacatering.datacaterer.api.PlanRun
 import io.github.datacatering.datacaterer.api.model.Constants.OMIT
 import io.github.datacatering.datacaterer.api.model.{ForeignKeyRelation, Plan}
-import ForeignKeyRelationHelper.updateForeignKeyName
-import GeneratorUtil.applySqlExpressions
 import io.github.datacatering.datacaterer.core.model.ForeignKeyRelationship
+import io.github.datacatering.datacaterer.core.util.ForeignKeyRelationHelper.updateForeignKeyName
+import io.github.datacatering.datacaterer.core.util.GeneratorUtil.applySqlExpressions
 import io.github.datacatering.datacaterer.core.util.PlanImplicits.{ForeignKeyRelationOps, SinkOptionsOps}
 import org.apache.log4j.Logger
 import org.apache.spark.sql.functions.col

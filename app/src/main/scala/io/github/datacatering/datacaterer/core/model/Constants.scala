@@ -1,7 +1,6 @@
 package io.github.datacatering.datacaterer.core.model
 
-import io.github.datacatering.datacaterer.api.model.Constants.{AMUNDSEN, CASSANDRA, CSV, DATAHUB, GREAT_EXPECTATIONS, HTTP, JDBC, JMS, JSON, KAFKA, MARQUEZ, MYSQL, OPEN_API, OPEN_DATA_CONTRACT_STANDARD, OPEN_METADATA, ORC, PARQUET, POSTGRES, SLACK, SOLACE}
-import io.github.datacatering.datacaterer.core.model.Constants.TIMESTAMP_FORMAT
+import io.github.datacatering.datacaterer.api.model.Constants._
 import org.joda.time.format.{DateTimeFormat, DateTimeFormatter}
 
 object Constants {

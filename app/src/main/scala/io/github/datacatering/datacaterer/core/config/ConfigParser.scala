@@ -1,9 +1,9 @@
 package io.github.datacatering.datacaterer.core.config
 
-import io.github.datacatering.datacaterer.api.model.Constants.FORMAT
 import com.typesafe.config.{Config, ConfigFactory, ConfigValueType}
-import io.github.datacatering.datacaterer.core.model.Constants.{APPLICATION_CONFIG_PATH, RUNTIME_MASTER, SUPPORTED_CONNECTION_FORMATS}
+import io.github.datacatering.datacaterer.api.model.Constants.FORMAT
 import io.github.datacatering.datacaterer.api.model.{AlertConfig, DataCatererConfiguration, FlagsConfig, FoldersConfig, GenerationConfig, MetadataConfig, ValidationConfig}
+import io.github.datacatering.datacaterer.core.model.Constants.{APPLICATION_CONFIG_PATH, RUNTIME_MASTER, SUPPORTED_CONNECTION_FORMATS}
 import io.github.datacatering.datacaterer.core.util.ObjectMapperUtil
 import org.apache.log4j.Logger
 

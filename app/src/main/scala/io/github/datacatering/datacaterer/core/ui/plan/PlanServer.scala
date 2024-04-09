@@ -1,7 +1,7 @@
 package io.github.datacatering.datacaterer.core.ui.plan
 
-import org.apache.pekko.actor.typed.{Behavior, PostStop}
 import org.apache.pekko.actor.typed.scaladsl.Behaviors
+import org.apache.pekko.actor.typed.{Behavior, PostStop}
 import org.apache.pekko.http.scaladsl.Http
 import org.apache.pekko.http.scaladsl.Http.ServerBinding
 

@@ -1,14 +1,13 @@
 package io.github.datacatering.datacaterer.core.generator
 
 import io.github.datacatering.datacaterer.api.model.Constants.SQL_GENERATOR
-import io.github.datacatering.datacaterer.core.model.Constants._
-import io.github.datacatering.datacaterer.core.util.PlanImplicits.FieldOps
-import io.github.datacatering.datacaterer.core.util.GeneratorUtil.{applySqlExpressions, getDataGenerator}
 import io.github.datacatering.datacaterer.api.model.{Field, PerColumnCount, Step}
 import io.github.datacatering.datacaterer.core.exception.InvalidStepCountGeneratorConfigurationException
 import io.github.datacatering.datacaterer.core.generator.provider.DataGenerator
-import io.github.datacatering.datacaterer.core.sink.SinkProcessor
+import io.github.datacatering.datacaterer.core.model.Constants._
+import io.github.datacatering.datacaterer.core.util.GeneratorUtil.{applySqlExpressions, getDataGenerator}
 import io.github.datacatering.datacaterer.core.util.ObjectMapperUtil
+import io.github.datacatering.datacaterer.core.util.PlanImplicits.FieldOps
 import net.datafaker.Faker
 import org.apache.spark.sql.expressions.UserDefinedFunction
 import org.apache.spark.sql.functions._

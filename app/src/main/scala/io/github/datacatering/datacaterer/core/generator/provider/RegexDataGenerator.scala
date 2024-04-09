@@ -1,8 +1,8 @@
 package io.github.datacatering.datacaterer.core.generator.provider
 
 import io.github.datacatering.datacaterer.api.model.Constants.REGEX_GENERATOR
-import io.github.datacatering.datacaterer.core.model.Constants.GENERATE_REGEX_UDF
 import io.github.datacatering.datacaterer.core.exception.InvalidDataGeneratorConfigurationException
+import io.github.datacatering.datacaterer.core.model.Constants.GENERATE_REGEX_UDF
 import net.datafaker.Faker
 import org.apache.spark.sql.types.StructField
 

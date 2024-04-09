@@ -1,7 +1,7 @@
 package io.github.datacatering.datacaterer.core.util
 
-import io.github.datacatering.datacaterer.api.model.Constants.FOREIGN_KEY_DELIMITER
 import io.github.datacatering.datacaterer.api.PlanRun
+import io.github.datacatering.datacaterer.api.model.Constants.FOREIGN_KEY_DELIMITER
 import io.github.datacatering.datacaterer.api.model.{ForeignKeyRelation, Plan, SinkOptions, TaskSummary}
 import io.github.datacatering.datacaterer.core.model.ForeignKeyRelationship
 import org.apache.spark.sql.Encoders
