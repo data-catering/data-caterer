@@ -271,8 +271,7 @@ export function getGeneration(dataSource, currentDataSource) {
     }
     // get top level manual fields
     if (isManualChecked) {
-        let dataSourceSchemaContainer = $(dataSource).find("[class~=data-source-schema-container]")[0];
-        console.log(dataSourceSchemaContainer);
+        let dataSourceSchemaContainer = $(dataSource).find("[id^=data-source-schema-container]")[0];
         let dataFieldsWithAttributes = getGenerationSchema(dataSourceSchemaContainer);
         dataGenerationInfo["optFields"] = Object.values(dataFieldsWithAttributes);
     }
