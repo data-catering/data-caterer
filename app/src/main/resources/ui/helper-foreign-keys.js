@@ -13,7 +13,8 @@ import {
     createFieldValidationCheck,
     createFormFloating,
     createInput,
-    createSelect, wait
+    createSelect,
+    wait
 } from "./shared.js";
 
 export let numForeignKeys = 0;
@@ -163,9 +164,7 @@ async function createForeignKeyInput(index, name) {
     let foreignKey = document.createElement("div");
     foreignKey.setAttribute("class", `row m-1 align-items-center ${name}-source`);
     // input is task name -> column(s)
-    let taskNameSelect = createSelect(`${name}-${index}`, "Task", `selectpicker form-control input-field ${name}`);
-    taskNameSelect.setAttribute("title", "Select a task...");
-    taskNameSelect.setAttribute("data-header", "Select a task...");
+    let taskNameSelect = createSelect(`${name}-${index}`, "Task", `selectpicker form-control input-field ${name}`, "Select a task...");
     let taskNameCol = document.createElement("div");
     taskNameCol.setAttribute("class", "col");
     taskNameCol.append(taskNameSelect);

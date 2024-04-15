@@ -19,10 +19,12 @@ import {
     createFormFloating,
     createIconWithConnectionTooltip,
     createInput,
+    createManualContainer,
     createSelect,
     createToast,
     executePlan,
     getDataConnectionsAndAddToSelect,
+    manualContainerDetails,
     wait
 } from "./shared.js";
 import {createForeignKeys, createForeignKeysFromPlan, getForeignKeys} from "./helper-foreign-keys.js";
@@ -32,8 +34,8 @@ import {
     createNewConfigRow,
     getConfiguration
 } from "./helper-configuration.js";
-import {createAutoSchema, createGenerationElements, createManualSchema, getGeneration} from "./helper-generation.js";
-import {createManualValidation, createValidationFromPlan, getValidations} from "./helper-validation.js";
+import {createAutoSchema, createGenerationElements, getGeneration} from "./helper-generation.js";
+import {createValidationFromPlan, getValidations} from "./helper-validation.js";
 import {createCountElementsFromPlan, createRecordCount, getRecordCount} from "./helper-record-count.js";
 import {configurationOptionsMap, reportConfigKeys} from "./configuration-data.js";
 
@@ -158,18 +160,13 @@ async function checkboxListenerDisplay(index, event, configContainer, name, auto
         }
     }
 
-    if (name === "generation" && autoOrManualValue === "manual") {
-        querySelector = `#data-source-schema-container-${index}`;
-        newElement = createManualSchema(index);
-    } else if (name === "generation" && autoOrManualValue === "auto-from-metadata-source") {
+    if (autoOrManualValue === "manual") {
+        let details = manualContainerDetails.get(name);
+        querySelector = `#${details["containerName"]}-${index}`;
+        newElement = createManualContainer(index, name);
+    } else if (autoOrManualValue === "auto-from-metadata-source") {
         querySelector = `#data-source-auto-schema-container-${index}`;
         newElement = await createAutoSchema(index);
-    } else if (name === "validation" && autoOrManualValue === "manual") {
-        querySelector = `#data-source-validation-container-${index}`;
-        newElement = createManualValidation(index);
-    } else if (name === "validation" && autoOrManualValue === "auto-from-metadata-source") {
-        querySelector = `#data-source-auto-validation-container-${index}`;
-        newElement = createManualValidation(index);
     } else {
         querySelector = "unknown";
         setEnableAutoGeneratePlanAndTasks();
@@ -183,7 +180,7 @@ async function checkboxListenerDisplay(index, event, configContainer, name, auto
             } else {
                 $(configContainer).find(".manual").after(newElement);
             }
-        } else {
+        } else if (schemaContainer !== null) {
             schemaContainer.style.display = "inherit";
         }
     } else {
@@ -201,9 +198,7 @@ async function createDataConnectionInput(index) {
     createFieldValidationCheck(taskNameInput);
     let taskNameFormFloating = createFormFloating("Task name", taskNameInput);
 
-    let dataConnectionSelect = createSelect(`data-source-connection-${index}`, "Data source", "selectpicker form-control input-field data-connection-name");
-    dataConnectionSelect.setAttribute("title", "Select data source...");
-    dataConnectionSelect.setAttribute("data-header", "Select data source...");
+    let dataConnectionSelect = createSelect(`data-source-connection-${index}`, "Data source", "selectpicker form-control input-field data-connection-name", "Select data source...");
     let dataConnectionCol = document.createElement("div");
     dataConnectionCol.setAttribute("class", "col");
     dataConnectionCol.append(dataConnectionSelect);
@@ -343,7 +338,11 @@ function savePlan() {
         let form = document.getElementById("plan-form");
         let {planName, requestBody} = getPlanDetails(form);
         console.log(JSON.stringify(requestBody));
-        fetch("http://localhost:9898/plan", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(requestBody)})
+        fetch("http://localhost:9898/plan", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify(requestBody)
+        })
             .catch(err => {
                 console.error(err);
                 createToast(planName, `Plan save failed! Error: ${err}`, "fail");

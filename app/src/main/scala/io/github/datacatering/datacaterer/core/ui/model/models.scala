@@ -128,13 +128,15 @@ case class Connection(name: String, `type`: String, groupType: Option[String], o
 }
 
 object Connection {
-  def fromString(str: String): Connection = {
+  def fromString(str: String, masking: Boolean = true): Connection = {
     val spt = str.split(PLAN_RUN_EXECUTION_DELIMITER_REGEX)
     if (spt.length > 2) {
       val optionSplitIndex = if (spt(2).contains(":")) 2 else 3
       val options = spt.slice(optionSplitIndex, spt.length).map(o => {
         val optSpt = o.split(":", 2)
-        if (optSpt.head == "password") (optSpt.head, "***") else (optSpt.head, optSpt.last)
+        if (masking && (optSpt.head.contains("password") || optSpt.head.contains("token"))) {
+          (optSpt.head, "***")
+        } else (optSpt.head, optSpt.last)
       }).toMap
       val groupType = if (optionSplitIndex == 2) {
         CONNECTION_GROUP_TYPE_MAP.getOrElse(spt(1), CONNECTION_GROUP_DATA_SOURCE)

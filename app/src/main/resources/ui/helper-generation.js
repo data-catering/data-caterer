@@ -1,45 +1,21 @@
 import {
-    addAccordionCloseButton,
     addNewDataTypeAttribute,
     camelize,
-    createAccordionItem,
-    createButton,
-    createDataOrValidationTypeAttributes,
-    createFieldValidationCheck,
-    createFormFloating,
     createIconWithConnectionTooltip,
-    createInput,
+    createManualContainer,
+    createNewField,
     createSelect,
     createToast,
     findNextLevelNodesByClass,
-    getDataConnectionsAndAddToSelect, wait
+    getDataConnectionsAndAddToSelect,
+    wait
 } from "./shared.js";
 import {dataSourcePropertiesMap, dataTypeOptionsMap} from "./configuration-data.js";
 
 export let numFields = 0;
 
-// Schema can be manually created or override automatic config
-export function createManualSchema(index, additionalName) {
-    let divName = additionalName ? `data-source-schema-container-${additionalName}` : `data-source-schema-container-${index}`;
-    let divContainer = document.createElement("div");
-    divContainer.setAttribute("class", `card card-body ${divName}`);
-    divContainer.setAttribute("id", divName);
-    divContainer.style.display = "inherit";
-    let manualSchemaHeader = document.createElement("h5");
-    manualSchemaHeader.innerText = "Manual Schema";
-    let schemaAccordion = document.createElement("div");
-    schemaAccordion.setAttribute("class", "accordion m-2");
-    schemaAccordion.setAttribute("style", "--bs-accordion-active-bg: lavender");
-    // add new fields to schema
-    let addFieldButton = createButton(`add-field-btn-${index}`, "add-field", "btn btn-secondary", "+ Field");
-    addFieldButton.addEventListener("click", function () {
-        numFields += 1;
-        let newField = createSchemaField(numFields);
-        schemaAccordion.append(newField);
-    });
-
-    divContainer.append(manualSchemaHeader, addFieldButton, schemaAccordion);
-    return divContainer;
+export function incFields() {
+    numFields++;
 }
 
 function addMetadataConnectionOverrideOptions(metadataConnectionSelect, overrideOptionsContainer, index) {
@@ -85,9 +61,7 @@ export async function createAutoSchema(index) {
     let baseTaskDiv = document.createElement("div");
     baseTaskDiv.setAttribute("class", "row m-2 g-2 align-items-center");
 
-    let metadataConnectionSelect = createSelect(`metadata-connection-${index}`, "Metadata source", "selectpicker form-control input-field metadata-connection-name");
-    metadataConnectionSelect.setAttribute("title", "Select metadata source...");
-    metadataConnectionSelect.setAttribute("data-header", "Select metadata source...");
+    let metadataConnectionSelect = createSelect(`metadata-connection-${index}`, "Metadata source", "selectpicker form-control input-field metadata-connection-name", "Select metadata source...");
     let dataConnectionCol = document.createElement("div");
     dataConnectionCol.setAttribute("class", "col");
     dataConnectionCol.append(metadataConnectionSelect);
@@ -109,56 +83,12 @@ export async function createAutoSchema(index) {
     return baseContainer;
 }
 
-
-export function createSchemaField(index) {
-    let fieldContainer = document.createElement("div");
-    fieldContainer.setAttribute("class", "row g-3 mb-2 align-items-center");
-    fieldContainer.setAttribute("id", "data-field-container-" + index);
-
-    let fieldName = createInput(`field-name-${index}`, "Name", "form-control input-field data-source-field is-invalid", "text", "");
-    fieldName.setAttribute("required", "");
-    createFieldValidationCheck(fieldName);
-    let formFloatingName = createFormFloating("Name", fieldName);
-
-    let fieldTypeSelect = createSelect(`field-type-${index}`, "Type", "selectpicker form-control input-field data-source-field field-type");
-    fieldTypeSelect.setAttribute("title", "Select data type...");
-    fieldTypeSelect.setAttribute("data-header", "Select data type...");
-    let fieldTypeFormGroup = document.createElement("div");
-    fieldTypeFormGroup.setAttribute("class", "form-group");
-    fieldTypeFormGroup.append(fieldTypeSelect);
-    let fieldTypeCol = document.createElement("div");
-    fieldTypeCol.setAttribute("class", "col");
-    fieldTypeCol.append(fieldTypeFormGroup);
-
-    for (const key of dataTypeOptionsMap.keys()) {
-        let selectOption = document.createElement("option");
-        selectOption.setAttribute("value", key);
-        selectOption.innerText = key;
-        fieldTypeSelect.append(selectOption);
-    }
-
-    let accordionItem = createAccordionItem(`column-${index}`, `column-${index}`, "", fieldContainer, "show");
-    addAccordionCloseButton(accordionItem);
-    accordionItem.classList.add("data-field-container");
-    // when field name changes, update the accordion header
-    fieldName.addEventListener("input", (event) => {
-        let accordionButton = $(accordionItem).find(".accordion-button");
-        accordionButton[0].innerText = event.target.value;
-    });
-
-    fieldContainer.append(formFloatingName, fieldTypeCol);
-    $(fieldTypeSelect).selectpicker();
-    createDataOrValidationTypeAttributes(fieldContainer, "data-type");
-    return accordionItem;
-}
-
-
-function createGenerationFields(dataSource, manualSchema) {
+async function createGenerationFields(dataSourceFields, manualSchema) {
     let allCollapsedAccordionButton = $(document).find(".accordion-button.collapsed");
     allCollapsedAccordionButton.click();
-    for (const field of dataSource.fields.optFields) {
+    for (const field of dataSourceFields.optFields) {
         numFields += 1;
-        let newField = createSchemaField(numFields);
+        let newField = await createNewField(numFields, "generation");
         $(manualSchema).find(".accordion").first().append(newField);
         $(newField).find("[id^=field-name]").val(field.name)[0].dispatchEvent(new Event("input"));
         $(newField).find("select[class~=field-type]").selectpicker("val", field.type)[0].dispatchEvent(new Event("change"));
@@ -173,10 +103,11 @@ function createGenerationFields(dataSource, manualSchema) {
             }
         }
         // there are nested fields
-        if (field.nested && field.nested.fields) {
-            let newFieldBox = createManualSchema(numFields, "struct-schema");
-            $(newField).find(".accordion-body").append(newFieldBox);
-            createGenerationFields(field.nested, newFieldBox);
+        if (field.nested && field.nested.optFields) {
+            let newFieldBox = $(newField).find(".card");
+            // let newFieldBox = createManualContainer(numFields, "generation", "struct-schema");
+            // $(newField).find(".accordion-body").append(newFieldBox);
+            await createGenerationFields(field.nested, newFieldBox);
         }
     }
     let collapseShow = $(document).find(".accordion-button.collapse.show");
@@ -205,11 +136,11 @@ export async function createGenerationElements(dataSource, newDataSource, numDat
     }
     // check if there is manual schema defined
     if (dataSource.fields && dataSource.fields.optFields && dataSource.fields.optFields.length > 0) {
-        let manualSchema = createManualSchema(numDataSources);
+        let manualSchema = createManualContainer(numFields, "generation");
         dataSourceGenContainer[0].insertBefore(manualSchema, dataSourceGenContainer[0].lastElementChild);
         $(dataSourceGenContainer).find("[id^=manual-generation-checkbox]").prop("checked", true);
 
-        createGenerationFields(dataSource, manualSchema);
+        await createGenerationFields(dataSource.fields, manualSchema);
     }
 }
 
@@ -229,7 +160,7 @@ function getGenerationSchema(dataSourceSchemaContainer) {
                     // nested fields can be defined
                     let innerStructSchema = field.querySelector(".data-source-schema-container-struct-schema");
                     options[label] = fieldValue;
-                    options["nested"] = {fields: getGenerationSchema(innerStructSchema)};
+                    options["nested"] = {optFields: getGenerationSchema(innerStructSchema)};
                 } else if (label === "name" || label === "type") {
                     options[label] = fieldValue;
                 } else {

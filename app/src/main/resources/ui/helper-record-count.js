@@ -65,7 +65,8 @@ export function createCountElementsFromPlan(dataSource, newDataSource) {
                 $(newDataSource).find(".per-unique-set-of-values").prop("checked", true);
                 $(newDataSource).find("[id^=per-column-record-count]").val(dsCount.perColumnRecords);
             }
-            $(newDataSource).find("[id^=per-column-distribution-select]").selectpicker("val", dsCount.perColumnRecordsDistribution)[0].dispatchEvent(new Event("change"));
+            $(newDataSource).find("[id^=per-column-distribution-select]").selectpicker("val", dsCount.perColumnRecordsDistribution);
+            $(newDataSource).find("[id^=per-column-distribution-select]")[0].dispatchEvent(new Event("change"));
             if (dsCount.perColumnRecordsDistribution === "exponential") {
                 $(newDataSource).find("[id^=per-column-distribution-rate]").val(dsCount.perColumnRecordsDistributionRateParam);
             }
@@ -96,9 +97,7 @@ function createPerColumnCountContainer(index, estimatedRecordCountContainer) {
     let perColumnText = createInput(`per-column-names-${index}`, "Column(s)", "form-control input-field record-count-field", "text", "");
     let perColumnFormFloating = createFormFloating("Column(s)", perColumnText);
     // per column distribution alongside radio buttons
-    let perColumnDistributionSelect = createSelect(`per-column-distribution-select-${index}`, "Distribution", "selectpicker form-control input-field record-count-distribution-field col")
-    perColumnDistributionSelect.setAttribute("title", "Select data distribution...");
-    perColumnDistributionSelect.setAttribute("data-header", "Select data distribution...");
+    let perColumnDistributionSelect = createSelect(`per-column-distribution-select-${index}`, "Distribution", "selectpicker form-control input-field record-count-distribution-field col", "Select data distribution...");
     ["Uniform", "Exponential", "Normal"].forEach(dist => {
         let option = document.createElement("option");
         option.setAttribute("value", dist.toLowerCase());
@@ -119,7 +118,7 @@ function createPerColumnCountContainer(index, estimatedRecordCountContainer) {
         if (event.target.value === "exponential") {
             // add extra input for rate parameter
             perColumnOptionsRow.append(formFloatingRate);
-        } else {
+        } else if (perColumnOptionsRow.contains(formFloatingRate)) {
             // check if rate parameter exists, if it does, remove it
             perColumnOptionsRow.removeChild(formFloatingRate);
         }

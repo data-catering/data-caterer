@@ -58,15 +58,14 @@ object ConnectionRepository extends JsonSupport {
     Files.writeString(connectionFile, connection.toString, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING)
   }
 
-  def getConnection(name: String): Connection = {
+  def getConnection(name: String, masking: Boolean = true): Connection = {
     LOGGER.debug(s"Getting connection details, connection-name=$name")
     val connectionFile = Path.of(s"$connectionSaveFolder/$name.csv")
-    val connection = Connection.fromString(Files.readString(connectionFile))
-    val mappedPw = connection.options.map(o => if (o._1.contains("password") || o._1.contains("token")) (o._1, "***") else o)
-    connection.copy(options = mappedPw)
+    val connection = Connection.fromString(Files.readString(connectionFile), masking)
+    connection.copy(options = connection.options)
   }
 
-  private def getAllConnections(optConnectionGroupType: Option[String]): GetConnectionsResponse = {
+  private def getAllConnections(optConnectionGroupType: Option[String], masking: Boolean = true): GetConnectionsResponse = {
     LOGGER.debug(s"Getting all connection details, connection-group=${optConnectionGroupType.getOrElse("")}")
     val connectionPath = Path.of(connectionSaveFolder)
     if (!connectionPath.toFile.exists()) connectionPath.toFile.mkdirs()
@@ -74,7 +73,7 @@ object ConnectionRepository extends JsonSupport {
       .iterator()
       .asScala
       .map(file => {
-        val tryParse = Try(Connection.fromString(Files.readString(file)))
+        val tryParse = Try(Connection.fromString(Files.readString(file), masking))
         if (tryParse.isFailure) {
           LOGGER.error(s"Failed to parse connection details from file, file=$file, error=${tryParse.failed.get.getMessage}")
         }

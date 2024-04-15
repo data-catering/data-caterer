@@ -90,7 +90,7 @@ object PlanRepository extends JsonSupport {
   private def runPlan(planRunRequest: PlanRunRequest, replyTo: ActorRef[Response]): Unit = {
     // get connection info
     val dataSourcesWithConnectionInfo = planRunRequest.dataSources.map(ds => {
-      val connectionInfo = ConnectionRepository.getConnection(ds.name)
+      val connectionInfo = ConnectionRepository.getConnection(ds.name, false)
       ds.copy(`type` = Some(connectionInfo.`type`), options = Some(connectionInfo.options))
     })
     val planRunWithConnectionInfo = planRunRequest.copy(dataSources = dataSourcesWithConnectionInfo)

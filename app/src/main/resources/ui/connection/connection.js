@@ -152,10 +152,8 @@ function createDataSourceElement(index, hr) {
     let dataSourceName = createInput(`data-source-name-${index}`, "Name", "form-control input-field data-source-property", "text", `my-data-source-${index}`);
     let formFloatingName = createFormFloating("Name", dataSourceName);
 
-    let dataSourceSelect = createSelect(`data-source-select-${index}`, "Data source", "selectpicker form-control input-field data-source-property");
+    let dataSourceSelect = createSelect(`data-source-select-${index}`, "Data source", "selectpicker form-control input-field data-source-property", "Select data source type...");
     dataSourceSelect.setAttribute("data-live-search", "true");
-    dataSourceSelect.setAttribute("title", "Select data source type...");
-    dataSourceSelect.setAttribute("data-header", "Select data source type...");
 
     let dataSourceGroup = createOptGroup("Data Source");
     let metadataSourceGroup = createOptGroup("Metadata Source");

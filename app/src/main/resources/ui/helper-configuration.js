@@ -108,11 +108,9 @@ function createConfigurationOption(configKey, config, options) {
         formSwitch.append(switchInput, switchLabel);
         colWrapper.append(formSwitch);
     } else if (options.choice) {
-        let selectInput = createSelect(`select-${config}`, configLabel, "selectpicker form-control input-field input-configuration m-1");
+        let selectInput = createSelect(`select-${config}`, configLabel, "selectpicker form-control input-field input-configuration m-1", `Select ${configLabel} option...`);
         selectInput.setAttribute("configuration-parent", configKey);
         selectInput.setAttribute("configuration", options.configName);
-        selectInput.setAttribute("title", `Select ${configLabel} option...`);
-        selectInput.setAttribute("data-header", `Select ${configLabel} option...`);
         for (let choice of options.choice) {
             let option = document.createElement("option");
             option.setAttribute("value", choice.toString());

@@ -7,43 +7,21 @@ Different types of validation:
 - External source (great expectations)
  */
 import {
-    addAccordionCloseButton,
     addItemsToAttributeMenu,
     addNewDataTypeAttribute,
     camelize,
-    createAccordionItem,
-    createButton,
     createButtonWithMenu,
     createCloseButton,
-    createDataOrValidationTypeAttributes,
-    createSelect,
+    createManualContainer,
+    createNewField,
     findNextLevelNodesByClass
 } from "./shared.js";
-import {validationTypeDisplayNameMap, validationTypeOptionsMap} from "./configuration-data.js";
+import {validationTypeOptionsMap} from "./configuration-data.js";
 
 export let numValidations = 0;
 
-export function createManualValidation(index, additionalName) {
-    let divName = additionalName ? `data-source-validation-container-${additionalName}` : `data-source-validation-container-${index}`;
-    let divContainer = document.createElement("div");
-    divContainer.setAttribute("class", `card card-body ${divName}`);
-    divContainer.setAttribute("id", divName);
-    divContainer.style.display = "inherit";
-    let manualValidationHeader = document.createElement("h5");
-    manualValidationHeader.innerText = "Manual Validation";
-    let validationAccordion = document.createElement("div");
-    validationAccordion.setAttribute("class", "accordion m-2");
-    validationAccordion.setAttribute("style", "--bs-accordion-active-bg: blanchedalmond");
-    // add new validations
-    let addValidationButton = createButton(`add-validation-btn-${index}`, "add-validation", "btn btn-secondary", "+ Validation");
-    addValidationButton.addEventListener("click", function () {
-        numValidations += 1;
-        let newValidation = createValidation(numValidations);
-        validationAccordion.append(newValidation);
-    });
-
-    divContainer.append(manualValidationHeader, addValidationButton, validationAccordion);
-    return divContainer;
+export function incValidations() {
+    numValidations++;
 }
 
 function createGroupByValidationFromPlan(newValidation, validationOpts, validation) {
@@ -53,7 +31,7 @@ function createGroupByValidationFromPlan(newValidation, validationOpts, validati
     if (validation.nested && validation.nested.validations) {
         for (let nestedValidation of validation.nested.validations) {
             numValidations += 1;
-            let dataValidationContainer = $(newValidation).find(".data-validation-container")[0];
+            let dataValidationContainer = $(newValidation).find("[id^=data-validation-container]")[0];
             let metadata = Object.create(validationTypeOptionsMap.get("groupBy")[nestedValidation.options["aggType"]]);
             metadata["default"] = nestedValidation.options["aggCol"];
             addNewDataTypeAttribute(nestedValidation.options["aggType"], metadata, `groupBy-validation-${numValidations}`, "data-validation-field", dataValidationContainer);
@@ -86,14 +64,14 @@ function createNewValidateAttribute(optKey, validationType, optVal, mainContaine
     document.getElementById(`data-validation-container-${numValidations}-${optKey}`).dispatchEvent(new Event("input"));
 }
 
-async function createNestedValidations(dataSource, manualValidation) {
+async function createValidationsFromDataSource(dataSource, manualValidation) {
     for (const validation of dataSource.validations) {
         numValidations += 1;
-        let newValidation = await createValidation(numValidations);
+        let newValidation = await createNewField(numValidations, "validation");
         $(manualValidation).children(".accordion").append(newValidation);
         $(newValidation).find("select[class~=validation-type]").selectpicker("val", validation.type)[0].dispatchEvent(new Event("change"));
         let validationOpts = validation.options;
-        let mainContainer = $(newValidation).find(".data-validation-container")[0];
+        let mainContainer = $(newValidation).find("[id^=data-validation-container]")[0];
 
         if (validation.type === "column" && validationOpts.column) {
             $(newValidation).find("[aria-label=Field]").val(validationOpts.column)[0].dispatchEvent(new Event("input"));
@@ -105,7 +83,7 @@ async function createNestedValidations(dataSource, manualValidation) {
 
             if (validation.nested && validation.nested.validations) {
                 let nestedManualValidation = $(newValidation).find(".data-source-validation-container-nested-validation").first();
-                await createNestedValidations(validation.nested, nestedManualValidation);
+                await createValidationsFromDataSource(validation.nested, nestedManualValidation);
             }
         }
         //otherwise it is column name validation which doesn't have any default options
@@ -120,12 +98,12 @@ async function createNestedValidations(dataSource, manualValidation) {
 
 export async function createValidationFromPlan(dataSource, newDataSource) {
     if (dataSource.validations && dataSource.validations.length > 0) {
-        let manualValidation = createManualValidation(numValidations);
+        let manualValidation = createManualContainer(numValidations, "validation");
         let dataSourceGenContainer = $(newDataSource).find("#data-source-validation-config-container");
         dataSourceGenContainer.append(manualValidation);
         $(dataSourceGenContainer).find("[id^=manual-validation-checkbox]").prop("checked", true);
 
-        await createNestedValidations(dataSource, manualValidation);
+        await createValidationsFromDataSource(dataSource, manualValidation);
     }
 }
 
@@ -239,7 +217,7 @@ export function addColumnValidationBlock(newAttributeRow, mainContainer, attribu
     });
 }
 
-function updateValidationAccordionHeaderOnInput(validationContainerHeadRow, accordionButton) {
+export async function updateAccordionHeaderOnInputAndSelect(validationContainerHeadRow, accordionButton) {
     let defaultAttribute = $(validationContainerHeadRow).find(".default-attribute")[0];
     let defaultValidationInput = $(defaultAttribute).find(".input-field");
     let input = defaultValidationInput.length > 0 ? defaultValidationInput[0] : $(defaultValidationInput).find("select")[0];
@@ -253,44 +231,4 @@ function updateValidationAccordionHeaderOnInput(validationContainerHeadRow, acco
             }
         });
     }
-}
-
-function createValidation(index) {
-    let validationContainer = document.createElement("div");
-    validationContainer.setAttribute("class", "data-validation-container");
-    validationContainer.setAttribute("id", `data-validation-container-${index}`);
-    let validationContainerHeadRow = document.createElement("div");
-    validationContainerHeadRow.setAttribute("class", "row g-3 m-1 align-items-center");
-    validationContainerHeadRow.setAttribute("id", `validation-head-row-${index}`);
-    validationContainer.append(validationContainerHeadRow);
-
-    let validationTypeSelect = createSelect(`validation-type-${index}`, "Type", "selectpicker form-control input-field data-validation-field validation-type");
-    validationTypeSelect.setAttribute("title", "Select validation type...");
-    validationTypeSelect.setAttribute("data-header", "Select validation type...");
-    let validationTypeCol = document.createElement("div");
-    validationTypeCol.setAttribute("class", "col");
-    validationTypeCol.append(validationTypeSelect);
-
-    for (const key of validationTypeOptionsMap.keys()) {
-        let selectOption = document.createElement("option");
-        selectOption.setAttribute("value", key);
-        selectOption.innerText = validationTypeDisplayNameMap.get(key);
-        validationTypeSelect.append(selectOption);
-    }
-
-    let accordionItem = createAccordionItem(`validation-${index}`, `validation-${index}`, "", validationContainer, "show");
-    addAccordionCloseButton(accordionItem);
-
-    accordionItem.classList.add("accordion-data-validation-container");
-    validationContainerHeadRow.append(validationTypeCol);
-    createDataOrValidationTypeAttributes(validationContainerHeadRow, "validation-type");
-    $(validationTypeSelect).selectpicker();
-    // on select change and input of default-attribute, update accordion button
-    let accordionButton = $(accordionItem).find(".accordion-button")[0];
-    validationTypeSelect.addEventListener("change", (event) => {
-        accordionButton.innerText = event.target.options[event.target.selectedIndex].innerText;
-        updateValidationAccordionHeaderOnInput(validationContainerHeadRow, accordionButton);
-    });
-    updateValidationAccordionHeaderOnInput(validationContainerHeadRow, accordionButton);
-    return accordionItem;
 }

@@ -1,6 +1,11 @@
-import {dataTypeOptionsMap, validationTypeOptionsMap} from "./configuration-data.js";
-import {addColumnValidationBlock, createManualValidation, numValidations} from "./helper-validation.js";
-import {createManualSchema, numFields} from "./helper-generation.js";
+import {dataTypeOptionsMap, validationTypeDisplayNameMap, validationTypeOptionsMap} from "./configuration-data.js";
+import {
+    addColumnValidationBlock,
+    incValidations,
+    numValidations,
+    updateAccordionHeaderOnInputAndSelect
+} from "./helper-validation.js";
+import {incFields, numFields} from "./helper-generation.js";
 
 Map.prototype.toJSON = function () {
     let obj = {}
@@ -61,12 +66,14 @@ export function createCloseButton(closeElement) {
     return closeButton;
 }
 
-export function createSelect(id, label, classes) {
+export function createSelect(id, label, classes, title) {
     let selectInput = document.createElement("select");
     selectInput.setAttribute("id", id);
     selectInput.setAttribute("class", classes);
     selectInput.setAttribute("aria-label", label);
     selectInput.setAttribute("placeholder", "");
+    selectInput.setAttribute("title", title);
+    selectInput.setAttribute("data-header", title);
     return selectInput;
 }
 
@@ -193,13 +200,13 @@ export function formatDate(isMin, isTimestamp) {
 }
 
 const dataAndValidationTypeBaseOptions = new Map();
-dataAndValidationTypeBaseOptions.set("validation-type", {
+dataAndValidationTypeBaseOptions.set("validation", {
     elementQuerySelector: ".validation-type",
     menuAttributeName: "current-validation-type",
     inputClass: "data-validation-field",
     optionsMap: validationTypeOptionsMap,
 });
-dataAndValidationTypeBaseOptions.set("data-type", {
+dataAndValidationTypeBaseOptions.set("generation", {
     elementQuerySelector: ".field-type",
     menuAttributeName: "current-data-type",
     inputClass: "data-source-field",
@@ -251,11 +258,11 @@ export function createDataOrValidationTypeAttributes(element, elementType) {
             if (optionAttributes["addBlock"]) {
                 if (optionAttributes["addBlock"].type === "validation") {
                     // need to add in new validation button and accordion for upstream validations
-                    let newValidationBox = createManualValidation(numValidations, "nested-validation");
+                    let newValidationBox = createManualContainer(numValidations, "validation", "nested-validation");
                     elementContainer.append(newValidationBox);
                 } else if (optionAttributes["addBlock"].type === "field") {
                     // need to add in new field button to allow for nested fields
-                    let newFieldBox = createManualSchema(numFields, "struct-schema");
+                    let newFieldBox = createManualContainer(numFields, "generation", "struct-schema");
                     elementContainer.append(newFieldBox);
                 }
             } else {
@@ -575,8 +582,9 @@ export function createToast(header, message, type) {
     new bootstrap.Toast(toast).show();
 }
 
-export function executePlan(requestBody, planName, runId) {
-    fetch("http://localhost:9898/run", {
+export function executePlan(requestBody, planName, runId, runType) {
+    let url = runType === "delete" ? "http://localhost:9898/run/delete-data" : "http://localhost:9898/run";
+    fetch(url, {
         method: "POST",
         headers: {"Content-Type": "application/json"},
         body: JSON.stringify(requestBody)
@@ -747,6 +755,166 @@ export function createIconWithConnectionTooltip(dataConnectionSelect) {
     });
     return iconDiv;
 }
+
+export const manualContainerDetails = new Map();
+manualContainerDetails.set("generation", {
+    containerName: "data-source-schema-container",
+    headerText: "Manual Schema",
+    accordionColour: "lavender",
+    button: {
+        id: "add-field-btn",
+        text: "+ Field",
+        classes: "btn btn-secondary",
+        label: "add-field",
+    }
+});
+manualContainerDetails.set("validation", {
+    containerName: "data-source-validation-container",
+    headerText: "Manual Validation",
+    accordionColour: "blanchedalmond",
+    button: {
+        id: "add-validation-btn",
+        text: "+ Validation",
+        classes: "btn btn-secondary",
+        label: "add-validation",
+    }
+});
+
+export function createManualContainer(index, type, additionalName) {
+    let details = manualContainerDetails.get(type);
+    let divName = additionalName ?
+        `${details.containerName}-${additionalName}` :
+        `${details.containerName}-${index}`;
+    let divContainer = document.createElement("div");
+    divContainer.setAttribute("class", `card card-body ${divName}`);
+    divContainer.setAttribute("id", divName);
+    divContainer.style.display = "inherit";
+    let manualHeader = document.createElement("h5");
+    manualHeader.innerText = details.headerText;
+    let accordion = document.createElement("div");
+    accordion.setAttribute("class", "accordion m-2");
+    accordion.setAttribute("style", `--bs-accordion-active-bg: ${details.accordionColour}`);
+
+    let button = details["button"];
+    let addButton = createButton(`${button.id}-${index}`, button.label, button.classes, button.text);
+    addButton.addEventListener("click", async function () {
+        let newField;
+        if (details.containerName.includes("schema")) {
+            incFields();
+            newField = await createNewField(numFields, "generation");
+        } else if (details.containerName.includes("validation")) {
+            incValidations();
+            newField = await createNewField(numValidations, "validation");
+        }
+        if (newField) accordion.append(newField);
+    });
+
+    divContainer.append(manualHeader, addButton, accordion);
+    return divContainer;
+}
+
+export const newFieldDetails = new Map();
+newFieldDetails.set("generation", {
+    containerName: "data-field-container",
+    input: {
+        id: "field-name",
+        label: "Name",
+        classes: "form-control input-field data-source-field is-invalid",
+        type: "text",
+        required: ""
+    },
+    select: {
+        id: "field-type",
+        label: "Type",
+        classes: "selectpicker form-control input-field data-source-field field-type",
+        title: "Select data type...",
+        options: {
+            map: dataTypeOptionsMap
+        }
+    },
+    accordion: {
+        name: "column",
+        classes: "data-field-container",
+        header: {
+            updateOn: "input"
+        }
+    }
+});
+newFieldDetails.set("validation", {
+    containerName: "data-validation-container",
+    select: {
+        id: "validation-type",
+        label: "Type",
+        classes: "selectpicker form-control input-field data-validation-field validation-type",
+        title: "Select validation type...",
+        options: {
+            map: validationTypeOptionsMap,
+            displayMap: validationTypeDisplayNameMap,
+        }
+    },
+    accordion: {
+        name: "validation",
+        classes: "accordion-data-validation-container",
+        header: {
+            updateOn: "inputAndSelect"
+        }
+    }
+});
+
+export async function createNewField(index, type) {
+    let details = newFieldDetails.get(type);
+    let fieldContainer = document.createElement("div");
+    fieldContainer.setAttribute("class", "row g-3 mb-2 align-items-center");
+    fieldContainer.setAttribute("id", `${details.containerName}-${index}`);
+
+    let fieldTypeSelect = createSelect(`${details.select.id}-${index}`, details.select.label, details.select.classes, details.select.title);
+    let fieldTypeFormGroup = document.createElement("div");
+    fieldTypeFormGroup.setAttribute("class", "form-group");
+    fieldTypeFormGroup.append(fieldTypeSelect);
+    let fieldTypeCol = document.createElement("div");
+    fieldTypeCol.setAttribute("class", "col");
+    fieldTypeCol.append(fieldTypeFormGroup);
+
+    for (const key of details.select.options.map.keys()) {
+        let selectOption = document.createElement("option");
+        selectOption.setAttribute("value", key);
+        selectOption.innerText = details.select.options.displayMap ? details.select.options.displayMap.get(key) : key;
+        fieldTypeSelect.append(selectOption);
+    }
+
+    let accordionItem = createAccordionItem(`${details.accordion.name}-${index}`, `${details.accordion.name}-${index}`, "", fieldContainer, "show");
+    addAccordionCloseButton(accordionItem);
+    accordionItem.classList.add(details.accordion.classes);
+
+    if (details.input) {
+        let fieldName = createInput(`${details.input.id}-${index}`, details.input.label, details.input.classes, details.input.type, "");
+        fieldName.setAttribute("required", "");
+        createFieldValidationCheck(fieldName);
+        fieldContainer.append(createFormFloating(details.input.label, fieldName));
+    }
+
+    fieldContainer.append(fieldTypeCol);
+    createDataOrValidationTypeAttributes(fieldContainer, type);
+    $(fieldTypeSelect).selectpicker();
+
+    if (details.accordion.header.updateOn === "input") {
+        let inputField = fieldContainer.querySelector(".input-field");
+        inputField.addEventListener("input", (event) => {
+            let accordionButton = $(accordionItem).find(".accordion-button");
+            accordionButton[0].innerText = event.target.value;
+        });
+    } else if (details.accordion.header.updateOn === "inputAndSelect") {
+        let accordionButton = $(accordionItem).find(".accordion-button")[0];
+        fieldTypeSelect.addEventListener("change", async (event) => {
+            accordionButton.innerText = event.target.options[event.target.selectedIndex].innerText;
+            await updateAccordionHeaderOnInputAndSelect(fieldContainer, accordionButton);
+        });
+        await updateAccordionHeaderOnInputAndSelect(fieldContainer, accordionButton);
+    }
+
+    return accordionItem;
+}
+
 
 export const wait = function (ms = 1000) {
     return new Promise(resolve => {

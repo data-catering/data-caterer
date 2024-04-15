@@ -813,7 +813,7 @@ dataSourcePropertiesMap.set("cassandra", {
             help: "Hostname and port to connect to Cassandra.",
             required: ""
         },
-        username: {
+        user: {
             displayName: "Username",
             default: "cassandra",
             type: "text",
@@ -875,7 +875,7 @@ dataSourcePropertiesMap.set("http", {
     Name: "HTTP",
     disabled: "",
     properties: {
-        username: {
+        user: {
             displayName: "Username",
             default: "",
             type: "text",
@@ -949,7 +949,7 @@ dataSourcePropertiesMap.set("mysql", {
             help: "URL to connect to MySQL.",
             required: ""
         },
-        username: {
+        user: {
             displayName: "Username",
             default: "root",
             type: "text",
@@ -1039,12 +1039,12 @@ dataSourcePropertiesMap.set("postgres", {
     properties: {
         url: {
             displayName: "URL",
-            default: "jdbc:postgres://localhost:5432/customer",
+            default: "jdbc:postgresql://localhost:5432/customer",
             type: "text",
             help: "URL to connect to Postgres.",
             required: ""
         },
-        username: {
+        user: {
             displayName: "Username",
             default: "postgres",
             type: "text",
