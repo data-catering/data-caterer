@@ -4,10 +4,10 @@
 
 ## Overview
 
-Generator data for databases, files, JMS or HTTP request through a Scala/Java API or YAML input and executed via Spark.
+Generator data for databases, files, messaging systems or HTTP requests via UI, Scala/Java SDK or YAML input and executed via Spark.
 Run data validations after generating data to ensure it is consumed correctly.
 
-Full docs can be found [**here**](https://data.catering). Demo of the UI found [**here**](https://data.catering/sample/ui/index.html).
+Full docs can be found [**here**](https://data.catering). A demo of the UI found [**here**](https://data.catering/sample/ui/index.html).
 
 ## Features
 
@@ -25,7 +25,7 @@ Full docs can be found [**here**](https://data.catering). Demo of the UI found [
 
 1. [Mac download](https://nightly.link/data-catering/data-caterer/workflows/build/main/data-caterer-mac.zip)
 2. [Windows download](https://nightly.link/data-catering/data-caterer/workflows/build/main/data-caterer-windows.zip)
-   1. After downloaded, go to 'Downloads' folder and 'Extract All' from data-caterer-windows
+   1. After downloading, go to 'Downloads' folder and 'Extract All' from data-caterer-windows
    2. Double-click 'DataCaterer-1.0.0' to install Data Caterer
    3. Click on 'More info' then at the bottom, click 'Run anyway'
    4. Go to '/Program Files/DataCaterer' folder and run DataCaterer application
@@ -49,7 +49,7 @@ cd data-caterer-example && ./run.sh
 
 ### Supported data sources
 
-Data Caterer is able to support the following data sources:
+Data Caterer supports the following data sources:
 
 | Data Source Type | Data Source                            | Sponsor |
 |------------------|----------------------------------------|---------|
@@ -66,7 +66,7 @@ Data Caterer is able to support the following data sources:
    1. Foreign keys associated between data sources
    2. Number of records per column value
 3. Set random seed at column and whole data generation level
-4. Generate real looking data (via DataFaker) and edge cases
+4. Generate real-looking data (via DataFaker) and edge cases
    1. Names, addresses, places etc.
    2. Edge cases for each data type (e.g. newline character in string, maximum integer, NaN, 0)
    3. Nullability
@@ -132,10 +132,10 @@ This is inspired by the [mkdocs-material project](https://github.com/squidfunk/m
 #### UI
 
 1. Allow the application to run with UI enabled
-2. Runs as long-lived app with UI that interacts with existing app as single container
+2. Runs as a long-lived app with UI that interacts with the existing app as a single container
 3. Ability to run as UI, Spark job or both
 4. Persist data in files or database (Postgres)
-5. UI will show history of data generation/validation runs, delete generated data, create new scenarios, define data connections
+5. UI will show the history of data generation/validation runs, delete generated data, create new scenarios, define data connections
 
 #### Distribution
 
