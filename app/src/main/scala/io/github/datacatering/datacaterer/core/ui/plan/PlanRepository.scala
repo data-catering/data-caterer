@@ -91,7 +91,8 @@ object PlanRepository extends JsonSupport {
     // get connection info
     val dataSourcesWithConnectionInfo = planRunRequest.dataSources.map(ds => {
       val connectionInfo = ConnectionRepository.getConnection(ds.name, false)
-      ds.copy(`type` = Some(connectionInfo.`type`), options = Some(connectionInfo.options))
+      val allConnectionOptions = connectionInfo.options ++ ds.options.getOrElse(Map())
+      ds.copy(`type` = Some(connectionInfo.`type`), options = Some(allConnectionOptions))
     })
     val planRunWithConnectionInfo = planRunRequest.copy(dataSources = dataSourcesWithConnectionInfo)
     // create new run id
@@ -155,8 +156,16 @@ object PlanRepository extends JsonSupport {
       .asScala
       .map(file => {
         val fileContent = Files.readString(file)
-        fileContent.parseJson.convertTo[PlanRunRequest]
+        val tryParse = Try(fileContent.parseJson.convertTo[PlanRunRequest])
+        tryParse match {
+          case Failure(exception) =>
+            LOGGER.error(s"Failed to parse plan file, file-name=$file, exception=${exception.getMessage}")
+            None
+          case Success(value) => Some(value)
+        }
       })
+      .filter(_.isDefined)
+      .map(_.get)
       .toList
     PlanRunRequests(plans)
   }

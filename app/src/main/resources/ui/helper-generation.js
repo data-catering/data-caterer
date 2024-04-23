@@ -6,6 +6,7 @@ import {
     createNewField,
     createSelect,
     createToast,
+    dispatchEvent,
     findNextLevelNodesByClass,
     getDataConnectionsAndAddToSelect,
     wait
@@ -90,8 +91,10 @@ async function createGenerationFields(dataSourceFields, manualSchema) {
         numFields += 1;
         let newField = await createNewField(numFields, "generation");
         $(manualSchema).find(".accordion").first().append(newField);
-        $(newField).find("[id^=field-name]").val(field.name)[0].dispatchEvent(new Event("input"));
-        $(newField).find("select[class~=field-type]").selectpicker("val", field.type)[0].dispatchEvent(new Event("change"));
+        let updatedFieldName = $(newField).find("[id^=field-name]").val(field.name);
+        dispatchEvent(updatedFieldName, "input");
+        let updatedFieldType = $(newField).find("select[class~=field-type]").selectpicker("val", field.type);
+        dispatchEvent(updatedFieldType, "change");
 
         if (field.options) {
             for (const [optKey, optVal] of Object.entries(field.options)) {
@@ -115,7 +118,8 @@ async function createGenerationFields(dataSourceFields, manualSchema) {
 }
 
 async function createAutoGenerationSchema(autoFromMetadataSchema, dataSource) {
-    $(autoFromMetadataSchema).find(".metadata-connection-name").selectpicker("val", dataSource.fields.optMetadataSource.name)[0].dispatchEvent(new Event("change"));
+    let updatedMetadataSource = $(autoFromMetadataSchema).find(".metadata-connection-name").selectpicker("val", dataSource.fields.optMetadataSource.name);
+    dispatchEvent(updatedMetadataSource, "change");
     // takes some time to get the override options
     await wait(100);
     for (let [key, value] of Object.entries(dataSource.fields.optMetadataSource.overrideOptions)) {

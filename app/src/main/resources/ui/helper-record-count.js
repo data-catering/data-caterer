@@ -4,7 +4,8 @@ import {
     createFormText,
     createInput,
     createRadioButtons,
-    createSelect
+    createSelect,
+    dispatchEvent
 } from "./shared.js";
 
 
@@ -66,7 +67,8 @@ export function createCountElementsFromPlan(dataSource, newDataSource) {
                 $(newDataSource).find("[id^=per-column-record-count]").val(dsCount.perColumnRecords);
             }
             $(newDataSource).find("[id^=per-column-distribution-select]").selectpicker("val", dsCount.perColumnRecordsDistribution);
-            $(newDataSource).find("[id^=per-column-distribution-select]")[0].dispatchEvent(new Event("change"));
+            let updatedPerColumnDistribution = $(newDataSource).find("[id^=per-column-distribution-select]");
+            dispatchEvent(updatedPerColumnDistribution, "change");
             if (dsCount.perColumnRecordsDistribution === "exponential") {
                 $(newDataSource).find("[id^=per-column-distribution-rate]").val(dsCount.perColumnRecordsDistributionRateParam);
             }
