@@ -156,8 +156,16 @@ object PlanRepository extends JsonSupport {
       .asScala
       .map(file => {
         val fileContent = Files.readString(file)
-        fileContent.parseJson.convertTo[PlanRunRequest]
+        val tryParse = Try(fileContent.parseJson.convertTo[PlanRunRequest])
+        tryParse match {
+          case Failure(exception) =>
+            LOGGER.error(s"Failed to parse plan file, file-name=$file, exception=${exception.getMessage}")
+            None
+          case Success(value) => Some(value)
+        }
       })
+      .filter(_.isDefined)
+      .map(_.get)
       .toList
     PlanRunRequests(plans)
   }

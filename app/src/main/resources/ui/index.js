@@ -22,6 +22,7 @@ import {
     createManualContainer,
     createSelect,
     createToast,
+    dispatchEvent,
     executePlan,
     getDataConnectionsAndAddToSelect,
     manualContainerDetails,
@@ -400,7 +401,8 @@ if (currUrlParams.includes("plan-name=")) {
                 let newDataSource = await createDataSourceForPlan(numDataSources);
                 tasksDetailsBody.append(newDataSource);
                 $(newDataSource).find(".task-name-field").val(dataSource.taskName);
-                $(newDataSource).find(".data-connection-name").selectpicker("val", dataSource.name)[0].dispatchEvent(new Event("change"));
+                let updatedConnectionName = $(newDataSource).find(".data-connection-name").selectpicker("val", dataSource.name);
+                dispatchEvent(updatedConnectionName, "change");
 
                 await createGenerationElements(dataSource, newDataSource, numDataSources);
                 createCountElementsFromPlan(dataSource, newDataSource);

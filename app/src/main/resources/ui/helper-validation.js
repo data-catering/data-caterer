@@ -14,7 +14,8 @@ import {
     createCloseButton,
     createManualContainer,
     createNewField,
-    findNextLevelNodesByClass
+    dispatchEvent,
+    findNextLevelNodesByClass,
 } from "./shared.js";
 import {validationTypeOptionsMap} from "./configuration-data.js";
 
@@ -25,7 +26,8 @@ export function incValidations() {
 }
 
 function createGroupByValidationFromPlan(newValidation, validationOpts, validation) {
-    $(newValidation).find("[aria-label=GroupByColumns]").val(validationOpts.groupByColumns)[0].dispatchEvent(new Event("input"));
+    let updatedGroupByCols = $(newValidation).find("[aria-label=GroupByColumns]").val(validationOpts.groupByColumns)
+    dispatchEvent(updatedGroupByCols, "input");
     // can be nested validations
 
     if (validation.nested && validation.nested.validations) {
@@ -69,16 +71,19 @@ async function createValidationsFromDataSource(dataSource, manualValidation) {
         numValidations += 1;
         let newValidation = await createNewField(numValidations, "validation");
         $(manualValidation).children(".accordion").append(newValidation);
-        $(newValidation).find("select[class~=validation-type]").selectpicker("val", validation.type)[0].dispatchEvent(new Event("change"));
+        let updatedValidationType = $(newValidation).find("select[class~=validation-type]").selectpicker("val", validation.type);
+        dispatchEvent(updatedValidationType, "change");
         let validationOpts = validation.options;
         let mainContainer = $(newValidation).find("[id^=data-validation-container]")[0];
 
         if (validation.type === "column" && validationOpts.column) {
-            $(newValidation).find("[aria-label=Field]").val(validationOpts.column)[0].dispatchEvent(new Event("input"));
+            let updatedValidationCol = $(newValidation).find("[aria-label=Field]").val(validationOpts.column)
+            dispatchEvent(updatedValidationCol, "input");
         } else if (validation.type === "groupBy" && validationOpts.groupByColumns) {
             createGroupByValidationFromPlan(newValidation, validationOpts, validation);
         } else if (validation.type === "upstream" && validationOpts.upstreamTaskName) {
-            $(newValidation).find("[aria-label=UpstreamTaskName]").val(validationOpts.upstreamTaskName)[0].dispatchEvent(new Event("input"));
+            let updatedUpstreamTaskName = $(newValidation).find("[aria-label=UpstreamTaskName]").val(validationOpts.upstreamTaskName)
+            dispatchEvent(updatedUpstreamTaskName, "input");
             // can be nested validations
 
             if (validation.nested && validation.nested.validations) {

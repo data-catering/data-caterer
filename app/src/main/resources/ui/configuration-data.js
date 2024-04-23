@@ -1257,10 +1257,10 @@ export let subDataSourceConfigMap = new Map();
 subDataSourceConfigMap.set("http", {
     method: {
         displayName: "Method",
-        default: "N/A",
+        default: "",
         type: "text",
         help: "HTTP method.",
-        choice: ["N/A", "GET", "POST", "PUT", "DELETE", "PATCH", "CONNECT", "OPTIONS", "TRACE", "HEAD"],
+        choice: ["", "GET", "POST", "PUT", "DELETE", "PATCH", "CONNECT", "OPTIONS", "TRACE", "HEAD"],
         override: "true"
     },
     endpoint: {

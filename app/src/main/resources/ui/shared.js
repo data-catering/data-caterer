@@ -957,6 +957,14 @@ export function getOverrideConnectionOptionsAsMap(dataSource) {
         }, {});
 }
 
+export function dispatchEvent(findResult, eventType) {
+    if (findResult.length > 0) {
+        findResult[0].dispatchEvent(new Event(eventType));
+    } else {
+        console.log("Failed to dispatch event");
+    }
+}
+
 export const wait = function (ms = 1000) {
     return new Promise(resolve => {
         setTimeout(resolve, ms);

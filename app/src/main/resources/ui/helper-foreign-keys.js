@@ -16,6 +16,7 @@ import {
     createInput,
     createSelect,
     createTooltip,
+    dispatchEvent,
     getOverrideConnectionOptionsAsMap,
     wait
 } from "./shared.js";
@@ -50,9 +51,10 @@ async function createForeignKeyLinksFromPlan(newForeignKey, foreignKey, linkType
     for (const fkLink of Array.from(foreignKey[`${linkType}Links`])) {
         let newForeignKeyLink = await createForeignKeyInput(numForeignKeysLinks, `foreign-key-${linkType}-link`);
         foreignKeyLinkSources.insertBefore(newForeignKeyLink, foreignKeyLinkSources.lastChild);
-        $(newForeignKeyLink).find(`select.foreign-key-${linkType}-link`).selectpicker("val", fkLink.taskName)[0].dispatchEvent(new Event("change"));
-        ;
-        $(newForeignKeyLink).find(`input.foreign-key-${linkType}-link`).val(fkLink.columns)[0].dispatchEvent(new Event("input"));
+        let updatedForeignKeyTaskName = $(newForeignKeyLink).find(`select.foreign-key-${linkType}-link`).selectpicker("val", fkLink.taskName);
+        dispatchEvent(updatedForeignKeyTaskName, "change");
+        let updatedForeignKeyColumns = $(newForeignKeyLink).find(`input.foreign-key-${linkType}-link`).val(fkLink.columns);
+        dispatchEvent(updatedForeignKeyColumns, "input");
     }
 }
 
@@ -65,9 +67,10 @@ export async function createForeignKeysFromPlan(respJson) {
             foreignKeysAccordion.append(newForeignKey);
 
             if (foreignKey.source) {
-                $(newForeignKey).find("select.foreign-key-source").selectpicker("val", foreignKey.source.taskName)[0].dispatchEvent(new Event("change"));
-                ;
-                $(newForeignKey).find("input.foreign-key-source").val(foreignKey.source.columns)[0].dispatchEvent(new Event("input"));
+                let updatedTaskName = $(newForeignKey).find("select.foreign-key-source").selectpicker("val", foreignKey.source.taskName);
+                dispatchEvent(updatedTaskName, "change");
+                let updatedColumns = $(newForeignKey).find("input.foreign-key-source").val(foreignKey.source.columns);
+                dispatchEvent(updatedColumns, "input");
             }
 
             if (foreignKey.generationLinks) {
@@ -80,15 +83,15 @@ export async function createForeignKeysFromPlan(respJson) {
     }
 }
 
-function getForeignKeyLinksToArray(fkContainer, className) {
-    let mainContainer = $(fkContainer).find(className);
-    let fkLinks = $(mainContainer).find(".foreign-key-input-container");
-    let fkLinksArray = [];
-    for (let fkLink of fkLinks) {
-        let fkLinkDetails = getForeignKeyDetail(fkLink);
-        fkLinksArray.push(fkLinkDetails);
+function getForeignKeyLinksToArray(foreignKeyContainer, className) {
+    let mainContainer = $(foreignKeyContainer).find(className);
+    let foreignKeyLinks = $(mainContainer).find(".foreign-key-input-container");
+    let foreignKeyLinksArray = [];
+    for (let foreignKeyLink of foreignKeyLinks) {
+        let foreignKeyLinkDetails = getForeignKeyDetail(foreignKeyLink);
+        foreignKeyLinksArray.push(foreignKeyLinkDetails);
     }
-    return fkLinksArray;
+    return foreignKeyLinksArray;
 }
 
 export function getForeignKeys() {
