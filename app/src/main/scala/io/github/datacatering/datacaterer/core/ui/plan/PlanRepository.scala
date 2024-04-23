@@ -91,7 +91,8 @@ object PlanRepository extends JsonSupport {
     // get connection info
     val dataSourcesWithConnectionInfo = planRunRequest.dataSources.map(ds => {
       val connectionInfo = ConnectionRepository.getConnection(ds.name, false)
-      ds.copy(`type` = Some(connectionInfo.`type`), options = Some(connectionInfo.options))
+      val allConnectionOptions = connectionInfo.options ++ ds.options.getOrElse(Map())
+      ds.copy(`type` = Some(connectionInfo.`type`), options = Some(allConnectionOptions))
     })
     val planRunWithConnectionInfo = planRunRequest.copy(dataSources = dataSourcesWithConnectionInfo)
     // create new run id

@@ -1,4 +1,9 @@
-import {dataTypeOptionsMap, validationTypeDisplayNameMap, validationTypeOptionsMap} from "./configuration-data.js";
+import {
+    dataSourcePropertiesMap,
+    dataTypeOptionsMap, subDataSourceConfigMap,
+    validationTypeDisplayNameMap,
+    validationTypeOptionsMap
+} from "./configuration-data.js";
 import {
     addColumnValidationBlock,
     incValidations,
@@ -715,7 +720,7 @@ export async function getDataConnectionsAndAddToSelect(dataConnectionSelect, bas
         });
 }
 
-export function createIconWithConnectionTooltip(dataConnectionSelect) {
+export function createTooltip() {
     let iconDiv = document.createElement("i");
     iconDiv.setAttribute("class", "bi bi-info-circle");
     iconDiv.setAttribute("data-bs-toggle", "tooltip");
@@ -724,34 +729,61 @@ export function createIconWithConnectionTooltip(dataConnectionSelect) {
     iconDiv.setAttribute("data-bs-html", "true");
     iconDiv.setAttribute("data-bs-title", "Connection options");
     new bootstrap.Tooltip(iconDiv);
+    return iconDiv;
+}
+
+export function addConnectionOverrideOptions(connectionName, iconDiv, overrideOptionsContainer, propertyClass, index) {
+    fetch(`http://localhost:9898/connection/${connectionName}`, {method: "GET"})
+        .then(r => {
+            if (r.ok) {
+                return r.json();
+            } else {
+                r.text().then(text => {
+                    createToast(`Get connection ${connectionName}`, `Failed to get connection ${connectionName}! Error: ${err}`, "fail");
+                    throw new Error(text);
+                });
+            }
+        })
+        .then(respJson => {
+            if (respJson) {
+                let optionsToShow = {};
+                optionsToShow["type"] = respJson.type;
+                for (let [key, value] of Object.entries(respJson.options)) {
+                    if (key !== "user" && key !== "password") {
+                        optionsToShow[key] = value;
+                    }
+                }
+                let summary = Object.entries(optionsToShow).map(kv => `${kv[0]}: ${kv[1]}`).join("<br>");
+                iconDiv.setAttribute("data-bs-title", summary);
+                new bootstrap.Tooltip(iconDiv);
+
+                //allow overriding sub data source options if not defined in connection
+                //remove previous properties
+                overrideOptionsContainer.replaceChildren();
+                let dataSourceType = respJson.type;
+                let dataSourceProperties = dataSourcePropertiesMap.get(dataSourceType).properties;
+                let propertyEntries = Object.entries(dataSourceProperties);
+                let additionalProperties = subDataSourceConfigMap.has(respJson.type) ? subDataSourceConfigMap.get(respJson.type) : {};
+                Object.entries(additionalProperties).forEach(k => propertyEntries.push(k));
+
+                for (const [key, value] of propertyEntries) {
+                    let isConnectionOptionOverridable = value["override"] && value["override"] === "true";
+                    let isConnectionOptionEmptyOrMissing = !respJson.options[key] || respJson.options[key] === "";
+                    if (isConnectionOptionOverridable && isConnectionOptionEmptyOrMissing) {
+                        //add properties that can be overridden
+                        addNewDataTypeAttribute(key, value, `connection-config-${index}-${key}`, propertyClass, overrideOptionsContainer);
+                    }
+                }
+            }
+        });
+}
+
+export function createIconWithConnectionTooltip(dataConnectionSelect, overrideOptionsContainer, propertyClass, index) {
+    let iconDiv = createTooltip();
     // on select change, update icon title
     dataConnectionSelect.addEventListener("change", (event) => {
         let connectionName = event.target.value;
-        fetch(`http://localhost:9898/connection/${connectionName}`, {method: "GET"})
-            .then(r => {
-                if (r.ok) {
-                    return r.json();
-                } else {
-                    r.text().then(text => {
-                        createToast(`Get connection ${connectionName}`, `Failed to get connection ${connectionName}! Error: ${err}`, "fail");
-                        throw new Error(text);
-                    });
-                }
-            })
-            .then(respJson => {
-                if (respJson) {
-                    let optionsToShow = {};
-                    optionsToShow["type"] = respJson.type;
-                    for (let [key, value] of Object.entries(respJson.options)) {
-                        if (key !== "user" && key !== "password") {
-                            optionsToShow[key] = value;
-                        }
-                    }
-                    let summary = Object.entries(optionsToShow).map(kv => `${kv[0]}: ${kv[1]}`).join("<br>");
-                    iconDiv.setAttribute("data-bs-title", summary);
-                    new bootstrap.Tooltip(iconDiv);
-                }
-            });
+        addConnectionOverrideOptions(connectionName, iconDiv, overrideOptionsContainer, propertyClass, index);
     });
     return iconDiv;
 }
@@ -915,6 +947,15 @@ export async function createNewField(index, type) {
     return accordionItem;
 }
 
+export function getOverrideConnectionOptionsAsMap(dataSource) {
+    return $(dataSource).find("[id^=connection-config-]").toArray()
+        .reduce(function (map, option) {
+            if (option.value !== "") {
+                map[option.getAttribute("aria-label")] = option.value;
+            }
+            return map;
+        }, {});
+}
 
 export const wait = function (ms = 1000) {
     return new Promise(resolve => {

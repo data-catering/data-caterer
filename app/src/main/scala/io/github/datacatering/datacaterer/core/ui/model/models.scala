@@ -67,7 +67,7 @@ case class ForeignKeyRequest(
                               deleteLinks: List[ForeignKeyRequestItem] = List(),
                             )
 
-case class ForeignKeyRequestItem(taskName: String, columns: String)
+case class ForeignKeyRequestItem(taskName: String, columns: String, options: Option[Map[String, String]] = None)
 
 case class ConfigurationRequest(
                                  flag: Map[String, String] = Map(),

@@ -7,6 +7,7 @@ Ability to choose task name and columns. Define custom relationships.
  */
 import {
     addAccordionCloseButton,
+    addConnectionOverrideOptions,
     createAccordionItem,
     createButton,
     createCloseButton,
@@ -14,6 +15,8 @@ import {
     createFormFloating,
     createInput,
     createSelect,
+    createTooltip,
+    getOverrideConnectionOptionsAsMap,
     wait
 } from "./shared.js";
 
@@ -47,7 +50,8 @@ async function createForeignKeyLinksFromPlan(newForeignKey, foreignKey, linkType
     for (const fkLink of Array.from(foreignKey[`${linkType}Links`])) {
         let newForeignKeyLink = await createForeignKeyInput(numForeignKeysLinks, `foreign-key-${linkType}-link`);
         foreignKeyLinkSources.insertBefore(newForeignKeyLink, foreignKeyLinkSources.lastChild);
-        $(newForeignKeyLink).find(`select.foreign-key-${linkType}-link`).selectpicker("val", fkLink.taskName);
+        $(newForeignKeyLink).find(`select.foreign-key-${linkType}-link`).selectpicker("val", fkLink.taskName)[0].dispatchEvent(new Event("change"));
+        ;
         $(newForeignKeyLink).find(`input.foreign-key-${linkType}-link`).val(fkLink.columns)[0].dispatchEvent(new Event("input"));
     }
 }
@@ -61,7 +65,8 @@ export async function createForeignKeysFromPlan(respJson) {
             foreignKeysAccordion.append(newForeignKey);
 
             if (foreignKey.source) {
-                $(newForeignKey).find("select.foreign-key-source").selectpicker("val", foreignKey.source.taskName);
+                $(newForeignKey).find("select.foreign-key-source").selectpicker("val", foreignKey.source.taskName)[0].dispatchEvent(new Event("change"));
+                ;
                 $(newForeignKey).find("input.foreign-key-source").val(foreignKey.source.columns)[0].dispatchEvent(new Event("input"));
             }
 
@@ -76,13 +81,14 @@ export async function createForeignKeysFromPlan(respJson) {
 }
 
 function getForeignKeyLinksToArray(fkContainer, className) {
-    let fkGenerationLinks = $(fkContainer).find(className);
-    let fkGenerationLinkArray = [];
-    for (let fkLink of fkGenerationLinks) {
+    let mainContainer = $(fkContainer).find(className);
+    let fkLinks = $(mainContainer).find(".foreign-key-input-container");
+    let fkLinksArray = [];
+    for (let fkLink of fkLinks) {
         let fkLinkDetails = getForeignKeyDetail(fkLink);
-        fkGenerationLinkArray.push(fkLinkDetails);
+        fkLinksArray.push(fkLinkDetails);
     }
-    return fkGenerationLinkArray;
+    return fkLinksArray;
 }
 
 export function getForeignKeys() {
@@ -90,8 +96,8 @@ export function getForeignKeys() {
     return foreignKeyContainers.map(fkContainer => {
         let fkSource = $(fkContainer).find(".foreign-key-main-source");
         let fkSourceDetails = getForeignKeyDetail(fkSource[0]);
-        let fkGenerationLinkArray = getForeignKeyLinksToArray(fkContainer, ".foreign-key-generation-link-source");
-        let fkDeleteLinkArray = getForeignKeyLinksToArray(fkContainer, ".foreign-key-delete-link-source");
+        let fkGenerationLinkArray = getForeignKeyLinksToArray(fkContainer, ".foreign-key-generation-link-sources");
+        let fkDeleteLinkArray = getForeignKeyLinksToArray(fkContainer, ".foreign-key-delete-link-sources");
         return {source: fkSourceDetails, generationLinks: fkGenerationLinkArray, deleteLinks: fkDeleteLinkArray};
     });
 }
@@ -106,6 +112,10 @@ async function createForeignKeyLinks(index, linkType) {
     let addLinkForeignKeyButton = createButton(`add-foreign-key-${linkType}-link-btn-${index}`, "add-link", "btn btn-secondary", "+ Link");
     addLinkForeignKeyButton.addEventListener("click", async function () {
         numForeignKeysLinks += 1;
+        if (linkSourceForeignKeys.childElementCount > 1) {
+            let divider = document.createElement("hr");
+            linkSourceForeignKeys.insertBefore(divider, addLinkForeignKeyButton);
+        }
         let newForeignKeyLink = await createForeignKeyInput(numForeignKeysLinks, `foreign-key-${linkType}-link`);
         linkSourceForeignKeys.insertBefore(newForeignKeyLink, addLinkForeignKeyButton);
     });
@@ -161,6 +171,8 @@ async function updateForeignKeyTasks(taskNameSelect) {
 }
 
 async function createForeignKeyInput(index, name) {
+    let foreignKeyContainer = document.createElement("div");
+    foreignKeyContainer.setAttribute("class", "foreign-key-input-container m-1");
     let foreignKey = document.createElement("div");
     foreignKey.setAttribute("class", `row m-1 align-items-center ${name}-source`);
     // input is task name -> column(s)
@@ -175,6 +187,22 @@ async function createForeignKeyInput(index, name) {
     let columnNameFloating = createFormFloating("Column(s)", columnNamesInput);
 
     foreignKey.append(taskNameCol, columnNameFloating);
+    //when task name is selected, offer input to define sub data source if not defined
+    //(i.e. schema and table for Postgres task with no schema and table defined, only offer table if schema is defined in data source)
+    //for a http data source, endpoint is not part of the data source
+    //same logic can be shared for data generation/validation to allow re-use of connection
+    let iconDiv = createTooltip();
+    let overrideOptionsContainer = document.createElement("div");
+    overrideOptionsContainer.setAttribute("class", "foreign-key-connection-container");
+    taskNameSelect.addEventListener("change", (event) => {
+        let taskName = event.target.value;
+        //get the corresponding task data source connection name
+        let taskNameInput = $(document).find(`input[class~=task-name-field]`).filter(function () {
+            return this.value === taskName
+        });
+        let connectionName = $(taskNameInput).closest("[class~=row]").find("select[class~=data-connection-name]").val();
+        addConnectionOverrideOptions(connectionName, iconDiv, overrideOptionsContainer, "foreign-key-connection-property", index);
+    });
     if (name === "foreign-key-generation-link" || name === "foreign-key-delete-link") {
         let closeButton = createCloseButton(foreignKey);
         foreignKey.append(closeButton);
@@ -188,11 +216,17 @@ async function createForeignKeyInput(index, name) {
         updateForeignKeyTasks(taskNameSelect);
     });
     await updateForeignKeyTasks(taskNameSelect);
-    return foreignKey;
+    foreignKeyContainer.append(foreignKey, overrideOptionsContainer);
+    return foreignKeyContainer;
 }
 
 function getForeignKeyDetail(element) {
     let taskName = $(element).find("select[aria-label=Task]").val();
     let columns = $(element).find("input[aria-label=Columns]").val();
-    return {taskName: taskName, columns: columns};
+    let baseForeignKey = {taskName: taskName, columns: columns};
+    let overrideConnectionOptions = getOverrideConnectionOptionsAsMap(element);
+    if (Object.keys(overrideConnectionOptions).length > 0) {
+        baseForeignKey["options"] = overrideConnectionOptions;
+    }
+    return baseForeignKey;
 }

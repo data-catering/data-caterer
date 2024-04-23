@@ -203,16 +203,17 @@ async function createDataConnectionInput(index) {
     dataConnectionCol.setAttribute("class", "col");
     dataConnectionCol.append(dataConnectionSelect);
 
-    let iconDiv = createIconWithConnectionTooltip(dataConnectionSelect);
+    // provide opportunity to override non-connection options for metadata source (i.e. namespace, dataset)
+    let overrideOptionsContainer = document.createElement("div");
+    let iconDiv = createIconWithConnectionTooltip(dataConnectionSelect, overrideOptionsContainer, "data-source-property", index);
     let iconCol = document.createElement("div");
     iconCol.setAttribute("class", "col-md-auto");
     iconCol.append(iconDiv);
 
-    // let inputGroup = createInputGroup(dataConnectionSelect, iconDiv, "col");
-    // $(inputGroup).find(".input-group").addClass("align-items-center");
     baseTaskDiv.append(taskNameFormFloating, dataConnectionCol, iconCol);
+    let baseDivWithSelectOptions = await getDataConnectionsAndAddToSelect(dataConnectionSelect, baseTaskDiv, "dataSource");
 
-    return await getDataConnectionsAndAddToSelect(dataConnectionSelect, baseTaskDiv, "dataSource");
+    return [baseDivWithSelectOptions, overrideOptionsContainer];
 }
 
 /*
@@ -225,7 +226,7 @@ async function createDataSourceConfiguration(index, closeButton, divider) {
     let divContainer = document.createElement("div");
     divContainer.setAttribute("id", "data-source-config-container-" + index);
     divContainer.setAttribute("class", "data-source-config-container");
-    let dataConnectionFormFloating = await createDataConnectionInput(index);
+    let [dataConnectionFormFloating, overrideConnectionOptionsContainer] = await createDataConnectionInput(index);
     let dataConfigAccordion = document.createElement("div");
     dataConfigAccordion.setAttribute("class", "accordion mt-2");
     let dataGenConfigContainer = createDataConfigElement(index, "generation");
@@ -236,7 +237,7 @@ async function createDataSourceConfiguration(index, closeButton, divider) {
         divContainer.append(divider);
     }
     dataConnectionFormFloating.append(closeButton);
-    divContainer.append(dataConnectionFormFloating, dataConfigAccordion);
+    divContainer.append(dataConnectionFormFloating, overrideConnectionOptionsContainer, dataConfigAccordion);
     return divContainer;
 }
 
@@ -253,6 +254,10 @@ function createReportConfiguration() {
         }
         configOptionsContainer.append(configRow);
     }
+}
+
+function getOverrideConnectionOptions(dataSource, currentDataSource) {
+    currentDataSource["options"] = getOverrideConnectionOptionsAsMap(dataSource, currentDataSource);
 }
 
 createReportConfiguration();
@@ -274,6 +279,7 @@ function getPlanDetails(form) {
         getGeneration(dataSource, currentDataSource);
         getValidations(dataSource, currentDataSource);
         getRecordCount(dataSource, currentDataSource);
+        getOverrideConnectionOptions(dataSource, currentDataSource);
         allUserInputs.push(currentDataSource);
     }
 
