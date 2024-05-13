@@ -74,8 +74,8 @@ class ValidationProcessor(
         LOGGER.info("No data found to run validations")
         DataSourceValidationResult(dataSourceName, dataSourceValidation.options, List())
       } else {
-        val count = df.count()
-        val results = dataSourceValidation.validations.map(validBuilder => tryValidate(df, count, validBuilder))
+        if (!df.storageLevel.useMemory) df.cache()
+        val results = dataSourceValidation.validations.map(validBuilder => tryValidate(df, validBuilder))
         df.unpersist()
         LOGGER.debug(s"Finished data validations, name=${vc.name}," +
           s"data-source-name=$dataSourceName, details=${dataSourceValidation.options}, num-validations=${dataSourceValidation.validations.size}")
@@ -87,9 +87,13 @@ class ValidationProcessor(
     }
   }
 
-  private def tryValidate(df: DataFrame, count: Long, validBuilder: ValidationBuilder): ValidationResult = {
+  def tryValidate(df: DataFrame, validBuilder: ValidationBuilder): ValidationResult = {
     val validationDescription = validBuilder.validation.toOptions.map(l => s"${l.head}=${l.last}").mkString(", ")
-    Try(getValidationType(validBuilder.validation, foldersConfig.recordTrackingForValidationFolderPath).validate(df, count)) match {
+    val validation = getValidationType(validBuilder.validation, foldersConfig.recordTrackingForValidationFolderPath)
+    val preFilterData = validation.filterData(df)
+    if (!preFilterData.storageLevel.useMemory) preFilterData.cache()
+    val count = preFilterData.count()
+    Try(validation.validate(preFilterData, count)) match {
       case Failure(exception) =>
         LOGGER.error(s"Failed to run data validation, $validationDescription", exception)
         ValidationResult(validBuilder.validation, false, count, count, Some(sparkSession.createDataFrame(Seq(CustomErrorSample(exception.getLocalizedMessage)))))

@@ -1,7 +1,7 @@
 package io.github.datacatering.datacaterer.api
 
 import io.github.datacatering.datacaterer.api.model.Constants.{DEFAULT_VALIDATION_JOIN_TYPE, DEFAULT_VALIDATION_WEBHOOK_HTTP_DATA_SOURCE_NAME, DEFAULT_VALIDATION_WEBHOOK_HTTP_METHOD, DEFAULT_VALIDATION_WEBHOOK_HTTP_STATUS_CODES, PATH, VALIDATION_COLUMN_NAME_COUNT_BETWEEN, VALIDATION_COLUMN_NAME_COUNT_EQUAL, VALIDATION_COLUMN_NAME_MATCH_ORDER, VALIDATION_COLUMN_NAME_MATCH_SET}
-import io.github.datacatering.datacaterer.api.model.{ColumnNamesValidation, DataExistsWaitCondition, ExpressionValidation, FileExistsWaitCondition, GroupByValidation, PauseWaitCondition, UpstreamDataSourceValidation, WebhookWaitCondition}
+import io.github.datacatering.datacaterer.api.model.{ColumnNamesValidation, ConditionType, DataExistsWaitCondition, ExpressionValidation, FileExistsWaitCondition, GroupByValidation, PauseWaitCondition, UpstreamDataSourceValidation, WebhookWaitCondition}
 import org.junit.runner.RunWith
 import org.scalatest.funsuite.AnyFunSuite
 import org.scalatestplus.junit.JUnitRunner
@@ -582,5 +582,36 @@ class ValidationConfigurationBuilderTest extends AnyFunSuite {
     assert(waitCondition.method == "PUT")
     assert(waitCondition.dataSourceName == "my_http")
     assert(waitCondition.statusCodes == List(202))
+  }
+
+  test("Can create column pre-filter condition for validation") {
+    val result = PreFilterBuilder().filter(ValidationBuilder().col("balance").greaterThan(100))
+
+    assertResult(1)(result.validationPreFilterBuilders.size)
+    assert(result.validationPreFilterBuilders.head.isLeft)
+    assert(result.validationPreFilterBuilders.head.left.exists(_.validation.isInstanceOf[ExpressionValidation]))
+  }
+
+  test("Can create column pre-filter condition for validation with OR condition") {
+    val result = PreFilterBuilder()
+      .filter(ValidationBuilder().col("balance").greaterThan(100))
+      .or(ValidationBuilder().col("amount").greaterThan(10))
+
+    assertResult(3)(result.validationPreFilterBuilders.size)
+    assert(result.validationPreFilterBuilders.head.isLeft)
+    assert(result.validationPreFilterBuilders.head.left.exists(_.validation.isInstanceOf[ExpressionValidation]))
+    assert(result.validationPreFilterBuilders(1).isRight)
+    assert(result.validationPreFilterBuilders(1).right.exists(_ == ConditionType.OR))
+    assert(result.validationPreFilterBuilders.last.isLeft)
+    assert(result.validationPreFilterBuilders.last.left.exists(_.validation.isInstanceOf[ExpressionValidation]))
+  }
+
+  test("Can create pre-filter conditions for validation") {
+    val result = ValidationBuilder()
+      .preFilter(PreFilterBuilder().filter(ValidationBuilder().col("category").in("utilities")))
+      .col("amount").greaterThan(100)
+
+    assert(result.optCombinationPreFilterBuilder.isDefined)
+    assert(result.optCombinationPreFilterBuilder.get.validate())
   }
 }

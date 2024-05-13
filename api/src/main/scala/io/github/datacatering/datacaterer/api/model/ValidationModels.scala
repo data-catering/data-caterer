@@ -4,7 +4,7 @@ import com.fasterxml.jackson.annotation.JsonTypeInfo.Id
 import com.fasterxml.jackson.annotation.{JsonIgnoreProperties, JsonTypeInfo}
 import com.fasterxml.jackson.databind.annotation.{JsonDeserialize, JsonTypeIdResolver}
 import Constants.{AGGREGATION_SUM, DEFAULT_VALIDATION_COLUMN_NAME_TYPE, DEFAULT_VALIDATION_CONFIG_NAME, DEFAULT_VALIDATION_DESCRIPTION, DEFAULT_VALIDATION_JOIN_TYPE, DEFAULT_VALIDATION_WEBHOOK_HTTP_METHOD, DEFAULT_VALIDATION_WEBHOOK_HTTP_STATUS_CODES, VALIDATION_COLUMN_NAME_COUNT_BETWEEN, VALIDATION_COLUMN_NAME_COUNT_EQUAL, VALIDATION_COLUMN_NAME_MATCH_ORDER, VALIDATION_COLUMN_NAME_MATCH_SET}
-import io.github.datacatering.datacaterer.api.ValidationBuilder
+import io.github.datacatering.datacaterer.api.{CombinationPreFilterBuilder, PreFilterBuilder, ValidationBuilder}
 import io.github.datacatering.datacaterer.api.connection.{ConnectionTaskBuilder, FileBuilder}
 import io.github.datacatering.datacaterer.api.parser.ValidationIdResolver
 
@@ -15,6 +15,7 @@ import io.github.datacatering.datacaterer.api.parser.ValidationIdResolver
 trait Validation {
   var description: Option[String] = None
   @JsonDeserialize(contentAs = classOf[java.lang.Double]) var errorThreshold: Option[Double] = None
+  var preFilter: Option[CombinationPreFilterBuilder] = None
 
   def toOptions: List[List[String]]
 }
@@ -120,3 +121,8 @@ case class WebhookWaitCondition(
                                  method: String = DEFAULT_VALIDATION_WEBHOOK_HTTP_METHOD,
                                  statusCodes: List[Int] = DEFAULT_VALIDATION_WEBHOOK_HTTP_STATUS_CODES
                                ) extends WaitCondition
+
+object ConditionType extends Enumeration {
+  type ConditionType = Value
+  val AND, OR = Value
+}
