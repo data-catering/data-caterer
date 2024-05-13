@@ -1,10 +1,11 @@
 package io.github.datacatering.datacaterer.api
 
 import com.fasterxml.jackson.databind.annotation.JsonSerialize
-import io.github.datacatering.datacaterer.api.model.Constants.{AGGREGATION_AVG, AGGREGATION_COUNT, AGGREGATION_MAX, AGGREGATION_MIN, AGGREGATION_STDDEV, AGGREGATION_SUM, DEFAULT_VALIDATION_COLUMN_NAME_TYPE, DEFAULT_VALIDATION_JOIN_TYPE, DEFAULT_VALIDATION_WEBHOOK_HTTP_DATA_SOURCE_NAME, MAXIMUM, MINIMUM, VALIDATION_COLUMN_NAME_COUNT_BETWEEN, VALIDATION_COLUMN_NAME_COUNT_EQUAL, VALIDATION_COLUMN_NAME_MATCH_ORDER, VALIDATION_COLUMN_NAME_MATCH_SET, VALIDATION_PREFIX_JOIN_EXPRESSION, VALIDATION_UNIQUE}
 import com.softwaremill.quicklens.ModifyPimp
 import io.github.datacatering.datacaterer.api.connection.{ConnectionTaskBuilder, FileBuilder}
-import io.github.datacatering.datacaterer.api.model.{ColumnNamesValidation, DataExistsWaitCondition, DataSourceValidation, ExpressionValidation, FileExistsWaitCondition, GroupByValidation, PauseWaitCondition, UpstreamDataSourceValidation, Validation, ValidationConfiguration, WaitCondition, WebhookWaitCondition}
+import io.github.datacatering.datacaterer.api.model.ConditionType.ConditionType
+import io.github.datacatering.datacaterer.api.model.Constants.{AGGREGATION_AVG, AGGREGATION_COUNT, AGGREGATION_MAX, AGGREGATION_MIN, AGGREGATION_STDDEV, AGGREGATION_SUM, DEFAULT_VALIDATION_JOIN_TYPE, DEFAULT_VALIDATION_WEBHOOK_HTTP_DATA_SOURCE_NAME, VALIDATION_COLUMN_NAME_COUNT_BETWEEN, VALIDATION_COLUMN_NAME_COUNT_EQUAL, VALIDATION_COLUMN_NAME_MATCH_ORDER, VALIDATION_COLUMN_NAME_MATCH_SET, VALIDATION_PREFIX_JOIN_EXPRESSION, VALIDATION_UNIQUE}
+import io.github.datacatering.datacaterer.api.model.{ColumnNamesValidation, ConditionType, DataExistsWaitCondition, DataSourceValidation, ExpressionValidation, FileExistsWaitCondition, GroupByValidation, PauseWaitCondition, UpstreamDataSourceValidation, Validation, ValidationConfiguration, WaitCondition, WebhookWaitCondition}
 import io.github.datacatering.datacaterer.api.parser.ValidationBuilderSerializer
 
 import java.sql.{Date, Timestamp}
@@ -89,8 +90,8 @@ case class DataSourceValidationBuilder(dataSourceValidation: DataSourceValidatio
 }
 
 @JsonSerialize(using = classOf[ValidationBuilderSerializer])
-case class ValidationBuilder(validation: Validation = ExpressionValidation()) {
-  def this() = this(ExpressionValidation())
+case class ValidationBuilder(validation: Validation = ExpressionValidation(), optCombinationPreFilterBuilder: Option[CombinationPreFilterBuilder] = None) {
+  def this() = this(ExpressionValidation(), None)
 
   def description(description: String): ValidationBuilder = {
     this.validation.description = Some(description)
@@ -133,6 +134,7 @@ case class ValidationBuilder(validation: Validation = ExpressionValidation()) {
       case expressionValidation: ExpressionValidation =>
         val withExpr = expressionValidation.modify(_.whereExpr).setTo(expr)
         copyWithDescAndThreshold(withExpr)
+      case _ => copyWithDescAndThreshold(ExpressionValidation(expr))
     }
   }
 
@@ -151,6 +153,7 @@ case class ValidationBuilder(validation: Validation = ExpressionValidation()) {
       case expressionValidation: ExpressionValidation =>
         val withExpr = expressionValidation.modify(_.selectExpr).setTo(expr.toList)
         copyWithDescAndThreshold(withExpr)
+      case _ => copyWithDescAndThreshold(ExpressionValidation(selectExpr = expr.toList))
     }
   }
 
@@ -213,9 +216,14 @@ case class ValidationBuilder(validation: Validation = ExpressionValidation()) {
     ColumnNamesValidationBuilder()
   }
 
+  def preFilter(combinationPreFilterBuilder: CombinationPreFilterBuilder): ValidationBuilder = {
+    this.modify(_.optCombinationPreFilterBuilder).setTo(Some(combinationPreFilterBuilder))
+  }
+
   private def copyWithDescAndThreshold(newValidation: Validation): ValidationBuilder = {
     newValidation.description = this.validation.description
     newValidation.errorThreshold = this.validation.errorThreshold
+    newValidation.preFilter = this.optCombinationPreFilterBuilder
     this.modify(_.validation).setTo(newValidation)
   }
 }
@@ -225,6 +233,7 @@ case class ColumnValidationBuilder(validationBuilder: ValidationBuilder = Valida
 
   /**
    * Check if column values are equal to a certain value
+   *
    * @param value Expected value for all column values
    * @return
    */
@@ -234,6 +243,7 @@ case class ColumnValidationBuilder(validationBuilder: ValidationBuilder = Valida
 
   /**
    * Check if column values are equal to another column for each record
+   *
    * @param value Other column name
    * @return
    */
@@ -243,6 +253,7 @@ case class ColumnValidationBuilder(validationBuilder: ValidationBuilder = Valida
 
   /**
    * Check if column values are not equal to a certain value
+   *
    * @param value Value column should not equal to
    * @return
    */
@@ -252,6 +263,7 @@ case class ColumnValidationBuilder(validationBuilder: ValidationBuilder = Valida
 
   /**
    * Check if column values are not equal to another column's value for each record
+   *
    * @param value Other column name not equal to
    * @return
    */
@@ -261,6 +273,7 @@ case class ColumnValidationBuilder(validationBuilder: ValidationBuilder = Valida
 
   /**
    * Check if column values are null
+   *
    * @return
    */
   def isNull: ValidationBuilder = {
@@ -269,6 +282,7 @@ case class ColumnValidationBuilder(validationBuilder: ValidationBuilder = Valida
 
   /**
    * Check if column values are not null
+   *
    * @return
    */
   def isNotNull: ValidationBuilder = {
@@ -277,6 +291,7 @@ case class ColumnValidationBuilder(validationBuilder: ValidationBuilder = Valida
 
   /**
    * Check if column values contain particular string (only for string type columns)
+   *
    * @param value Expected string that column values contain
    * @return
    */
@@ -286,6 +301,7 @@ case class ColumnValidationBuilder(validationBuilder: ValidationBuilder = Valida
 
   /**
    * Check if column values do not contain particular string (only for string type columns)
+   *
    * @param value String value not expected to contain in column values
    * @return
    */
@@ -295,6 +311,7 @@ case class ColumnValidationBuilder(validationBuilder: ValidationBuilder = Valida
 
   /**
    * Check if column values are less than certain value
+   *
    * @param value Less than value
    * @return
    */
@@ -304,6 +321,7 @@ case class ColumnValidationBuilder(validationBuilder: ValidationBuilder = Valida
 
   /**
    * Check if column values are less than another column's values for each record
+   *
    * @param value Other column name
    * @return
    */
@@ -313,6 +331,7 @@ case class ColumnValidationBuilder(validationBuilder: ValidationBuilder = Valida
 
   /**
    * Check if column values are less than or equal to certain value
+   *
    * @param value Less than or equal to value
    * @return
    */
@@ -322,6 +341,7 @@ case class ColumnValidationBuilder(validationBuilder: ValidationBuilder = Valida
 
   /**
    * Check if column values are less than or equal to another column's values for each record
+   *
    * @param value Other column name
    * @return
    */
@@ -331,6 +351,7 @@ case class ColumnValidationBuilder(validationBuilder: ValidationBuilder = Valida
 
   /**
    * Check if column is greater than a certain value
+   *
    * @param value Greater than value
    * @return
    */
@@ -340,6 +361,7 @@ case class ColumnValidationBuilder(validationBuilder: ValidationBuilder = Valida
 
   /**
    * Check if column is greater than another column's values for each record
+   *
    * @param value Other column name
    * @return
    */
@@ -349,6 +371,7 @@ case class ColumnValidationBuilder(validationBuilder: ValidationBuilder = Valida
 
   /**
    * Check if column is greater than or equal to a certain value
+   *
    * @param value Greater than or equal to value
    * @return
    */
@@ -358,6 +381,7 @@ case class ColumnValidationBuilder(validationBuilder: ValidationBuilder = Valida
 
   /**
    * Check if column is greater than or equal to another column's values for each record
+   *
    * @param value Other column name
    * @return
    */
@@ -367,6 +391,7 @@ case class ColumnValidationBuilder(validationBuilder: ValidationBuilder = Valida
 
   /**
    * Check if column values are between two values (inclusive)
+   *
    * @param minValue Minimum value (inclusive)
    * @param maxValue Maximum value (inclusive)
    * @return
@@ -377,6 +402,7 @@ case class ColumnValidationBuilder(validationBuilder: ValidationBuilder = Valida
 
   /**
    * Check if column values are between values of other columns (inclusive)
+   *
    * @param minValue Other column name determining minimum value (inclusive)
    * @param maxValue Other column name determining maximum value (inclusive)
    * @return
@@ -387,6 +413,7 @@ case class ColumnValidationBuilder(validationBuilder: ValidationBuilder = Valida
 
   /**
    * Check if column values are not between two values
+   *
    * @param minValue Minimum value
    * @param maxValue Maximum value
    * @return
@@ -397,6 +424,7 @@ case class ColumnValidationBuilder(validationBuilder: ValidationBuilder = Valida
 
   /**
    * Check if column values are not between values of other columns
+   *
    * @param minValue Other column name determining minimum value
    * @param maxValue Other column name determining maximum value
    * @return
@@ -407,6 +435,7 @@ case class ColumnValidationBuilder(validationBuilder: ValidationBuilder = Valida
 
   /**
    * Check if column values are in given set of expected values
+   *
    * @param values Expected set of values
    * @return
    */
@@ -416,6 +445,7 @@ case class ColumnValidationBuilder(validationBuilder: ValidationBuilder = Valida
 
   /**
    * Check if column values are not in given set of values
+   *
    * @param values Set of unwanted values
    * @return
    */
@@ -425,6 +455,7 @@ case class ColumnValidationBuilder(validationBuilder: ValidationBuilder = Valida
 
   /**
    * Check if column values match certain regex pattern (Java regular expression)
+   *
    * @param regex Java regular expression
    * @return
    */
@@ -434,6 +465,7 @@ case class ColumnValidationBuilder(validationBuilder: ValidationBuilder = Valida
 
   /**
    * Check if column values do not match certain regex (Java regular expression)
+   *
    * @param regex Java regular expression
    * @return
    */
@@ -443,6 +475,7 @@ case class ColumnValidationBuilder(validationBuilder: ValidationBuilder = Valida
 
   /**
    * Check if column values start with certain string (only for string columns)
+   *
    * @param value Expected prefix for string values
    * @return
    */
@@ -452,6 +485,7 @@ case class ColumnValidationBuilder(validationBuilder: ValidationBuilder = Valida
 
   /**
    * Check if column values do not start with certain string (only for string columns)
+   *
    * @param value Prefix string value should not start with
    * @return
    */
@@ -461,6 +495,7 @@ case class ColumnValidationBuilder(validationBuilder: ValidationBuilder = Valida
 
   /**
    * Check if column values end with certain string (only for string columns)
+   *
    * @param value Expected suffix for string
    * @return
    */
@@ -470,6 +505,7 @@ case class ColumnValidationBuilder(validationBuilder: ValidationBuilder = Valida
 
   /**
    * Check if column values do not end with certain string (only for string columns)
+   *
    * @param value Suffix string value should not end with
    * @return
    */
@@ -479,6 +515,7 @@ case class ColumnValidationBuilder(validationBuilder: ValidationBuilder = Valida
 
   /**
    * Check if column size is equal to certain amount (only for array or map columns)
+   *
    * @param size Expected size
    * @return
    */
@@ -488,6 +525,7 @@ case class ColumnValidationBuilder(validationBuilder: ValidationBuilder = Valida
 
   /**
    * Check if column size is not equal to certain amount (only for array or map columns)
+   *
    * @param size Array or map size should not equal
    * @return
    */
@@ -497,6 +535,7 @@ case class ColumnValidationBuilder(validationBuilder: ValidationBuilder = Valida
 
   /**
    * Check if column size is less than certain amount (only for array or map columns)
+   *
    * @param size Less than size
    * @return
    */
@@ -506,6 +545,7 @@ case class ColumnValidationBuilder(validationBuilder: ValidationBuilder = Valida
 
   /**
    * Check if column size is less than or equal to certain amount (only for array or map columns)
+   *
    * @param size Less than or equal to size
    * @return
    */
@@ -515,6 +555,7 @@ case class ColumnValidationBuilder(validationBuilder: ValidationBuilder = Valida
 
   /**
    * Check if column size is greater than certain amount (only for array or map columns)
+   *
    * @param size Greater than size
    * @return
    */
@@ -524,6 +565,7 @@ case class ColumnValidationBuilder(validationBuilder: ValidationBuilder = Valida
 
   /**
    * Check if column size is greater than or equal to certain amount (only for array or map columns)
+   *
    * @param size Greater than or equal to size
    * @return
    */
@@ -533,6 +575,7 @@ case class ColumnValidationBuilder(validationBuilder: ValidationBuilder = Valida
 
   /**
    * Check if column values adhere to Luhn algorithm. Usually used for credit card or identification numbers.
+   *
    * @return
    */
   def luhnCheck: ValidationBuilder = {
@@ -541,6 +584,7 @@ case class ColumnValidationBuilder(validationBuilder: ValidationBuilder = Valida
 
   /**
    * Check if column values adhere to expected type
+   *
    * @param `type` Expected data type
    * @return
    */
@@ -550,6 +594,7 @@ case class ColumnValidationBuilder(validationBuilder: ValidationBuilder = Valida
 
   /**
    * Check if SQL expression is true or not. Can include reference to any other columns in the dataset.
+   *
    * @param expr SQL expression
    * @return
    */
@@ -575,6 +620,7 @@ case class GroupByValidationBuilder(
 
   /**
    * Sum all values for column
+   *
    * @param column Name of column to sum
    * @return
    */
@@ -584,6 +630,7 @@ case class GroupByValidationBuilder(
 
   /**
    * Count the number of records for a particular column
+   *
    * @param column Name of column to count
    * @return
    */
@@ -593,6 +640,7 @@ case class GroupByValidationBuilder(
 
   /**
    * Count the number of records for the whole dataset
+   *
    * @return
    */
   def count(): ColumnValidationBuilder = {
@@ -601,6 +649,7 @@ case class GroupByValidationBuilder(
 
   /**
    * Get the minimum value for a particular column
+   *
    * @param column Name of column
    * @return
    */
@@ -610,6 +659,7 @@ case class GroupByValidationBuilder(
 
   /**
    * Get the maximum value for a particular column
+   *
    * @param column Name of column
    * @return
    */
@@ -619,6 +669,7 @@ case class GroupByValidationBuilder(
 
   /**
    * Get the average/mean for a particular column
+   *
    * @param column Name of column
    * @return
    */
@@ -628,6 +679,7 @@ case class GroupByValidationBuilder(
 
   /**
    * Get the standard deviation for a particular column
+   *
    * @param column Name of column
    * @return
    */
@@ -667,6 +719,7 @@ case class UpstreamDataSourceValidationBuilder(
 
   /**
    * Define set of column names to use for join with upstream dataset
+   *
    * @param joinCols Column names used for join
    * @return
    */
@@ -677,6 +730,7 @@ case class UpstreamDataSourceValidationBuilder(
   /**
    * Define SQL expression that determines the logic to join the current dataset with the upstream dataset. Must return
    * boolean value.
+   *
    * @param expr SQL expression returning boolean
    * @return
    */
@@ -703,6 +757,7 @@ case class UpstreamDataSourceValidationBuilder(
 
   /**
    * Define validation to be used on joined dataset
+   *
    * @param validationBuilder Validation check on joined dataset
    * @return
    */
@@ -727,6 +782,7 @@ case class ColumnNamesValidationBuilder(
 
   /**
    * Check number of columns is between two values
+   *
    * @param min Minimum number of expected columns (inclusive)
    * @param max Maximum number of expected columns (inclusive)
    * @return ValidationBuilder
@@ -736,6 +792,7 @@ case class ColumnNamesValidationBuilder(
 
   /**
    * Order of column names matches given order
+   *
    * @param columnNameOrder Expected column name ordering
    * @return ValidationBuilder
    */
@@ -744,6 +801,7 @@ case class ColumnNamesValidationBuilder(
 
   /**
    * Dataset column names contains set of column names
+   *
    * @param columnNames Column names expected to exist within dataset
    * @return ValidationBuilder
    */
@@ -825,4 +883,29 @@ case class WaitConditionBuilder(waitCondition: WaitCondition = PauseWaitConditio
    */
   @varargs def webhook(dataSourceName: String, url: String, method: String, statusCode: Int*): WaitConditionBuilder =
     this.modify(_.waitCondition).setTo(WebhookWaitCondition(dataSourceName, url, method, statusCode.toList))
+}
+
+case class PreFilterBuilder(combinationPreFilterBuilder: CombinationPreFilterBuilder = CombinationPreFilterBuilder()) {
+  def this() = this(CombinationPreFilterBuilder(List()))
+
+  def filter(validationBuilder: ValidationBuilder): CombinationPreFilterBuilder =
+    CombinationPreFilterBuilder(List(Left(validationBuilder)))
+}
+
+case class CombinationPreFilterBuilder(validationPreFilterBuilders: List[Either[ValidationBuilder, ConditionType]] = List()) {
+
+  def and(validationBuilder: ValidationBuilder): CombinationPreFilterBuilder =
+    this.modify(_.validationPreFilterBuilders).setTo(validationPreFilterBuilders ++ List(Right(ConditionType.AND), Left(validationBuilder)))
+
+  def or(validationBuilder: ValidationBuilder): CombinationPreFilterBuilder =
+    this.modify(_.validationPreFilterBuilders).setTo(validationPreFilterBuilders ++ List(Right(ConditionType.OR), Left(validationBuilder)))
+
+  def validate(): Boolean = {
+    if (validationPreFilterBuilders.size < 3) {
+      validationPreFilterBuilders.size == 1 && validationPreFilterBuilders.head.isLeft
+    } else {
+      validationPreFilterBuilders.sliding(3, 2)
+        .forall(grp => grp.head.isLeft && grp(1).isRight && grp.last.isLeft)
+    }
+  }
 }

@@ -1,7 +1,7 @@
 package io.github.datacatering.datacaterer.core.validator
 
 import io.github.datacatering.datacaterer.api.model.Constants.{AGGREGATION_COUNT, FORMAT, VALIDATION_COLUMN_NAME_COUNT_BETWEEN, VALIDATION_COLUMN_NAME_COUNT_EQUAL, VALIDATION_COLUMN_NAME_MATCH_ORDER, VALIDATION_COLUMN_NAME_MATCH_SET, VALIDATION_PREFIX_JOIN_EXPRESSION, VALIDATION_UNIQUE}
-import io.github.datacatering.datacaterer.api.model.{ColumnNamesValidation, ExpressionValidation, GroupByValidation, UpstreamDataSourceValidation, Validation}
+import io.github.datacatering.datacaterer.api.model.{ColumnNamesValidation, ConditionType, ExpressionValidation, GroupByValidation, UpstreamDataSourceValidation, Validation}
 import io.github.datacatering.datacaterer.core.model.ValidationResult
 import io.github.datacatering.datacaterer.core.validator.ValidationHelper.getValidationType
 import org.apache.log4j.Logger
@@ -9,7 +9,34 @@ import org.apache.spark.sql.functions.{col, expr}
 import org.apache.spark.sql.{DataFrame, Dataset, Encoder, Encoders, Row, SparkSession}
 
 abstract class ValidationOps(validation: Validation) {
+
+  private val LOGGER = Logger.getLogger(getClass.getName)
+
   def validate(df: DataFrame, dfCount: Long): ValidationResult
+
+  def filterData(df: DataFrame): DataFrame = {
+    validation.preFilter.map(preFilter => {
+      val filterBuilders = preFilter.validationPreFilterBuilders
+      val isValidFilter = preFilter.validate()
+      if (isValidFilter) {
+        val preFilterExpression = filterBuilders.map {
+          case Left(validationBuilder) =>
+            validationBuilder.validation match {
+              case exprValidation: ExpressionValidation => exprValidation.whereExpr
+              case _ =>
+                LOGGER.warn("Currently no support for pre-filter via group by, upstream or column names, ignoring pre-filter")
+                "true"
+            }
+          case Right(conditionType) => conditionType.toString
+        }.mkString(" ")
+        LOGGER.info(s"Using pre-filter before running data validation, pre-filter-expression=$preFilterExpression")
+        df.where(preFilterExpression)
+      } else {
+        LOGGER.warn(s"Invalid pre-filter defined for validation, defaulting to using unfiltered dataset")
+        df
+      }
+    }).getOrElse(df)
+  }
 
   def validateWithExpression(df: DataFrame, dfCount: Long, expression: String): ValidationResult = {
     val notEqualDf = df.where(s"!($expression)")
