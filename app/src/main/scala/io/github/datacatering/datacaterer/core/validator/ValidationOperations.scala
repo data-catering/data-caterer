@@ -16,19 +16,9 @@ abstract class ValidationOps(validation: Validation) {
 
   def filterData(df: DataFrame): DataFrame = {
     validation.preFilter.map(preFilter => {
-      val filterBuilders = preFilter.validationPreFilterBuilders
       val isValidFilter = preFilter.validate()
       if (isValidFilter) {
-        val preFilterExpression = filterBuilders.map {
-          case Left(validationBuilder) =>
-            validationBuilder.validation match {
-              case exprValidation: ExpressionValidation => exprValidation.whereExpr
-              case _ =>
-                LOGGER.warn("Currently no support for pre-filter via group by, upstream or column names, ignoring pre-filter")
-                "true"
-            }
-          case Right(conditionType) => conditionType.toString
-        }.mkString(" ")
+        val preFilterExpression = preFilter.toExpression
         LOGGER.info(s"Using pre-filter before running data validation, pre-filter-expression=$preFilterExpression")
         df.where(preFilterExpression)
       } else {

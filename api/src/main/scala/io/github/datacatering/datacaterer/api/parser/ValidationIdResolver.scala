@@ -30,6 +30,9 @@ class ValidationBuilderSerializer extends JsonSerializer[ValidationBuilder] {
   override def serialize(value: ValidationBuilder, gen: JsonGenerator, serializers: SerializerProvider): Unit = {
     val validation = value.validation
     gen.writeStartObject()
+    validation.preFilter.foreach(preFilter => {
+      gen.writeStringField("preFilterExpr", preFilter.toExpression)
+    })
     validation match {
       case ExpressionValidation(expr, selectExpr) =>
         gen.writeArrayFieldStart("selectExpr")

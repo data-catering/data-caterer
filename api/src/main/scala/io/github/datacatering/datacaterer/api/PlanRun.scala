@@ -38,6 +38,10 @@ trait PlanRun {
 
   def validation: ValidationBuilder = ValidationBuilder()
 
+  def preFilterBuilder(validationBuilder: ValidationBuilder): CombinationPreFilterBuilder = PreFilterBuilder().filter(validationBuilder)
+
+  def columnPreFilter(column: String): ColumnValidationBuilder = ValidationBuilder().col(column)
+
   def dataSourceValidation: DataSourceValidationBuilder = DataSourceValidationBuilder()
 
   def validationConfig: ValidationConfigurationBuilder = ValidationConfigurationBuilder()
