@@ -220,6 +220,10 @@ case class ValidationBuilder(validation: Validation = ExpressionValidation(), op
     this.modify(_.optCombinationPreFilterBuilder).setTo(Some(combinationPreFilterBuilder))
   }
 
+  def preFilter(validationBuilder: ValidationBuilder): ValidationBuilder = {
+    this.modify(_.optCombinationPreFilterBuilder).setTo(Some(PreFilterBuilder().filter(validationBuilder)))
+  }
+
   private def copyWithDescAndThreshold(newValidation: Validation): ValidationBuilder = {
     newValidation.description = this.validation.description
     newValidation.errorThreshold = this.validation.errorThreshold
@@ -886,13 +890,20 @@ case class WaitConditionBuilder(waitCondition: WaitCondition = PauseWaitConditio
 }
 
 case class PreFilterBuilder(combinationPreFilterBuilder: CombinationPreFilterBuilder = CombinationPreFilterBuilder()) {
-  def this() = this(CombinationPreFilterBuilder(List()))
+  def this() = this(CombinationPreFilterBuilder(None, List()))
 
   def filter(validationBuilder: ValidationBuilder): CombinationPreFilterBuilder =
-    CombinationPreFilterBuilder(List(Left(validationBuilder)))
+    CombinationPreFilterBuilder(None, List(Left(validationBuilder)))
 }
 
-case class CombinationPreFilterBuilder(validationPreFilterBuilders: List[Either[ValidationBuilder, ConditionType]] = List()) {
+case class CombinationPreFilterBuilder(
+                                        preFilterExpr: Option[String] = None,
+                                        validationPreFilterBuilders: List[Either[ValidationBuilder, ConditionType]] = List()
+                                      ) {
+
+  def this() = this(None, List())
+
+  def expr(expr: String): CombinationPreFilterBuilder = this.modify(_.preFilterExpr).setTo(Some(expr))
 
   def and(validationBuilder: ValidationBuilder): CombinationPreFilterBuilder =
     this.modify(_.validationPreFilterBuilders).setTo(validationPreFilterBuilders ++ List(Right(ConditionType.AND), Left(validationBuilder)))
@@ -907,5 +918,18 @@ case class CombinationPreFilterBuilder(validationPreFilterBuilders: List[Either[
       validationPreFilterBuilders.sliding(3, 2)
         .forall(grp => grp.head.isLeft && grp(1).isRight && grp.last.isLeft)
     }
+  }
+
+  def toExpression: String = {
+    preFilterExpr.getOrElse(
+      validationPreFilterBuilders.map {
+        case Left(validationBuilder) =>
+          validationBuilder.validation match {
+            case exprValidation: ExpressionValidation => exprValidation.whereExpr
+            case _ => "true"
+          }
+        case Right(conditionType) => conditionType.toString
+      }.mkString(" ")
+    )
   }
 }

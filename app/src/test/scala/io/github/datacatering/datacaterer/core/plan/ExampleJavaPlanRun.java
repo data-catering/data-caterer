@@ -62,7 +62,12 @@ public class ExampleJavaPlanRun extends PlanRun {
                 .validations(
                         validation().expr("amount > 0").errorThreshold(0.01),
                         validation().expr("LENGTH(name) > 3").errorThreshold(5),
-                        validation().expr("LENGTH(merchant) > 0").description("Non-empty merchant name")
+                        validation().expr("LENGTH(merchant) > 0").description("Non-empty merchant name"),
+                        validation().preFilter(columnPreFilter("account_id").startsWith("ACC")).col("amount").greaterThan(100),
+                        validation().preFilter(
+                                preFilterBuilder(columnPreFilter("account_id").startsWith("ACC"))
+                                        .and(columnPreFilter("merchant").isNotNull())
+                        ).col("name").isNotNull()
                 );
 
         var foreignKeySetup = plan()

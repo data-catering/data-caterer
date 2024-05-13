@@ -2,6 +2,8 @@ package io.github.datacatering.datacaterer.javaapi.api;
 
 
 import io.github.datacatering.datacaterer.api.BasePlanRun;
+import io.github.datacatering.datacaterer.api.ColumnValidationBuilder;
+import io.github.datacatering.datacaterer.api.CombinationPreFilterBuilder;
 import io.github.datacatering.datacaterer.api.CountBuilder;
 import io.github.datacatering.datacaterer.api.DataCatererConfigurationBuilder;
 import io.github.datacatering.datacaterer.api.DataSourceValidationBuilder;
@@ -9,6 +11,7 @@ import io.github.datacatering.datacaterer.api.FieldBuilder;
 import io.github.datacatering.datacaterer.api.GeneratorBuilder;
 import io.github.datacatering.datacaterer.api.MetadataSourceBuilder;
 import io.github.datacatering.datacaterer.api.PlanBuilder;
+import io.github.datacatering.datacaterer.api.PreFilterBuilder;
 import io.github.datacatering.datacaterer.api.SchemaBuilder;
 import io.github.datacatering.datacaterer.api.StepBuilder;
 import io.github.datacatering.datacaterer.api.TaskBuilder;
@@ -90,6 +93,14 @@ public abstract class PlanRun {
         return new ValidationBuilder();
     }
 
+    public CombinationPreFilterBuilder preFilterBuilder(ValidationBuilder validationBuilder) {
+        return new PreFilterBuilder().filter(validationBuilder);
+    }
+
+    public ColumnValidationBuilder columnPreFilter(String column) {
+        return new ValidationBuilder().col(column);
+    }
+
     public DataSourceValidationBuilder dataSourceValidation() {
         return new DataSourceValidationBuilder();
     }
@@ -98,7 +109,9 @@ public abstract class PlanRun {
         return new ValidationConfigurationBuilder();
     }
 
-    public MetadataSourceBuilder metadataSource() { return new MetadataSourceBuilder(); }
+    public MetadataSourceBuilder metadataSource() {
+        return new MetadataSourceBuilder();
+    }
 
     public ForeignKeyRelation foreignField(String dataSource, String step, String column) {
         return new ForeignKeyRelation(dataSource, step, column);

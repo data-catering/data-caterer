@@ -63,6 +63,12 @@ class PlanProcessorTest extends SparkSuite {
           validation.expr("amount > 0").errorThreshold(0.01),
           validation.expr("LENGTH(name) > 3").errorThreshold(5),
           validation.expr("LENGTH(merchant) > 0").description("Non-empty merchant name"),
+          validation.preFilter(columnPreFilter("name").isEqual("peter"))
+            .col("amount").greaterThan(50),
+          validation.preFilter(
+            preFilterBuilder(columnPreFilter("name").startsWith("john"))
+              .and(columnPreFilter("amount").greaterThan(10))
+          ).col("account_id").isNotNull,
         )
 
       val foreignKeySetup = plan
@@ -108,7 +114,9 @@ class PlanProcessorTest extends SparkSuite {
   ignore("Write YAML for plan") {
     val docPlanRun = new DocumentationPlanRun()
     val planWrite = ObjectMapperUtil.yamlObjectMapper.writeValueAsString(docPlanRun._plan)
+    val validWrite = ObjectMapperUtil.yamlObjectMapper.writeValueAsString(docPlanRun._validations)
     Files.writeString(Path.of("/tmp/my-plan.yaml"), planWrite)
+    Files.writeString(Path.of("/tmp/my-validation.yaml"), validWrite)
   }
 
   ignore("Can run Postgres plan run") {
@@ -236,6 +244,12 @@ class PlanProcessorTest extends SparkSuite {
       )
       .count(count.records(10).recordsPerColumn(3, "account_id"))
       .validations(
+        validation.preFilter(columnPreFilter("name").isEqual("peter"))
+          .col("amount").greaterThan(50),
+        validation.preFilter(
+          preFilterBuilder(columnPreFilter( "name").startsWith("john"))
+            .and(columnPreFilter("amount").greaterThan(10))
+        ).col("account_id").isNotNull,
         validation.columnNames.countEqual(3),
         validation.columnNames.countBetween(1, 2),
         validation.columnNames.matchOrder("account_id", "amount", "name"),
