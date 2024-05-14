@@ -19,7 +19,7 @@ abstract class ValidationOps(validation: Validation) {
       val isValidFilter = preFilter.validate()
       if (isValidFilter) {
         val preFilterExpression = preFilter.toExpression
-        LOGGER.info(s"Using pre-filter before running data validation, pre-filter-expression=$preFilterExpression")
+        LOGGER.debug(s"Using pre-filter before running data validation, pre-filter-expression=$preFilterExpression")
         df.where(preFilterExpression)
       } else {
         LOGGER.warn(s"Invalid pre-filter defined for validation, defaulting to using unfiltered dataset")
