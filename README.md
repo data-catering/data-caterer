@@ -1,23 +1,31 @@
-# Data Caterer - Data Generation and Validation Tool
+# Data Caterer - Test Data Management Tool
 
 ![Data Catering](misc/banner/logo_landscape_banner.svg)
 
 ## Overview
 
-Generator data for databases, files, messaging systems or HTTP requests via UI, Scala/Java SDK or YAML input and executed via Spark.
-Run data validations after generating data to ensure it is consumed correctly.
+A test data management tool with automated data generation, validation and cleanup.
+
+[Generate data](https://data.catering/setup/generator/data-generator/) for databases, files, messaging systems or HTTP 
+requests via UI, Scala/Java SDK or YAML input and executed via Spark. Run 
+[data validations](https://data.catering/setup/validation/) after generating data to ensure it is consumed correctly. 
+[Clean up generated data or consumed data](https://data.catering/setup/delete-data/) in downstream data sources to keep 
+your environments tidy. [Define alerts](https://data.catering/setup/report/alert/) to get notified when failures occur 
+and deep dive into issues [from the generated report](https://data.catering/sample/report/html/).
 
 Full docs can be found [**here**](https://data.catering). A demo of the UI found [**here**](https://data.catering/sample/ui/index.html).
 
 ## Features
 
-- Metadata discovery
-- Batch and/or event data generation
-- Maintain referential integrity across any dataset
-- Create custom data generation/validation scenarios
-- Clean up generated data
-- Data validation
-- Suggest data validations
+- [Batch and/or event data generation](https://data.catering/setup/connection/)
+- [Maintain relationships across any dataset](https://data.catering/setup/foreign-key/)
+- [Create custom data generation/validation scenarios](https://data.catering/setup/generator/data-generator/)
+- [Data validation](https://data.catering/setup/validation/)
+- [Clean up generated and downstream data](https://data.catering/setup/delete-data/)
+- [Suggest data validations](https://data.catering/setup/validation/)
+- [Metadata discovery](https://data.catering/setup/guide/scenario/auto-generate-connection/)
+- [Detailed report of generated data and validation results](https://data.catering/sample/report/html/)
+- [Alerts to be notified of results](https://data.catering/setup/report/alert/)
 
 ![Basic flow](design/basic_data_caterer_flow_medium.gif)
 
@@ -51,13 +59,37 @@ cd data-caterer-example && ./run.sh
 
 Data Caterer supports the following data sources:
 
-| Data Source Type | Data Source                            | Sponsor |
-|------------------|----------------------------------------|---------|
-| Database         | Postgres, MySQL, Cassandra             | N       |
-| File             | CSV, JSON, ORC, Parquet                | N       |
-| Messaging        | Kafka, Solace                          | Y       |
-| HTTP             | REST API                               | Y       |
-| Metadata         | Marquez, OpenMetadata, OpenAPI/Swagger | Y       |
+| Data Source Type | Data Source         | Support | Free |
+|------------------|---------------------|---------|------|
+| Cloud Storage    | AWS S3              | ✅       | ✅    |
+| Cloud Storage    | GCP Cloud Storage   | ✅       | ✅    |
+| Cloud Storage    | Azure Blob Storage  | ✅       | ✅    |
+| Database         | Postgres            | ✅       | ✅    |
+| Database         | MySQL               | ✅       | ✅    |
+| Database         | Cassandra           | ✅       | ✅    |
+| Database         | MongoDB             | ❌       | ✅    |
+| Database         | Elasticsearch       | ❌       | ✅    |
+| File             | CSV                 | ✅       | ✅    |
+| File             | JSON                | ✅       | ✅    |
+| File             | ORC                 | ✅       | ✅    |
+| File             | Parquet             | ✅       | ✅    |
+| File             | Hudi                | ❌       | ✅    |
+| File             | Iceberg             | ❌       | ✅    |
+| File             | Delta Lake          | ❌       | ✅    |
+| HTTP             | REST API            | ✅       | ❌    |
+| Messaging        | Kafka               | ✅       | ❌    |
+| Messaging        | Solace              | ✅       | ❌    |
+| Messaging        | Pulsar              | ❌       | ❌    |
+| Messaging        | RabbitMQ            | ❌       | ❌    |
+| Messaging        | ActiveMQ            | ❌       | ❌    |
+| Metadata         | Marquez             | ✅       | ❌    |
+| Metadata         | OpenMetadata        | ✅       | ❌    |
+| Metadata         | OpenAPI/Swagger     | ✅       | ❌    |
+| Metadata         | Great Expectations  | ✅       | ❌    |
+| Metadata         | Amundsen            | ❌       | ❌    |
+| Metadata         | Datahub             | ❌       | ❌    |
+| Metadata         | Solace Event Portal | ❌       | ❌    |
+
 
 ## Supported use cases
 
@@ -101,13 +133,13 @@ are available here in this project for all to use/fork/update/improve etc., as t
 
 Sponsors have access to the following features:
 
-- Metadata discovery
 - All data sources (see [here for all data sources](https://data.catering/setup/connection/))
 - Batch and Event generation
 - [Auto generation from data connections or metadata sources](https://data.catering/setup/guide/scenario/auto-generate-connection/)
 - Suggest data validations
-- [Clean up generated data](https://data.catering/setup/guide/scenario/delete-generated-data/)
+- [Clean up generated and consumed data](https://data.catering/setup/guide/scenario/delete-generated-data/)
 - Run as many times as you want, not charged by usage
+- Metadata discovery
 - [Plus more to come](#roadmap)
 
 [Find out more details here to help with sponsorship.](https://data.catering/sponsor)
