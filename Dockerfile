@@ -1,8 +1,7 @@
-ARG SPARK_VERSION=3.5.0
-FROM apache/spark:$SPARK_VERSION
+ARG SPARK_VERSION=3.5.1
+FROM cloudnativek8s/spark:3.5.1-b1.0.18
 
 USER root
-RUN groupadd -g 1001 app && useradd -m -u 1001 -g app app
 RUN mkdir -p /opt/app /opt/DataCaterer/connection /opt/DataCaterer/plan /opt/DataCaterer/execution /opt/DataCaterer/report
 RUN chown -R app:app /opt/app /opt/DataCaterer/connection /opt/DataCaterer/plan /opt/DataCaterer/execution /opt/DataCaterer/report
 COPY --chown=app:app script /opt/app

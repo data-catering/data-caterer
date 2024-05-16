@@ -53,8 +53,36 @@ configurations {
 
 dependencies {
     jpackageDep("org.scala-lang:scala-library:$scalaSpecificVersion")
-    jpackageDep("org.apache.spark:spark-sql_$scalaVersion:$sparkVersion")
+    jpackageDep("org.apache.spark:spark-sql_$scalaVersion:$sparkVersion") {
+        exclude(group = "com.google.protobuf")
+        exclude(module = "netty-codec-http")
+        exclude(module = "woodstox-core")
+        exclude(module = "nimbus-jose-jwt")
+        exclude(module = "commons-net")
+        exclude(module = "netty-handler")
+        exclude(module = "json-smart")
+        exclude(module = "avro")
+        exclude(module = "commons-compress")
+        exclude(module = "commons-configuration2")
+        exclude(module = "jetty-http")
+        exclude(module = "ion-jav")
+    }
     jpackageDep(project(":api"))
+
+    // vulnerabilities in Spark
+    basicImpl("com.google.protobuf:protobuf-java:3.21.7")
+    basicImpl("io.netty:netty-codec-http:4.1.109.Final")
+    basicImpl("com.fasterxml.woodstox:woodstox-core:5.4.0")
+    basicImpl("com.nimbusds:nimbus-jose-jwt:9.37.2")
+    basicImpl("commons-net:commons-net:3.9.0")
+    basicImpl("io.netty:netty-handler:4.1.109.Final")
+    basicImpl("net.minidev:json-smart:2.4.9")
+    basicImpl("org.apache.avro:avro:1.11.3")
+    basicImpl("org.apache.commons:commons-compress:1.26.0")
+    basicImpl("org.apache.commons:commons-configuration2:2.10.1")
+    basicImpl("org.codehaus.jettison:jettison:1.5.4")
+    basicImpl("org.eclipse.jetty:jetty-http:9.4.54.v20240208")
+    //basicImpl("software.amazon.ion:ion-java:1.5.1") //should use: basicImpl("com.amazon.ion:ion-java:1.11.8")
 
     // connectors
     // postgres
