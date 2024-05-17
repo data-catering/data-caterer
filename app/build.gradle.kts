@@ -74,6 +74,7 @@ dependencies {
         exclude(module = "kerb-admin")
         exclude(module = "wildfly-openssl")
         exclude(module = "wildfly-openssl-java")
+        exclude(module = "xnio-api")
     }
     jpackageDep(project(":api"))
 
@@ -98,6 +99,7 @@ dependencies {
     basicImpl("org.apache.kerby:kerb-admin:2.0.3")
     basicImpl("org.wildfly.openssl:wildfly-openssl:1.1.3.Final")
     basicImpl("org.wildfly.openssl:wildfly-openssl-java:1.1.3.Final")
+    basicImpl("org.jboss.xnio:xnio-api:3.8.14.Final")
     //basicImpl("software.amazon.ion:ion-java:1.5.1") //should use: basicImpl("com.amazon.ion:ion-java:1.11.8")
 
     // connectors
