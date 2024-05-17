@@ -13,7 +13,11 @@ requests via UI, Scala/Java SDK or YAML input and executed via Spark. Run
 your environments tidy. [Define alerts](https://data.catering/setup/report/alert/) to get notified when failures occur 
 and deep dive into issues [from the generated report](https://data.catering/sample/report/html/).
 
-Full docs can be found [**here**](https://data.catering). A demo of the UI found [**here**](https://data.catering/sample/ui/index.html).
+[**Full docs can be found here**](https://data.catering/setup/).
+  
+[**A demo of the UI found here**](https://data.catering/sample/ui/index.html).
+  
+[**Scala/Java examples found here**](https://github.com/data-catering/data-caterer-example).
 
 ## Features
 
@@ -57,7 +61,8 @@ cd data-caterer-example && ./run.sh
 
 ### Supported data sources
 
-Data Caterer supports the following data sources:
+Data Caterer supports the below data sources. Additional data sources can be added on a demand basis. [Check here for 
+the full roadmap](#roadmap).
 
 | Data Source Type | Data Source         | Support | Free |
 |------------------|---------------------|---------|------|

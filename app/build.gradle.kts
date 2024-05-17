@@ -64,8 +64,16 @@ dependencies {
         exclude(module = "avro")
         exclude(module = "commons-compress")
         exclude(module = "commons-configuration2")
+        exclude(module = "jetty-client")
+        exclude(module = "jetty-io")
         exclude(module = "jetty-http")
+        exclude(module = "jetty-util")
+        exclude(module = "jetty-webapp")
+        exclude(module = "jetty-xml")
         exclude(module = "ion-jav")
+        exclude(module = "kerb-admin")
+        exclude(module = "wildfly-openssl")
+        exclude(module = "wildfly-openssl-java")
     }
     jpackageDep(project(":api"))
 
@@ -81,7 +89,15 @@ dependencies {
     basicImpl("org.apache.commons:commons-compress:1.26.0")
     basicImpl("org.apache.commons:commons-configuration2:2.10.1")
     basicImpl("org.codehaus.jettison:jettison:1.5.4")
+    basicImpl("org.eclipse.jetty:jetty-client:9.4.54.v20240208")
     basicImpl("org.eclipse.jetty:jetty-http:9.4.54.v20240208")
+    basicImpl("org.eclipse.jetty:jetty-io:9.4.54.v20240208")
+    basicImpl("org.eclipse.jetty:jetty-util:9.4.54.v20240208")
+    basicImpl("org.eclipse.jetty:jetty-webapp:9.4.54.v20240208")
+    basicImpl("org.eclipse.jetty:jetty-xml:9.4.54.v20240208")
+    basicImpl("org.apache.kerby:kerb-admin:2.0.3")
+    basicImpl("org.wildfly.openssl:wildfly-openssl:1.1.3.Final")
+    basicImpl("org.wildfly.openssl:wildfly-openssl-java:1.1.3.Final")
     //basicImpl("software.amazon.ion:ion-java:1.5.1") //should use: basicImpl("com.amazon.ion:ion-java:1.11.8")
 
     // connectors
