@@ -19,6 +19,8 @@ and deep dive into issues [from the generated report](https://data.catering/samp
   
 [**Scala/Java examples found here**](https://github.com/data-catering/data-caterer-example).
 
+![Basic data flow for Data Caterer](design/high_level_flow-run-config-basic-flow.svg)
+
 ## Features
 
 - [Batch and/or event data generation](https://data.catering/setup/connection/)
