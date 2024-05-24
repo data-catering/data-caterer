@@ -45,7 +45,7 @@ and deep dive into issues [from the generated report](https://data.catering/samp
 3. [Linux download](https://nightly.link/data-catering/data-caterer/workflows/build/main/data-caterer-linux.zip)
 4. Docker
    ```shell
-   docker run -d -i -p 9898:9898 -e DEPLOY_MODE=standalone --name datacaterer datacatering/data-caterer:0.10.4
+   docker run -d -i -p 9898:9898 -e DEPLOY_MODE=standalone --name datacaterer datacatering/data-caterer:0.10.5
    ```
    [Open localhost:9898](http://localhost:9898).
 
