@@ -5,9 +5,9 @@ JAVA_OPTS="-Dlog4j.configurationFile=file:///opt/app/log4j2.properties -Djdk.mod
 JAVA_17_OPTS="--add-opens=java.base/java.lang=ALL-UNNAMED --add-opens=java.base/java.lang.invoke=ALL-UNNAMED --add-opens=java.base/java.lang.reflect=ALL-UNNAMED --add-opens=java.base/java.io=ALL-UNNAMED --add-opens=java.base/java.net=ALL-UNNAMED --add-opens=java.base/java.nio=ALL-UNNAMED --add-opens=java.base/java.util=ALL-UNNAMED --add-opens=java.base/java.util.concurrent=ALL-UNNAMED --add-opens=java.base/java.util.concurrent.atomic=ALL-UNNAMED --add-opens=java.base/sun.nio.ch=ALL-UNNAMED --add-opens=java.base/sun.nio.cs=ALL-UNNAMED --add-opens=java.base/sun.security.action=ALL-UNNAMED --add-opens=java.base/sun.util.calendar=ALL-UNNAMED --add-opens=java.security.jgss/sun.security.krb5=ALL-UNNAMED"
 DRIVER_MEMORY="${DRIVER_MEMORY:-2g}"
 EXECUTOR_MEMORY="${EXECUTOR_MEMORY:-2g}"
-ALL_OPTS="$ADDITIONAL_OPTS --conf \"spark.driver.extraJavaOptions=$JAVA_OPTS\" --conf \"spark.executor.extraJavaOptions=$JAVA_OPTS\""
+ALL_OPTS="$ADDITIONAL_OPTS --conf \"spark.driver.extraJavaOptions=$JAVA_OPTS $JAVA_17_OPTS\" --conf \"spark.executor.extraJavaOptions=$JAVA_OPTS $JAVA_17_OPTS\""
 
-if [[ "$DEPLOY_MODE" -eq "standalone" ]] ; then
+if [[ "$DEPLOY_MODE" == "standalone" ]] ; then
   echo "Running Data Caterer as a standalone application"
   CMD=(
     java
