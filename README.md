@@ -78,11 +78,11 @@ the full roadmap](#roadmap).
 | Database         | MongoDB                            | ❌       | ✅    |
 | File             | CSV                                | ✅       | ✅    |
 | File             | JSON                               | ✅       | ✅    |
+| File             | Iceberg                            | ✅       | ✅    |
 | File             | ORC                                | ✅       | ✅    |
 | File             | Parquet                            | ✅       | ✅    |
 | File             | Delta Lake                         | ❌       | ✅    |
 | File             | Hudi                               | ❌       | ✅    |
-| File             | Iceberg                            | ❌       | ✅    |
 | HTTP             | REST API                           | ✅       | ❌    |
 | Messaging        | Kafka                              | ✅       | ❌    |
 | Messaging        | Solace                             | ✅       | ❌    |
