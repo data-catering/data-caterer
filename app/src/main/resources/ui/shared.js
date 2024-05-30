@@ -479,6 +479,8 @@ export function createAttributeFormFloating(attrMetadata, attributeContainerId, 
                 createFieldValidationCheck(inputAttr);
                 inputAttr.setAttribute("required", "");
             }
+        } else {
+            inputAttr.setAttribute("disabled", "");
         }
         inputAttr.dispatchEvent(new Event("input"));
     }
@@ -886,7 +888,7 @@ newFieldDetails.set("validation", {
     },
     accordion: {
         name: "validation",
-        classes: "accordion-data-validation-container",
+        classes: "data-validation-container",
         header: {
             updateOn: "inputAndSelect"
         }
@@ -945,6 +947,81 @@ export async function createNewField(index, type) {
     }
 
     return accordionItem;
+}
+
+export async function createAutoFromMetadata(autoFromMetadataContainer, dataSource) {
+    let updatedMetadataSource = $(autoFromMetadataContainer).find(".metadata-connection-name").selectpicker("val", dataSource.fields.optMetadataSource.name);
+    dispatchEvent(updatedMetadataSource, "change");
+    // takes some time to get the override options
+    await wait(100);
+    for (let [key, value] of Object.entries(dataSource.fields.optMetadataSource.overrideOptions)) {
+        $(autoFromMetadataContainer).find(`input[aria-label="${key}"]`).val(value);
+    }
+}
+
+function addMetadataConnectionOverrideOptions(metadataConnectionSelect, overrideOptionsContainer, index) {
+    metadataConnectionSelect.addEventListener("change", (event) => {
+        let metadataSourceName = event.target.value;
+        fetch(`http://localhost:9898/connection/${metadataSourceName}`, {method: "GET"})
+            .then(r => {
+                if (r.ok) {
+                    return r.json();
+                } else {
+                    r.text().then(text => {
+                        createToast(`Get connection ${metadataSourceName}`, `Failed to get connection ${metadataSourceName}! Error: ${err}`, "fail");
+                        throw new Error(text);
+                    });
+                }
+            })
+            .then(respJson => {
+                if (respJson) {
+                    //remove previous properties
+                    overrideOptionsContainer.replaceChildren();
+                    let metadataSourceType = respJson.type;
+                    let metadataSourceProperties = dataSourcePropertiesMap.get(metadataSourceType).properties;
+
+                    for (const [key, value] of Object.entries(metadataSourceProperties)) {
+                        if (value["override"] && value["override"] === "true") {
+                            //add properties that can be overridden
+                            addNewDataTypeAttribute(key, value, `connection-config-${index}-${key}`, "metadata-source-property", overrideOptionsContainer);
+                        }
+                    }
+                }
+            });
+    });
+}
+
+// allow users to get schema or validation information from a metadata source such as openmetadata or marquez
+export async function createAutoFromMetadataSourceContainer(index) {
+    let baseContainer = document.createElement("div");
+    baseContainer.setAttribute("id", `data-source-auto-from-metadata-container-${index}`);
+    baseContainer.setAttribute("class", "card card-body data-source-auto-from-metadata-container");
+    baseContainer.style.display = "inherit";
+    let autoSchemaHeader = document.createElement("h5");
+    autoSchemaHeader.innerText = "Auto from Metadata";
+    let baseTaskDiv = document.createElement("div");
+    baseTaskDiv.setAttribute("class", "row m-2 g-2 align-items-center");
+
+    let metadataConnectionSelect = createSelect(`metadata-connection-${index}`, "Metadata source", "selectpicker form-control input-field metadata-connection-name", "Select metadata source...");
+    let dataConnectionCol = document.createElement("div");
+    dataConnectionCol.setAttribute("class", "col");
+    dataConnectionCol.append(metadataConnectionSelect);
+
+    let iconDiv = createIconWithConnectionTooltip(metadataConnectionSelect);
+    let iconCol = document.createElement("div");
+    iconCol.setAttribute("class", "col-md-auto");
+    iconCol.append(iconDiv);
+    baseTaskDiv.append(dataConnectionCol, iconCol);
+
+    // get connection list, filter only metadata sources
+    let metadataConnection = await getDataConnectionsAndAddToSelect(metadataConnectionSelect, baseTaskDiv, "metadata");
+    // provide opportunity to override non-connection options for metadata source (i.e. namespace, dataset)
+    let overrideOptionsContainer = document.createElement("div");
+    // when the metadata source connection is selected, populate override options container with options with "override: true"
+    addMetadataConnectionOverrideOptions(metadataConnectionSelect, overrideOptionsContainer, index);
+
+    baseContainer.append(autoSchemaHeader, metadataConnection, overrideOptionsContainer);
+    return baseContainer;
 }
 
 export function getOverrideConnectionOptionsAsMap(dataSource) {

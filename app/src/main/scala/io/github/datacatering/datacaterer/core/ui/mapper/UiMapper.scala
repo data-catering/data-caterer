@@ -193,7 +193,7 @@ object UiMapper {
 
   def validationMapping(dataSourceRequest: DataSourceRequest): List[ValidationBuilder] = {
     dataSourceRequest.validations
-      .map(validations => validations.flatMap(validationItemRequestToValidationBuilders))
+      .map(validations => validations.optValidations.map(v => v.flatMap(validationItemRequestToValidationBuilders)).getOrElse(List()))
       .getOrElse(List())
   }
 
@@ -202,8 +202,8 @@ object UiMapper {
       case VALIDATION_COLUMN =>
         //map type of column validation to builder method
         //each option is a new validation
-        val mappedValids = validateItem.options.map(opts => {
-          val colName = opts(VALIDATION_COLUMN)
+        validateItem.options.map(opts => {
+          val colName = opts(VALIDATION_FIELD)
           opts
             .filter(o => !VALIDATION_SUPPORTING_OPTIONS.contains(o._1))
             .map(opt => {
@@ -212,7 +212,6 @@ object UiMapper {
             })
             .toList
         }).getOrElse(List())
-        mappedValids
       case VALIDATION_COLUMN_NAMES =>
         validateItem.options.map(opts => {
           opts
@@ -270,7 +269,9 @@ object UiMapper {
   }
 
   def fieldMapping(dataSourceRequest: DataSourceRequest): List[FieldBuilder] = {
-    dataSourceRequest.fields.map(fields => fieldMapping(dataSourceRequest.name, fields.optFields.getOrElse(List()))).getOrElse(List())
+    dataSourceRequest.fields
+      .map(fields => fieldMapping(dataSourceRequest.name, fields.optFields.getOrElse(List())))
+      .getOrElse(List())
   }
 
   private def fieldMapping(dataSourceName: String, fields: List[FieldRequest]): List[FieldBuilder] = {
@@ -295,6 +296,7 @@ object UiMapper {
       case Some(JSON) => createFileConnection(dataSourceRequest, JSON)
       case Some(PARQUET) => createFileConnection(dataSourceRequest, PARQUET)
       case Some(ORC) => createFileConnection(dataSourceRequest, ORC)
+      case Some(ICEBERG) => createIcebergConnection(dataSourceRequest)
       case Some(SOLACE) =>
         val opt = dataSourceRequest.options.getOrElse(Map())
         checkOptions(dataSourceRequest.name, List(URL, USERNAME, PASSWORD, JMS_DESTINATION_NAME, JMS_VPN_NAME, JMS_CONNECTION_FACTORY, JMS_INITIAL_CONTEXT_FACTORY), opt)
@@ -318,8 +320,12 @@ object UiMapper {
 
   def connectionsWithUpstreamValidationMapping(connections: List[ConnectionTaskBuilder[_]], dataSources: List[DataSourceRequest]): List[ConnectionTaskBuilder[_]] = {
     val dataSourcesWithUpstreamValidation = dataSources
-      .filter(ds => ds.validations.getOrElse(List()).exists(_.`type` == VALIDATION_UPSTREAM))
-      .map(ds => (ds.taskName, ds.validations.getOrElse(List())))
+      .filter(ds => {
+        ds.validations
+          .map(_.optValidations.getOrElse(List())).getOrElse(List())
+          .exists(_.`type` == VALIDATION_UPSTREAM)
+      })
+      .map(ds => (ds.taskName, ds.validations.map(_.optValidations.get).getOrElse(List())))
       .toMap
 
     connections.map(connection => {
@@ -459,6 +465,26 @@ object UiMapper {
     val opt = dataSourceRequest.options.getOrElse(Map())
     checkOptions(dataSourceRequest.name, List(PATH), opt)
     ConnectionConfigWithTaskBuilder().file(dataSourceRequest.name, format, opt(PATH), opt)
+  }
+
+  private def createIcebergConnection(dataSourceRequest: DataSourceRequest): FileBuilder = {
+    val opt = dataSourceRequest.options.getOrElse(Map())
+    val name = dataSourceRequest.name
+    checkOptions(name, List(ICEBERG_CATALOG_TYPE, TABLE), opt)
+    val baseSparkOpts = Map(
+      SPARK_ICEBERG_CATALOG_TYPE -> opt(ICEBERG_CATALOG_TYPE),
+      TABLE -> opt(TABLE)
+    )
+    val sparkOpts = opt(ICEBERG_CATALOG_TYPE) match {
+      case ICEBERG_CATALOG_HADOOP | ICEBERG_CATALOG_GLUE =>
+        checkOptions(name, List(PATH), opt)
+        Map(SPARK_ICEBERG_CATALOG_WAREHOUSE -> opt(PATH))
+      case ICEBERG_CATALOG_HIVE | ICEBERG_CATALOG_REST =>
+        checkOptions(name, List(ICEBERG_CATALOG_URI), opt)
+        Map(SPARK_ICEBERG_CATALOG_URI -> opt(ICEBERG_CATALOG_URI))
+      case _ => Map()
+    }
+    ConnectionConfigWithTaskBuilder().file(name, ICEBERG, opt.getOrElse(PATH, ""), baseSparkOpts ++ sparkOpts)
   }
 
   private def createJdbcConnection(dataSourceRequest: DataSourceRequest, format: String): JdbcBuilder[_] = {

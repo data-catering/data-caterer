@@ -21,7 +21,7 @@ case class DataSourceRequest(
                               options: Option[Map[String, String]] = None,
                               fields: Option[FieldRequests] = None,
                               count: Option[RecordCountRequest] = None,
-                              validations: Option[List[ValidationItemRequest]] = None,
+                              validations: Option[ValidationRequest] = None,
                             )
 
 case class FieldRequest(
@@ -49,6 +49,11 @@ case class RecordCountRequest(
                                perColumnRecordsDistribution: Option[String] = None,
                                perColumnRecordsDistributionRateParam: Option[String] = None,
                              )
+
+case class ValidationRequest(
+                              optValidations: Option[List[ValidationItemRequest]] = None,
+                              optMetadataSource: Option[MetadataSourceRequest] = None
+                            )
 
 case class ValidationItemRequest(
                                   `type`: String,

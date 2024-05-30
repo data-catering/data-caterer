@@ -86,11 +86,11 @@ case class DataCatererConfigurationBuilder(build: DataCatererConfiguration = Dat
   def delta(name: String, path: String, options: java.util.Map[String, String]): DataCatererConfigurationBuilder =
     delta(name, path, toScalaMap(options))
 
-  def iceberg(name: String, path: String = "", options: Map[String, String] = Map()): DataCatererConfigurationBuilder =
-    addConnectionConfig(name, ICEBERG, path, options)
+  def iceberg(name: String, path: String, tableName: String, options: Map[String, String] = Map()): DataCatererConfigurationBuilder =
+    addConnectionConfig(name, ICEBERG, path, options ++ Map(TABLE -> tableName))
 
-  def iceberg(name: String, path: String, options: java.util.Map[String, String]): DataCatererConfigurationBuilder =
-    iceberg(name, path, toScalaMap(options))
+  def iceberg(name: String, path: String, tableName: String, options: java.util.Map[String, String]): DataCatererConfigurationBuilder =
+    iceberg(name, path, tableName, toScalaMap(options))
 
   def postgres(
                 name: String,
@@ -382,11 +382,15 @@ final case class ConnectionConfigWithTaskBuilder(
       case HUDI =>
         options.get(HUDI_TABLE_NAME) match {
           case Some(value) => configBuilder.hudi(name, path, value, options)
-          case None => throw new IllegalArgumentException(s"Missing $HUDI_TABLE_NAME from options: $options")
+          case None => throw new IllegalArgumentException(s"Missing $HUDI_TABLE_NAME from options: $options, connection-name=$name")
         }
       case DELTA => configBuilder.delta(name, path, options)
-      case ICEBERG => configBuilder.iceberg(name, path, options)
-      case _ => throw new IllegalArgumentException(s"Unsupported file format: $format")
+      case ICEBERG =>
+        options.get(TABLE) match {
+          case Some(value) => configBuilder.iceberg(name, path, value, options)
+          case None => throw new IllegalArgumentException(s"Missing $TABLE from options: $options, connection-name=$name")
+        }
+      case _ => throw new IllegalArgumentException(s"Unsupported file format: $format, connection-name=$name")
     }
     setConnectionConfig(name, fileConnectionConfig, FileBuilder())
   }

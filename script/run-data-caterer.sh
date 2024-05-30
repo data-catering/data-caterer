@@ -11,8 +11,7 @@ if [[ "$DEPLOY_MODE" == "standalone" ]] ; then
   echo "Running Data Caterer as a standalone application"
   CMD=(
     java
-    "$JAVA_OPTS"
-    "$JAVA_17_OPTS"
+    "$JAVA_OPTS $JAVA_17_OPTS"
     -cp "/opt/spark/jars/*:/opt/app/job.jar"
     io.github.datacatering.datacaterer.core.ui.DataCatererUI
   )
@@ -26,7 +25,7 @@ else
     --driver-memory "$DRIVER_MEMORY"
     --executor-memory "$EXECUTOR_MEMORY"
     "$ALL_OPTS"
-    file:///opt/app/job.jar
+    "file:///opt/app/job.jar"
   )
 fi
 

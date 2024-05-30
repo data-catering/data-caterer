@@ -1,6 +1,6 @@
 package io.github.datacatering.datacaterer.api
 
-import io.github.datacatering.datacaterer.api.model.Constants.{DATA_CONTRACT_FILE, EXPECTATIONS_FILE, METADATA_SOURCE_URL, OPEN_LINEAGE_DATASET, OPEN_LINEAGE_NAMESPACE, OPEN_METADATA_API_VERSION, OPEN_METADATA_AUTH_TYPE, OPEN_METADATA_AUTH_TYPE_BASIC, OPEN_METADATA_AUTH_TYPE_OPEN_METADATA, OPEN_METADATA_BASIC_AUTH_PASSWORD, OPEN_METADATA_BASIC_AUTH_USERNAME, OPEN_METADATA_DEFAULT_API_VERSION, OPEN_METADATA_HOST, OPEN_METADATA_JWT_TOKEN, SCHEMA_LOCATION}
+import io.github.datacatering.datacaterer.api.model.Constants.{DATA_CONTRACT_FILE, GREAT_EXPECTATIONS_FILE, METADATA_SOURCE_URL, OPEN_LINEAGE_DATASET, OPEN_LINEAGE_NAMESPACE, OPEN_METADATA_API_VERSION, OPEN_METADATA_AUTH_TYPE, OPEN_METADATA_AUTH_TYPE_BASIC, OPEN_METADATA_AUTH_TYPE_OPEN_METADATA, OPEN_METADATA_BASIC_AUTH_PASSWORD, OPEN_METADATA_BASIC_AUTH_USERNAME, OPEN_METADATA_DEFAULT_API_VERSION, OPEN_METADATA_HOST, OPEN_METADATA_JWT_TOKEN, SCHEMA_LOCATION}
 import io.github.datacatering.datacaterer.api.model.{GreatExpectationsSource, MarquezMetadataSource, OpenAPISource, OpenDataContractStandardSource, OpenMetadataSource}
 import org.junit.runner.RunWith
 import org.scalatest.funsuite.AnyFunSuite
@@ -56,7 +56,7 @@ class MetadataSourceBuilderTest extends AnyFunSuite {
     val result = MetadataSourceBuilder().greatExpectations("/tmp/expectations").metadataSource
 
     assert(result.isInstanceOf[GreatExpectationsSource])
-    assert(result.asInstanceOf[GreatExpectationsSource].connectionOptions == Map(EXPECTATIONS_FILE -> "/tmp/expectations"))
+    assert(result.asInstanceOf[GreatExpectationsSource].connectionOptions == Map(GREAT_EXPECTATIONS_FILE -> "/tmp/expectations"))
   }
 
   test("Can create Open Data Contract Standard metadata source") {

@@ -54,7 +54,7 @@ class DataGeneratorProcessor(dataCatererConfiguration: DataCatererConfiguration)
       PlanRunResults(List(), List())
     } else {
       val generationResult = if (flagsConfig.enableGenerateData) {
-        LOGGER.info(s"Following tasks are enabled and will be executed: num-tasks=${summaryWithTask.size}, tasks=$stepNames")
+        LOGGER.debug(s"Following tasks are enabled and will be executed: num-tasks=${summaryWithTask.size}, tasks=$stepNames")
         batchDataProcessor.splitAndProcess(plan, summaryWithTask)
       } else List()
 

@@ -47,16 +47,19 @@ object Constants {
   lazy val PARTITIONS = "partitions"
   lazy val PARTITION_BY = "partitionBy"
   lazy val BODY_FIELD = "bodyField"
-  lazy val JMS_DESTINATION_NAME = "destinationName"
   lazy val KAFKA_TOPIC = "topic"
+  lazy val JMS_DESTINATION_NAME = "destinationName"
   lazy val JMS_INITIAL_CONTEXT_FACTORY = "initialContextFactory"
   lazy val JMS_CONNECTION_FACTORY = "connectionFactory"
   lazy val JMS_VPN_NAME = "vpnName"
   lazy val SCHEMA_LOCATION = "schemaLocation"
-  lazy val EXPECTATIONS_FILE = "expectationsFile"
+  lazy val GREAT_EXPECTATIONS_FILE = "expectationsFile"
   lazy val DATA_CONTRACT_FILE = "dataContractFile"
   lazy val ROWS_PER_SECOND = "rowsPerSecond"
   lazy val HUDI_TABLE_NAME = "hoodie.table.name"
+  lazy val ICEBERG_CATALOG_TYPE = "catalogType"
+  lazy val ICEBERG_CATALOG_URI = "catalogUri"
+  lazy val ICEBERG_CATALOG_DEFAULT_NAMESPACE = "catalogDefaultNamespace"
 
   //field metadata
   lazy val FIELD_DATA_TYPE = "type"
@@ -207,6 +210,8 @@ object Constants {
     "spark.sql.shuffle.partitions" -> "10",
     "spark.sql.catalog.postgres" -> "",
     "spark.sql.catalog.cassandra" -> "com.datastax.spark.connector.datasource.CassandraCatalog",
+    "spark.sql.catalog.iceberg" -> "org.apache.iceberg.spark.SparkCatalog",
+    "spark.sql.catalog.iceberg.type" -> "hadoop",
 //    "spark.serializer" -> "org.apache.spark.serializer.KryoSerializer",
 //    "spark.sql.catalog.hudi" -> "org.apache.spark.sql.hudi.catalog.HoodieCatalog",
 //    "spark.kryo.registrator" -> "org.apache.spark.HoodieSparkKryoRegistrar",
@@ -215,6 +220,7 @@ object Constants {
     "spark.hadoop.fs.s3a.bucket.all.committer.magic.enabled" -> "true",
     "spark.hadoop.fs.hdfs.impl" -> "org.apache.hadoop.hdfs.DistributedFileSystem",
     "spark.hadoop.fs.file.impl" -> "com.globalmentor.apache.hadoop.fs.BareLocalFileSystem",
+    "spark.sql.extensions" -> "org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions"
   )
 
   //jdbc defaults
@@ -247,6 +253,9 @@ object Constants {
   lazy val HTTP_PATH_PARAMETER = "path"
   lazy val HTTP_QUERY_PARAMETER = "query"
   lazy val HTTP_HEADER_PARAMETER = "header"
+
+  //iceberg defaults
+  lazy val DEFAULT_ICEBERG_CATALOG_TYPE = ICEBERG_CATALOG_HADOOP
 
   //foreign key defaults
   lazy val DEFAULT_FOREIGN_KEY_COLUMN = "default_column"
@@ -358,6 +367,18 @@ object Constants {
   lazy val OPEN_METADATA_TABLE_FQN = "tableFqn"
   lazy val OPEN_METADATA_SERVICE = "service"
 
+  //iceberg
+  lazy val SPARK_ICEBERG_CATALOG_TYPE = "spark.sql.catalog.iceberg.type"
+  lazy val SPARK_ICEBERG_CATALOG_WAREHOUSE = "spark.sql.catalog.iceberg.warehouse"
+  lazy val SPARK_ICEBERG_CATALOG_URI = "spark.sql.catalog.iceberg.uri"
+  lazy val SPARK_ICEBERG_CATALOG_DEFAULT_NAMESPACE = "spark.sql.catalog.iceberg.default-namespace"
+  lazy val ICEBERG_CATALOG_HIVE = "hive"
+  lazy val ICEBERG_CATALOG_HADOOP = "hadoop"
+  lazy val ICEBERG_CATALOG_REST = "rest"
+  lazy val ICEBERG_CATALOG_GLUE = "glue"
+  lazy val ICEBERG_CATALOG_JDBC = "jdbc"
+  lazy val ICEBERG_CATALOG_NESSIE = "nessie"
+
   //aggregation types
   lazy val AGGREGATION_SUM = "sum"
   lazy val AGGREGATION_COUNT = "count"
@@ -368,7 +389,9 @@ object Constants {
 
   //validation types
   lazy val VALIDATION_COLUMN = "column"
+  lazy val VALIDATION_FIELD = "field"
   lazy val VALIDATION_COLUMN_NAMES = "columnNames"
+  lazy val VALIDATION_FIELD_NAMES = "fieldNames"
   lazy val VALIDATION_UPSTREAM = "upstream"
   lazy val VALIDATION_GROUP_BY = "groupBy"
   //validation support
@@ -427,7 +450,7 @@ object Constants {
   lazy val VALIDATION_COLUMN_NAMES_MATCH_SET = "matchSet"
 
   lazy val VALIDATION_OPTION_DELIMITER = ","
-  lazy val VALIDATION_SUPPORTING_OPTIONS = List(VALIDATION_COLUMN, VALIDATION_MIN, VALIDATION_MAX, VALIDATION_GROUP_BY_COLUMNS, VALIDATION_DESCRIPTION, VALIDATION_ERROR_THRESHOLD)
+  lazy val VALIDATION_SUPPORTING_OPTIONS = List(VALIDATION_COLUMN, VALIDATION_FIELD, VALIDATION_MIN, VALIDATION_MAX, VALIDATION_GROUP_BY_COLUMNS, VALIDATION_DESCRIPTION, VALIDATION_ERROR_THRESHOLD)
 
   lazy val VALIDATION_PREFIX_JOIN_EXPRESSION = "expr:"
   lazy val VALIDATION_COLUMN_NAME_COUNT_EQUAL = "column_count_equal"

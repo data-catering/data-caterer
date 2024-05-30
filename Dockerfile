@@ -1,5 +1,5 @@
 ARG SPARK_VERSION=3.5.1
-FROM cloudnativek8s/spark:3.5.1-b1.0.18
+FROM cloudnativek8s/spark:3.5.1-b1.0.19
 
 USER root
 RUN mkdir -p /opt/app /opt/DataCaterer/connection /opt/DataCaterer/plan /opt/DataCaterer/execution /opt/DataCaterer/report

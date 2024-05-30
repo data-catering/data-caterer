@@ -104,10 +104,10 @@ trait PlanRun {
   /**
    * Create new HUDI generation step with configurations
    *
-   * @param name    Data source name
-   * @param path    File path to generated HUDI
+   * @param name      Data source name
+   * @param path      File path to generated HUDI
    * @param tableName Table name to be used for HUDI generation
-   * @param options Additional options for HUDI generation
+   * @param options   Additional options for HUDI generation
    * @return FileBuilder
    */
   def hudi(name: String, path: String, tableName: String, options: Map[String, String] = Map()): FileBuilder =
@@ -127,13 +127,40 @@ trait PlanRun {
   /**
    * Create new ICEBERG generation step with configurations
    *
-   * @param name    Data source name
-   * @param path    File path to generated ICEBERG
-   * @param options Additional options for ICEBERG generation
+   * @param name        Data source name
+   * @param tableName   Table name for generated ICEBERG
+   * @param path        Warehouse path to generated ICEBERG
+   * @param catalogType Type of catalog for generated ICEBERG
+   * @param catalogUri  Uri of catalog for generated ICEBERG
+   * @param options     Additional options for ICEBERG generation
    * @return FileBuilder
    */
-  def iceberg(name: String, path: String, options: Map[String, String] = Map()): FileBuilder =
-    ConnectionConfigWithTaskBuilder().file(name, ICEBERG, path, options)
+  def iceberg(
+               name: String,
+               tableName: String,
+               path: String = "",
+               catalogType: String = DEFAULT_ICEBERG_CATALOG_TYPE,
+               catalogUri: String = "",
+               options: Map[String, String] = Map()
+             ): FileBuilder = {
+    ConnectionConfigWithTaskBuilder().file(name, ICEBERG, path, options ++ Map(
+      TABLE -> tableName,
+      SPARK_ICEBERG_CATALOG_WAREHOUSE -> path,
+      SPARK_ICEBERG_CATALOG_TYPE -> catalogType,
+      SPARK_ICEBERG_CATALOG_URI -> catalogUri,
+    ))
+  }
+
+  /**
+   * Create new ICEBERG generation step with only warehouse path and table name. Uses hadoop as the catalog type.
+   *
+   * @param name      Data source name
+   * @param path      Warehouse path to generated ICEBERG
+   * @param tableName Table name for generated ICEBERG
+   * @return FileBuilder
+   */
+  def icebergJava(name: String, path: String, tableName: String): FileBuilder =
+    iceberg(name, path, tableName)
 
   /**
    * Create new POSTGRES generation step with connection configuration

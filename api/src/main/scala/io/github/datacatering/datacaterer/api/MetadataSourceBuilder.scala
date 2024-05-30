@@ -1,7 +1,7 @@
 package io.github.datacatering.datacaterer.api
 
 import io.github.datacatering.datacaterer.api.converter.Converters.toScalaMap
-import io.github.datacatering.datacaterer.api.model.Constants.{DATA_CONTRACT_FILE, EXPECTATIONS_FILE, METADATA_SOURCE_URL, OPEN_LINEAGE_DATASET, OPEN_LINEAGE_NAMESPACE, OPEN_METADATA_API_VERSION, OPEN_METADATA_AUTH_TYPE, OPEN_METADATA_AUTH_TYPE_OPEN_METADATA, OPEN_METADATA_DEFAULT_API_VERSION, OPEN_METADATA_HOST, OPEN_METADATA_JWT_TOKEN, SCHEMA_LOCATION}
+import io.github.datacatering.datacaterer.api.model.Constants.{DATA_CONTRACT_FILE, GREAT_EXPECTATIONS_FILE, METADATA_SOURCE_URL, OPEN_LINEAGE_DATASET, OPEN_LINEAGE_NAMESPACE, OPEN_METADATA_API_VERSION, OPEN_METADATA_AUTH_TYPE, OPEN_METADATA_AUTH_TYPE_OPEN_METADATA, OPEN_METADATA_DEFAULT_API_VERSION, OPEN_METADATA_HOST, OPEN_METADATA_JWT_TOKEN, SCHEMA_LOCATION}
 import com.softwaremill.quicklens.ModifyPimp
 import io.github.datacatering.datacaterer.api.model.{GreatExpectationsSource, MarquezMetadataSource, MetadataSource, OpenAPISource, OpenDataContractStandardSource, OpenMetadataSource}
 
@@ -73,7 +73,7 @@ case class MetadataSourceBuilder(metadataSource: MetadataSource = MarquezMetadat
   }
 
   def greatExpectations(expectationsFile: String): MetadataSourceBuilder = {
-    this.modify(_.metadataSource).setTo(GreatExpectationsSource(Map(EXPECTATIONS_FILE -> expectationsFile)))
+    this.modify(_.metadataSource).setTo(GreatExpectationsSource(Map(GREAT_EXPECTATIONS_FILE -> expectationsFile)))
   }
 
   def openDataContractStandard(dataContractFile: String): MetadataSourceBuilder = {

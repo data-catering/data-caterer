@@ -55,6 +55,8 @@ object PlanRepository extends JsonSupport {
 
   final case class RemovePlan(name: String) extends PlanCommand
 
+  final case class StartupSpark() extends PlanCommand
+
   private val executionSaveFolder = s"$INSTALL_DIRECTORY/execution"
   private val planSaveFolder = s"$INSTALL_DIRECTORY/plan"
   implicit val ec: ExecutionContextExecutor = ExecutionContext.global
@@ -82,6 +84,8 @@ object PlanRepository extends JsonSupport {
           Behaviors.same
         case GetPlanRuns(replyTo) =>
           replyTo ! getAllPlanExecutions
+          Behaviors.same
+        case StartupSpark() =>
           Behaviors.same
       }
     }.onFailure(SupervisorStrategy.restart)

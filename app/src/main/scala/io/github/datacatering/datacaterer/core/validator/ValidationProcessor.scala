@@ -1,7 +1,7 @@
 package io.github.datacatering.datacaterer.core.validator
 
 import io.github.datacatering.datacaterer.api.ValidationBuilder
-import io.github.datacatering.datacaterer.api.model.Constants.{DEFAULT_ENABLE_VALIDATION, ENABLE_DATA_VALIDATION, FORMAT, HTTP, JMS}
+import io.github.datacatering.datacaterer.api.model.Constants.{DEFAULT_ENABLE_VALIDATION, ENABLE_DATA_VALIDATION, FORMAT, HTTP, ICEBERG, JMS, TABLE}
 import io.github.datacatering.datacaterer.api.model.{DataSourceValidation, ExpressionValidation, FoldersConfig, GroupByValidation, UpstreamDataSourceValidation, ValidationConfig, ValidationConfiguration}
 import io.github.datacatering.datacaterer.core.model.{DataSourceValidationResult, ValidationConfigResult, ValidationResult}
 import io.github.datacatering.datacaterer.core.parser.ValidationParser
@@ -46,7 +46,7 @@ class ValidationProcessor(
         val dataSourceValidations = dataSource._2
         val numValidations = dataSourceValidations.flatMap(_.validations).size
 
-        LOGGER.info(s"Executing data validations for data source, name=${vc.name}, " +
+        LOGGER.debug(s"Executing data validations for data source, name=${vc.name}, " +
           s"data-source-name=$dataSourceName, num-validations=$numValidations")
         dataSourceValidations.map(dataSourceValidation => executeDataValidations(vc, dataSourceName, dataSourceValidation))
       }).toList
@@ -65,21 +65,26 @@ class ValidationProcessor(
                                     ): DataSourceValidationResult = {
     val isValidationsEnabled = dataSourceValidation.options.get(ENABLE_DATA_VALIDATION).map(_.toBoolean).getOrElse(DEFAULT_ENABLE_VALIDATION)
     if (isValidationsEnabled) {
-      LOGGER.debug(s"Waiting for validation condition to be successful before running validations, name=${vc.name}," +
-        s"data-source-name=$dataSourceName, details=${dataSourceValidation.options}, num-validations=${dataSourceValidation.validations.size}")
-      dataSourceValidation.waitCondition.waitForCondition(connectionConfigsByName)
-
-      val df = getDataFrame(dataSourceName, dataSourceValidation.options)
-      if (df.isEmpty) {
-        LOGGER.info("No data found to run validations")
+      if (dataSourceValidation.validations.isEmpty) {
+        LOGGER.debug(s"No validations defined, skipping data validations, name=${vc.name}, data-source-name=$dataSourceName")
         DataSourceValidationResult(dataSourceName, dataSourceValidation.options, List())
       } else {
-        if (!df.storageLevel.useMemory) df.cache()
-        val results = dataSourceValidation.validations.map(validBuilder => tryValidate(df, validBuilder))
-        df.unpersist()
-        LOGGER.debug(s"Finished data validations, name=${vc.name}," +
+        LOGGER.debug(s"Waiting for validation condition to be successful before running validations, name=${vc.name}," +
           s"data-source-name=$dataSourceName, details=${dataSourceValidation.options}, num-validations=${dataSourceValidation.validations.size}")
-        DataSourceValidationResult(dataSourceName, dataSourceValidation.options, results)
+        dataSourceValidation.waitCondition.waitForCondition(connectionConfigsByName)
+
+        val df = getDataFrame(dataSourceName, dataSourceValidation.options)
+        if (df.isEmpty) {
+          LOGGER.info("No data found to run validations")
+          DataSourceValidationResult(dataSourceName, dataSourceValidation.options, List())
+        } else {
+          if (!df.storageLevel.useMemory) df.cache()
+          val results = dataSourceValidation.validations.map(validBuilder => tryValidate(df, validBuilder))
+          df.unpersist()
+          LOGGER.debug(s"Finished data validations, name=${vc.name}," +
+            s"data-source-name=$dataSourceName, details=${dataSourceValidation.options}, num-validations=${dataSourceValidation.validations.size}")
+          DataSourceValidationResult(dataSourceName, dataSourceValidation.options, results)
+        }
       }
     } else {
       LOGGER.debug(s"Data validations are disabled, data-source-name=$dataSourceName, details=${dataSourceValidation.options}")
@@ -110,27 +115,41 @@ class ValidationProcessor(
   private def getDataFrame(dataSourceName: String, options: Map[String, String]): DataFrame = {
     val connectionConfig = connectionConfigsByName(dataSourceName)
     val format = connectionConfig(FORMAT)
-    if (format == HTTP || format == JMS) {
+    val df = if (format == HTTP || format == JMS) {
       LOGGER.warn("No support for HTTP or JMS data validations, will skip validations")
       sparkSession.emptyDataFrame
+    } else if (format == ICEBERG) {
+      val allOpts = connectionConfig ++ options
+      val tableName = allOpts(TABLE)
+      val tableNameWithCatalog = if (tableName.split("\\.").length == 2) {
+        s"iceberg.$tableName"
+      } else tableName
+      sparkSession.read
+        .options(allOpts)
+        .table(tableNameWithCatalog)
     } else {
-      val df = sparkSession.read
+      sparkSession.read
         .format(format)
         .options(connectionConfig ++ options)
         .load()
-      if (!df.storageLevel.useMemory) df.cache()
-      df
     }
+
+    if (!df.storageLevel.useMemory) df.cache()
+    df
   }
 
   private def logValidationErrors(validationResults: List[ValidationConfigResult]): Unit = {
     validationResults.foreach(vcr => vcr.dataSourceValidationResults.map(dsr => {
       val failedValidations = dsr.validationResults.filter(r => !r.isSuccess)
 
-      if (failedValidations.isEmpty) {
+      if (dsr.validationResults.isEmpty) {
+        LOGGER.debug(s"Validation results are empty, no validations run, name=${vcr.name}, description=${vcr.description}, data-source-name=${dsr.dataSourceName}")
+      } else if (failedValidations.isEmpty) {
         LOGGER.info(s"Data validations successful for validation, name=${vcr.name}, description=${vcr.description}, data-source-name=${dsr.dataSourceName}, " +
-          s"data-source-options=${dsr.options}, is-success=true")
+          s"data-source-options=${dsr.options}, num-validations=${dsr.validationResults.size}, is-success=true")
       } else {
+        LOGGER.error(s"Data validations failed, name=${vcr.name}, description=${vcr.description}, data-source-name=${dsr.dataSourceName}, " +
+          s"data-source-options=${dsr.options}, num-validations=${dsr.validationResults.size}, num-failed=${failedValidations.size}, is-success=false")
         failedValidations.foreach(validationRes => {
           val (validationType, validationCheck) = validationRes.validation match {
             case ExpressionValidation(expr, selectExpr) => ("expression", expr)
