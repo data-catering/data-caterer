@@ -120,7 +120,7 @@ dependencies {
 //        exclude(group = "org.scala-lang")
 //    }
     // iceberg
-    basicImpl("org.apache.iceberg:iceberg-spark-runtime-${sparkMajorVersion}_$scalaVersion:1.4.3") {
+    basicImpl("org.apache.iceberg:iceberg-spark-runtime-${sparkMajorVersion}_$scalaVersion:1.5.2") {
         exclude(group = "org.scala-lang")
     }
     // delta lake

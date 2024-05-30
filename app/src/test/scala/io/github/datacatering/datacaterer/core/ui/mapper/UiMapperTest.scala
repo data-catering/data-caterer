@@ -4,7 +4,7 @@ import io.github.datacatering.datacaterer.api.connection.FileBuilder
 import io.github.datacatering.datacaterer.api.model.Constants._
 import io.github.datacatering.datacaterer.api.model.{ColumnNamesValidation, ExpressionValidation, GroupByValidation, UpstreamDataSourceValidation}
 import io.github.datacatering.datacaterer.api.{DataCatererConfigurationBuilder, FieldBuilder, PlanBuilder}
-import io.github.datacatering.datacaterer.core.ui.model.{ConfigurationRequest, DataSourceRequest, FieldRequest, FieldRequests, ForeignKeyRequest, ForeignKeyRequestItem, PlanRunRequest, RecordCountRequest, ValidationItemRequest, ValidationItemRequests}
+import io.github.datacatering.datacaterer.core.ui.model.{ConfigurationRequest, DataSourceRequest, FieldRequest, FieldRequests, ForeignKeyRequest, ForeignKeyRequestItem, PlanRunRequest, RecordCountRequest, ValidationItemRequest, ValidationItemRequests, ValidationRequest}
 import org.junit.runner.RunWith
 import org.scalatest.funsuite.AnyFunSuite
 import org.scalatestplus.junit.JUnitRunner
@@ -428,7 +428,9 @@ class UiMapperTest extends AnyFunSuite {
   }
 
   test("Can convert UI validation mapping for basic column validation") {
-    val dataSourceRequest = DataSourceRequest("csv-name", "task-1", validations = Some(List(ValidationItemRequest(VALIDATION_COLUMN, Some(Map(VALIDATION_COLUMN -> "account_id", VALIDATION_EQUAL -> "abc123", "description" -> "valid desc", "errorThreshold" -> "2"))))))
+    val dataSourceRequest = DataSourceRequest("csv-name", "task-1", validations = Some(ValidationRequest(Some(
+      List(ValidationItemRequest(VALIDATION_COLUMN, Some(Map(VALIDATION_FIELD -> "account_id", VALIDATION_EQUAL -> "abc123", "description" -> "valid desc", "errorThreshold" -> "2"))))
+    ))))
     val res = UiMapper.validationMapping(dataSourceRequest)
     assertResult(1)(res.size)
     val exprValid = res.head.validation.asInstanceOf[ExpressionValidation]
@@ -440,7 +442,9 @@ class UiMapperTest extends AnyFunSuite {
   }
 
   test("Can convert UI validation mapping for column name validation") {
-    val dataSourceRequest = DataSourceRequest("csv-name", "task-1", validations = Some(List(ValidationItemRequest(VALIDATION_COLUMN_NAMES, Some(Map(VALIDATION_COLUMN_NAMES_COUNT_EQUAL -> "5"))))))
+    val dataSourceRequest = DataSourceRequest("csv-name", "task-1", validations = Some(ValidationRequest(Some(
+      List(ValidationItemRequest(VALIDATION_COLUMN_NAMES, Some(Map(VALIDATION_COLUMN_NAMES_COUNT_EQUAL -> "5"))))
+    ))))
     val res = UiMapper.validationMapping(dataSourceRequest)
     assertResult(1)(res.size)
     val valid = res.head.validation.asInstanceOf[ColumnNamesValidation]
@@ -449,7 +453,9 @@ class UiMapperTest extends AnyFunSuite {
   }
 
   test("Can convert UI validation mapping for column name validation count between") {
-    val dataSourceRequest = DataSourceRequest("csv-name", "task-1", validations = Some(List(ValidationItemRequest(VALIDATION_COLUMN_NAMES, Some(Map(VALIDATION_COLUMN_NAMES_COUNT_BETWEEN -> "blah", VALIDATION_MIN -> "1", VALIDATION_MAX -> "2"))))))
+    val dataSourceRequest = DataSourceRequest("csv-name", "task-1", validations = Some(ValidationRequest(Some(
+      List(ValidationItemRequest(VALIDATION_COLUMN_NAMES, Some(Map(VALIDATION_COLUMN_NAMES_COUNT_BETWEEN -> "blah", VALIDATION_MIN -> "1", VALIDATION_MAX -> "2"))))
+    ))))
     val res = UiMapper.validationMapping(dataSourceRequest)
     assertResult(1)(res.size)
     val valid = res.head.validation.asInstanceOf[ColumnNamesValidation]
@@ -459,7 +465,9 @@ class UiMapperTest extends AnyFunSuite {
   }
 
   test("Can convert UI validation mapping for column name validation match order") {
-    val dataSourceRequest = DataSourceRequest("csv-name", "task-1", validations = Some(List(ValidationItemRequest(VALIDATION_COLUMN_NAMES, Some(Map(VALIDATION_COLUMN_NAMES_MATCH_ORDER -> "account_id,year"))))))
+    val dataSourceRequest = DataSourceRequest("csv-name", "task-1", validations = Some(ValidationRequest(Some(
+      List(ValidationItemRequest(VALIDATION_COLUMN_NAMES, Some(Map(VALIDATION_COLUMN_NAMES_MATCH_ORDER -> "account_id,year"))))
+    ))))
     val res = UiMapper.validationMapping(dataSourceRequest)
     assertResult(1)(res.size)
     val valid = res.head.validation.asInstanceOf[ColumnNamesValidation]
@@ -468,7 +476,9 @@ class UiMapperTest extends AnyFunSuite {
   }
 
   test("Can convert UI validation mapping for column name validation match set") {
-    val dataSourceRequest = DataSourceRequest("csv-name", "task-1", validations = Some(List(ValidationItemRequest(VALIDATION_COLUMN_NAMES, Some(Map(VALIDATION_COLUMN_NAMES_MATCH_SET -> "account_id,year"))))))
+    val dataSourceRequest = DataSourceRequest("csv-name", "task-1", validations = Some(ValidationRequest(Some(
+      List(ValidationItemRequest(VALIDATION_COLUMN_NAMES, Some(Map(VALIDATION_COLUMN_NAMES_MATCH_SET -> "account_id,year"))))
+    ))))
     val res = UiMapper.validationMapping(dataSourceRequest)
     assertResult(1)(res.size)
     val valid = res.head.validation.asInstanceOf[ColumnNamesValidation]
@@ -477,7 +487,9 @@ class UiMapperTest extends AnyFunSuite {
   }
 
   test("Can convert UI validation mapping, when unknown option, default to column name count equals 1") {
-    val dataSourceRequest = DataSourceRequest("csv-name", "task-1", validations = Some(List(ValidationItemRequest(VALIDATION_COLUMN_NAMES, Some(Map("unknown" -> "hello"))))))
+    val dataSourceRequest = DataSourceRequest("csv-name", "task-1", validations = Some(ValidationRequest(Some(
+      List(ValidationItemRequest(VALIDATION_COLUMN_NAMES, Some(Map("unknown" -> "hello"))))
+    ))))
     val res = UiMapper.validationMapping(dataSourceRequest)
     assertResult(1)(res.size)
     val valid = res.head.validation.asInstanceOf[ColumnNamesValidation]
@@ -486,11 +498,12 @@ class UiMapperTest extends AnyFunSuite {
   }
 
   test("Can convert UI validation mapping with min group by validation") {
-    val dataSourceRequest = DataSourceRequest("csv-name", "task-1", validations = Some(List(ValidationItemRequest(VALIDATION_GROUP_BY, Some(Map(VALIDATION_GROUP_BY_COLUMNS -> "account_id")),
-      Some(ValidationItemRequests(List(ValidationItemRequest(
-        VALIDATION_COLUMN, Some(Map("aggType" -> VALIDATION_MIN, "aggCol" -> "amount", VALIDATION_EQUAL -> "10"))
-      ))))
-    ))))
+    val dataSourceRequest = DataSourceRequest("csv-name", "task-1", validations = Some(ValidationRequest(
+      Some(List(ValidationItemRequest(VALIDATION_GROUP_BY, Some(Map(VALIDATION_GROUP_BY_COLUMNS -> "account_id")),
+        Some(ValidationItemRequests(List(ValidationItemRequest(
+          VALIDATION_COLUMN, Some(Map("aggType" -> VALIDATION_MIN, "aggCol" -> "amount", VALIDATION_EQUAL -> "10"))
+        ))))
+      ))))))
     val res = UiMapper.validationMapping(dataSourceRequest)
     assertResult(1)(res.size)
     val valid = res.head.validation.asInstanceOf[GroupByValidation]
@@ -501,11 +514,12 @@ class UiMapperTest extends AnyFunSuite {
   }
 
   test("Can convert UI validation mapping with max group by validation") {
-    val dataSourceRequest = DataSourceRequest("csv-name", "task-1", validations = Some(List(ValidationItemRequest(VALIDATION_GROUP_BY, Some(Map(VALIDATION_GROUP_BY_COLUMNS -> "account_id")),
-      Some(ValidationItemRequests(List(ValidationItemRequest(
-        VALIDATION_COLUMN, Some(Map("aggType" -> VALIDATION_MAX, "aggCol" -> "amount", VALIDATION_EQUAL -> "10"))
-      ))))
-    ))))
+    val dataSourceRequest = DataSourceRequest("csv-name", "task-1", validations = Some(ValidationRequest(
+      Some(List(ValidationItemRequest(VALIDATION_GROUP_BY, Some(Map(VALIDATION_GROUP_BY_COLUMNS -> "account_id")),
+        Some(ValidationItemRequests(List(ValidationItemRequest(
+          VALIDATION_COLUMN, Some(Map("aggType" -> VALIDATION_MAX, "aggCol" -> "amount", VALIDATION_EQUAL -> "10"))
+        ))))
+      ))))))
     val res = UiMapper.validationMapping(dataSourceRequest)
     assertResult(1)(res.size)
     val valid = res.head.validation.asInstanceOf[GroupByValidation]
@@ -516,11 +530,12 @@ class UiMapperTest extends AnyFunSuite {
   }
 
   test("Can convert UI validation mapping with count group by validation") {
-    val dataSourceRequest = DataSourceRequest("csv-name", "task-1", validations = Some(List(ValidationItemRequest(VALIDATION_GROUP_BY, Some(Map(VALIDATION_GROUP_BY_COLUMNS -> "account_id")),
-      Some(ValidationItemRequests(List(ValidationItemRequest(
-        VALIDATION_COLUMN, Some(Map("aggType" -> VALIDATION_COUNT, "aggCol" -> "amount", VALIDATION_EQUAL -> "10"))
-      ))))
-    ))))
+    val dataSourceRequest = DataSourceRequest("csv-name", "task-1", validations = Some(ValidationRequest(Some(
+      List(ValidationItemRequest(VALIDATION_GROUP_BY, Some(Map(VALIDATION_GROUP_BY_COLUMNS -> "account_id")),
+        Some(ValidationItemRequests(List(ValidationItemRequest(
+          VALIDATION_COLUMN, Some(Map("aggType" -> VALIDATION_COUNT, "aggCol" -> "amount", VALIDATION_EQUAL -> "10"))
+        ))))
+      ))))))
     val res = UiMapper.validationMapping(dataSourceRequest)
     assertResult(1)(res.size)
     val valid = res.head.validation.asInstanceOf[GroupByValidation]
@@ -531,11 +546,12 @@ class UiMapperTest extends AnyFunSuite {
   }
 
   test("Can convert UI validation mapping with sum group by validation") {
-    val dataSourceRequest = DataSourceRequest("csv-name", "task-1", validations = Some(List(ValidationItemRequest(VALIDATION_GROUP_BY, Some(Map(VALIDATION_GROUP_BY_COLUMNS -> "account_id")),
-      Some(ValidationItemRequests(List(ValidationItemRequest(
-        VALIDATION_COLUMN, Some(Map("aggType" -> VALIDATION_SUM, "aggCol" -> "amount", VALIDATION_EQUAL -> "10"))
-      ))))
-    ))))
+    val dataSourceRequest = DataSourceRequest("csv-name", "task-1", validations = Some(ValidationRequest(
+      Some(List(ValidationItemRequest(VALIDATION_GROUP_BY, Some(Map(VALIDATION_GROUP_BY_COLUMNS -> "account_id")),
+        Some(ValidationItemRequests(List(ValidationItemRequest(
+          VALIDATION_COLUMN, Some(Map("aggType" -> VALIDATION_SUM, "aggCol" -> "amount", VALIDATION_EQUAL -> "10"))
+        ))))
+      ))))))
     val res = UiMapper.validationMapping(dataSourceRequest)
     assertResult(1)(res.size)
     val valid = res.head.validation.asInstanceOf[GroupByValidation]
@@ -546,11 +562,12 @@ class UiMapperTest extends AnyFunSuite {
   }
 
   test("Can convert UI validation mapping with average group by validation") {
-    val dataSourceRequest = DataSourceRequest("csv-name", "task-1", validations = Some(List(ValidationItemRequest(VALIDATION_GROUP_BY, Some(Map(VALIDATION_GROUP_BY_COLUMNS -> "account_id")),
-      Some(ValidationItemRequests(List(ValidationItemRequest(
-        VALIDATION_COLUMN, Some(Map("aggType" -> VALIDATION_AVERAGE, "aggCol" -> "amount", VALIDATION_EQUAL -> "10"))
-      ))))
-    ))))
+    val dataSourceRequest = DataSourceRequest("csv-name", "task-1", validations = Some(ValidationRequest(
+      Some(List(ValidationItemRequest(VALIDATION_GROUP_BY, Some(Map(VALIDATION_GROUP_BY_COLUMNS -> "account_id")),
+        Some(ValidationItemRequests(List(ValidationItemRequest(
+          VALIDATION_COLUMN, Some(Map("aggType" -> VALIDATION_AVERAGE, "aggCol" -> "amount", VALIDATION_EQUAL -> "10"))
+        ))))
+      ))))))
     val res = UiMapper.validationMapping(dataSourceRequest)
     assertResult(1)(res.size)
     val valid = res.head.validation.asInstanceOf[GroupByValidation]
@@ -561,11 +578,12 @@ class UiMapperTest extends AnyFunSuite {
   }
 
   test("Can convert UI validation mapping with standard deviation group by validation") {
-    val dataSourceRequest = DataSourceRequest("csv-name", "task-1", validations = Some(List(ValidationItemRequest(VALIDATION_GROUP_BY, Some(Map(VALIDATION_GROUP_BY_COLUMNS -> "account_id")),
-      Some(ValidationItemRequests(List(ValidationItemRequest(
-        VALIDATION_COLUMN, Some(Map("aggType" -> VALIDATION_STANDARD_DEVIATION, "aggCol" -> "amount", VALIDATION_EQUAL -> "10"))
-      ))))
-    ))))
+    val dataSourceRequest = DataSourceRequest("csv-name", "task-1", validations = Some(ValidationRequest(
+      Some(List(ValidationItemRequest(VALIDATION_GROUP_BY, Some(Map(VALIDATION_GROUP_BY_COLUMNS -> "account_id")),
+        Some(ValidationItemRequests(List(ValidationItemRequest(
+          VALIDATION_COLUMN, Some(Map("aggType" -> VALIDATION_STANDARD_DEVIATION, "aggCol" -> "amount", VALIDATION_EQUAL -> "10"))
+        ))))
+      ))))))
     val res = UiMapper.validationMapping(dataSourceRequest)
     assertResult(1)(res.size)
     val valid = res.head.validation.asInstanceOf[GroupByValidation]
@@ -576,30 +594,34 @@ class UiMapperTest extends AnyFunSuite {
   }
 
   test("Throw error when given unknown aggregation type") {
-    val dataSourceRequest = DataSourceRequest("csv-name", "task-1", validations = Some(List(ValidationItemRequest(VALIDATION_GROUP_BY, Some(Map(VALIDATION_GROUP_BY_COLUMNS -> "account_id")),
-      Some(ValidationItemRequests(List(ValidationItemRequest(
-        VALIDATION_COLUMN, Some(Map("aggType" -> "unknown", "aggCol" -> "amount", VALIDATION_EQUAL -> "10"))
-      ))))
-    ))))
+    val dataSourceRequest = DataSourceRequest("csv-name", "task-1", validations = Some(ValidationRequest(
+      Some(List(ValidationItemRequest(VALIDATION_GROUP_BY, Some(Map(VALIDATION_GROUP_BY_COLUMNS -> "account_id")),
+        Some(ValidationItemRequests(List(ValidationItemRequest(
+          VALIDATION_COLUMN, Some(Map("aggType" -> "unknown", "aggCol" -> "amount", VALIDATION_EQUAL -> "10"))
+        ))))
+      ))))))
     assertThrows[IllegalArgumentException](UiMapper.validationMapping(dataSourceRequest))
   }
 
   test("Throw error when no aggType or aggCol is given") {
-    val dataSourceRequest = DataSourceRequest("csv-name", "task-1", validations = Some(List(ValidationItemRequest(VALIDATION_GROUP_BY, Some(Map(VALIDATION_GROUP_BY_COLUMNS -> "account_id")),
-      Some(ValidationItemRequests(List(ValidationItemRequest(
-        VALIDATION_COLUMN, Some(Map("aggCol" -> "amount", VALIDATION_EQUAL -> "10"))
-      ))))
-    ))))
-    val dataSourceRequest1 = DataSourceRequest("csv-name", "task-1", validations = Some(List(ValidationItemRequest(VALIDATION_GROUP_BY, Some(Map(VALIDATION_GROUP_BY_COLUMNS -> "account_id")),
-      Some(ValidationItemRequests(List(ValidationItemRequest(
-        VALIDATION_COLUMN, Some(Map("aggType" -> "max", VALIDATION_EQUAL -> "10"))
-      ))))
-    ))))
-    val dataSourceRequest2 = DataSourceRequest("csv-name", "task-1", validations = Some(List(ValidationItemRequest(VALIDATION_GROUP_BY, Some(Map(VALIDATION_GROUP_BY_COLUMNS -> "account_id")),
-      Some(ValidationItemRequests(List(ValidationItemRequest(
-        VALIDATION_COLUMN, Some(Map(VALIDATION_EQUAL -> "10"))
-      ))))
-    ))))
+    val dataSourceRequest = DataSourceRequest("csv-name", "task-1", validations = Some(ValidationRequest(
+      Some(List(ValidationItemRequest(VALIDATION_GROUP_BY, Some(Map(VALIDATION_GROUP_BY_COLUMNS -> "account_id")),
+        Some(ValidationItemRequests(List(ValidationItemRequest(
+          VALIDATION_COLUMN, Some(Map("aggCol" -> "amount", VALIDATION_EQUAL -> "10"))
+        ))))
+      ))))))
+    val dataSourceRequest1 = DataSourceRequest("csv-name", "task-1", validations = Some(ValidationRequest(
+      Some(List(ValidationItemRequest(VALIDATION_GROUP_BY, Some(Map(VALIDATION_GROUP_BY_COLUMNS -> "account_id")),
+        Some(ValidationItemRequests(List(ValidationItemRequest(
+          VALIDATION_COLUMN, Some(Map("aggType" -> "max", VALIDATION_EQUAL -> "10"))
+        ))))
+      ))))))
+    val dataSourceRequest2 = DataSourceRequest("csv-name", "task-1", validations = Some(ValidationRequest(
+      Some(List(ValidationItemRequest(VALIDATION_GROUP_BY, Some(Map(VALIDATION_GROUP_BY_COLUMNS -> "account_id")),
+        Some(ValidationItemRequests(List(ValidationItemRequest(
+          VALIDATION_COLUMN, Some(Map(VALIDATION_EQUAL -> "10"))
+        ))))
+      ))))))
     assertThrows[RuntimeException](UiMapper.validationMapping(dataSourceRequest))
     assertThrows[RuntimeException](UiMapper.validationMapping(dataSourceRequest1))
     assertThrows[RuntimeException](UiMapper.validationMapping(dataSourceRequest2))
@@ -611,13 +633,13 @@ class UiMapperTest extends AnyFunSuite {
       FileBuilder().name("task-2").schema(FieldBuilder().name("account_id"), FieldBuilder().name("date"))
     )
     val dataSourceRequest = List(
-      DataSourceRequest("csv-name", "task-1", validations = Some(List(ValidationItemRequest(VALIDATION_UPSTREAM, Some(Map(
+      DataSourceRequest("csv-name", "task-1", validations = Some(ValidationRequest(Some(List(ValidationItemRequest(VALIDATION_UPSTREAM, Some(Map(
         VALIDATION_UPSTREAM_TASK_NAME -> "task-2",
         VALIDATION_UPSTREAM_JOIN_TYPE -> "outer",
         VALIDATION_UPSTREAM_JOIN_COLUMNS -> "account_id",
       )),
-        Some(ValidationItemRequests(List(ValidationItemRequest(VALIDATION_COLUMN, Some(Map(VALIDATION_COLUMN -> "year", VALIDATION_EQUAL -> "2020"))))))
-      ))))
+        Some(ValidationItemRequests(List(ValidationItemRequest(VALIDATION_COLUMN, Some(Map(VALIDATION_FIELD -> "year", VALIDATION_EQUAL -> "2020"))))))
+      ))))))
     )
     val res = UiMapper.connectionsWithUpstreamValidationMapping(connections, dataSourceRequest)
     assertResult(2)(res.size)
@@ -639,13 +661,13 @@ class UiMapperTest extends AnyFunSuite {
       FileBuilder().name("task-2").schema(FieldBuilder().name("account_id"), FieldBuilder().name("date"))
     )
     val dataSourceRequest = List(
-      DataSourceRequest("csv-name", "task-1", validations = Some(List(ValidationItemRequest(VALIDATION_UPSTREAM, Some(Map(
+      DataSourceRequest("csv-name", "task-1", validations = Some(ValidationRequest(Some(List(ValidationItemRequest(VALIDATION_UPSTREAM, Some(Map(
         VALIDATION_UPSTREAM_TASK_NAME -> "task-2",
         VALIDATION_UPSTREAM_JOIN_TYPE -> "outer",
         VALIDATION_UPSTREAM_JOIN_EXPR -> "account_id == task-2_account_id",
       )),
-        Some(ValidationItemRequests(List(ValidationItemRequest(VALIDATION_COLUMN, Some(Map(VALIDATION_COLUMN -> "year", VALIDATION_EQUAL -> "2020"))))))
-      ))))
+        Some(ValidationItemRequests(List(ValidationItemRequest(VALIDATION_COLUMN, Some(Map(VALIDATION_FIELD -> "year", VALIDATION_EQUAL -> "2020"))))))
+      ))))))
     )
     val res = UiMapper.connectionsWithUpstreamValidationMapping(connections, dataSourceRequest)
     assertResult(2)(res.size)
@@ -667,12 +689,12 @@ class UiMapperTest extends AnyFunSuite {
       FileBuilder().name("task-2").schema(FieldBuilder().name("account_id"), FieldBuilder().name("date"))
     )
     val dataSourceRequest = List(
-      DataSourceRequest("csv-name", "task-1", validations = Some(List(ValidationItemRequest(VALIDATION_UPSTREAM, Some(Map(
+      DataSourceRequest("csv-name", "task-1", validations = Some(ValidationRequest(Some(List(ValidationItemRequest(VALIDATION_UPSTREAM, Some(Map(
         VALIDATION_UPSTREAM_TASK_NAME -> "task-2",
         VALIDATION_UPSTREAM_JOIN_COLUMNS -> "account_id",
       )),
-        Some(ValidationItemRequests(List(ValidationItemRequest(VALIDATION_COLUMN, Some(Map(VALIDATION_COLUMN -> "year", VALIDATION_EQUAL -> "2020"))))))
-      ))))
+        Some(ValidationItemRequests(List(ValidationItemRequest(VALIDATION_COLUMN, Some(Map(VALIDATION_FIELD -> "year", VALIDATION_EQUAL -> "2020"))))))
+      ))))))
     )
     val res = UiMapper.connectionsWithUpstreamValidationMapping(connections, dataSourceRequest)
     assertResult(2)(res.size)
@@ -694,12 +716,12 @@ class UiMapperTest extends AnyFunSuite {
       FileBuilder().name("task-2").schema(FieldBuilder().name("account_id"), FieldBuilder().name("date"))
     )
     val dataSourceRequest = List(
-      DataSourceRequest("csv-name", "task-1", validations = Some(List(ValidationItemRequest(VALIDATION_UPSTREAM, Some(Map(
+      DataSourceRequest("csv-name", "task-1", validations = Some(ValidationRequest(Some(List(ValidationItemRequest(VALIDATION_UPSTREAM, Some(Map(
         VALIDATION_UPSTREAM_TASK_NAME -> "task-2",
         VALIDATION_UPSTREAM_JOIN_EXPR -> "account_id == task-2_account_id",
       )),
-        Some(ValidationItemRequests(List(ValidationItemRequest(VALIDATION_COLUMN, Some(Map(VALIDATION_COLUMN -> "year", VALIDATION_EQUAL -> "2020"))))))
-      ))))
+        Some(ValidationItemRequests(List(ValidationItemRequest(VALIDATION_COLUMN, Some(Map(VALIDATION_FIELD -> "year", VALIDATION_EQUAL -> "2020"))))))
+      ))))))
     )
     val res = UiMapper.connectionsWithUpstreamValidationMapping(connections, dataSourceRequest)
     assertResult(2)(res.size)

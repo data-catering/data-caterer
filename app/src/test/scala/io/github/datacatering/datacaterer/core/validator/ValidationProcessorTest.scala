@@ -1,6 +1,7 @@
 package io.github.datacatering.datacaterer.core.validator
 
-import io.github.datacatering.datacaterer.api.model.{FoldersConfig, ValidationConfig}
+import io.github.datacatering.datacaterer.api.model.Constants.{FORMAT, ICEBERG, TABLE}
+import io.github.datacatering.datacaterer.api.model.{DataSourceValidation, FoldersConfig, ValidationConfig, ValidationConfiguration}
 import io.github.datacatering.datacaterer.api.{PreFilterBuilder, ValidationBuilder}
 import io.github.datacatering.datacaterer.core.util.{SparkSuite, Transaction}
 import org.junit.runner.RunWith
@@ -45,5 +46,28 @@ class ValidationProcessorTest extends SparkSuite {
     assert(result.isSuccess)
     assertResult(2)(result.total)
     assert(result.sampleErrorValues.isEmpty)
+  }
+
+  test("Can read Iceberg data for validation") {
+    df.writeTo("tmp.transactions").using("iceberg").createOrReplace()
+    val connectionConfig = Map("test_iceberg" -> Map(FORMAT -> ICEBERG, TABLE -> "local.tmp.transactions"))
+    val validationConfig = ValidationConfiguration(dataSources =
+      Map("test_iceberg" ->
+        List(DataSourceValidation(
+          options = connectionConfig.head._2,
+          validations = List(ValidationBuilder().col("transaction_id").startsWith("txn"))
+        ))
+      )
+    )
+    val validationProcessor = new ValidationProcessor(connectionConfig, Some(List(validationConfig)), ValidationConfig(), FoldersConfig())
+    val result = validationProcessor.executeValidations
+
+    assertResult(1)(result.size)
+    assertResult(1)(result.head.dataSourceValidationResults.size)
+    assertResult(1)(result.head.dataSourceValidationResults.head.validationResults.size)
+    val resultValidation = result.head.dataSourceValidationResults.head.validationResults.head
+    assert(resultValidation.isSuccess)
+    assert(resultValidation.sampleErrorValues.isEmpty)
+    assertResult(4)(resultValidation.total)
   }
 }

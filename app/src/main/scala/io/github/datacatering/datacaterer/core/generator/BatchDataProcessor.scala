@@ -82,7 +82,7 @@ class BatchDataProcessor(connectionConfigsByName: Map[String, Map[String, String
       val (step, task) = stepAndTaskByDataSourceName(df._1)
       val dataSourceConfig = connectionConfigsByName.getOrElse(dataSourceName, Map())
       val stepWithDataSourceConfig = step.copy(options = dataSourceConfig ++ step.options)
-      val sinkResult = sinkFactory.pushToSink(df._2, dataSourceName, stepWithDataSourceConfig, flagsConfig, startTime)
+      val sinkResult = sinkFactory.pushToSink(df._2, dataSourceName, stepWithDataSourceConfig, startTime)
       DataSourceResult(dataSourceName, task, stepWithDataSourceConfig, sinkResult, batchNum)
     })
   }

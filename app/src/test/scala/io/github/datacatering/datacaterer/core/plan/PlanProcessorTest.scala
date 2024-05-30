@@ -120,7 +120,7 @@ class PlanProcessorTest extends SparkSuite {
   }
 
   ignore("Can run Postgres plan run") {
-    PlanProcessor.determineAndExecutePlan(Some(new TestValidation))
+    PlanProcessor.determineAndExecutePlan(Some(new TestOtherFileFormats))
   }
 
   class TestPostgres extends PlanRun {
@@ -299,7 +299,7 @@ class PlanProcessorTest extends SparkSuite {
 //    val deltaTask = delta("my_delta", "/tmp/data/delta", Map("saveMode" -> "overwrite"))
 //      .schema(basicSchema: _*)
 //
-    val icebergTask = iceberg("my_iceberg", "/tmp/data/iceberg", Map("saveMode" -> "overwrite"))
+    val icebergTask = iceberg("my_iceberg", "/tmp/data/iceberg", "account.accounts", options = Map("saveMode" -> "overwrite"))
       .schema(basicSchema: _*)
 
     execute(icebergTask)

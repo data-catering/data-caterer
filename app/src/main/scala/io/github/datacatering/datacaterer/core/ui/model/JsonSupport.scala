@@ -31,6 +31,7 @@ trait JsonSupport extends SprayJsonSupport with DefaultJsonProtocol {
   implicit val waitRequestFormat: RootJsonFormat[WaitRequest] = jsonFormat1(WaitRequest.apply)
   implicit val validationItemRequestsFormat: RootJsonFormat[ValidationItemRequests] = rootFormat(lazyFormat(jsonFormat1(ValidationItemRequests.apply)))
   implicit val validationItemRequestFormat: RootJsonFormat[ValidationItemRequest] = rootFormat(lazyFormat(jsonFormat4(ValidationItemRequest.apply)))
+  implicit val validationRequestFormat: RootJsonFormat[ValidationRequest] = rootFormat(lazyFormat(jsonFormat2(ValidationRequest.apply)))
   implicit val foreignKeyItemRequestFormat: RootJsonFormat[ForeignKeyRequestItem] = jsonFormat3(ForeignKeyRequestItem.apply)
   implicit val foreignKeyRequestFormat: RootJsonFormat[ForeignKeyRequest] = jsonFormat3(ForeignKeyRequest.apply)
   implicit val dataSourceRequestFormat: RootJsonFormat[DataSourceRequest] = jsonFormat7(DataSourceRequest.apply)

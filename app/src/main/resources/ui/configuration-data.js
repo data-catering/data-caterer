@@ -889,6 +889,53 @@ dataSourcePropertiesMap.set("http", {
         },
     }
 });
+dataSourcePropertiesMap.set("iceberg", {
+    optGroupLabel: "Data Source",
+    Name: "Iceberg",
+    properties: {
+        catalogType: {
+            displayName: "Catalog Type",
+            default: "hadoop",
+            type: "text",
+            choice: ["hadoop", "glue", "hive", "jdbc", "nessie", "rest"],
+            help: "Catalog Type for Iceberg metadata.",
+            required: ""
+        },
+        path: {
+            displayName: "Warehouse Path",
+            default: "/tmp/generated-data/iceberg",
+            type: "text",
+            help: "File pathway to Iceberg warehouse.",
+        },
+        catalogUri: {
+            displayName: "Catalog URI",
+            default: "",
+            type: "text",
+            help: "Catalog URI for Iceberg metadata."
+        },
+        table: {
+            displayName: "Table Name",
+            default: "",
+            type: "text",
+            help: "Table name for Iceberg dataset (format: [database name].[table name]).",
+            override: "true"
+        },
+        partitions: {
+            displayName: "Num Partitions",
+            default: "1",
+            type: "number",
+            help: "Number of file partitions.",
+            override: "true"
+        },
+        partitionBy: {
+            displayName: "Partition By",
+            default: "",
+            type: "text",
+            help: "Column name(s) to partition by (comma separated).",
+            override: "true"
+        }
+    }
+});
 dataSourcePropertiesMap.set("json", {
     optGroupLabel: "Data Source",
     Name: "JSON",

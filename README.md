@@ -47,7 +47,7 @@ and deep dive into issues [from the generated report](https://data.catering/samp
 3. [Linux download](https://nightly.link/data-catering/data-caterer/workflows/build/main/data-caterer-linux.zip)
 4. Docker
    ```shell
-   docker run -d -i -p 9898:9898 -e DEPLOY_MODE=standalone --name datacaterer datacatering/data-caterer:0.10.5
+   docker run -d -i -p 9898:9898 -e DEPLOY_MODE=standalone --name datacaterer datacatering/data-caterer-basic:0.10.6
    ```
    [Open localhost:9898](http://localhost:9898).
 
@@ -66,36 +66,38 @@ cd data-caterer-example && ./run.sh
 Data Caterer supports the below data sources. Additional data sources can be added on a demand basis. [Check here for 
 the full roadmap](#roadmap).
 
-| Data Source Type | Data Source         | Support | Free |
-|------------------|---------------------|---------|------|
-| Cloud Storage    | AWS S3              | ✅       | ✅    |
-| Cloud Storage    | GCP Cloud Storage   | ✅       | ✅    |
-| Cloud Storage    | Azure Blob Storage  | ✅       | ✅    |
-| Database         | Postgres            | ✅       | ✅    |
-| Database         | MySQL               | ✅       | ✅    |
-| Database         | Cassandra           | ✅       | ✅    |
-| Database         | MongoDB             | ❌       | ✅    |
-| Database         | Elasticsearch       | ❌       | ✅    |
-| File             | CSV                 | ✅       | ✅    |
-| File             | JSON                | ✅       | ✅    |
-| File             | ORC                 | ✅       | ✅    |
-| File             | Parquet             | ✅       | ✅    |
-| File             | Hudi                | ❌       | ✅    |
-| File             | Iceberg             | ❌       | ✅    |
-| File             | Delta Lake          | ❌       | ✅    |
-| HTTP             | REST API            | ✅       | ❌    |
-| Messaging        | Kafka               | ✅       | ❌    |
-| Messaging        | Solace              | ✅       | ❌    |
-| Messaging        | Pulsar              | ❌       | ❌    |
-| Messaging        | RabbitMQ            | ❌       | ❌    |
-| Messaging        | ActiveMQ            | ❌       | ❌    |
-| Metadata         | Marquez             | ✅       | ❌    |
-| Metadata         | OpenMetadata        | ✅       | ❌    |
-| Metadata         | OpenAPI/Swagger     | ✅       | ❌    |
-| Metadata         | Great Expectations  | ✅       | ❌    |
-| Metadata         | Amundsen            | ❌       | ❌    |
-| Metadata         | Datahub             | ❌       | ❌    |
-| Metadata         | Solace Event Portal | ❌       | ❌    |
+| Data Source Type | Data Source                        | Support | Free |
+|------------------|------------------------------------|---------|------|
+| Cloud Storage    | AWS S3                             | ✅       | ✅    |
+| Cloud Storage    | Azure Blob Storage                 | ✅       | ✅    |
+| Cloud Storage    | GCP Cloud Storage                  | ✅       | ✅    |
+| Database         | Cassandra                          | ✅       | ✅    |
+| Database         | MySQL                              | ✅       | ✅    |
+| Database         | Postgres                           | ✅       | ✅    |
+| Database         | Elasticsearch                      | ❌       | ✅    |
+| Database         | MongoDB                            | ❌       | ✅    |
+| File             | CSV                                | ✅       | ✅    |
+| File             | JSON                               | ✅       | ✅    |
+| File             | Iceberg                            | ✅       | ✅    |
+| File             | ORC                                | ✅       | ✅    |
+| File             | Parquet                            | ✅       | ✅    |
+| File             | Delta Lake                         | ❌       | ✅    |
+| File             | Hudi                               | ❌       | ✅    |
+| HTTP             | REST API                           | ✅       | ❌    |
+| Messaging        | Kafka                              | ✅       | ❌    |
+| Messaging        | Solace                             | ✅       | ❌    |
+| Messaging        | ActiveMQ                           | ❌       | ❌    |
+| Messaging        | Pulsar                             | ❌       | ❌    |
+| Messaging        | RabbitMQ                           | ❌       | ❌    |
+| Metadata         | Great Expectations                 | ✅       | ❌    |
+| Metadata         | Marquez                            | ✅       | ❌    |
+| Metadata         | OpenAPI/Swagger                    | ✅       | ❌    |
+| Metadata         | OpenMetadata                       | ✅       | ❌    |
+| Metadata         | Amundsen                           | ❌       | ❌    |
+| Metadata         | Datahub                            | ❌       | ❌    |
+| Metadata         | Data Contract CLI                  | ❌       | ❌    |
+| Metadata         | ODCS (Open Data Contract Standard) | ❌       | ❌    |
+| Metadata         | Solace Event Portal                | ❌       | ❌    |
 
 
 ## Supported use cases

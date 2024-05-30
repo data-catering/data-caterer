@@ -1,87 +1,19 @@
 import {
     addNewDataTypeAttribute,
     camelize,
-    createIconWithConnectionTooltip,
+    createAutoFromMetadata,
+    createAutoFromMetadataSourceContainer,
     createManualContainer,
     createNewField,
-    createSelect,
-    createToast,
     dispatchEvent,
-    findNextLevelNodesByClass,
-    getDataConnectionsAndAddToSelect,
-    wait
+    findNextLevelNodesByClass
 } from "./shared.js";
-import {dataSourcePropertiesMap, dataTypeOptionsMap} from "./configuration-data.js";
+import {dataTypeOptionsMap} from "./configuration-data.js";
 
 export let numFields = 0;
 
 export function incFields() {
     numFields++;
-}
-
-function addMetadataConnectionOverrideOptions(metadataConnectionSelect, overrideOptionsContainer, index) {
-    metadataConnectionSelect.addEventListener("change", (event) => {
-        let metadataSourceName = event.target.value;
-        fetch(`http://localhost:9898/connection/${metadataSourceName}`, {method: "GET"})
-            .then(r => {
-                if (r.ok) {
-                    return r.json();
-                } else {
-                    r.text().then(text => {
-                        createToast(`Get connection ${metadataSourceName}`, `Failed to get connection ${metadataSourceName}! Error: ${err}`, "fail");
-                        throw new Error(text);
-                    });
-                }
-            })
-            .then(respJson => {
-                if (respJson) {
-                    //remove previous properties
-                    overrideOptionsContainer.replaceChildren();
-                    let metadataSourceType = respJson.type;
-                    let metadataSourceProperties = dataSourcePropertiesMap.get(metadataSourceType).properties;
-
-                    for (const [key, value] of Object.entries(metadataSourceProperties)) {
-                        if (value["override"] && value["override"] === "true") {
-                            //add properties that can be overridden
-                            addNewDataTypeAttribute(key, value, `connection-config-${index}-${key}`, "metadata-source-property", overrideOptionsContainer);
-                        }
-                    }
-                }
-            });
-    });
-}
-
-// allow users to get schema information from a metadata source such as openmetadata or marquez
-export async function createAutoSchema(index) {
-    let baseContainer = document.createElement("div");
-    baseContainer.setAttribute("id", `data-source-auto-schema-container-${index}`);
-    baseContainer.setAttribute("class", "card card-body data-source-auto-schema-container");
-    baseContainer.style.display = "inherit";
-    let autoSchemaHeader = document.createElement("h5");
-    autoSchemaHeader.innerText = "Auto Schema";
-    let baseTaskDiv = document.createElement("div");
-    baseTaskDiv.setAttribute("class", "row m-2 g-2 align-items-center");
-
-    let metadataConnectionSelect = createSelect(`metadata-connection-${index}`, "Metadata source", "selectpicker form-control input-field metadata-connection-name", "Select metadata source...");
-    let dataConnectionCol = document.createElement("div");
-    dataConnectionCol.setAttribute("class", "col");
-    dataConnectionCol.append(metadataConnectionSelect);
-
-    let iconDiv = createIconWithConnectionTooltip(metadataConnectionSelect);
-    let iconCol = document.createElement("div");
-    iconCol.setAttribute("class", "col-md-auto");
-    iconCol.append(iconDiv);
-    baseTaskDiv.append(dataConnectionCol, iconCol);
-
-    // get connection list, filter only metadata sources
-    let metadataConnection = await getDataConnectionsAndAddToSelect(metadataConnectionSelect, baseTaskDiv, "metadata");
-    // provide opportunity to override non-connection options for metadata source (i.e. namespace, dataset)
-    let overrideOptionsContainer = document.createElement("div");
-    // when the metadata source connection is selected, populate override options container with options with "override: true"
-    addMetadataConnectionOverrideOptions(metadataConnectionSelect, overrideOptionsContainer, index);
-
-    baseContainer.append(autoSchemaHeader, metadataConnection, overrideOptionsContainer);
-    return baseContainer;
 }
 
 async function createGenerationFields(dataSourceFields, manualSchema) {
@@ -117,15 +49,6 @@ async function createGenerationFields(dataSourceFields, manualSchema) {
     collapseShow.click();
 }
 
-async function createAutoGenerationSchema(autoFromMetadataSchema, dataSource) {
-    let updatedMetadataSource = $(autoFromMetadataSchema).find(".metadata-connection-name").selectpicker("val", dataSource.fields.optMetadataSource.name);
-    dispatchEvent(updatedMetadataSource, "change");
-    // takes some time to get the override options
-    await wait(100);
-    for (let [key, value] of Object.entries(dataSource.fields.optMetadataSource.overrideOptions)) {
-        $(autoFromMetadataSchema).find(`input[aria-label="${key}"]`).val(value);
-    }
-}
 
 export async function createGenerationElements(dataSource, newDataSource, numDataSources) {
     let dataSourceGenContainer = $(newDataSource).find("#data-source-generation-config-container");
@@ -133,10 +56,10 @@ export async function createGenerationElements(dataSource, newDataSource, numDat
     // check if there is auto schema from metadata source defined
     if (dataSource.fields && dataSource.fields.optMetadataSource) {
         $(dataSourceGenContainer).find("[id^=auto-from-metadata-source-generation-checkbox]").prop("checked", true);
-        let autoFromMetadataSchema = await createAutoSchema(numDataSources);
+        let autoFromMetadataSchema = await createAutoFromMetadataSourceContainer(numDataSources);
         $(dataSourceGenContainer).find(".manual").after(autoFromMetadataSchema);
 
-        await createAutoGenerationSchema(autoFromMetadataSchema, dataSource);
+        await createAutoFromMetadata(autoFromMetadataSchema, dataSource);
     }
     // check if there is manual schema defined
     if (dataSource.fields && dataSource.fields.optFields && dataSource.fields.optFields.length > 0) {
@@ -190,7 +113,7 @@ export function getGeneration(dataSource, currentDataSource) {
     }
 
     if (isAutoFromMetadataChecked) {
-        let dataSourceAutoSchemaContainer = $(dataSource).find("[class~=data-source-auto-schema-container]")[0];
+        let dataSourceAutoSchemaContainer = $(dataSource).find("[class~=data-source-auto-from-metadata-container]")[0];
         let metadataConnectionName = $(dataSourceAutoSchemaContainer).find("select[class~=metadata-connection-name]").val();
         let metadataConnectionOptions = $(dataSourceAutoSchemaContainer).find("input[class~=metadata-source-property]").toArray()
             .reduce(function (map, option) {

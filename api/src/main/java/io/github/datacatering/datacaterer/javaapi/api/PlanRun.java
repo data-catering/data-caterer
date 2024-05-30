@@ -161,6 +161,21 @@ public abstract class PlanRun {
         return parquet(name, path, Collections.emptyMap());
     }
 
+    public FileBuilder iceberg(String name, String path, String tableName) {
+        return basePlanRun.icebergJava(name, path, tableName);
+    }
+
+    public FileBuilder iceberg(
+            String name,
+            String path,
+            String tableName,
+            String catalogType,
+            String catalogUri,
+            Map<String, String> options
+    ) {
+        return basePlanRun.iceberg(name, path, tableName, catalogType, catalogUri, toScalaMap(options));
+    }
+
     public PostgresBuilder postgres(
             String name,
             String url,

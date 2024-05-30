@@ -1,13 +1,15 @@
 package io.github.datacatering.datacaterer.core.sink
 
-import io.github.datacatering.datacaterer.api.model.Constants.{DRIVER, FORMAT, JDBC, OMIT, PARTITIONS, PARTITION_BY, POSTGRES_DRIVER, SAVE_MODE}
+import io.github.datacatering.datacaterer.api.model.Constants.{DRIVER, FORMAT, ICEBERG, JDBC, OMIT, PARTITIONS, PARTITION_BY, PATH, POSTGRES_DRIVER, SAVE_MODE, SPARK_ICEBERG_CATALOG_TYPE, SPARK_ICEBERG_CATALOG_WAREHOUSE, TABLE}
 import io.github.datacatering.datacaterer.api.model.{FlagsConfig, MetadataConfig, Step}
 import io.github.datacatering.datacaterer.core.model.Constants.{FAILED, FINISHED, STARTED}
 import io.github.datacatering.datacaterer.core.model.SinkResult
 import io.github.datacatering.datacaterer.core.util.ConfigUtil
 import io.github.datacatering.datacaterer.core.util.MetadataUtil.getFieldMetadata
 import org.apache.log4j.Logger
-import org.apache.spark.sql.{DataFrame, DataFrameWriter, Row, SaveMode, SparkSession}
+import org.apache.spark.sql.catalyst.analysis.TableAlreadyExistsException
+import org.apache.spark.sql.functions.col
+import org.apache.spark.sql.{CreateTableWriter, DataFrame, DataFrameWriter, DataFrameWriterV2, Dataset, Row, SaveMode, SparkSession}
 
 import java.time.LocalDateTime
 import scala.util.{Failure, Success, Try}
@@ -17,7 +19,7 @@ class SinkFactory(val flagsConfig: FlagsConfig, val metadataConfig: MetadataConf
   private val LOGGER = Logger.getLogger(getClass.getName)
   private var HAS_LOGGED_COUNT_DISABLE_WARNING = false
 
-  def pushToSink(df: DataFrame, dataSourceName: String, step: Step, flagsConfig: FlagsConfig, startTime: LocalDateTime): SinkResult = {
+  def pushToSink(df: DataFrame, dataSourceName: String, step: Step, startTime: LocalDateTime): SinkResult = {
     val dfWithoutOmitFields = removeOmitFields(df)
     val saveMode = step.options.get(SAVE_MODE).map(_.toLowerCase.capitalize).map(SaveMode.valueOf).getOrElse(SaveMode.Append)
     val format = step.options(FORMAT)
@@ -65,12 +67,21 @@ class SinkFactory(val flagsConfig: FlagsConfig, val metadataConfig: MetadataConf
   private def saveBatchData(dataSourceName: String, df: DataFrame, saveMode: SaveMode, connectionConfig: Map[String, String],
                             count: String, startTime: LocalDateTime): SinkResult = {
     val format = connectionConfig(FORMAT)
-    val partitionedDf = partitionDf(df, connectionConfig)
-    val trySaveData = Try(partitionedDf
-      .format(format)
-      .mode(saveMode)
-      .options(connectionConfig)
-      .save())
+
+    // if format is iceberg, need to use dataframev2 api for partition and writing
+    val trySaveData = if (format == ICEBERG) {
+      connectionConfig.filter(_._1.startsWith("spark.sql.catalog"))
+        .foreach(conf => df.sqlContext.setConf(conf._1, conf._2))
+      Try(tryPartitionAndSaveDfV2(df, saveMode, connectionConfig))
+    } else {
+      val partitionedDf = partitionDf(df, connectionConfig)
+      Try(partitionedDf
+        .format(format)
+        .mode(saveMode)
+        .options(connectionConfig)
+        .save())
+    }
+
     val optException = trySaveData match {
       case Failure(exception) => Some(exception)
       case Success(_) => None
@@ -84,6 +95,49 @@ class SinkFactory(val flagsConfig: FlagsConfig, val metadataConfig: MetadataConf
     stepOptions.get(PARTITION_BY)
       .map(partitionCols => partitionDf.write.partitionBy(partitionCols.split(",").map(_.trim): _*))
       .getOrElse(partitionDf.write)
+  }
+
+  private def tryPartitionAndSaveDfV2(df: DataFrame, saveMode: SaveMode, stepOptions: Map[String, String]): Unit = {
+    val tableName = s"$ICEBERG.${stepOptions(TABLE)}"
+    val repartitionDf = stepOptions.get(PARTITIONS)
+      .map(partitionNum => df.repartition(partitionNum.toInt)).getOrElse(df)
+    val baseTable = repartitionDf.writeTo(tableName).options(stepOptions)
+
+    stepOptions.get(PARTITION_BY)
+      .map(partitionCols => {
+        val spt = partitionCols.split(",").map(c => col(c.trim))
+
+        val partitionedDf = if (spt.length > 1) {
+          baseTable.partitionedBy(spt.head, spt.tail: _*)
+        } else if (spt.length == 1) {
+          baseTable.partitionedBy(spt.head)
+        } else {
+          baseTable
+        }
+
+        saveDataframeV2(saveMode, tableName, baseTable, partitionedDf)
+      })
+      .getOrElse(saveDataframeV2(saveMode, tableName, baseTable, baseTable))
+  }
+
+  private def saveDataframeV2(saveMode: SaveMode, tableName: String, baseDf: DataFrameWriterV2[Row], partitionedDf: CreateTableWriter[Row]): Unit = {
+    saveMode match {
+      case SaveMode.Append | SaveMode.Ignore =>
+        val tryCreate = Try(partitionedDf.create())
+        tryCreate match {
+          case Failure(exception) =>
+            if (exception.isInstanceOf[TableAlreadyExistsException]) {
+              LOGGER.debug(s"Table already exists, appending to existing table, table-name=$tableName")
+              baseDf.append()
+            } else {
+              throw new RuntimeException(exception)
+            }
+          case Success(_) =>
+            LOGGER.debug(s"Successfully created partitioned table, table-name=$tableName")
+        }
+      case SaveMode.Overwrite => baseDf.overwritePartitions()
+      case SaveMode.ErrorIfExists => partitionedDf.create()
+    }
   }
 
   private def additionalConnectionConfig(format: String, connectionConfig: Map[String, String]): Map[String, String] = {

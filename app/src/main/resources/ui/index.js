@@ -14,6 +14,7 @@
 
 import {
     createAccordionItem,
+    createAutoFromMetadataSourceContainer,
     createCloseButton,
     createFieldValidationCheck,
     createFormFloating,
@@ -36,7 +37,7 @@ import {
     createNewConfigRow,
     getConfiguration
 } from "./helper-configuration.js";
-import {createAutoSchema, createGenerationElements, getGeneration} from "./helper-generation.js";
+import {createGenerationElements, getGeneration} from "./helper-generation.js";
 import {createValidationFromPlan, getValidations} from "./helper-validation.js";
 import {createCountElementsFromPlan, createRecordCount, getRecordCount} from "./helper-record-count.js";
 import {configurationOptionsMap, reportConfigKeys} from "./configuration-data.js";
@@ -167,8 +168,8 @@ async function checkboxListenerDisplay(index, event, configContainer, name, auto
         querySelector = `#${details["containerName"]}-${index}`;
         newElement = createManualContainer(index, name);
     } else if (autoOrManualValue === "auto-from-metadata-source") {
-        querySelector = `#data-source-auto-schema-container-${index}`;
-        newElement = await createAutoSchema(index);
+        querySelector = `#data-source-auto-from-metadata-container-${index}`;
+        newElement = await createAutoFromMetadataSourceContainer(index);
     } else {
         querySelector = "unknown";
         setEnableAutoGeneratePlanAndTasks();
@@ -404,10 +405,14 @@ if (currUrlParams.includes("plan-name=")) {
                 $(newDataSource).find(".task-name-field").val(dataSource.taskName);
                 let updatedConnectionName = $(newDataSource).find(".data-connection-name").selectpicker("val", dataSource.name);
                 dispatchEvent(updatedConnectionName, "change");
+                await wait(100);
+                for (let [key, value] of Object.entries(dataSource.options)) {
+                    $(newDataSource).find(`[class~=data-source-property][aria-label=${key}]`).val(value);
+                }
 
                 await createGenerationElements(dataSource, newDataSource, numDataSources);
                 createCountElementsFromPlan(dataSource, newDataSource);
-                await createValidationFromPlan(dataSource, newDataSource);
+                await createValidationFromPlan(dataSource, newDataSource, numDataSources);
             }
             await createForeignKeysFromPlan(respJson);
             createConfigurationFromPlan(respJson);
