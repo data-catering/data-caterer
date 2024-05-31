@@ -148,7 +148,7 @@ dependencies {
     basicImpl("joda-time:joda-time:2.12.5")
     basicImpl("com.google.guava:guava:32.1.3-jre")
     basicImpl("org.asynchttpclient:async-http-client:2.12.3")
-    basicImpl("com.github.pureconfig:pureconfig_$scalaVersion:0.17.2") {
+    basicImpl("com.github.pureconfig:pureconfig_$scalaVersion:0.17.6") {
         exclude(group = "org.scala-lang")
     }
     basicImpl("com.fasterxml.jackson.core:jackson-databind:2.15.3") {
