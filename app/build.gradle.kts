@@ -181,7 +181,7 @@ testing {
                 implementation("org.apache.spark:spark-sql_$scalaVersion:$sparkVersion")
                 implementation("org.apache.spark:spark-avro_$scalaVersion:$sparkVersion")
                 implementation("org.apache.spark:spark-protobuf_$scalaVersion:$sparkVersion")
-                implementation("com.dimafeng:testcontainers-scala_$scalaVersion:0.41.0")
+                implementation("com.dimafeng:testcontainers-scala_$scalaVersion:0.41.3")
                 implementation(project(":api"))
 
                 // Need scala-xml at test runtime
