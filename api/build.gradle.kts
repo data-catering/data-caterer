@@ -47,7 +47,7 @@ dependencies {
     compileOnly("com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.16.0")
     compileOnly("com.fasterxml.jackson.module:jackson-module-scala_$scalaVersion:2.15.2")
 
-    api("com.softwaremill.quicklens:quicklens_$scalaVersion:1.9.6") {
+    api("com.softwaremill.quicklens:quicklens_$scalaVersion:1.9.7") {
         exclude(group = "org.scala-lang")
     }
 }
