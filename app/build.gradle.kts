@@ -108,7 +108,7 @@ dependencies {
     // mysql
     basicImpl("mysql:mysql-connector-java:8.0.33")
     // cassandra
-    basicImpl("com.datastax.spark:spark-cassandra-connector_$scalaVersion:3.3.0") {
+    basicImpl("com.datastax.spark:spark-cassandra-connector_$scalaVersion:3.5.0") {
         exclude(group = "org.scala-lang")
     }
     // cloud file storage
