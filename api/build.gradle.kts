@@ -44,7 +44,7 @@ configurations {
 
 dependencies {
     compileOnly("org.scala-lang:scala-library:$scalaSpecificVersion")
-    compileOnly("com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.16.0")
+    compileOnly("com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.17.1")
     compileOnly("com.fasterxml.jackson.module:jackson-module-scala_$scalaVersion:2.15.2")
 
     api("com.softwaremill.quicklens:quicklens_$scalaVersion:1.9.7") {
