@@ -151,7 +151,7 @@ dependencies {
     basicImpl("com.github.pureconfig:pureconfig_$scalaVersion:0.17.6") {
         exclude(group = "org.scala-lang")
     }
-    basicImpl("com.fasterxml.jackson.core:jackson-databind:2.15.3") {
+    basicImpl("com.fasterxml.jackson.core:jackson-databind:2.17.1") {
         version {
             strictly("2.15.3")
         }
