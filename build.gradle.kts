@@ -4,7 +4,7 @@ import org.jetbrains.gradle.ext.settings
 
 plugins {
     idea
-    id("org.jetbrains.gradle.plugin.idea-ext") version "1.1.7"
+    id("org.jetbrains.gradle.plugin.idea-ext") version "1.1.8"
     id("io.github.gradle-nexus.publish-plugin") version "1.3.0"
 }
 
