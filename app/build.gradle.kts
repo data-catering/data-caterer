@@ -80,11 +80,11 @@ dependencies {
 
     // vulnerabilities in Spark
     basicImpl("com.google.protobuf:protobuf-java:3.21.7")
-    basicImpl("io.netty:netty-codec-http:4.1.109.Final")
+    basicImpl("io.netty:netty-codec-http:4.1.110.Final")
     basicImpl("com.fasterxml.woodstox:woodstox-core:5.4.0")
     basicImpl("com.nimbusds:nimbus-jose-jwt:9.37.2")
     basicImpl("commons-net:commons-net:3.9.0")
-    basicImpl("io.netty:netty-handler:4.1.109.Final")
+    basicImpl("io.netty:netty-handler:4.1.110.Final")
     basicImpl("net.minidev:json-smart:2.4.9")
     basicImpl("org.apache.avro:avro:1.11.3")
     basicImpl("org.apache.commons:commons-compress:1.26.2")
