@@ -79,7 +79,7 @@ dependencies {
     jpackageDep(project(":api"))
 
     // vulnerabilities in Spark
-    basicImpl("com.google.protobuf:protobuf-java:3.21.7")
+    basicImpl("com.google.protobuf:protobuf-java:3.25.3")
     basicImpl("io.netty:netty-codec-http:4.1.110.Final")
     basicImpl("com.fasterxml.woodstox:woodstox-core:5.4.0")
     basicImpl("com.nimbusds:nimbus-jose-jwt:9.37.2")
