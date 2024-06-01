@@ -133,7 +133,7 @@ dependencies {
     basicImpl("org.reflections:reflections:0.10.2")
 
     // alert
-    basicImpl("com.slack.api:slack-api-client:1.36.1")
+    basicImpl("com.slack.api:slack-api-client:1.39.3")
 
     // UI/HTTP server
     basicImpl("org.apache.pekko:pekko-http_$scalaVersion:1.0.1")
