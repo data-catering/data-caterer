@@ -145,7 +145,7 @@ dependencies {
     basicImpl("com.globalmentor:hadoop-bare-naked-local-fs:0.1.0")
 
     // misc
-    basicImpl("joda-time:joda-time:2.12.5")
+    basicImpl("joda-time:joda-time:2.12.7")
     basicImpl("com.google.guava:guava:32.1.3-jre")
     basicImpl("org.asynchttpclient:async-http-client:2.12.3")
     basicImpl("com.github.pureconfig:pureconfig_$scalaVersion:0.17.6") {
