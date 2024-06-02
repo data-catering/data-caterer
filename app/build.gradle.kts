@@ -156,7 +156,7 @@ dependencies {
             strictly("2.15.3")
         }
     }
-    basicImpl("com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.15.3")
+    basicImpl("com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.17.1")
     basicImpl("com.fasterxml.jackson.module:jackson-module-scala_$scalaVersion:2.15.3") {
         exclude(group = "org.scala-lang")
     }
