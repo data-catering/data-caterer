@@ -66,7 +66,7 @@ testing {
                 implementation("org.scalamock:scalamock_$scalaVersion:5.2.0")
 
                 // Need scala-xml at test runtime
-                runtimeOnly("org.scala-lang.modules:scala-xml_$scalaVersion:1.2.0")
+                runtimeOnly("org.scala-lang.modules:scala-xml_$scalaVersion:1.3.1")
             }
         }
     }
