@@ -104,7 +104,7 @@ dependencies {
 
     // connectors
     // postgres
-    basicImpl("org.postgresql:postgresql:42.6.0")
+    basicImpl("org.postgresql:postgresql:42.7.3")
     // mysql
     basicImpl("mysql:mysql-connector-java:8.0.33")
     // cassandra
