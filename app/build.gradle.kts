@@ -172,7 +172,7 @@ testing {
             dependencies {
                 // Use Scalatest for testing our library
                 implementation("org.scalatest:scalatest_$scalaVersion:3.2.17")
-                implementation("org.scalatestplus:junit-4-13_$scalaVersion:3.2.17.0")
+                implementation("org.scalatestplus:junit-4-13_$scalaVersion:3.3.0.0-SNAP3")
                 implementation("org.scalamock:scalamock_$scalaVersion:5.2.0")
                 implementation("org.apache.spark:spark-sql_$scalaVersion:$sparkVersion")
                 implementation("org.apache.spark:spark-avro_$scalaVersion:$sparkVersion")
