@@ -83,7 +83,7 @@ dependencies {
     basicImpl("io.netty:netty-codec-http:4.1.110.Final")
     basicImpl("com.fasterxml.woodstox:woodstox-core:5.4.0")
     basicImpl("com.nimbusds:nimbus-jose-jwt:9.39.3")
-    basicImpl("commons-net:commons-net:3.9.0")
+    basicImpl("commons-net:commons-net:3.11.0")
     basicImpl("io.netty:netty-handler:4.1.110.Final")
     basicImpl("net.minidev:json-smart:2.4.9")
     basicImpl("org.apache.avro:avro:1.11.3")
