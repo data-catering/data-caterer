@@ -85,7 +85,7 @@ dependencies {
     basicImpl("com.nimbusds:nimbus-jose-jwt:9.39.3")
     basicImpl("commons-net:commons-net:3.11.0")
     basicImpl("io.netty:netty-handler:4.1.110.Final")
-    basicImpl("net.minidev:json-smart:2.4.9")
+    basicImpl("net.minidev:json-smart:2.5.1")
     basicImpl("org.apache.avro:avro:1.11.3")
     basicImpl("org.apache.commons:commons-compress:1.26.2")
     basicImpl("org.apache.commons:commons-configuration2:2.10.1")
