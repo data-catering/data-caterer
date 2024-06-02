@@ -46,7 +46,7 @@ jobs:
           fetch-depth: 2
       - name: Set version
         run: echo "APP_VERSION=$(grep version gradle.properties | cut -d= -f2)" >> $GITHUB_ENV
-      - uses: actions/setup-java@v1
+      - uses: actions/setup-java@v4
         with:
           java-version: '21'
           java-package: jdk
@@ -75,7 +75,7 @@ jobs:
           fetch-depth: 2
       - name: Set version
         run: echo "APP_VERSION=$(grep version gradle.properties | cut -d= -f2)" >> $env:GITHUB_ENV
-      - uses: actions/setup-java@v1
+      - uses: actions/setup-java@v4
         with:
           java-version: '21'
           java-package: jdk
@@ -104,7 +104,7 @@ jobs:
           fetch-depth: 2
       - name: Set version
         run: echo "APP_VERSION=$(grep version gradle.properties | cut -d= -f2)" >> $GITHUB_ENV
-      - uses: actions/setup-java@v1
+      - uses: actions/setup-java@v4
         with:
           java-version: '21'
           java-package: jdk
