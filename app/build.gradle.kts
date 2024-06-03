@@ -91,7 +91,7 @@ dependencies {
     basicImpl("org.apache.commons:commons-configuration2:2.10.1")
     basicImpl("org.codehaus.jettison:jettison:1.5.4")
     basicImpl("org.eclipse.jetty:jetty-client:9.4.54.v20240208")
-    basicImpl("org.eclipse.jetty:jetty-http:9.4.54.v20240208")
+    basicImpl("org.eclipse.jetty:jetty-http:12.0.10")
     basicImpl("org.eclipse.jetty:jetty-io:9.4.54.v20240208")
     basicImpl("org.eclipse.jetty:jetty-util:9.4.54.v20240208")
     basicImpl("org.eclipse.jetty:jetty-webapp:9.4.54.v20240208")
