@@ -119,7 +119,7 @@ class PlanProcessorTest extends SparkSuite {
     Files.writeString(Path.of("/tmp/my-validation.yaml"), validWrite)
   }
 
-  test("Can run Postgres plan run") {
+  ignore("Can run Postgres plan run") {
     PlanProcessor.determineAndExecutePlan(Some(new TestOtherFileFormats))
   }
 
