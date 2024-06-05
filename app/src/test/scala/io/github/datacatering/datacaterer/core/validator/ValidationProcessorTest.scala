@@ -1,8 +1,9 @@
 package io.github.datacatering.datacaterer.core.validator
 
-import io.github.datacatering.datacaterer.api.model.Constants.{FORMAT, ICEBERG, TABLE}
+import io.github.datacatering.datacaterer.api.model.Constants.{DELTA, DELTA_LAKE_SPARK_CONF, FORMAT, ICEBERG, ICEBERG_SPARK_CONF, PATH, TABLE}
 import io.github.datacatering.datacaterer.api.model.{DataSourceValidation, FoldersConfig, ValidationConfig, ValidationConfiguration}
 import io.github.datacatering.datacaterer.api.{PreFilterBuilder, ValidationBuilder}
+import io.github.datacatering.datacaterer.core.model.ValidationConfigResult
 import io.github.datacatering.datacaterer.core.util.{SparkSuite, Transaction}
 import org.junit.runner.RunWith
 import org.scalatestplus.junit.JUnitRunner
@@ -49,19 +50,36 @@ class ValidationProcessorTest extends SparkSuite {
   }
 
   test("Can read Iceberg data for validation") {
+    ICEBERG_SPARK_CONF.foreach(conf => df.sqlContext.setConf(conf._1, conf._2))
     df.writeTo("tmp.transactions").using("iceberg").createOrReplace()
-    val connectionConfig = Map("test_iceberg" -> Map(FORMAT -> ICEBERG, TABLE -> "local.tmp.transactions"))
+    val validationProcessor = setupValidationProcessor(Map(FORMAT -> ICEBERG, TABLE -> "local.tmp.transactions"))
+    val result = validationProcessor.executeValidations
+    validateResult(result)
+  }
+
+  test("Can read Delta Lake data for validation") {
+    val path = "/tmp/delta-validation-test"
+    DELTA_LAKE_SPARK_CONF.foreach(conf => df.sqlContext.setConf(conf._1, conf._2))
+    df.write.format("delta").mode("overwrite").save(path)
+    val validationProcessor = setupValidationProcessor(Map(FORMAT -> DELTA, PATH -> path))
+    val result = validationProcessor.executeValidations
+    validateResult(result)
+  }
+
+  private def setupValidationProcessor(connectingConfig: Map[String, String]): ValidationProcessor = {
+    val connectionConfig = Map("test_connection" -> connectingConfig)
     val validationConfig = ValidationConfiguration(dataSources =
-      Map("test_iceberg" ->
+      Map("test_connection" ->
         List(DataSourceValidation(
           options = connectionConfig.head._2,
           validations = List(ValidationBuilder().col("transaction_id").startsWith("txn"))
         ))
       )
     )
-    val validationProcessor = new ValidationProcessor(connectionConfig, Some(List(validationConfig)), ValidationConfig(), FoldersConfig())
-    val result = validationProcessor.executeValidations
+    new ValidationProcessor(connectionConfig, Some(List(validationConfig)), ValidationConfig(), FoldersConfig())
+  }
 
+  private def validateResult(result: List[ValidationConfigResult]): Unit = {
     assertResult(1)(result.size)
     assertResult(1)(result.head.dataSourceValidationResults.size)
     assertResult(1)(result.head.dataSourceValidationResults.head.validationResults.size)

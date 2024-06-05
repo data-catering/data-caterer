@@ -1,7 +1,7 @@
 package io.github.datacatering.datacaterer.core.validator
 
 import io.github.datacatering.datacaterer.api.ValidationBuilder
-import io.github.datacatering.datacaterer.api.model.Constants.{DEFAULT_ENABLE_VALIDATION, ENABLE_DATA_VALIDATION, FORMAT, HTTP, ICEBERG, JMS, TABLE}
+import io.github.datacatering.datacaterer.api.model.Constants.{DEFAULT_ENABLE_VALIDATION, DELTA, DELTA_LAKE_SPARK_CONF, ENABLE_DATA_VALIDATION, FORMAT, HTTP, ICEBERG, ICEBERG_SPARK_CONF, JMS, TABLE}
 import io.github.datacatering.datacaterer.api.model.{DataSourceValidation, ExpressionValidation, FoldersConfig, GroupByValidation, UpstreamDataSourceValidation, ValidationConfig, ValidationConfiguration}
 import io.github.datacatering.datacaterer.core.model.{DataSourceValidationResult, ValidationConfigResult, ValidationResult}
 import io.github.datacatering.datacaterer.core.parser.ValidationParser
@@ -113,24 +113,28 @@ class ValidationProcessor(
   }
 
   private def getDataFrame(dataSourceName: String, options: Map[String, String]): DataFrame = {
-    val connectionConfig = connectionConfigsByName(dataSourceName)
+    val connectionConfig = connectionConfigsByName(dataSourceName) ++ options
     val format = connectionConfig(FORMAT)
+    val configWithFormatConfigs = getAdditionalSparkConfig(format, connectionConfig)
+
+    configWithFormatConfigs.filter(_._1.startsWith("spark.sql"))
+      .foreach(conf => sparkSession.sqlContext.setConf(conf._1, conf._2))
+
     val df = if (format == HTTP || format == JMS) {
       LOGGER.warn("No support for HTTP or JMS data validations, will skip validations")
       sparkSession.emptyDataFrame
     } else if (format == ICEBERG) {
-      val allOpts = connectionConfig ++ options
-      val tableName = allOpts(TABLE)
+      val tableName = configWithFormatConfigs(TABLE)
       val tableNameWithCatalog = if (tableName.split("\\.").length == 2) {
         s"iceberg.$tableName"
       } else tableName
       sparkSession.read
-        .options(allOpts)
+        .options(configWithFormatConfigs)
         .table(tableNameWithCatalog)
     } else {
       sparkSession.read
         .format(format)
-        .options(connectionConfig ++ options)
+        .options(configWithFormatConfigs)
         .load()
     }
 
@@ -164,5 +168,13 @@ class ValidationProcessor(
         })
       }
     }))
+  }
+
+  private def getAdditionalSparkConfig(format: String, connectionConfig: Map[String, String]): Map[String, String] = {
+    format match {
+      case DELTA => connectionConfig ++ DELTA_LAKE_SPARK_CONF
+      case ICEBERG => connectionConfig ++ ICEBERG_SPARK_CONF
+      case _ => connectionConfig
+    }
   }
 }
