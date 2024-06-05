@@ -1,6 +1,6 @@
 package io.github.datacatering.datacaterer.core.sink
 
-import io.github.datacatering.datacaterer.api.model.Constants.{FORMAT, ICEBERG, PATH, SAVE_MODE, TABLE}
+import io.github.datacatering.datacaterer.api.model.Constants.{DELTA, FORMAT, ICEBERG, PATH, SAVE_MODE, TABLE}
 import io.github.datacatering.datacaterer.api.model.{FlagsConfig, MetadataConfig, Step}
 import io.github.datacatering.datacaterer.core.util.{SparkSuite, Transaction}
 import org.junit.runner.RunWith
@@ -28,6 +28,17 @@ class SinkFactoryTest extends SparkSuite {
     assert(res.isSuccess)
     assertResult(4)(res.count)
     assertResult(ICEBERG)(res.format)
+    assert(res.exception.isEmpty)
+  }
+
+  test("Can save data in Delta Lake format") {
+    val sinkFactory = new SinkFactory(FlagsConfig(), MetadataConfig())
+    val step = Step(options = Map(FORMAT -> DELTA, PATH -> "/tmp/delta-test"))
+    val res = sinkFactory.pushToSink(df, "delta-data-source", step, LocalDateTime.now())
+
+    assert(res.isSuccess)
+    assertResult(4)(res.count)
+    assertResult(DELTA)(res.format)
     assert(res.exception.isEmpty)
   }
 

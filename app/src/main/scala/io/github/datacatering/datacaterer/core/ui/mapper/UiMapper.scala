@@ -296,6 +296,7 @@ object UiMapper {
       case Some(JSON) => createFileConnection(dataSourceRequest, JSON)
       case Some(PARQUET) => createFileConnection(dataSourceRequest, PARQUET)
       case Some(ORC) => createFileConnection(dataSourceRequest, ORC)
+      case Some(DELTA) => createFileConnection(dataSourceRequest, DELTA)
       case Some(ICEBERG) => createIcebergConnection(dataSourceRequest)
       case Some(SOLACE) =>
         val opt = dataSourceRequest.options.getOrElse(Map())

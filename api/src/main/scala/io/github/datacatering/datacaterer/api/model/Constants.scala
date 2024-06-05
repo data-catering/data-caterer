@@ -212,10 +212,10 @@ object Constants {
     "spark.sql.catalog.cassandra" -> "com.datastax.spark.connector.datasource.CassandraCatalog",
     "spark.sql.catalog.iceberg" -> "org.apache.iceberg.spark.SparkCatalog",
     "spark.sql.catalog.iceberg.type" -> "hadoop",
-//    "spark.serializer" -> "org.apache.spark.serializer.KryoSerializer",
-//    "spark.sql.catalog.hudi" -> "org.apache.spark.sql.hudi.catalog.HoodieCatalog",
-//    "spark.kryo.registrator" -> "org.apache.spark.HoodieSparkKryoRegistrar",
-//    "spark.sql.extensions" -> "org.apache.spark.sql.hudi.HoodieSparkSessionExtension,io.delta.sql.DeltaSparkSessionExtension",
+    //    "spark.serializer" -> "org.apache.spark.serializer.KryoSerializer",
+    //    "spark.sql.catalog.hudi" -> "org.apache.spark.sql.hudi.catalog.HoodieCatalog",
+    //    "spark.kryo.registrator" -> "org.apache.spark.HoodieSparkKryoRegistrar",
+    //    "spark.sql.extensions" -> "org.apache.spark.sql.hudi.HoodieSparkSessionExtension,io.delta.sql.DeltaSparkSessionExtension",
     "spark.hadoop.fs.s3a.directory.marker.retention" -> "keep",
     "spark.hadoop.fs.s3a.bucket.all.committer.magic.enabled" -> "true",
     "spark.hadoop.fs.hdfs.impl" -> "org.apache.hadoop.hdfs.DistributedFileSystem",
@@ -367,6 +367,11 @@ object Constants {
   lazy val OPEN_METADATA_TABLE_FQN = "tableFqn"
   lazy val OPEN_METADATA_SERVICE = "service"
 
+  //delta
+  lazy val DELTA_LAKE_SPARK_CONF = Map(
+    "spark.sql.catalog.spark_catalog" -> "org.apache.spark.sql.delta.catalog.DeltaCatalog"
+  )
+
   //iceberg
   lazy val SPARK_ICEBERG_CATALOG_TYPE = "spark.sql.catalog.iceberg.type"
   lazy val SPARK_ICEBERG_CATALOG_WAREHOUSE = "spark.sql.catalog.iceberg.warehouse"
@@ -378,6 +383,12 @@ object Constants {
   lazy val ICEBERG_CATALOG_GLUE = "glue"
   lazy val ICEBERG_CATALOG_JDBC = "jdbc"
   lazy val ICEBERG_CATALOG_NESSIE = "nessie"
+  lazy val ICEBERG_SPARK_CONF = Map(
+    "spark.sql.catalog.local" -> "org.apache.iceberg.spark.SparkCatalog",
+    "spark.sql.catalog.local.type" -> "hadoop",
+    "spark.sql.catalog.local.warehouse" -> "/tmp/iceberg/warehouse",
+    "spark.sql.defaultCatalog" -> "local",
+  )
 
   //aggregation types
   lazy val AGGREGATION_SUM = "sum"

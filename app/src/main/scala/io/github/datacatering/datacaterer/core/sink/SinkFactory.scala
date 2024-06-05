@@ -1,6 +1,6 @@
 package io.github.datacatering.datacaterer.core.sink
 
-import io.github.datacatering.datacaterer.api.model.Constants.{DRIVER, FORMAT, ICEBERG, JDBC, OMIT, PARTITIONS, PARTITION_BY, PATH, POSTGRES_DRIVER, SAVE_MODE, SPARK_ICEBERG_CATALOG_TYPE, SPARK_ICEBERG_CATALOG_WAREHOUSE, TABLE}
+import io.github.datacatering.datacaterer.api.model.Constants.{DELTA, DELTA_LAKE_SPARK_CONF, DRIVER, FORMAT, ICEBERG, ICEBERG_SPARK_CONF, JDBC, OMIT, PARTITIONS, PARTITION_BY, PATH, POSTGRES_DRIVER, SAVE_MODE, SPARK_ICEBERG_CATALOG_TYPE, SPARK_ICEBERG_CATALOG_WAREHOUSE, TABLE}
 import io.github.datacatering.datacaterer.api.model.{FlagsConfig, MetadataConfig, Step}
 import io.github.datacatering.datacaterer.core.model.Constants.{FAILED, FINISHED, STARTED}
 import io.github.datacatering.datacaterer.core.model.SinkResult
@@ -69,9 +69,9 @@ class SinkFactory(val flagsConfig: FlagsConfig, val metadataConfig: MetadataConf
     val format = connectionConfig(FORMAT)
 
     // if format is iceberg, need to use dataframev2 api for partition and writing
+    connectionConfig.filter(_._1.startsWith("spark.sql"))
+      .foreach(conf => df.sqlContext.setConf(conf._1, conf._2))
     val trySaveData = if (format == ICEBERG) {
-      connectionConfig.filter(_._1.startsWith("spark.sql.catalog"))
-        .foreach(conf => df.sqlContext.setConf(conf._1, conf._2))
       Try(tryPartitionAndSaveDfV2(df, saveMode, connectionConfig))
     } else {
       val partitionedDf = partitionDf(df, connectionConfig)
@@ -145,6 +145,8 @@ class SinkFactory(val flagsConfig: FlagsConfig, val metadataConfig: MetadataConf
       case JDBC => if (connectionConfig(DRIVER).equalsIgnoreCase(POSTGRES_DRIVER) && !connectionConfig.contains("stringtype")) {
         connectionConfig ++ Map("stringtype" -> "unspecified")
       } else connectionConfig
+      case DELTA => connectionConfig ++ DELTA_LAKE_SPARK_CONF
+      case ICEBERG => connectionConfig ++ ICEBERG_SPARK_CONF
       case _ => connectionConfig
     }
   }

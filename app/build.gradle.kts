@@ -124,9 +124,9 @@ dependencies {
         exclude(group = "org.scala-lang")
     }
     // delta lake
-//    basicImpl("io.delta:delta-spark_$scalaVersion:3.1.0") {
-//        exclude(group = "org.scala-lang")
-//    }
+    basicImpl("io.delta:delta-spark_$scalaVersion:3.2.0") {
+        exclude(group = "org.scala-lang")
+    }
 
     // data generation helpers
     basicImpl("net.datafaker:datafaker:1.9.0")

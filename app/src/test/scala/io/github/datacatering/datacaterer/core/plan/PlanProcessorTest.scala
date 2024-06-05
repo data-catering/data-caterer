@@ -119,7 +119,7 @@ class PlanProcessorTest extends SparkSuite {
     Files.writeString(Path.of("/tmp/my-validation.yaml"), validWrite)
   }
 
-  ignore("Can run Postgres plan run") {
+  test("Can run Postgres plan run") {
     PlanProcessor.determineAndExecutePlan(Some(new TestOtherFileFormats))
   }
 
@@ -296,13 +296,13 @@ class PlanProcessorTest extends SparkSuite {
 //    val hudiTask = hudi("my_hudi", "/tmp/data/hudi", "accounts", Map("saveMode" -> "overwrite"))
 //      .schema(basicSchema: _*)
 //
-//    val deltaTask = delta("my_delta", "/tmp/data/delta", Map("saveMode" -> "overwrite"))
-//      .schema(basicSchema: _*)
-//
-    val icebergTask = iceberg("my_iceberg", "/tmp/data/iceberg", "account.accounts", options = Map("saveMode" -> "overwrite"))
+    val deltaTask = delta("my_delta", "/tmp/data/delta", Map("saveMode" -> "overwrite"))
       .schema(basicSchema: _*)
+//
+//    val icebergTask = iceberg("my_iceberg", "/tmp/data/iceberg", "account.accounts", options = Map("saveMode" -> "overwrite"))
+//      .schema(basicSchema: _*)
 
-    execute(icebergTask)
+    execute(deltaTask)
   }
 
   class TestUniqueFields extends PlanRun {
