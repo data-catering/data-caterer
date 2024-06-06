@@ -51,6 +51,7 @@ jobs:
           java-version: '21'
           java-package: jdk
           architecture: x64
+          distribution: oracle
       - name: Download fat jar
         uses: actions/download-artifact@v4
         with:
@@ -80,6 +81,7 @@ jobs:
           java-version: '21'
           java-package: jdk
           architecture: x64
+          distribution: oracle
       - name: Download fat jar
         uses: actions/download-artifact@v4
         with:
@@ -109,6 +111,7 @@ jobs:
           java-version: '21'
           java-package: jdk
           architecture: x64
+          distribution: oracle
       - name: Download fat jar
         uses: actions/download-artifact@v4
         with:
