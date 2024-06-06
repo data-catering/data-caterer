@@ -30,10 +30,6 @@ repositories {
     }
 }
 
-tasks.withType<ScalaCompile> {
-    targetCompatibility = "11"
-}
-
 val basicImpl: Configuration by configurations.creating
 val jpackageDep: Configuration by configurations.creating
 
@@ -151,12 +147,12 @@ dependencies {
     basicImpl("com.github.pureconfig:pureconfig_$scalaVersion:0.17.6") {
         exclude(group = "org.scala-lang")
     }
-    basicImpl("com.fasterxml.jackson.core:jackson-databind:2.17.1")
-    basicImpl("com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.17.1")
-    basicImpl("com.fasterxml.jackson.module:jackson-module-scala_$scalaVersion:2.17.1") {
+    basicImpl("com.fasterxml.jackson.core:jackson-databind:2.15.3") //new versions contain transitive deps that use java 21, shadowJar fails
+    basicImpl("com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.15.3")
+    basicImpl("com.fasterxml.jackson.module:jackson-module-scala_$scalaVersion:2.15.3") {
         exclude(group = "org.scala-lang")
     }
-    basicImpl("org.apache.parquet:parquet-jackson:1.14.0")
+    basicImpl("org.apache.parquet:parquet-jackson:1.13.1")  //new versions contain transitive deps that use java 21, shadowJar fails
     basicImpl("org.scala-lang.modules:scala-xml_$scalaVersion:2.2.0") {
         exclude(group = "org.scala-lang")
     }
@@ -213,7 +209,7 @@ tasks.test {
 }
 
 configure<ScoverageExtension> {
-    scoverageScalaVersion.set(scalaSpecificVersion)
+    scoverageScalaVersion.set("2.12.15")
     excludedFiles.add(".*CombinationCalculator.*")
     excludedPackages.add("io.github.datacatering.datacaterer.core.exception.*")
 }

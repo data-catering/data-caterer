@@ -2,7 +2,7 @@ name: Check if build passes
 
 on:
   push:
-    branches:
+    branches-ignore:
       - "main"
 
 jobs:
@@ -14,4 +14,4 @@ jobs:
         with:
           fetch-depth: 2
       - name: Run build
-        run: "./gradlew build -x shadowJar"
+        run: "./gradlew build"
