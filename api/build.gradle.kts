@@ -99,10 +99,6 @@ java {
     withSourcesJar()
 }
 
-tasks.withType<ScalaCompile> {
-    targetCompatibility = "11"
-}
-
 tasks.shadowJar {
     archiveBaseName.set("datacaterer")
     archiveAppendix.set("api")
@@ -116,7 +112,7 @@ tasks.test {
 }
 
 configure<ScoverageExtension> {
-    scoverageScalaVersion.set(scalaSpecificVersion)
+    scoverageScalaVersion.set("2.12.15")
 }
 
 publishing {
