@@ -6,6 +6,8 @@
 
 A test data management tool with automated data generation, validation and cleanup.
 
+![Basic data flow for Data Caterer](design/high_level_flow-run-config-basic-flow.svg)
+
 [Generate data](https://data.catering/setup/generator/data-generator/) for databases, files, messaging systems or HTTP 
 requests via UI, Scala/Java SDK or YAML input and executed via Spark. Run 
 [data validations](https://data.catering/setup/validation/) after generating data to ensure it is consumed correctly. 
@@ -18,8 +20,6 @@ and deep dive into issues [from the generated report](https://data.catering/samp
 [**A demo of the UI found here**](https://data.catering/sample/ui/index.html).
   
 [**Scala/Java examples found here**](https://github.com/data-catering/data-caterer-example).
-
-![Basic data flow for Data Caterer](design/high_level_flow-run-config-basic-flow.svg)
 
 ## Features
 
@@ -47,7 +47,7 @@ and deep dive into issues [from the generated report](https://data.catering/samp
 3. [Linux download](https://nightly.link/data-catering/data-caterer/workflows/build/main/data-caterer-linux.zip)
 4. Docker
    ```shell
-   docker run -d -i -p 9898:9898 -e DEPLOY_MODE=standalone --name datacaterer datacatering/data-caterer-basic:0.10.6
+   docker run -d -i -p 9898:9898 -e DEPLOY_MODE=standalone --name datacaterer datacatering/data-caterer-basic:0.10.8
    ```
    [Open localhost:9898](http://localhost:9898).
 
@@ -81,7 +81,7 @@ the full roadmap](#roadmap).
 | File             | Iceberg                            | ✅       | ✅    |
 | File             | ORC                                | ✅       | ✅    |
 | File             | Parquet                            | ✅       | ✅    |
-| File             | Delta Lake                         | ❌       | ✅    |
+| File             | Delta Lake                         | ✅       | ✅    |
 | File             | Hudi                               | ❌       | ✅    |
 | HTTP             | REST API                           | ✅       | ❌    |
 | Messaging        | Kafka                              | ✅       | ❌    |

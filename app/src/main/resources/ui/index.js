@@ -208,6 +208,7 @@ async function createDataConnectionInput(index) {
 
     // provide opportunity to override non-connection options for metadata source (i.e. namespace, dataset)
     let overrideOptionsContainer = document.createElement("div");
+    overrideOptionsContainer.classList.add("data-source-override-properties");
     let iconDiv = createIconWithConnectionTooltip(dataConnectionSelect, overrideOptionsContainer, "data-source-property", index);
     let iconCol = document.createElement("div");
     iconCol.setAttribute("class", "col-md-auto");

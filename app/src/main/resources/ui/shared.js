@@ -735,7 +735,7 @@ export function createTooltip() {
 }
 
 export function addConnectionOverrideOptions(connectionName, iconDiv, overrideOptionsContainer, propertyClass, index) {
-    fetch(`http://localhost:9898/connection/${connectionName}`, {method: "GET"})
+    return fetch(`http://localhost:9898/connection/${connectionName}`, {method: "GET"})
         .then(r => {
             if (r.ok) {
                 return r.json();
@@ -777,15 +777,16 @@ export function addConnectionOverrideOptions(connectionName, iconDiv, overrideOp
                     }
                 }
             }
+            return {};
         });
 }
 
 export function createIconWithConnectionTooltip(dataConnectionSelect, overrideOptionsContainer, propertyClass, index) {
     let iconDiv = createTooltip();
     // on select change, update icon title
-    dataConnectionSelect.addEventListener("change", (event) => {
+    dataConnectionSelect.addEventListener("change", async (event) => {
         let connectionName = event.target.value;
-        addConnectionOverrideOptions(connectionName, iconDiv, overrideOptionsContainer, propertyClass, index);
+        await addConnectionOverrideOptions(connectionName, iconDiv, overrideOptionsContainer, propertyClass, index);
     });
     return iconDiv;
 }

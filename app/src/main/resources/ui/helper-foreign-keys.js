@@ -55,6 +55,16 @@ async function createForeignKeyLinksFromPlan(newForeignKey, foreignKey, linkType
         dispatchEvent(updatedForeignKeyTaskName, "change");
         let updatedForeignKeyColumns = $(newForeignKeyLink).find(`input.foreign-key-${linkType}-link`).val(fkLink.columns);
         dispatchEvent(updatedForeignKeyColumns, "input");
+        //also add in other options
+        if (fkLink.options) {
+            for (let [key, value] of Object.entries(fkLink.options)) {
+                let fkConnectionProperty = $(newForeignKeyLink).find(`input.foreign-key-connection-property[aria-label=${key}]`);
+                fkConnectionProperty.val(value);
+                if (value && value.length > 0) {
+                    fkConnectionProperty.attr("disabled", "");
+                }
+            }
+        }
     }
 }
 
@@ -71,6 +81,17 @@ export async function createForeignKeysFromPlan(respJson) {
                 dispatchEvent(updatedTaskName, "change");
                 let updatedColumns = $(newForeignKey).find("input.foreign-key-source").val(foreignKey.source.columns);
                 dispatchEvent(updatedColumns, "input");
+                //also add in other options
+                console.log(foreignKey.source.options);
+                if (foreignKey.source.options) {
+                    for (let [key, value] of Object.entries(foreignKey.source.options)) {
+                        let fkConnectionProperty = $(newForeignKey).find(`input.foreign-key-connection-property[aria-label=${key}]`);
+                        fkConnectionProperty.val(value);
+                        if (value && value.length > 0) {
+                            fkConnectionProperty.attr("disabled", "");
+                        }
+                    }
+                }
             }
 
             if (foreignKey.generationLinks) {
@@ -89,7 +110,9 @@ function getForeignKeyLinksToArray(foreignKeyContainer, className) {
     let foreignKeyLinksArray = [];
     for (let foreignKeyLink of foreignKeyLinks) {
         let foreignKeyLinkDetails = getForeignKeyDetail(foreignKeyLink);
-        foreignKeyLinksArray.push(foreignKeyLinkDetails);
+        if (Object.keys(foreignKeyLinkDetails).length !== 0) {
+            foreignKeyLinksArray.push(foreignKeyLinkDetails);
+        }
     }
     return foreignKeyLinksArray;
 }
@@ -204,7 +227,21 @@ async function createForeignKeyInput(index, name) {
             return this.value === taskName
         });
         let connectionName = $(taskNameInput).closest("[class~=row]").find("select[class~=data-connection-name]").val();
-        addConnectionOverrideOptions(connectionName, iconDiv, overrideOptionsContainer, "foreign-key-connection-property", index);
+        addConnectionOverrideOptions(connectionName, iconDiv, overrideOptionsContainer, "foreign-key-connection-property", index)
+            .then(() => {
+                //check if override options already exist in tasks
+                //TODO do we make a listener between the connection properties and the relationships properties to keep them in sync?
+                console.log($(taskNameInput).closest("[class~=data-source-config-container]").find("input[class~=data-source-property]"));
+                $(taskNameInput).closest("[class~=data-source-config-container]")
+                    .find("input[class~=data-source-property]")
+                    .each(function (i, obj) {
+                        let fkConnectionProperty = $(overrideOptionsContainer).find(`input.foreign-key-connection-property[aria-label=${obj.getAttribute("aria-label")}]`);
+                        fkConnectionProperty.val(obj.value);
+                        if (obj.value && obj.value.length > 0) {
+                            fkConnectionProperty.attr("disabled", "");
+                        }
+                    });
+            });
     });
     if (name === "foreign-key-generation-link" || name === "foreign-key-delete-link") {
         let closeButton = createCloseButton(foreignKey);
