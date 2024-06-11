@@ -77,11 +77,11 @@ the full roadmap](#roadmap).
 | Database         | Elasticsearch                      | ❌       | ✅    |
 | Database         | MongoDB                            | ❌       | ✅    |
 | File             | CSV                                | ✅       | ✅    |
+| File             | Delta Lake                         | ✅       | ✅    |
 | File             | JSON                               | ✅       | ✅    |
 | File             | Iceberg                            | ✅       | ✅    |
 | File             | ORC                                | ✅       | ✅    |
 | File             | Parquet                            | ✅       | ✅    |
-| File             | Delta Lake                         | ✅       | ✅    |
 | File             | Hudi                               | ❌       | ✅    |
 | HTTP             | REST API                           | ✅       | ❌    |
 | Messaging        | Kafka                              | ✅       | ❌    |

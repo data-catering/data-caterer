@@ -1,51 +1,119 @@
 package io.github.datacatering.datacaterer.api
 
+import com.softwaremill.quicklens.ModifyPimp
 import io.github.datacatering.datacaterer.api.converter.Converters.toScalaMap
 import io.github.datacatering.datacaterer.api.model.Constants._
-import com.softwaremill.quicklens.ModifyPimp
 import io.github.datacatering.datacaterer.api.model.{Count, DataType, Field, Generator, PerColumnCount, Schema, Step, StringType, Task, TaskSummary}
 
 import scala.annotation.varargs
 
+/**
+ * Builds a `TaskSummary` with optional `Task` information.
+ *
+ * @param taskSummary the `TaskSummary` to build, with a default name and data source
+ * @param task        an optional `Task` to include in the summary
+ */
 case class TaskSummaryBuilder(
                                taskSummary: TaskSummary = TaskSummary(DEFAULT_TASK_NAME, "myDefaultDataSource"),
                                task: Option[Task] = None
                              ) {
+  /**
+   * Constructs a new `TaskBuilder` instance with the default task name and data source name.
+   */
   def this() = this(TaskSummary(DEFAULT_TASK_NAME, DEFAULT_DATA_SOURCE_NAME), None)
 
+  /**
+   * Sets the name of the task.
+   *
+   * @param name the name to set for the task
+   * @return the updated `TaskSummaryBuilder` instance
+   */
   def name(name: String): TaskSummaryBuilder = {
     if (task.isEmpty) this.modify(_.taskSummary.name).setTo(name) else this
   }
 
+  /**
+   * Builds a `TaskSummaryBuilder` by modifying the `TaskSummary` with the provided `TaskBuilder`.
+   *
+   * @param taskBuilder the `TaskBuilder` to use for modifying the `TaskSummary`
+   * @return a `TaskSummaryBuilder` with the `TaskSummary` modified according to the provided `TaskBuilder`
+   */
   def task(taskBuilder: TaskBuilder): TaskSummaryBuilder = {
     this.modify(_.taskSummary.name).setTo(taskBuilder.task.name)
       .modify(_.task).setTo(Some(taskBuilder.task))
   }
 
+  /**
+   * Builds a `TaskSummaryBuilder` with the specified `Task` instance.
+   *
+   * @param task the `Task` instance to be associated with the `TaskSummaryBuilder`
+   * @return a `TaskSummaryBuilder` with the specified `Task` instance
+   */
   def task(task: Task): TaskSummaryBuilder = {
     this.modify(_.taskSummary.name).setTo(task.name)
       .modify(_.task).setTo(Some(task))
   }
 
+  /**
+   * Sets the data source name for the task summary.
+   *
+   * @param name the name of the data source
+   * @return a new `TaskSummaryBuilder` with the updated data source name
+   */
   def dataSource(name: String): TaskSummaryBuilder =
     this.modify(_.taskSummary.dataSourceName).setTo(name)
 
+  /**
+   * Sets whether the task is enabled or disabled.
+   *
+   * @param enabled `true` to enable the task, `false` to disable it
+   * @return a new `TaskSummaryBuilder` with the updated enabled state
+   */
   def enabled(enabled: Boolean): TaskSummaryBuilder =
     this.modify(_.taskSummary.enabled).setTo(enabled)
 
 }
 
+/**
+ * Builds a list of `Task` instances with a specified data source name.
+ *
+ * @param tasks          the list of `Task` instances to build, defaults to an empty list
+ * @param dataSourceName the name of the data source to use, defaults to `DEFAULT_DATA_SOURCE_NAME`
+ */
 case class TasksBuilder(tasks: List[Task] = List(), dataSourceName: String = DEFAULT_DATA_SOURCE_NAME) {
   def this() = this(List(), DEFAULT_DATA_SOURCE_NAME)
 
+  /**
+   * Adds one or more tasks to the `TasksBuilder` instance.
+   *
+   * @param dataSourceName the name of the data source associated with the tasks
+   * @param taskBuilders   the `TaskBuilder` instances representing the tasks to add
+   * @return the updated `TasksBuilder` instance
+   */
   @varargs def addTasks(dataSourceName: String, taskBuilders: TaskBuilder*): TasksBuilder =
     this.modify(_.tasks)(_ ++ taskBuilders.map(_.task))
       .modify(_.dataSourceName).setTo(dataSourceName)
 
+  /**
+   * Adds a new task to the TasksBuilder.
+   *
+   * @param name           The name of the task.
+   * @param dataSourceName The name of the data source for the task.
+   * @param stepBuilders   The step builders for the task.
+   * @return The updated TasksBuilder.
+   */
   @varargs def addTask(name: String, dataSourceName: String, stepBuilders: StepBuilder*): TasksBuilder =
     this.modify(_.tasks)(_ ++ List(TaskBuilder(Task(name, stepBuilders.map(_.step).toList)).task))
       .modify(_.dataSourceName).setTo(dataSourceName)
 
+  /**
+   * Adds a new task to the TasksBuilder.
+   *
+   * @param name           The name of the task.
+   * @param dataSourceName The name of the data source for the task.
+   * @param steps          The list of steps for the task.
+   * @return The updated TasksBuilder instance.
+   */
   def addTask(name: String, dataSourceName: String, steps: List[Step]): TasksBuilder =
     this.modify(_.tasks)(_ ++ List(TaskBuilder(Task(name, steps)).task))
       .modify(_.dataSourceName).setTo(dataSourceName)
@@ -60,8 +128,20 @@ case class TasksBuilder(tasks: List[Task] = List(), dataSourceName: String = DEF
 case class TaskBuilder(task: Task = Task()) {
   def this() = this(Task())
 
+  /**
+   * Sets the name of the task.
+   *
+   * @param name the name to set for the task
+   * @return the updated `TaskBuilder` instance
+   */
   def name(name: String): TaskBuilder = this.modify(_.task.name).setTo(name)
 
+  /**
+   * Adds the given `StepBuilder` instances as steps to the task.
+   *
+   * @param steps the `StepBuilder` instances to add as steps
+   * @return the updated `TaskBuilder` instance
+   */
   @varargs def steps(steps: StepBuilder*): TaskBuilder = this.modify(_.task.steps)(_ ++ steps.map(_.step))
 }
 
@@ -320,39 +400,108 @@ case class StepBuilder(step: Step = Step(), optValidation: Option[DataSourceVali
   private def getValidation: DataSourceValidationBuilder = optValidation.getOrElse(DataSourceValidationBuilder())
 }
 
+/**
+ * Builds a `Count` instance with the specified count value.
+ *
+ * @param count the count value to use for the `Count` instance
+ */
 case class CountBuilder(count: Count = Count()) {
   def this() = this(Count())
 
+  /**
+   * Sets the number of records to be processed by the task.
+   *
+   * @param records the number of records to be processed
+   * @return a new `CountBuilder` instance with the records count set
+   */
   def records(records: Long): CountBuilder =
     this.modify(_.count.records).setTo(Some(records))
 
+  /**
+   * Sets the generator for the count builder and clears the records.
+   *
+   * @param generator the generator to set for the count builder
+   * @return the modified count builder
+   */
   def generator(generator: GeneratorBuilder): CountBuilder =
     this.modify(_.count.generator).setTo(Some(generator.generator))
       .modify(_.count.records).setTo(None)
 
+  /**
+   * Sets the per-column count for the task builder.
+   *
+   * @param perColumnCountBuilder the builder for the per-column count
+   * @return the updated task builder
+   */
   def perColumn(perColumnCountBuilder: PerColumnCountBuilder): CountBuilder =
     this.modify(_.count.perColumn).setTo(Some(perColumnCountBuilder.perColumnCount))
 
+  /**
+   * Sets the number of records per column for the task builder.
+   *
+   * @param records the number of records per column
+   * @param cols    the column names to apply the records per column setting to
+   * @return the updated task builder
+   */
   @varargs def recordsPerColumn(records: Long, cols: String*): CountBuilder =
     this.modify(_.count.perColumn).setTo(Some(perColCount.records(records, cols: _*).perColumnCount))
 
+  /**
+   * Generates a `CountBuilder` that records the number of records per column.
+   *
+   * @param generator The `GeneratorBuilder` to use for generating the per-column counts.
+   * @param cols      The column names to generate per-column counts for.
+   * @return A `CountBuilder` that records the number of records per column.
+   */
   @varargs def recordsPerColumnGenerator(generator: GeneratorBuilder, cols: String*): CountBuilder =
     this.modify(_.count.perColumn).setTo(Some(perColCount.generator(generator, cols: _*).perColumnCount))
 
+  /**
+   * Generates a `CountBuilder` with the specified number of records and a generator for the per-column counts.
+   *
+   * @param records   the total number of records to generate
+   * @param generator the `GeneratorBuilder` to use for generating the per-column counts
+   * @param cols      the names of the columns to generate counts for
+   * @return a `CountBuilder` with the specified record and per-column count settings
+   */
   @varargs def recordsPerColumnGenerator(records: Long, generator: GeneratorBuilder, cols: String*): CountBuilder =
     this.modify(_.count.records).setTo(Some(records))
       .modify(_.count.perColumn).setTo(Some(perColCount.generator(generator, cols: _*).perColumnCount))
 
+  /**
+   * Generates a normal distribution of records per column for the specified columns.
+   *
+   * @param min  the minimum number of records per column
+   * @param max  the maximum number of records per column
+   * @param cols the columns to generate the normal distribution for
+   * @return a `CountBuilder` instance with the normal distribution configuration applied
+   */
   @varargs def recordsPerColumnNormalDistribution(min: Long, max: Long, cols: String*): CountBuilder = {
     val generator = GeneratorBuilder().min(min).max(max).normalDistribution()
     this.modify(_.count.perColumn).setTo(Some(perColCount.generator(generator, cols: _*).perColumnCount))
   }
 
+  /**
+   * Configures the task builder to generate records per column using an exponential distribution.
+   *
+   * @param min           the minimum number of records per column
+   * @param max           the maximum number of records per column
+   * @param rateParameter the rate parameter for the exponential distribution
+   * @param cols          the columns to apply the distribution to
+   * @return the modified task builder
+   */
   @varargs def recordsPerColumnExponentialDistribution(min: Long, max: Long, rateParameter: Double, cols: String*): CountBuilder = {
     val generator = GeneratorBuilder().min(min).max(max).exponentialDistribution(rateParameter)
     this.modify(_.count.perColumn).setTo(Some(perColCount.generator(generator, cols: _*).perColumnCount))
   }
 
+  /**
+   * Generates a list of records per column using an exponential distribution.
+   *
+   * @param rateParameter the rate parameter for the exponential distribution
+   * @param cols          the columns to generate records for
+   * @return a [[CountBuilder]] that can be used to build the records
+   */
   @varargs def recordsPerColumnExponentialDistribution(rateParameter: Double, cols: String*): CountBuilder =
     recordsPerColumnExponentialDistribution(0, 100, rateParameter, cols: _*)
 
@@ -402,12 +551,30 @@ case class PerColumnCountBuilder(perColumnCount: PerColumnCount = PerColumnCount
     columns(cols: _*).modify(_.perColumnCount.generator).setTo(Some(generator.generator))
 }
 
+/**
+ * Builds a new `Schema` instance with the provided initial state.
+ *
+ * @param schema the initial `Schema` instance to use, defaults to a new `Schema` instance
+ */
 case class SchemaBuilder(schema: Schema = Schema()) {
   def this() = this(Schema())
 
+  /**
+   * Adds a new field to the schema builder with the specified name and data type.
+   *
+   * @param name the name of the field to add
+   * @param type the data type of the field, defaulting to `StringType` if not provided
+   * @return the updated schema builder
+   */
   def addField(name: String, `type`: DataType = StringType): SchemaBuilder =
     addFields(FieldBuilder().name(name).`type`(`type`))
 
+  /**
+   * Adds the specified fields to the schema.
+   *
+   * @param fields The fields to add to the schema.
+   * @return The updated `SchemaBuilder` instance.
+   */
   @varargs def addFields(fields: FieldBuilder*): SchemaBuilder =
     this.modify(_.schema.fields).setTo(schema.fields match {
       case Some(value) => Some(value ++ fields.map(_.field))
@@ -415,45 +582,127 @@ case class SchemaBuilder(schema: Schema = Schema()) {
     })
 }
 
+/**
+ * Builds a `Field` instance with optional configuration.
+ *
+ * @param field the initial `Field` instance to build upon, defaults to a new `Field` instance
+ */
 case class FieldBuilder(field: Field = Field()) {
   def this() = this(Field())
 
+  /**
+   * Sets the name of the field.
+   *
+   * @param name the name of the field
+   * @return the updated `FieldBuilder` instance
+   */
   def name(name: String): FieldBuilder =
     this.modify(_.field.name).setTo(name)
 
+  /**
+   * Sets the data type of the field being built.
+   *
+   * @param `type` the data type to set for the field
+   * @return the updated `FieldBuilder` instance
+   */
   def `type`(`type`: DataType): FieldBuilder =
     this.modify(_.field.`type`).setTo(Some(`type`.toString))
 
+  /**
+   * Sets the schema for the current field builder.
+   *
+   * @param schema the schema to set for the field
+   * @return the current field builder instance
+   */
   def schema(schema: SchemaBuilder): FieldBuilder =
     this.modify(_.field.schema).setTo(Some(schema.schema))
 
+  /**
+   * Sets the schema for the current field.
+   *
+   * @param schema the schema to set for the field
+   * @return a new `FieldBuilder` instance with the schema set
+   */
   def schema(schema: Schema): FieldBuilder =
     this.modify(_.field.schema).setTo(Some(schema))
 
+  /**
+   * Adds the specified fields to the schema of this `FieldBuilder`.
+   *
+   * @param fields the fields to add to the schema
+   * @return a new `FieldBuilder` with the updated schema
+   */
   @varargs def schema(fields: FieldBuilder*): FieldBuilder =
     this.modify(_.field.schema).setTo(Some(getSchema.addFields(fields: _*).schema))
 
+  /**
+   * Sets the field generator for the `TaskBuilder` instance, using the options from the provided `MetadataSourceBuilder`.
+   *
+   * @param metadataSourceBuilder the `MetadataSourceBuilder` instance to use for the field generator options
+   * @return the updated `FieldBuilder` instance
+   */
   def schema(metadataSourceBuilder: MetadataSourceBuilder): FieldBuilder =
     this.modify(_.field.generator).setTo(Some(getGenBuilder.options(metadataSourceBuilder.metadataSource.allOptions).generator))
 
+  /**
+   * Sets whether the field is nullable or not.
+   *
+   * @param nullable `true` if the field should be nullable, `false` otherwise.
+   * @return the updated `FieldBuilder` instance.
+   */
   def nullable(nullable: Boolean): FieldBuilder =
     this.modify(_.field.nullable).setTo(nullable)
 
+  /**
+   * Sets the generator for the current field builder.
+   *
+   * @param generator the generator to set for the field
+   * @return the updated field builder
+   */
   def generator(generator: GeneratorBuilder): FieldBuilder =
     this.modify(_.field.generator).setTo(Some(generator.generator))
 
+  /**
+   * Sets the generator for the current field builder.
+   *
+   * @param generator the generator to use for the field
+   * @return the updated field builder
+   */
   def generator(generator: Generator): FieldBuilder =
     this.modify(_.field.generator).setTo(Some(generator))
 
+  /**
+   * Sets the field generator to a random generator.
+   *
+   * @return a new `FieldBuilder` instance with the field generator set to a random generator
+   */
   def random: FieldBuilder =
     this.modify(_.field.generator).setTo(Some(getGenBuilder.random.generator))
 
+  /**
+   * Sets the SQL query to be used for this field.
+   *
+   * @param sql the SQL query to use for this field
+   * @return a new `FieldBuilder` instance with the SQL query set
+   */
   def sql(sql: String): FieldBuilder =
     this.modify(_.field.generator).setTo(Some(getGenBuilder.sql(sql).generator))
 
+  /**
+   * Sets the regular expression pattern to be used for the field generator.
+   *
+   * @param regex the regular expression pattern to use for the field generator
+   * @return the updated `FieldBuilder` instance
+   */
   def regex(regex: String): FieldBuilder =
     this.modify(_.field.generator).setTo(Some(getGenBuilder.regex(regex).generator))
 
+  /**
+   * Builds a field that can take on one of the provided values.
+   *
+   * @param values The values that the field can take on.
+   * @return A FieldBuilder that has been modified to use the provided values.
+   */
   @varargs def oneOf(values: Any*): FieldBuilder =
     this.modify(_.field.generator).setTo(Some(getGenBuilder.oneOf(values: _*).generator))
       .modify(_.field.`type`)
@@ -468,82 +717,244 @@ case class FieldBuilder(field: Field = Field()) {
         }
       )
 
+  /**
+   * Sets the options for the field generator.
+   *
+   * @param options a map of options to configure the field generator
+   * @return the updated FieldBuilder instance
+   */
   def options(options: Map[String, Any]): FieldBuilder =
     this.modify(_.field.generator).setTo(Some(getGenBuilder.options(options).generator))
 
+  /**
+   * Adds an option to the field generator.
+   *
+   * @param option a tuple containing the option name and value
+   * @return the updated `FieldBuilder` instance
+   */
   def option(option: (String, Any)): FieldBuilder =
     this.modify(_.field.generator).setTo(Some(getGenBuilder.option(option).generator))
 
+  /**
+   * Sets the seed for the field generator.
+   *
+   * @param seed the seed value to use for the field generator
+   * @return the updated `FieldBuilder` instance
+   */
   def seed(seed: Long): FieldBuilder = this.modify(_.field.generator).setTo(Some(getGenBuilder.seed(seed).generator))
 
+  /**
+   * Enables or disables null values for the field.
+   *
+   * @param enable `true` to enable null values, `false` to disable
+   * @return the updated `FieldBuilder` instance
+   */
   def enableNull(enable: Boolean): FieldBuilder =
     this.modify(_.field.generator).setTo(Some(getGenBuilder.enableNull(enable).generator))
 
+  /**
+   * Sets the null probability for the field generator.
+   *
+   * @param probability The probability of generating a null value, between 0 and 1.
+   * @return The updated `FieldBuilder` instance.
+   */
   def nullProbability(probability: Double): FieldBuilder =
     this.modify(_.field.generator).setTo(Some(getGenBuilder.nullProbability(probability).generator))
 
+  /**
+   * Enables or disables edge cases for the field generator.
+   *
+   * @param enable `true` to enable edge cases, `false` to disable them
+   * @return the updated `FieldBuilder` instance
+   */
   def enableEdgeCases(enable: Boolean): FieldBuilder =
     this.modify(_.field.generator).setTo(Some(getGenBuilder.enableEdgeCases(enable).generator))
 
+  /**
+   * Sets the edge case probability for the field generator.
+   *
+   * @param probability The probability of an edge case occurring, between 0 and 1.
+   * @return The updated `FieldBuilder` instance.
+   */
   def edgeCaseProbability(probability: Double): FieldBuilder =
     this.modify(_.field.generator).setTo(Some(getGenBuilder.edgeCaseProbability(probability).generator))
 
+  /**
+   * Creates a `FieldBuilder` with a static value generator.
+   *
+   * @param value The static value to use for the field.
+   * @return A `FieldBuilder` with the static value generator set.
+   */
   def static(value: Any): FieldBuilder =
     this.modify(_.field.generator).setTo(Some(getGenBuilder.static(value).generator))
 
+  /**
+   * Constructs a `FieldBuilder` with a static value.
+   *
+   * @param value the static value to set on the `FieldBuilder`
+   * @return a `FieldBuilder` with the static value set
+   */
   def staticValue(value: Any): FieldBuilder = static(value)
 
+  /**
+   * Sets the field generator to be unique or not unique.
+   *
+   * @param isUnique `true` to make the field generator unique, `false` otherwise.
+   * @return the updated `FieldBuilder` instance.
+   */
   def unique(isUnique: Boolean): FieldBuilder =
     this.modify(_.field.generator).setTo(Some(getGenBuilder.unique(isUnique).generator))
 
+  /**
+   * Sets the field generator to an array type with the specified element type.
+   *
+   * @param `type` the type of the array elements
+   * @return a new `FieldBuilder` instance with the array type set
+   */
   def arrayType(`type`: String): FieldBuilder =
     this.modify(_.field.generator).setTo(Some(getGenBuilder.arrayType(`type`).generator))
 
+  /**
+   * Sets the faker expression for the field generator.
+   *
+   * @param expr the faker expression to set for the field generator
+   * @return the updated `FieldBuilder` instance
+   */
   def expression(expr: String): FieldBuilder =
     this.modify(_.field.generator).setTo(Some(getGenBuilder.expression(expr).generator))
 
+  /**
+   * Sets the field generator to use an average length generator with the specified length.
+   *
+   * @param length the length to use for the average length generator
+   * @return the updated `FieldBuilder` instance
+   */
   def avgLength(length: Int): FieldBuilder =
     this.modify(_.field.generator).setTo(Some(getGenBuilder.avgLength(length).generator))
 
+  /**
+   * Sets the minimum value for the field.
+   *
+   * @param min The minimum value for the field.
+   * @return The updated `FieldBuilder` instance.
+   */
   def min(min: Any): FieldBuilder =
     this.modify(_.field.generator).setTo(Some(getGenBuilder.min(min).generator))
 
+  /**
+   * Sets the minimum length of the field value.
+   *
+   * @param length the minimum length of the field value
+   * @return the updated `FieldBuilder` instance
+   */
   def minLength(length: Int): FieldBuilder =
     this.modify(_.field.generator).setTo(Some(getGenBuilder.minLength(length).generator))
 
+  /**
+   * Sets the minimum length for the array generated by this `FieldBuilder`.
+   *
+   * @param length the minimum length for the generated array
+   * @return the updated `FieldBuilder` instance
+   */
   def arrayMinLength(length: Int): FieldBuilder =
     this.modify(_.field.generator).setTo(Some(getGenBuilder.arrayMinLength(length).generator))
 
+  /**
+   * Sets the maximum value for the field generator.
+   *
+   * @param max The maximum value to set for the field generator.
+   * @return The updated `FieldBuilder` instance.
+   */
   def max(max: Any): FieldBuilder =
     this.modify(_.field.generator).setTo(Some(getGenBuilder.max(max).generator))
 
+  /**
+   * Sets the maximum length of the field.
+   *
+   * @param length the maximum length of the field
+   * @return the updated `FieldBuilder` instance
+   */
   def maxLength(length: Int): FieldBuilder =
     this.modify(_.field.generator).setTo(Some(getGenBuilder.maxLength(length).generator))
 
+  /**
+   * Sets the maximum length of the array generated by the field's generator.
+   *
+   * @param length the maximum length of the generated array
+   * @return the updated `FieldBuilder` instance
+   */
   def arrayMaxLength(length: Int): FieldBuilder =
     this.modify(_.field.generator).setTo(Some(getGenBuilder.arrayMaxLength(length).generator))
 
+  /**
+   * Sets the numeric precision for the field.
+   *
+   * @param precision The numeric precision to set for the field.
+   * @return The updated `FieldBuilder` instance.
+   */
   def numericPrecision(precision: Int): FieldBuilder =
     this.modify(_.field.generator).setTo(Some(getGenBuilder.numericPrecision(precision).generator))
 
+  /**
+   * Sets the numeric scale for the field.
+   *
+   * @param scale the numeric scale to set for the field
+   * @return the updated `FieldBuilder` instance
+   */
   def numericScale(scale: Int): FieldBuilder =
     this.modify(_.field.generator).setTo(Some(getGenBuilder.numericScale(scale).generator))
 
+  /**
+   * Sets whether the field should be omitted from the generated output.
+   *
+   * @param omit `true` to omit the field, `false` to include it.
+   * @return a new `FieldBuilder` instance with the updated omit setting.
+   */
   def omit(omit: Boolean): FieldBuilder =
     this.modify(_.field.generator).setTo(Some(getGenBuilder.omit(omit).generator))
 
+  /**
+   * Sets the primary key flag for the current field.
+   *
+   * @param isPrimaryKey `true` to mark the field as a primary key, `false` otherwise.
+   * @return The updated `FieldBuilder` instance.
+   */
   def primaryKey(isPrimaryKey: Boolean): FieldBuilder =
     this.modify(_.field.generator).setTo(Some(getGenBuilder.primaryKey(isPrimaryKey).generator))
 
+  /**
+   * Sets the primary key position for the field being built.
+   *
+   * @param position the position of the primary key
+   * @return the updated FieldBuilder instance
+   */
   def primaryKeyPosition(position: Int): FieldBuilder =
     this.modify(_.field.generator).setTo(Some(getGenBuilder.primaryKeyPosition(position).generator))
 
+  /**
+   * Sets the clustering position for the field generator.
+   *
+   * @param position the position of the field in the clustering order
+   * @return the updated `FieldBuilder` instance
+   */
   def clusteringPosition(position: Int): FieldBuilder =
     this.modify(_.field.generator).setTo(Some(getGenBuilder.clusteringPosition(position).generator))
 
+  /**
+   * Sets the standard deviation of the field generator.
+   *
+   * @param stddev the standard deviation to use for the field generator
+   * @return the updated `FieldBuilder` instance
+   */
   def standardDeviation(stddev: Double): FieldBuilder =
     this.modify(_.field.generator).setTo(Some(getGenBuilder.standardDeviation(stddev).generator))
 
+  /**
+   * Sets the mean value for the field generator.
+   *
+   * @param mean the mean value to set for the field generator
+   * @return the updated `FieldBuilder` instance
+   */
   def mean(mean: Double): FieldBuilder =
     this.modify(_.field.generator).setTo(Some(getGenBuilder.mean(mean).generator))
 

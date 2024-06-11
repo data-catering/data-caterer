@@ -374,6 +374,29 @@ public abstract class PlanRun {
     }
 
     /**
+     * Creates a FileBuilder instance for a Delta Lake file with the provided name, path, and options.
+     *
+     * @param name    The name of the FileBuilder instance.
+     * @param path    The path to the Delta Lake file.
+     * @param options A map of options to be used for the Delta Lake file.
+     * @return A FileBuilder instance for the Delta Lake file.
+     */
+    public FileBuilder delta(String name, String path, Map<String, String> options) {
+        return basePlanRun.delta(name, path, toScalaMap(options));
+    }
+
+    /**
+     * Creates a FileBuilder instance for a Delta Lake file with the provided name and path.
+     *
+     * @param name The name of the FileBuilder instance.
+     * @param path The path to the Delta Lake file.
+     * @return A FileBuilder instance for the Delta Lake file.
+     */
+    public FileBuilder delta(String name, String path) {
+        return delta(name, path, Collections.emptyMap());
+    }
+
+    /**
      * Creates a PostgresBuilder instance with the provided name, URL, username, password, and options.
      *
      * @param name     The name of the PostgresBuilder instance.
