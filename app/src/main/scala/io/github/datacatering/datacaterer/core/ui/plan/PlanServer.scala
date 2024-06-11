@@ -1,12 +1,15 @@
 package io.github.datacatering.datacaterer.core.ui.plan
 
+import org.apache.pekko.actor.typed.scaladsl.AskPattern.{Askable, schedulerFromActorSystem}
 import org.apache.pekko.actor.typed.scaladsl.Behaviors
 import org.apache.pekko.actor.typed.{Behavior, PostStop}
 import org.apache.pekko.http.scaladsl.Http
 import org.apache.pekko.http.scaladsl.Http.ServerBinding
+import org.apache.pekko.util.Timeout
 
 import java.awt.Desktop
 import java.net.URI
+import scala.concurrent.duration.DurationInt
 import scala.util.{Failure, Success}
 
 object PlanServer {
@@ -18,6 +21,8 @@ object PlanServer {
   private final case class Started(binding: ServerBinding) extends Message
 
   case object Stop extends Message
+
+  implicit val timeout: Timeout = 3.seconds
 
 
   def apply(): Behavior[Message] = Behaviors.setup { ctx =>
@@ -57,6 +62,8 @@ object PlanServer {
           if (Desktop.isDesktopSupported && Desktop.getDesktop.isSupported(Desktop.Action.BROWSE)) {
             Desktop.getDesktop.browse(new URI(server))
           }
+          //startup spark with defaults
+          planRepository.tell(PlanRepository.StartupSpark())
           if (wasStopped) ctx.self ! Stop
           running(binding)
         case Stop =>

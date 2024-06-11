@@ -1,5 +1,6 @@
 package io.github.datacatering.datacaterer.core.ui.plan
 
+import io.github.datacatering.datacaterer.api.model.Constants.{DEFAULT_MASTER, DEFAULT_RUNTIME_CONFIG}
 import io.github.datacatering.datacaterer.core.model.Constants.{FAILED, FINISHED, PARSED_PLAN, STARTED}
 import io.github.datacatering.datacaterer.core.model.PlanRunResults
 import io.github.datacatering.datacaterer.core.plan.PlanProcessor
@@ -7,6 +8,7 @@ import io.github.datacatering.datacaterer.core.ui.config.UiConfiguration.INSTALL
 import io.github.datacatering.datacaterer.core.ui.mapper.UiMapper
 import io.github.datacatering.datacaterer.core.ui.model.{JsonSupport, PlanRunExecution, PlanRunRequest, PlanRunRequests}
 import io.github.datacatering.datacaterer.core.ui.plan.PlanResponseHandler.{KO, OK, Response}
+import io.github.datacatering.datacaterer.core.util.SparkProvider
 import org.apache.log4j.Logger
 import org.apache.pekko.actor.typed.scaladsl.Behaviors
 import org.apache.pekko.actor.typed.{ActorRef, Behavior, SupervisorStrategy}
@@ -86,6 +88,7 @@ object PlanRepository extends JsonSupport {
           replyTo ! getAllPlanExecutions
           Behaviors.same
         case StartupSpark() =>
+          startupSpark()
           Behaviors.same
       }
     }.onFailure(SupervisorStrategy.restart)
@@ -214,10 +217,10 @@ object PlanRepository extends JsonSupport {
       .flatMap(execFile => {
         val lines = Files.readAllLines(execFile).asScala
         lines.map(line => {
-          val tryParse = Try(PlanRunExecution.fromString(line))
-          if (tryParse.isFailure) LOGGER.error(s"Failed to parse execution details for file, file-name=$execFile")
-          tryParse
-        })
+            val tryParse = Try(PlanRunExecution.fromString(line))
+            if (tryParse.isFailure) LOGGER.error(s"Failed to parse execution details for file, file-name=$execFile")
+            tryParse
+          })
           .filter(_.isSuccess)
           .map(_.get)
       }).toList
@@ -241,6 +244,18 @@ object PlanRepository extends JsonSupport {
       planFile.delete()
     } else {
       LOGGER.warn(s"Plan file does not exist, unable to delete, plan-name=$name")
+    }
+  }
+
+  private def startupSpark(): Response = {
+    LOGGER.info("Starting up Spark")
+    try {
+      implicit val sparkSession = new SparkProvider(DEFAULT_MASTER, DEFAULT_RUNTIME_CONFIG).getSparkSession
+      //run some dummy query
+      sparkSession.sql("SELECT 1").collect()
+      OK
+    } catch {
+      case ex => KO("Failed to start up Spark", ex)
     }
   }
 }

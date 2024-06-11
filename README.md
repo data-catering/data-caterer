@@ -93,10 +93,10 @@ the full roadmap](#roadmap).
 | Metadata         | Marquez                            | ✅       | ❌    |
 | Metadata         | OpenAPI/Swagger                    | ✅       | ❌    |
 | Metadata         | OpenMetadata                       | ✅       | ❌    |
+| Metadata         | Open Data Contract Standard (ODCS) | ✅       | ❌    |
 | Metadata         | Amundsen                           | ❌       | ❌    |
 | Metadata         | Datahub                            | ❌       | ❌    |
 | Metadata         | Data Contract CLI                  | ❌       | ❌    |
-| Metadata         | ODCS (Open Data Contract Standard) | ❌       | ❌    |
 | Metadata         | Solace Event Portal                | ❌       | ❌    |
 
 

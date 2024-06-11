@@ -215,12 +215,12 @@ object Constants {
     //    "spark.serializer" -> "org.apache.spark.serializer.KryoSerializer",
     //    "spark.sql.catalog.hudi" -> "org.apache.spark.sql.hudi.catalog.HoodieCatalog",
     //    "spark.kryo.registrator" -> "org.apache.spark.HoodieSparkKryoRegistrar",
-    //    "spark.sql.extensions" -> "org.apache.spark.sql.hudi.HoodieSparkSessionExtension,io.delta.sql.DeltaSparkSessionExtension",
+    //    "spark.sql.extensions" -> "org.apache.spark.sql.hudi.HoodieSparkSessionExtension",
     "spark.hadoop.fs.s3a.directory.marker.retention" -> "keep",
     "spark.hadoop.fs.s3a.bucket.all.committer.magic.enabled" -> "true",
     "spark.hadoop.fs.hdfs.impl" -> "org.apache.hadoop.hdfs.DistributedFileSystem",
     "spark.hadoop.fs.file.impl" -> "com.globalmentor.apache.hadoop.fs.BareLocalFileSystem",
-    "spark.sql.extensions" -> "org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions"
+    "spark.sql.extensions" -> "io.delta.sql.DeltaSparkSessionExtension,org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions"
   )
 
   //jdbc defaults
