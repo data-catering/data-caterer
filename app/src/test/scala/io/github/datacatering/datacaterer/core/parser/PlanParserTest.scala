@@ -42,7 +42,7 @@ class PlanParserTest extends SparkSuite {
       "my_first_json" -> Map("path" -> "/tmp/json_1"),
       "my_third_json" -> Map("path" -> "/tmp/json_2"),
     )
-    val result = PlanParser.parseValidations("app/src/test/resources/sample/validation", connectionConfig)
+    val result = PlanParser.parseValidations("src/test/resources/sample/validation", connectionConfig)
 
     assertResult(1)(result.size)
     assertResult(1)(result.head.dataSources.size)
