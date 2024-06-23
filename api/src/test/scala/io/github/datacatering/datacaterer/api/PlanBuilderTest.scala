@@ -123,7 +123,7 @@ class PlanBuilderTest extends AnyFunSuite {
     assert(validationHead.description.contains("name is equal to Peter"))
     assert(validationHead.errorThreshold.contains(0.1))
     assert(validationHead.isInstanceOf[ExpressionValidation])
-    assert(validationHead.asInstanceOf[ExpressionValidation].whereExpr == "name == 'Peter'")
+    assert(validationHead.asInstanceOf[ExpressionValidation].expr == "name == 'Peter'")
     assert(dataSourceHead._2.head.options == Map("path" -> "test/path/json"))
     assert(dataSourceHead._2.head.waitCondition == PauseWaitCondition())
   }

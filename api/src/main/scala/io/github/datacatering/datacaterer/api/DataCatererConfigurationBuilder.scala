@@ -3,7 +3,7 @@ package io.github.datacatering.datacaterer.api
 import io.github.datacatering.datacaterer.api.converter.Converters.toScalaMap
 import io.github.datacatering.datacaterer.api.model.Constants._
 import com.softwaremill.quicklens.ModifyPimp
-import io.github.datacatering.datacaterer.api.connection.{CassandraBuilder, ConnectionTaskBuilder, FileBuilder, HttpBuilder, KafkaBuilder, MySqlBuilder, PostgresBuilder, SolaceBuilder}
+import io.github.datacatering.datacaterer.api.connection.{CassandraBuilder, ConnectionTaskBuilder, FileBuilder, HttpBuilder, KafkaBuilder, MySqlBuilder, NoopBuilder, PostgresBuilder, SolaceBuilder}
 import io.github.datacatering.datacaterer.api.model.DataCatererConfiguration
 
 import scala.annotation.varargs
@@ -371,6 +371,12 @@ final case class ConnectionConfigWithTaskBuilder(
                                                   options: Map[String, String] = Map()
                                                 ) {
   def this() = this(DEFAULT_DATA_SOURCE_NAME, Map())
+
+  def noop(): NoopBuilder = {
+    val noopBuilder = NoopBuilder()
+    noopBuilder.connectionConfigWithTaskBuilder = this
+    noopBuilder
+  }
 
   def file(name: String, format: String, path: String = "", options: Map[String, String] = Map()): FileBuilder = {
     val configBuilder = DataCatererConfigurationBuilder()

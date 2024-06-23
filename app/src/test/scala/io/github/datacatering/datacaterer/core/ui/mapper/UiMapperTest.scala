@@ -434,7 +434,7 @@ class UiMapperTest extends AnyFunSuite {
     val res = UiMapper.validationMapping(dataSourceRequest)
     assertResult(1)(res.size)
     val exprValid = res.head.validation.asInstanceOf[ExpressionValidation]
-    assertResult("account_id == abc123")(exprValid.whereExpr)
+    assertResult("account_id == abc123")(exprValid.expr)
     assertResult(Some("valid desc"))(exprValid.description)
     assertResult(Some(2.0))(exprValid.errorThreshold)
     assertResult(1)(exprValid.selectExpr.size)
@@ -448,7 +448,7 @@ class UiMapperTest extends AnyFunSuite {
     val res = UiMapper.validationMapping(dataSourceRequest)
     assertResult(1)(res.size)
     val valid = res.head.validation.asInstanceOf[ColumnNamesValidation]
-    assertResult(VALIDATION_COLUMN_NAME_COUNT_EQUAL)(valid.`type`)
+    assertResult(VALIDATION_COLUMN_NAME_COUNT_EQUAL)(valid.columnNameType)
     assertResult(5)(valid.count)
   }
 
@@ -459,7 +459,7 @@ class UiMapperTest extends AnyFunSuite {
     val res = UiMapper.validationMapping(dataSourceRequest)
     assertResult(1)(res.size)
     val valid = res.head.validation.asInstanceOf[ColumnNamesValidation]
-    assertResult(VALIDATION_COLUMN_NAME_COUNT_BETWEEN)(valid.`type`)
+    assertResult(VALIDATION_COLUMN_NAME_COUNT_BETWEEN)(valid.columnNameType)
     assertResult(1)(valid.minCount)
     assertResult(2)(valid.maxCount)
   }
@@ -471,7 +471,7 @@ class UiMapperTest extends AnyFunSuite {
     val res = UiMapper.validationMapping(dataSourceRequest)
     assertResult(1)(res.size)
     val valid = res.head.validation.asInstanceOf[ColumnNamesValidation]
-    assertResult(VALIDATION_COLUMN_NAME_MATCH_ORDER)(valid.`type`)
+    assertResult(VALIDATION_COLUMN_NAME_MATCH_ORDER)(valid.columnNameType)
     assertResult(Array("account_id", "year"))(valid.names)
   }
 
@@ -482,7 +482,7 @@ class UiMapperTest extends AnyFunSuite {
     val res = UiMapper.validationMapping(dataSourceRequest)
     assertResult(1)(res.size)
     val valid = res.head.validation.asInstanceOf[ColumnNamesValidation]
-    assertResult(VALIDATION_COLUMN_NAME_MATCH_SET)(valid.`type`)
+    assertResult(VALIDATION_COLUMN_NAME_MATCH_SET)(valid.columnNameType)
     assertResult(Array("account_id", "year"))(valid.names)
   }
 
@@ -493,7 +493,7 @@ class UiMapperTest extends AnyFunSuite {
     val res = UiMapper.validationMapping(dataSourceRequest)
     assertResult(1)(res.size)
     val valid = res.head.validation.asInstanceOf[ColumnNamesValidation]
-    assertResult(VALIDATION_COLUMN_NAME_COUNT_EQUAL)(valid.`type`)
+    assertResult(VALIDATION_COLUMN_NAME_COUNT_EQUAL)(valid.columnNameType)
     assertResult(1)(valid.count)
   }
 
@@ -510,7 +510,7 @@ class UiMapperTest extends AnyFunSuite {
     assertResult(Seq("account_id"))(valid.groupByCols)
     assertResult("amount")(valid.aggCol)
     assertResult(VALIDATION_MIN)(valid.aggType)
-    assertResult("min(amount) == 10")(valid.expr)
+    assertResult("min(amount) == 10")(valid.aggExpr)
   }
 
   test("Can convert UI validation mapping with max group by validation") {
@@ -526,7 +526,7 @@ class UiMapperTest extends AnyFunSuite {
     assertResult(Seq("account_id"))(valid.groupByCols)
     assertResult("amount")(valid.aggCol)
     assertResult(VALIDATION_MAX)(valid.aggType)
-    assertResult("max(amount) == 10")(valid.expr)
+    assertResult("max(amount) == 10")(valid.aggExpr)
   }
 
   test("Can convert UI validation mapping with count group by validation") {
@@ -542,7 +542,7 @@ class UiMapperTest extends AnyFunSuite {
     assertResult(Seq("account_id"))(valid.groupByCols)
     assertResult("amount")(valid.aggCol)
     assertResult(VALIDATION_COUNT)(valid.aggType)
-    assertResult("count(amount) == 10")(valid.expr)
+    assertResult("count(amount) == 10")(valid.aggExpr)
   }
 
   test("Can convert UI validation mapping with sum group by validation") {
@@ -558,7 +558,7 @@ class UiMapperTest extends AnyFunSuite {
     assertResult(Seq("account_id"))(valid.groupByCols)
     assertResult("amount")(valid.aggCol)
     assertResult(VALIDATION_SUM)(valid.aggType)
-    assertResult("sum(amount) == 10")(valid.expr)
+    assertResult("sum(amount) == 10")(valid.aggExpr)
   }
 
   test("Can convert UI validation mapping with average group by validation") {
@@ -574,7 +574,7 @@ class UiMapperTest extends AnyFunSuite {
     assertResult(Seq("account_id"))(valid.groupByCols)
     assertResult("amount")(valid.aggCol)
     assertResult("avg")(valid.aggType)
-    assertResult("avg(amount) == 10")(valid.expr)
+    assertResult("avg(amount) == 10")(valid.aggExpr)
   }
 
   test("Can convert UI validation mapping with standard deviation group by validation") {
@@ -590,7 +590,7 @@ class UiMapperTest extends AnyFunSuite {
     assertResult(Seq("account_id"))(valid.groupByCols)
     assertResult("amount")(valid.aggCol)
     assertResult("stddev")(valid.aggType)
-    assertResult("stddev(amount) == 10")(valid.expr)
+    assertResult("stddev(amount) == 10")(valid.aggExpr)
   }
 
   test("Throw error when given unknown aggregation type") {
@@ -647,12 +647,12 @@ class UiMapperTest extends AnyFunSuite {
     val taskValidations = taskWithValidation.step.get.optValidation.get.dataSourceValidation.validations
     assertResult(1)(taskValidations.size)
     val upstreamValidation = taskValidations.head.validation.asInstanceOf[UpstreamDataSourceValidation]
-    assertResult(List("account_id"))(upstreamValidation.joinCols)
+    assertResult(List("account_id"))(upstreamValidation.joinColumns)
     assertResult("outer")(upstreamValidation.joinType)
     assertResult("task-2")(upstreamValidation.upstreamDataSource.task.get.task.name)
-    val exprValid = upstreamValidation.validationBuilder.validation.asInstanceOf[ExpressionValidation]
+    val exprValid = upstreamValidation.validation.validation.asInstanceOf[ExpressionValidation]
     assertResult(List("*"))(exprValid.selectExpr)
-    assertResult("year == 2020")(exprValid.whereExpr)
+    assertResult("year == 2020")(exprValid.expr)
   }
 
   test("Can convert UI upstream validation mapping with join expression") {
@@ -675,12 +675,12 @@ class UiMapperTest extends AnyFunSuite {
     val taskValidations = taskWithValidation.step.get.optValidation.get.dataSourceValidation.validations
     assertResult(1)(taskValidations.size)
     val upstreamValidation = taskValidations.head.validation.asInstanceOf[UpstreamDataSourceValidation]
-    assertResult(List("expr:account_id == task-2_account_id"))(upstreamValidation.joinCols)
+    assertResult(List("expr:account_id == task-2_account_id"))(upstreamValidation.joinColumns)
     assertResult("outer")(upstreamValidation.joinType)
     assertResult("task-2")(upstreamValidation.upstreamDataSource.task.get.task.name)
-    val exprValid = upstreamValidation.validationBuilder.validation.asInstanceOf[ExpressionValidation]
+    val exprValid = upstreamValidation.validation.validation.asInstanceOf[ExpressionValidation]
     assertResult(List("*"))(exprValid.selectExpr)
-    assertResult("year == 2020")(exprValid.whereExpr)
+    assertResult("year == 2020")(exprValid.expr)
   }
 
   test("Can convert UI upstream validation mapping with join columns only") {
@@ -702,12 +702,12 @@ class UiMapperTest extends AnyFunSuite {
     val taskValidations = taskWithValidation.step.get.optValidation.get.dataSourceValidation.validations
     assertResult(1)(taskValidations.size)
     val upstreamValidation = taskValidations.head.validation.asInstanceOf[UpstreamDataSourceValidation]
-    assertResult(List("account_id"))(upstreamValidation.joinCols)
+    assertResult(List("account_id"))(upstreamValidation.joinColumns)
     assertResult(DEFAULT_VALIDATION_JOIN_TYPE)(upstreamValidation.joinType)
     assertResult("task-2")(upstreamValidation.upstreamDataSource.task.get.task.name)
-    val exprValid = upstreamValidation.validationBuilder.validation.asInstanceOf[ExpressionValidation]
+    val exprValid = upstreamValidation.validation.validation.asInstanceOf[ExpressionValidation]
     assertResult(List("*"))(exprValid.selectExpr)
-    assertResult("year == 2020")(exprValid.whereExpr)
+    assertResult("year == 2020")(exprValid.expr)
   }
 
   test("Can convert UI upstream validation mapping with join expression only") {
@@ -729,11 +729,11 @@ class UiMapperTest extends AnyFunSuite {
     val taskValidations = taskWithValidation.step.get.optValidation.get.dataSourceValidation.validations
     assertResult(1)(taskValidations.size)
     val upstreamValidation = taskValidations.head.validation.asInstanceOf[UpstreamDataSourceValidation]
-    assertResult(List("expr:account_id == task-2_account_id"))(upstreamValidation.joinCols)
+    assertResult(List("expr:account_id == task-2_account_id"))(upstreamValidation.joinColumns)
     assertResult(DEFAULT_VALIDATION_JOIN_TYPE)(upstreamValidation.joinType)
     assertResult("task-2")(upstreamValidation.upstreamDataSource.task.get.task.name)
-    val exprValid = upstreamValidation.validationBuilder.validation.asInstanceOf[ExpressionValidation]
+    val exprValid = upstreamValidation.validation.validation.asInstanceOf[ExpressionValidation]
     assertResult(List("*"))(exprValid.selectExpr)
-    assertResult("year == 2020")(exprValid.whereExpr)
+    assertResult("year == 2020")(exprValid.expr)
   }
 }

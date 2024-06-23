@@ -29,8 +29,11 @@ class DataGeneratorProcessor(dataCatererConfiguration: DataCatererConfiguration)
     val enabledTaskMap = enabledPlannedTasks.map(t => (t.name, t)).toMap
     val tasks = PlanParser.parseTasks(foldersConfig.taskFolderPath)
     val enabledTasks = tasks.filter(t => enabledTaskMap.contains(t.name)).toList
+    val validations = if (flagsConfig.enableValidation) {
+      Some(PlanParser.parseValidations(foldersConfig.validationFolderPath, connectionConfigsByName))
+    } else None
 
-    generateData(plan.copy(tasks = enabledPlannedTasks), enabledTasks, None)
+    generateData(plan.copy(tasks = enabledPlannedTasks), enabledTasks, validations)
   }
 
   def generateData(plan: Plan, tasks: List[Task], optValidations: Option[List[ValidationConfiguration]]): PlanRunResults = {

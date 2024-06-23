@@ -131,6 +131,13 @@ trait ConnectionTaskBuilder[T] {
   }
 }
 
+case class NoopBuilder() extends ConnectionTaskBuilder[NoopBuilder] {
+  override def fromBaseConfig(connectionTaskBuilder: ConnectionTaskBuilder[NoopBuilder]): NoopBuilder = {
+    this.connectionConfigWithTaskBuilder = connectionTaskBuilder.connectionConfigWithTaskBuilder
+    this
+  }
+}
+
 case class FileBuilder() extends ConnectionTaskBuilder[FileBuilder] {
   override def fromBaseConfig(connectionTaskBuilder: ConnectionTaskBuilder[FileBuilder]): FileBuilder = {
     this.connectionConfigWithTaskBuilder = connectionTaskBuilder.connectionConfigWithTaskBuilder

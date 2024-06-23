@@ -111,12 +111,13 @@ class PlanProcessorTest extends SparkSuite {
     assert(csvData.forall(r => r.getAs[String]("time").substring(0, 10) == r.getAs[String]("date")))
   }
 
-  ignore("Write YAML for plan") {
-    val docPlanRun = new DocumentationPlanRun()
+  test("Write YAML for plan") {
+    val docPlanRun = new TestValidation()
     val planWrite = ObjectMapperUtil.yamlObjectMapper.writeValueAsString(docPlanRun._plan)
     val validWrite = ObjectMapperUtil.yamlObjectMapper.writeValueAsString(docPlanRun._validations)
-    Files.writeString(Path.of("/tmp/my-plan.yaml"), planWrite)
-    Files.writeString(Path.of("/tmp/my-validation.yaml"), validWrite)
+    println(validWrite)
+//    Files.writeString(Path.of("/tmp/my-plan.yaml"), planWrite)
+//    Files.writeString(Path.of("/tmp/my-validation.yaml"), validWrite)
   }
 
   ignore("Can run Postgres plan run") {
@@ -250,6 +251,7 @@ class PlanProcessorTest extends SparkSuite {
           preFilterBuilder(columnPreFilter( "name").startsWith("john"))
             .and(columnPreFilter("amount").greaterThan(10))
         ).col("account_id").isNotNull,
+        validation.groupBy("account_id").count().isEqual(1),
         validation.columnNames.countEqual(3),
         validation.columnNames.countBetween(1, 2),
         validation.columnNames.matchOrder("account_id", "amount", "name"),

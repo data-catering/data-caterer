@@ -248,7 +248,7 @@ object PlanRepository extends JsonSupport {
   }
 
   private def startupSpark(): Response = {
-    LOGGER.info("Starting up Spark")
+    LOGGER.debug("Starting up Spark")
     try {
       implicit val sparkSession = new SparkProvider(DEFAULT_MASTER, DEFAULT_RUNTIME_CONFIG).getSparkSession
       //run some dummy query

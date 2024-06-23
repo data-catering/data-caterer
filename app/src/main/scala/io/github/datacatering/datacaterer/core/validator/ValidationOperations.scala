@@ -1,7 +1,7 @@
 package io.github.datacatering.datacaterer.core.validator
 
 import io.github.datacatering.datacaterer.api.model.Constants.{AGGREGATION_COUNT, FORMAT, VALIDATION_COLUMN_NAME_COUNT_BETWEEN, VALIDATION_COLUMN_NAME_COUNT_EQUAL, VALIDATION_COLUMN_NAME_MATCH_ORDER, VALIDATION_COLUMN_NAME_MATCH_SET, VALIDATION_PREFIX_JOIN_EXPRESSION, VALIDATION_UNIQUE}
-import io.github.datacatering.datacaterer.api.model.{ColumnNamesValidation, ConditionType, ExpressionValidation, GroupByValidation, UpstreamDataSourceValidation, Validation}
+import io.github.datacatering.datacaterer.api.model.{ColumnNamesValidation, ExpressionValidation, GroupByValidation, UpstreamDataSourceValidation, Validation}
 import io.github.datacatering.datacaterer.core.model.ValidationResult
 import io.github.datacatering.datacaterer.core.validator.ValidationHelper.getValidationType
 import org.apache.log4j.Logger
@@ -15,16 +15,12 @@ abstract class ValidationOps(validation: Validation) {
   def validate(df: DataFrame, dfCount: Long): ValidationResult
 
   def filterData(df: DataFrame): DataFrame = {
-    validation.preFilter.map(preFilter => {
-      val isValidFilter = preFilter.validate()
-      if (isValidFilter) {
-        val preFilterExpression = preFilter.toExpression
-        LOGGER.debug(s"Using pre-filter before running data validation, pre-filter-expression=$preFilterExpression")
-        df.where(preFilterExpression)
-      } else {
-        LOGGER.warn(s"Invalid pre-filter defined for validation, defaulting to using unfiltered dataset")
-        df
-      }
+    if (!validation.preFilter.forall(_.validate())) {
+      LOGGER.warn(s"Invalid pre-filter defined for validation, defaulting to using unfiltered dataset")
+    }
+    validation.getPreFilterExpression.map(preFilter => {
+      LOGGER.debug(s"Using pre-filter before running data validation, pre-filter-expression=$preFilter")
+      df.where(preFilter)
     }).getOrElse(df)
   }
 
@@ -66,7 +62,7 @@ class ExpressionValidationOps(expressionValidation: ExpressionValidation) extend
   override def validate(df: DataFrame, dfCount: Long): ValidationResult = {
     //TODO allow for pre-filter? can technically be done via custom sql validation using CASE WHERE ... ELSE true END
     val dfWithSelectExpr = df.selectExpr(expressionValidation.selectExpr: _*)
-    validateWithExpression(dfWithSelectExpr, dfCount, expressionValidation.whereExpr)
+    validateWithExpression(dfWithSelectExpr, dfCount, expressionValidation.expr)
   }
 }
 
@@ -83,7 +79,7 @@ class GroupByValidationOps(groupByValidation: GroupByValidation) extends Validat
       ))
       (aggDf, aggDf.count())
     }
-    validateWithExpression(aggregateDf, validationCount, groupByValidation.expr)
+    validateWithExpression(aggregateDf, validationCount, groupByValidation.aggExpr)
   }
 }
 
@@ -96,13 +92,13 @@ class UpstreamDataSourceValidationOps(
     val joinedDf = getJoinedDf(df, upstreamDf)
     val joinedCount = joinedDf.count()
 
-    val baseValidationOp = getValidationType(upstreamDataSourceValidation.validationBuilder.validation, recordTrackingForValidationFolderPath)
+    val baseValidationOp = getValidationType(upstreamDataSourceValidation.validation.validation, recordTrackingForValidationFolderPath)
     val result = baseValidationOp.validate(joinedDf, joinedCount)
     ValidationResult.fromValidationWithBaseResult(upstreamDataSourceValidation, result)
   }
 
   private def getJoinedDf(df: DataFrame, upstreamDf: DataFrame): DataFrame = {
-    val joinCols = upstreamDataSourceValidation.joinCols
+    val joinCols = upstreamDataSourceValidation.joinColumns
     val joinType = upstreamDataSourceValidation.joinType
     val upstreamName = upstreamDataSourceValidation.upstreamDataSource.connectionConfigWithTaskBuilder.dataSourceName
 
@@ -138,7 +134,7 @@ class ColumnNamesValidationOps(columnNamesValidation: ColumnNamesValidation) ext
   override def validate(df: DataFrame, dfCount: Long): ValidationResult = {
     implicit val stringEncoder: Encoder[CustomErrorSample] = Encoders.kryo[CustomErrorSample]
 
-    val (isSuccess, errorSamples, total) = columnNamesValidation.`type` match {
+    val (isSuccess, errorSamples, total) = columnNamesValidation.columnNameType match {
       case VALIDATION_COLUMN_NAME_COUNT_EQUAL =>
         val isEqualLength = df.columns.length == columnNamesValidation.count
         val sample = if (isEqualLength) List() else List(CustomErrorSample(df.columns.length.toString))

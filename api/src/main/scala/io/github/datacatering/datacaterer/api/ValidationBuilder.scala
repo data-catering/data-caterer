@@ -132,7 +132,7 @@ case class ValidationBuilder(validation: Validation = ExpressionValidation(), op
         val grpWithExpr = GroupByValidation(grpCols, aggCol, aggType, expr)
         copyWithDescAndThreshold(grpWithExpr)
       case expressionValidation: ExpressionValidation =>
-        val withExpr = expressionValidation.modify(_.whereExpr).setTo(expr)
+        val withExpr = expressionValidation.modify(_.expr).setTo(expr)
         copyWithDescAndThreshold(withExpr)
       case _ => copyWithDescAndThreshold(ExpressionValidation(expr))
     }
@@ -925,7 +925,7 @@ case class CombinationPreFilterBuilder(
       validationPreFilterBuilders.map {
         case Left(validationBuilder) =>
           validationBuilder.validation match {
-            case exprValidation: ExpressionValidation => exprValidation.whereExpr
+            case exprValidation: ExpressionValidation => exprValidation.expr
             case _ => "true"
           }
         case Right(conditionType) => conditionType.toString
