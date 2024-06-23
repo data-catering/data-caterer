@@ -138,6 +138,13 @@ case class YamlDataSourceValidation(
                                      validations: List[Validation] = List()
                                    )
 
+@JsonSubTypes(Array(
+  new Type(value = classOf[PauseWaitCondition]),
+  new Type(value = classOf[FileExistsWaitCondition]),
+  new Type(value = classOf[DataExistsWaitCondition]),
+  new Type(value = classOf[WebhookWaitCondition]),
+))
+@JsonTypeInfo(use = JsonTypeInfo.Id.DEDUCTION)
 trait WaitCondition {
   val isRetryable: Boolean = true
   val maxRetries: Int = 10

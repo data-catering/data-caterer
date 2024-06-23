@@ -1,6 +1,6 @@
 package io.github.datacatering.datacaterer.core.parser
 
-import io.github.datacatering.datacaterer.api.model.{ExpressionValidation, GroupByValidation, UpstreamDataSourceValidation}
+import io.github.datacatering.datacaterer.api.model.{ExpressionValidation, GroupByValidation, PauseWaitCondition, UpstreamDataSourceValidation}
 import io.github.datacatering.datacaterer.core.util.SparkSuite
 import org.junit.runner.RunWith
 import org.scalatestplus.junit.JUnitRunner
@@ -42,13 +42,15 @@ class PlanParserTest extends SparkSuite {
       "my_first_json" -> Map("path" -> "/tmp/json_1"),
       "my_third_json" -> Map("path" -> "/tmp/json_2"),
     )
-    val result = PlanParser.parseValidations("src/test/resources/sample/validation", connectionConfig)
+    val result = PlanParser.parseValidations("app/src/test/resources/sample/validation", connectionConfig)
 
     assertResult(1)(result.size)
     assertResult(1)(result.head.dataSources.size)
     assertResult("json")(result.head.dataSources.head._1)
     val baseVal = result.head.dataSources.head._2.head
     assertResult(Map("path" -> "app/src/test/resources/sample/json/txn-gen"))(baseVal.options)
+    assert(baseVal.waitCondition.isInstanceOf[PauseWaitCondition])
+    assertResult(1)(baseVal.waitCondition.asInstanceOf[PauseWaitCondition].pauseInSeconds)
     assertResult(16)(baseVal.validations.size)
 
     def validateExpr(expectedExpr: String, optThreshold: Option[Double] = None, optPreFilter: Option[String] = None) = {

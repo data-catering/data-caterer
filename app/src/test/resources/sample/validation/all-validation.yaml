@@ -5,6 +5,8 @@ dataSources:
   json:
     - options:
         path: "app/src/test/resources/sample/json/txn-gen"
+      waitCondition:
+        pauseInSeconds: 1
       validations:
         - expr: "amount < 100"
         - expr: "year == 2021"
