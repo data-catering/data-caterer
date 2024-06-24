@@ -13,20 +13,20 @@ import org.apache.spark.sql.{DataFrame, SparkSession}
 import java.time.LocalDateTime
 import scala.util.{Failure, Success, Try}
 
-/*
-Given a list of validations, check and report on the success and failure of each
-Flag to enable
-Validations can occur on any data source defined in application config
-Validations will only occur on datasets not on the response from the data source (i.e. no HTTP status code validations)
-Defined at plan level what validations are run post data generation
-Validations lie within separate files
-Validations have a wait condition. Wait for: webhook, pause, file exists, data exists
-Different types of validations:
-- simple column validations (amount < 100)
-- aggregates (sum of amount per account is > 500)
-- ordering (transactions are ordered by date)
-- relationship (one account entry in history table per account in accounts table)
-- data profile (how close the generated data profile is compared to the expected data profile)
+/**
+ * Given a list of validations, check and report on the success and failure of each
+ * Flag to enable
+ * Validations can occur on any data source defined in application config
+ * Validations will only occur on datasets not on the response from the data source (i.e. no HTTP status code validations)
+ * Defined at plan level what validations are run post data generation
+ * Validations lie within separate files
+ * Validations have a wait condition. Wait for: webhook, pause, file exists, data exists
+ * Different types of validations:
+ * - simple column validations (amount < 100)
+ * - aggregates (sum of amount per account is > 500)
+ * - ordering (transactions are ordered by date)
+ * - relationship (one account entry in history table per account in accounts table)
+ * - data profile (how close the generated data profile is compared to the expected data profile)
  */
 class ValidationProcessor(
                            connectionConfigsByName: Map[String, Map[String, String]],
