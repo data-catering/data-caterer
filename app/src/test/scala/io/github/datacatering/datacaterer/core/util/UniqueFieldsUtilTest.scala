@@ -1,7 +1,7 @@
 package io.github.datacatering.datacaterer.core.util
 
 import io.github.datacatering.datacaterer.api.model.Constants.IS_UNIQUE
-import io.github.datacatering.datacaterer.api.model.{Count, Field, Generator, Schema, Step, Task, TaskSummary}
+import io.github.datacatering.datacaterer.api.model.{Count, Field, Generator, Plan, Schema, Step, Task, TaskSummary}
 import org.junit.runner.RunWith
 import org.scalatestplus.junit.JUnitRunner
 
@@ -20,7 +20,7 @@ class UniqueFieldsUtilTest extends SparkSuite {
         ))))
       ))
     ))
-    val uniqueColumnUtil = new UniqueFieldsUtil(tasks)
+    val uniqueColumnUtil = new UniqueFieldsUtil(Plan(), tasks)
 
     val uniqueColumns = uniqueColumnUtil.uniqueFieldsDf
     assert(uniqueColumns.size == 2)

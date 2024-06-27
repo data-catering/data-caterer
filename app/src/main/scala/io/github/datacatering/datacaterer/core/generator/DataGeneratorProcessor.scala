@@ -19,7 +19,7 @@ class DataGeneratorProcessor(dataCatererConfiguration: DataCatererConfiguration)
   private val metadataConfig = dataCatererConfiguration.metadataConfig
   private val flagsConfig = dataCatererConfiguration.flagsConfig
   private val generationConfig = dataCatererConfiguration.generationConfig
-  private lazy val batchDataProcessor = new BatchDataProcessor(connectionConfigsByName, foldersConfig, metadataConfig, flagsConfig, generationConfig)
+  private lazy val batchDataProcessor = new BatchDataProcessor(connectionConfigsByName, metadataConfig, flagsConfig, generationConfig)
   private lazy val sparkRecordListener = new SparkRecordListener(flagsConfig.enableCount)
   sparkSession.sparkContext.addSparkListener(sparkRecordListener)
 

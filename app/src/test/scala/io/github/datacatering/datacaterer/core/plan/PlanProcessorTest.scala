@@ -121,7 +121,7 @@ class PlanProcessorTest extends SparkSuite {
   }
 
   ignore("Can run Postgres plan run") {
-    PlanProcessor.determineAndExecutePlan(Some(new TestOtherFileFormats))
+    PlanProcessor.determineAndExecutePlan(Some(new TestForeignKeys))
   }
 
   class TestPostgres extends PlanRun {
@@ -313,5 +313,23 @@ class PlanProcessorTest extends SparkSuite {
         field.name("account_id").regex("ACC[0-9]{8}").unique(true)
       )
     execute(jsonTask)
+  }
+
+  class TestForeignKeys extends PlanRun {
+    val accountTask = csv("accounts", "/tmp/data/account-csv", Map("saveMode" -> "overwrite"))
+      .schema(field.name("account_id"))
+      .count(count.records(1000))
+    val transactionTask = csv("transactions", "/tmp/data/transaction-csv", Map("saveMode" -> "overwrite"))
+      .schema(field.name("account_id"), field.name("amount").`type`(IntegerType))
+      .count(count.recordsPerColumn(5, "account_id"))
+
+    val conf = configuration
+      .enableCount(true)
+      .generatedReportsFolderPath("/tmp/report")
+
+    val foreignPlan = plan
+      .addForeignKeyRelationship(accountTask, "account_id", List(transactionTask -> "account_id"))
+
+    execute(foreignPlan, conf, accountTask, transactionTask)
   }
 }

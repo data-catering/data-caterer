@@ -6,8 +6,10 @@ import io.github.datacatering.datacaterer.core.util.{SparkSuite, Transaction}
 import org.junit.runner.RunWith
 import org.scalatestplus.junit.JUnitRunner
 
+import java.io.File
 import java.sql.Date
 import java.time.LocalDateTime
+import scala.reflect.io.Directory
 
 @RunWith(classOf[JUnitRunner])
 class SinkFactoryTest extends SparkSuite {
@@ -32,8 +34,10 @@ class SinkFactoryTest extends SparkSuite {
   }
 
   test("Can save data in Delta Lake format") {
+    val path = "/tmp/delta-test"
+    new Directory(new File(path)).deleteRecursively()
     val sinkFactory = new SinkFactory(FlagsConfig(), MetadataConfig())
-    val step = Step(options = Map(FORMAT -> DELTA, PATH -> "/tmp/delta-test"))
+    val step = Step(options = Map(FORMAT -> DELTA, PATH -> path))
     val res = sinkFactory.pushToSink(df, "delta-data-source", step, LocalDateTime.now())
 
     assert(res.isSuccess)

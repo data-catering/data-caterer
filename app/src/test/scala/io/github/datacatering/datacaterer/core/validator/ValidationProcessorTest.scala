@@ -8,7 +8,10 @@ import io.github.datacatering.datacaterer.core.util.{SparkSuite, Transaction}
 import org.junit.runner.RunWith
 import org.scalatestplus.junit.JUnitRunner
 
+import java.io.File
+import java.nio.file.{Files, Paths}
 import java.sql.Date
+import scala.reflect.io.Directory
 
 @RunWith(classOf[JUnitRunner])
 class ValidationProcessorTest extends SparkSuite {
@@ -59,6 +62,7 @@ class ValidationProcessorTest extends SparkSuite {
 
   test("Can read Delta Lake data for validation") {
     val path = "/tmp/delta-validation-test"
+    new Directory(new File(path)).deleteRecursively()
     DELTA_LAKE_SPARK_CONF.foreach(conf => df.sqlContext.setConf(conf._1, conf._2))
     df.write.format("delta").mode("overwrite").save(path)
     val validationProcessor = setupValidationProcessor(Map(FORMAT -> DELTA, PATH -> path))

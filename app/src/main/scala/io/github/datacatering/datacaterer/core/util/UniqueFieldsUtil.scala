@@ -1,10 +1,10 @@
 package io.github.datacatering.datacaterer.core.util
 
-import io.github.datacatering.datacaterer.api.model.{Task, TaskSummary}
+import io.github.datacatering.datacaterer.api.model.{ForeignKeyRelation, Plan, Task, TaskSummary}
 import io.github.datacatering.datacaterer.core.util.PlanImplicits.StepOps
 import org.apache.spark.sql.{DataFrame, SparkSession}
 
-class UniqueFieldsUtil(executableTasks: List[(TaskSummary, Task)])(implicit sparkSession: SparkSession) {
+class UniqueFieldsUtil(plan: Plan, executableTasks: List[(TaskSummary, Task)])(implicit sparkSession: SparkSession) {
 
   var uniqueFieldsDf: Map[UniqueFields, DataFrame] = getUniqueFields
 
@@ -15,10 +15,10 @@ class UniqueFieldsUtil(executableTasks: List[(TaskSummary, Task)])(implicit spar
     if (!finalDf.storageLevel.useMemory) finalDf.cache()
 
     //drop duplicate records for data via dropDuplicates and then anti join with previously generated values
-    existingFieldValues.foreach(existingCol => {
-      val columns = existingCol._1.columns
+    existingFieldValues.foreach(previouslyGenerated => {
+      val columns = previouslyGenerated._1.columns
       val dfWithUnique = finalDf.dropDuplicates(columns)
-      finalDf = if (existingCol._2.columns.nonEmpty) dfWithUnique.join(existingCol._2, columns, "left_anti") else dfWithUnique
+      finalDf = if (previouslyGenerated._2.columns.nonEmpty) dfWithUnique.join(previouslyGenerated._2, columns, "left_anti") else dfWithUnique
     })
 
     //update the map with the latest values
@@ -35,7 +35,20 @@ class UniqueFieldsUtil(executableTasks: List[(TaskSummary, Task)])(implicit spar
   }
 
   private def getUniqueFields: Map[UniqueFields, DataFrame] = {
-    val uniqueFields = executableTasks.flatMap(t => {
+    def uniqueFieldFromForeignKeyRelation(foreignKeyRelation: ForeignKeyRelation): UniqueFields = {
+      UniqueFields(foreignKeyRelation.dataSource, foreignKeyRelation.step, foreignKeyRelation.columns)
+    }
+
+    // source foreign keys defined have to be unique fields
+    val foreignKeyUniqueFields = plan.sinkOptions.map(sinkOpts => {
+      sinkOpts.foreignKeys.flatMap(relationship => {
+        val sourceFk = ForeignKeyRelationHelper.fromString(relationship._1)
+        List(uniqueFieldFromForeignKeyRelation(sourceFk))
+      })
+    }).getOrElse(List())
+
+    // get unique fields defined in tasks
+    val taskUniqueFields = executableTasks.flatMap(t => {
       t._2.steps
         .flatMap(step => {
           val primaryKeys = step.gatherPrimaryKeys
@@ -45,7 +58,7 @@ class UniqueFieldsUtil(executableTasks: List[(TaskSummary, Task)])(implicit spar
           primaryKeyUf ++ uniqueKeyUf
         })
     })
-    uniqueFields.map(uc => (uc, sparkSession.emptyDataFrame)).toMap
+    (foreignKeyUniqueFields ++ taskUniqueFields).map(uc => (uc, sparkSession.emptyDataFrame)).toMap
   }
 
 }

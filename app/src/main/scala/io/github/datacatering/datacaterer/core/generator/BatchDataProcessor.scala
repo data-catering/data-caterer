@@ -1,11 +1,11 @@
 package io.github.datacatering.datacaterer.core.generator
 
 import io.github.datacatering.datacaterer.api.model.Constants.{DEFAULT_ENABLE_GENERATE_DATA, ENABLE_DATA_GENERATION}
-import io.github.datacatering.datacaterer.api.model.{FlagsConfig, FoldersConfig, GenerationConfig, MetadataConfig, Plan, Step, Task, TaskSummary}
+import io.github.datacatering.datacaterer.api.model.{FlagsConfig, GenerationConfig, MetadataConfig, Plan, Step, Task, TaskSummary}
 import io.github.datacatering.datacaterer.core.model.DataSourceResult
 import io.github.datacatering.datacaterer.core.sink.SinkFactory
 import io.github.datacatering.datacaterer.core.util.GeneratorUtil.getDataSourceName
-import io.github.datacatering.datacaterer.core.util.PlanImplicits.StepOps
+import io.github.datacatering.datacaterer.core.util.PlanImplicits.{PerColumnCountOps, StepOps}
 import io.github.datacatering.datacaterer.core.util.RecordCountUtil.calculateNumBatches
 import io.github.datacatering.datacaterer.core.util.{ForeignKeyUtil, UniqueFieldsUtil}
 import net.datafaker.Faker
@@ -17,17 +17,18 @@ import java.time.LocalDateTime
 import java.util.{Locale, Random}
 import scala.util.{Failure, Success, Try}
 
-class BatchDataProcessor(connectionConfigsByName: Map[String, Map[String, String]], foldersConfig: FoldersConfig,
-                         metadataConfig: MetadataConfig, flagsConfig: FlagsConfig, generationConfig: GenerationConfig)(implicit sparkSession: SparkSession) {
+class BatchDataProcessor(connectionConfigsByName: Map[String, Map[String, String]], metadataConfig: MetadataConfig,
+                         flagsConfig: FlagsConfig, generationConfig: GenerationConfig)(implicit sparkSession: SparkSession) {
 
   private val LOGGER = Logger.getLogger(getClass.getName)
   private lazy val sinkFactory = new SinkFactory(flagsConfig, metadataConfig)
+  private lazy val maxRetries = 3
 
   def splitAndProcess(plan: Plan, executableTasks: List[(TaskSummary, Task)])
                      (implicit sparkSession: SparkSession): List[DataSourceResult] = {
     val faker = getDataFaker(plan)
     val dataGeneratorFactory = new DataGeneratorFactory(faker)
-    val uniqueFieldUtil = new UniqueFieldsUtil(executableTasks)
+    val uniqueFieldUtil = new UniqueFieldsUtil(plan, executableTasks) // should also pass in foreign keys
     val tasks = executableTasks.map(_._2)
     var (numBatches, trackRecordsPerStep) = calculateNumBatches(tasks, generationConfig)
 
@@ -45,11 +46,38 @@ class BatchDataProcessor(connectionConfigsByName: Map[String, Map[String, String
             val endIndex = stepRecords.currentNumRecords + stepRecords.numRecordsPerBatch
 
             val genDf = dataGeneratorFactory.generateDataForStep(s, task._1.dataSourceName, startIndex, endIndex)
-            val df = getUniqueGeneratedRecords(uniqueFieldUtil, s, dataSourceStepName, genDf)
+            var df = getUniqueGeneratedRecords(uniqueFieldUtil, dataSourceStepName, genDf)
 
             if (!df.storageLevel.useMemory) df.cache()
-            val dfRecordCount = if (flagsConfig.enableCount) df.count() else stepRecords.numRecordsPerBatch
-            LOGGER.debug(s"Step record count for batch, batch=$batch, step-name=${s.name}, target-num-records=${stepRecords.numRecordsPerBatch}, actual-num-records=$dfRecordCount")
+            var dfRecordCount = if (flagsConfig.enableCount) df.count() else stepRecords.numRecordsPerBatch
+            var retries = 0
+            val targetNumRecords = stepRecords.numRecordsPerBatch * s.count.perColumn.map(_.averageCountPerColumn).getOrElse(1L)
+            LOGGER.debug(s"Step record count for batch, batch=$batch, step-name=${s.name}, " +
+              s"target-num-records=$targetNumRecords, actual-num-records=$dfRecordCount")
+
+            // if record count doesn't match expected record count, generate more data
+            def generateAdditionalRecords(): Unit = {
+              LOGGER.debug(s"Record count does not reach expected num records for batch, generating more records until reached, " +
+                s"target-num-records=$targetNumRecords, actual-num-records=$dfRecordCount, num-retries=$retries, max-retries=$maxRetries")
+              val additionalGenDf = dataGeneratorFactory
+                .generateDataForStep(s, task._1.dataSourceName, stepRecords.currentNumRecords + dfRecordCount, endIndex)
+              val additionalDf = getUniqueGeneratedRecords(uniqueFieldUtil, dataSourceStepName, additionalGenDf)
+              df = df.union(additionalDf)
+              dfRecordCount = df.count()
+              LOGGER.debug(s"Generated more records for step, batch=$batch, step-name=${s.name}, " +
+                s"new-num-records=${additionalDf.count()}, actual-num-records=$dfRecordCount")
+            }
+
+            while (targetNumRecords != dfRecordCount && retries < maxRetries) {
+              retries += 1
+              generateAdditionalRecords()
+            }
+            if (targetNumRecords != dfRecordCount && retries == maxRetries) {
+              LOGGER.warn("Unable to reach expected number of records due to reaching max retries. " +
+                s"Can be due to limited number of potential unique records, " +
+                s"target-num-records=$targetNumRecords, actual-num-records=${dfRecordCount}")
+            }
+
             trackRecordsPerStep = trackRecordsPerStep ++ Map(recordStepName -> stepRecords.copy(currentNumRecords = dfRecordCount))
             (dataSourceStepName, df)
           } else {
@@ -65,6 +93,7 @@ class BatchDataProcessor(connectionConfigsByName: Map[String, Map[String, String
       val sinkResults = pushDataToSinks(executableTasks, sinkDf, batch, startTime)
       sinkDf.foreach(_._2.unpersist())
       LOGGER.info(s"Finished batch, batch=$batch, num-batches=$numBatches")
+
       sinkResults
     }).toList
     LOGGER.debug(s"Completed all batches, num-batches=$numBatches")
@@ -87,10 +116,10 @@ class BatchDataProcessor(connectionConfigsByName: Map[String, Map[String, String
     })
   }
 
-  private def getUniqueGeneratedRecords(uniqueFieldUtil: UniqueFieldsUtil, s: Step, dataSourceStepName: String, genDf: DataFrame): DataFrame = {
-    if (s.gatherUniqueFields.nonEmpty || s.gatherPrimaryKeys.nonEmpty) {
-      LOGGER.debug(s"Ensuring field values are unique since there are fields with isUnique or isPrimaryKey set to true, " +
-        s"data-source-step-name=$dataSourceStepName")
+  private def getUniqueGeneratedRecords(uniqueFieldUtil: UniqueFieldsUtil, dataSourceStepName: String, genDf: DataFrame): DataFrame = {
+    if (uniqueFieldUtil.uniqueFieldsDf.exists(u => u._1.getDataSourceName == dataSourceStepName)) {
+      LOGGER.debug(s"Ensuring field values are unique since there are fields with isUnique or isPrimaryKey set to true " +
+        s"or is defined within foreign keys, data-source-step-name=$dataSourceStepName")
       uniqueFieldUtil.getUniqueFieldsValues(dataSourceStepName, genDf)
     } else {
       genDf
