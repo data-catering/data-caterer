@@ -2,8 +2,7 @@ name: Build docker images and OS installations
 
 on:
   push:
-    tags:
-      "*"
+    tags: ["*"]
 
 jobs:
   build:
@@ -27,13 +26,11 @@ jobs:
           ORG_GRADLE_PROJECT_signingKey: ${{ secrets.ORG_GRADLE_PROJECT_SIGNINGKEY }}
           ORG_GRADLE_PROJECT_signingKeyId: ${{ secrets.ORG_GRADLE_PROJECT_SIGNINGKEYID }}
           ORG_GRADLE_PROJECT_signingPassword: ${{ secrets.ORG_GRADLE_PROJECT_SIGNINGPASSWORD }}
-      - name: Build jpackage jar
-        run: JPACKAGE_BUILD=true ./gradlew clean :api:shadowJar :app:shadowJar
       - name: Upload jpackage jar
         uses: actions/upload-artifact@v4
         with:
           name: jars
-          path: "app/build/libs/*.jar"
+          path: "app/build/libs/data-caterer.jar"
           overwrite: true
 
   osx:
@@ -58,7 +55,7 @@ jobs:
           name: jars
           path: app/build/libs/
       - name: Package jar as dmg installer
-        run: 'jpackage --main-jar app-${APP_VERSION}-all.jar "@misc/jpackage/jpackage.cfg" "@misc/jpackage/jpackage-mac.cfg"'
+        run: 'jpackage --main-jar data-caterer.jar "@misc/jpackage/jpackage.cfg" "@misc/jpackage/jpackage-mac.cfg"'
       - name: Upload dmg
         uses: actions/upload-artifact@v4
         with:
@@ -88,7 +85,7 @@ jobs:
           name: jars
           path: app/build/libs/
       - name: Package jar as exe
-        run: 'jpackage --main-jar app-$env:APP_VERSION-all.jar "@misc/jpackage/jpackage.cfg" "@misc/jpackage/jpackage-windows.cfg"'
+        run: 'jpackage --main-jar data-caterer.jar "@misc/jpackage/jpackage.cfg" "@misc/jpackage/jpackage-windows.cfg"'
       - name: Upload installer
         uses: actions/upload-artifact@v4
         with:
@@ -118,7 +115,7 @@ jobs:
           name: jars
           path: app/build/libs/
       - name: Package jar as debian package
-        run: 'jpackage --main-jar app-${APP_VERSION}-all.jar "@misc/jpackage/jpackage.cfg" "@misc/jpackage/jpackage-linux.cfg"'
+        run: 'jpackage --main-jar data-caterer.jar "@misc/jpackage/jpackage.cfg" "@misc/jpackage/jpackage-linux.cfg"'
       - name: List directory
         run: ls -lart
       - name: Upload deb
