@@ -99,11 +99,14 @@ java {
     withSourcesJar()
 }
 
+tasks.jar {
+    manifest {
+        archiveFileName.set("data-caterer-api-slim.jar")
+    }
+}
+
 tasks.shadowJar {
-    archiveBaseName.set("datacaterer")
-    archiveAppendix.set("api")
-    archiveVersion.set(project.version.toString())
-    archiveClassifier.set("")
+    archiveFileName.set("data-caterer-api.jar")
     isZip64 = true
 }
 

@@ -4,7 +4,7 @@ version=$(grep version gradle.properties | cut -d= -f2)
 sparkVersion=$(grep sparkVersion gradle.properties | cut -d= -f2)
 platforms="linux/amd64,linux/arm64"
 
-echo "Creating API jars and publishing"
+echo "Creating API jars and publishing, version=$version"
 ./gradlew clean :api:javadocJar :api:sourcesJar :api:shadowJar publishToSonatype closeAndReleaseSonatypeStagingRepository
 publish_res=$?
 if [[ "$publish_res" -ne 0 ]] ; then
@@ -12,8 +12,8 @@ if [[ "$publish_res" -ne 0 ]] ; then
 #  exit 1
 fi
 
-echo "Creating data caterer jar, version=$version"
-./gradlew build shadowJar
+echo "Creating data caterer fat jars, version=$version"
+./gradlew clean :app:shadowJar
 build_app=$?
 if [[ "$build_app" -ne 0 ]] ; then
   echo "Failed to build app, exiting"

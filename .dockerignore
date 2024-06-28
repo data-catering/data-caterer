@@ -1,0 +1,4 @@
+app/src/main/resources/META-INF
+app/src/main/resources/ui
+app/build/libs/data-caterer-slim.jar
+api/build/libs/data-caterer-api-slim.jar

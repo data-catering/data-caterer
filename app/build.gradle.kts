@@ -48,8 +48,8 @@ configurations {
 }
 
 dependencies {
-    jpackageDep("org.scala-lang:scala-library:$scalaSpecificVersion")
-    jpackageDep("org.apache.spark:spark-sql_$scalaVersion:$sparkVersion") {
+    basicImpl("org.scala-lang:scala-library:$scalaSpecificVersion")
+    basicImpl("org.apache.spark:spark-sql_$scalaVersion:$sparkVersion") {
         exclude(group = "com.google.protobuf")
         exclude(module = "netty-codec-http")
         exclude(module = "woodstox-core")
@@ -72,7 +72,7 @@ dependencies {
         exclude(module = "wildfly-openssl-java")
         exclude(module = "xnio-api")
     }
-    jpackageDep(project(":api"))
+    basicImpl(project(":api"))
 
     // vulnerabilities in Spark
     basicImpl("com.google.protobuf:protobuf-java:3.25.3")
@@ -196,7 +196,14 @@ sourceSets {
     }
 }
 
+tasks.jar {
+    manifest {
+        archiveFileName.set("data-caterer-slim.jar")
+    }
+}
+
 tasks.shadowJar {
+    archiveFileName.set("data-caterer.jar")
     isZip64 = true
     relocate("com.google.common", "shadow.com.google.common")
     val newTransformer = com.github.jengelman.gradle.plugins.shadow.transformers.AppendingTransformer()

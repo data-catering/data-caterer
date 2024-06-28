@@ -1,6 +1,0 @@
-name: "http_example_plan"
-description: "Hit HTTP endpoint with account data"
-tasks:
-  - name: "json_account_http"
-    dataSourceName: "httpbin"
-    enabled: true

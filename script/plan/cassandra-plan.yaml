@@ -1,6 +1,0 @@
-name: "cassandra_example_plan"
-description: "Create accounts data in Cassandra"
-tasks:
-  - name: "cassandra_accounts"
-    dataSourceName: "cassandra"
-    enabled: true
