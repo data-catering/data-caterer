@@ -290,13 +290,8 @@ object UiMapper {
   def connectionMapping(dataSourceRequest: DataSourceRequest): ConnectionTaskBuilder[_] = {
     dataSourceRequest.`type` match {
       case Some(CASSANDRA_NAME) => createCassandraConnection(dataSourceRequest)
-      case Some(POSTGRES) => createJdbcConnection(dataSourceRequest, POSTGRES)
-      case Some(MYSQL) => createJdbcConnection(dataSourceRequest, MYSQL)
-      case Some(CSV) => createFileConnection(dataSourceRequest, CSV)
-      case Some(JSON) => createFileConnection(dataSourceRequest, JSON)
-      case Some(PARQUET) => createFileConnection(dataSourceRequest, PARQUET)
-      case Some(ORC) => createFileConnection(dataSourceRequest, ORC)
-      case Some(DELTA) => createFileConnection(dataSourceRequest, DELTA)
+      case Some(POSTGRES) | Some(MYSQL) => createJdbcConnection(dataSourceRequest, dataSourceRequest.`type`.get)
+      case Some(CSV) | Some(JSON) | Some(PARQUET) | Some(ORC) | Some(DELTA) => createFileConnection(dataSourceRequest, dataSourceRequest.`type`.get)
       case Some(ICEBERG) => createIcebergConnection(dataSourceRequest)
       case Some(SOLACE) =>
         val opt = dataSourceRequest.options.getOrElse(Map())
