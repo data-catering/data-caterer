@@ -3,6 +3,7 @@ FROM amazoncorretto:22-alpine
 USER root
 RUN addgroup -S app \
     && adduser -S app -G app \
+    && ln -s /lib /lib64 \
     && mkdir -p /opt/app /opt/DataCaterer/connection /opt/DataCaterer/plan /opt/DataCaterer/execution /opt/DataCaterer/report \
     && chown -R app:app /opt/app /opt/DataCaterer/connection /opt/DataCaterer/plan /opt/DataCaterer/execution /opt/DataCaterer/report \
     && apk add --no-cache bash
