@@ -2,7 +2,7 @@ FROM amazoncorretto:22-alpine
 
 USER root
 RUN addgroup -S app \
-    && adduser -S app -G app \
+    && adduser -S app -G app --uid 1001 \
     && apk update  \
     && apk add --no-cache libc6-compat \
     && mkdir -p /opt/app /opt/DataCaterer/connection /opt/DataCaterer/plan /opt/DataCaterer/execution /opt/DataCaterer/report \
