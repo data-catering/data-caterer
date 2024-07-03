@@ -32,6 +32,7 @@ and deep dive into issues [from the generated report](https://data.catering/samp
 - [Metadata discovery](https://data.catering/setup/guide/scenario/auto-generate-connection/)
 - [Detailed report of generated data and validation results](https://data.catering/sample/report/html/)
 - [Alerts to be notified of results](https://data.catering/setup/report/alert/)
+- [Run as GitHub Action](https://github.com/data-catering/insta-integration)
 
 ![Basic flow](design/basic_data_caterer_flow_medium.gif)
 

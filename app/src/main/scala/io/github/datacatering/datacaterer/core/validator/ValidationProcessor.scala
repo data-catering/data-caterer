@@ -4,7 +4,7 @@ import io.github.datacatering.datacaterer.api.ValidationBuilder
 import io.github.datacatering.datacaterer.api.model.Constants.{DEFAULT_ENABLE_VALIDATION, DELTA, DELTA_LAKE_SPARK_CONF, ENABLE_DATA_VALIDATION, FORMAT, HTTP, ICEBERG, ICEBERG_SPARK_CONF, JMS, TABLE}
 import io.github.datacatering.datacaterer.api.model.{DataSourceValidation, ExpressionValidation, FoldersConfig, GroupByValidation, UpstreamDataSourceValidation, ValidationConfig, ValidationConfiguration}
 import io.github.datacatering.datacaterer.core.model.{DataSourceValidationResult, ValidationConfigResult, ValidationResult}
-import io.github.datacatering.datacaterer.core.parser.ValidationParser
+import io.github.datacatering.datacaterer.core.parser.PlanParser
 import io.github.datacatering.datacaterer.core.validator.ValidationHelper.getValidationType
 import io.github.datacatering.datacaterer.core.validator.ValidationWaitImplicits.WaitConditionOps
 import org.apache.log4j.Logger
@@ -109,11 +109,12 @@ class ValidationProcessor(
   }
 
   private def getValidations: Array[ValidationConfiguration] = {
-    optValidationConfigs.map(_.toArray).getOrElse(ValidationParser.parseValidation(foldersConfig.validationFolderPath))
+    optValidationConfigs.map(_.toArray)
+      .getOrElse(PlanParser.parseValidations(foldersConfig.validationFolderPath, connectionConfigsByName).toArray)
   }
 
   private def getDataFrame(dataSourceName: String, options: Map[String, String]): DataFrame = {
-    val connectionConfig = connectionConfigsByName(dataSourceName) ++ options
+    val connectionConfig = connectionConfigsByName.getOrElse(dataSourceName, Map()) ++ options
     val format = connectionConfig(FORMAT)
     val configWithFormatConfigs = getAdditionalSparkConfig(format, connectionConfig)
 

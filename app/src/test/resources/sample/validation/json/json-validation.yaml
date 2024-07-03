@@ -1,0 +1,9 @@
+---
+name: "account_checks"
+description: "Check account related fields have gone through system correctly"
+dataSources:
+  json:
+    - options:
+        path: "/tmp/yaml-validation-json-test"
+      validations:
+        - expr: "STARTSWITH(transaction_id, 'txn')"
