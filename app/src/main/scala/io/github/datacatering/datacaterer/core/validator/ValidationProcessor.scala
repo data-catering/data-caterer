@@ -6,7 +6,7 @@ import io.github.datacatering.datacaterer.api.model.{DataSourceValidation, Expre
 import io.github.datacatering.datacaterer.core.model.{DataSourceValidationResult, ValidationConfigResult, ValidationResult}
 import io.github.datacatering.datacaterer.core.parser.PlanParser
 import io.github.datacatering.datacaterer.core.validator.ValidationHelper.getValidationType
-import io.github.datacatering.datacaterer.core.validator.ValidationWaitImplicits.WaitConditionOps
+import io.github.datacatering.datacaterer.core.validator.ValidationWaitImplicits._
 import org.apache.log4j.Logger
 import org.apache.spark.sql.{DataFrame, SparkSession}
 
@@ -71,7 +71,7 @@ class ValidationProcessor(
       } else {
         LOGGER.debug(s"Waiting for validation condition to be successful before running validations, name=${vc.name}," +
           s"data-source-name=$dataSourceName, details=${dataSourceValidation.options}, num-validations=${dataSourceValidation.validations.size}")
-        dataSourceValidation.waitCondition.waitForCondition(connectionConfigsByName)
+        dataSourceValidation.waitCondition.waitBeforeValidation(connectionConfigsByName)
 
         val df = getDataFrame(dataSourceName, dataSourceValidation.options)
         if (df.isEmpty) {
