@@ -302,10 +302,10 @@ object Constants {
   lazy val DEFAULT_VALIDATION_COLUMN_NAME_TYPE = VALIDATION_COLUMN_NAME_COUNT_EQUAL
 
   //metadata source
-  lazy val METADATA_SOURCE_TYPE = "metadata_source_type"
-  lazy val METADATA_SOURCE_NAME = "metadata_source_name"
-  lazy val METADATA_SOURCE_HAS_OPEN_LINEAGE_SUPPORT = "metadata_source_has_open_lineage_support"
-  lazy val METADATA_SOURCE_URL = "metadata_source_url"
+  lazy val METADATA_SOURCE_TYPE = "metadataSourceType"
+  lazy val METADATA_SOURCE_NAME = "metadataSourceName"
+  lazy val METADATA_SOURCE_HAS_OPEN_LINEAGE_SUPPORT = "metadataSourceHasOpenLineageSupport"
+  lazy val METADATA_SOURCE_URL = "metadataSourceUrl"
   lazy val MARQUEZ = "marquez"
   lazy val OPEN_METADATA = "open_metadata"
   lazy val OPEN_API = "open_api"
