@@ -106,7 +106,10 @@ tasks.jar {
 }
 
 tasks.shadowJar {
-    archiveFileName.set("data-caterer-api.jar")
+    archiveBaseName.set("datacaterer")
+    archiveAppendix.set("api")
+    archiveVersion.set(project.version.toString())
+    archiveClassifier.set("")
     isZip64 = true
 }
 
