@@ -1,5 +1,6 @@
 package io.github.datacatering.datacaterer.core.generator
 
+import io.github.datacatering.datacaterer.api.model.Constants.{MAXIMUM_LENGTH, MINIMUM_LENGTH}
 import io.github.datacatering.datacaterer.api.model.{Count, Field, Generator, PerColumnCount, Schema, Step}
 import io.github.datacatering.datacaterer.core.util.SparkSuite
 import net.datafaker.Faker
@@ -13,7 +14,7 @@ class DataGeneratorFactoryTest extends SparkSuite {
   private val dataGeneratorFactory = new DataGeneratorFactory(new Faker() with Serializable)
   private val schema = Schema(Some(
     List(
-      Field("id"),
+      Field("id", Some("string"), Some(Generator("random", Map(MINIMUM_LENGTH -> "20", MAXIMUM_LENGTH -> "25")))),
       Field("amount", Some("double")),
       Field("debit_credit", Some("string"), Some(Generator("oneOf", Map("oneOf" -> List("D", "C"))))),
       Field("name", Some("string"), Some(Generator("regex", Map("regex" -> "[A-Z][a-z]{2,6} [A-Z][a-z]{2,8}")))),
@@ -38,7 +39,7 @@ class DataGeneratorFactoryTest extends SparkSuite {
       ("code", IntegerType),
     ))
     val sampleRow = df.head()
-    assert(sampleRow.getString(0).nonEmpty && sampleRow.getString(0).length <= 20)
+    assert(sampleRow.getString(0).nonEmpty && sampleRow.getString(0).length >= 20)
     assert(sampleRow.getDouble(1) >= 0.0)
     val debitCredit = sampleRow.getString(2)
     assert(debitCredit == "D" || debitCredit == "C")

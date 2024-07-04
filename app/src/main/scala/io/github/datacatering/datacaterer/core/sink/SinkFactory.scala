@@ -1,6 +1,6 @@
 package io.github.datacatering.datacaterer.core.sink
 
-import io.github.datacatering.datacaterer.api.model.Constants.{DELTA, DELTA_LAKE_SPARK_CONF, DRIVER, FORMAT, ICEBERG, ICEBERG_SPARK_CONF, JDBC, OMIT, PARTITIONS, PARTITION_BY, PATH, POSTGRES_DRIVER, SAVE_MODE, SPARK_ICEBERG_CATALOG_TYPE, SPARK_ICEBERG_CATALOG_WAREHOUSE, TABLE}
+import io.github.datacatering.datacaterer.api.model.Constants.{DELTA, DELTA_LAKE_SPARK_CONF, DRIVER, FORMAT, ICEBERG, ICEBERG_SPARK_CONF, JDBC, OMIT, PARTITIONS, PARTITION_BY, POSTGRES_DRIVER, SAVE_MODE, TABLE}
 import io.github.datacatering.datacaterer.api.model.{FlagsConfig, MetadataConfig, Step}
 import io.github.datacatering.datacaterer.core.model.Constants.{FAILED, FINISHED, STARTED}
 import io.github.datacatering.datacaterer.core.model.SinkResult
@@ -9,7 +9,7 @@ import io.github.datacatering.datacaterer.core.util.MetadataUtil.getFieldMetadat
 import org.apache.log4j.Logger
 import org.apache.spark.sql.catalyst.analysis.TableAlreadyExistsException
 import org.apache.spark.sql.functions.col
-import org.apache.spark.sql.{CreateTableWriter, DataFrame, DataFrameWriter, DataFrameWriterV2, Dataset, Row, SaveMode, SparkSession}
+import org.apache.spark.sql.{CreateTableWriter, DataFrame, DataFrameWriter, DataFrameWriterV2, Row, SaveMode, SparkSession}
 
 import java.time.LocalDateTime
 import scala.util.{Failure, Success, Try}

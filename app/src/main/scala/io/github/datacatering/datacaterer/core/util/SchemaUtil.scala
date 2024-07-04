@@ -290,6 +290,15 @@ object PlanImplicits {
     def averageCountPerColumn: Long = {
       perColumnCount.generator.map(_.averageCount).getOrElse(perColumnCount.count.map(identity).getOrElse(1L))
     }
+
+    def maxCountPerColumn: Long = {
+      perColumnCount.count.map(x => x)
+        .getOrElse(
+          perColumnCount.generator.flatMap(g =>
+            g.options.get(MAXIMUM).map(_.toString.toLong)
+          ).getOrElse(0)
+        )
+    }
   }
 
   implicit class SchemaOps(schema: Schema) {

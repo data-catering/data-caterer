@@ -29,6 +29,10 @@ object Constants {
   lazy val HTTP_PATH_PARAM_COL_PREFIX = "pathParam"
   lazy val HTTP_QUERY_PARAM_COL_PREFIX = "queryParam"
 
+  //special table name
+  lazy val DATA_CATERER_RANDOM_LENGTH = "data_caterer_random_length"
+  lazy val DATA_CATERER_RANDOM_LENGTH_MAX_VALUE = "16"
+
   //spark udf
   lazy val GENERATE_REGEX_UDF = "GENERATE_REGEX"
   lazy val GENERATE_FAKER_EXPRESSION_UDF = "GENERATE_FAKER_EXPRESSION"

@@ -7,7 +7,6 @@ import io.github.datacatering.datacaterer.core.util.{ObjectMapperUtil, SparkSuit
 import org.junit.runner.RunWith
 import org.scalatestplus.junit.JUnitRunner
 
-import java.nio.file.{Files, Path}
 import java.sql.{Date, Timestamp}
 
 @RunWith(classOf[JUnitRunner])

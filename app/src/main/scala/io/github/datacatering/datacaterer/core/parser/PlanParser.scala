@@ -1,8 +1,8 @@
 package io.github.datacatering.datacaterer.core.parser
 
-import io.github.datacatering.datacaterer.api.{ConnectionConfigWithTaskBuilder, ValidationBuilder}
 import io.github.datacatering.datacaterer.api.model.Constants.ONE_OF_GENERATOR
 import io.github.datacatering.datacaterer.api.model.{DataSourceValidation, Plan, Schema, Task, UpstreamDataSourceValidation, ValidationConfiguration, YamlUpstreamDataSourceValidation, YamlValidationConfiguration}
+import io.github.datacatering.datacaterer.api.{ConnectionConfigWithTaskBuilder, ValidationBuilder}
 import io.github.datacatering.datacaterer.core.util.FileUtil.{getFileContentFromFileSystem, isCloudStoragePath}
 import io.github.datacatering.datacaterer.core.util.{FileUtil, ObjectMapperUtil}
 import org.apache.hadoop.fs.FileSystem

@@ -62,7 +62,7 @@ case class GroupByValidation(
                             ) extends Validation {
   override def toOptions: List[List[String]] = List(
     List("aggExpr", aggExpr),
-    List("groupByColumns", groupByCols.mkString(",")),
+    List("groupByCols", groupByCols.mkString(",")),
     List("aggCol", aggCol),
     List("aggType", aggType),
   ) ++ baseOptions
@@ -110,7 +110,7 @@ case class ColumnNamesValidation(
       case VALIDATION_COLUMN_NAME_MATCH_ORDER => List(List("names", names.mkString(",")))
       case VALIDATION_COLUMN_NAME_MATCH_SET => List(List("names", names.mkString(",")))
     }
-    List(List("columnNameValidationType", columnNameType)) ++ baseAttributes ++ baseOptions
+    List(List("columnNameType", columnNameType)) ++ baseAttributes ++ baseOptions
   }
 }
 

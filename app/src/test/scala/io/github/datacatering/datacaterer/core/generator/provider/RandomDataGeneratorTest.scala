@@ -1,6 +1,6 @@
 package io.github.datacatering.datacaterer.core.generator.provider
 
-import io.github.datacatering.datacaterer.api.model.Constants.{ARRAY_MINIMUM_LENGTH, DISTINCT_COUNT, DISTRIBUTION, DISTRIBUTION_EXPONENTIAL, DISTRIBUTION_NORMAL, DISTRIBUTION_RATE_PARAMETER, ENABLED_EDGE_CASE, ENABLED_NULL, EXPRESSION, IS_UNIQUE, MAXIMUM, MEAN, MINIMUM, PROBABILITY_OF_EDGE_CASE, PROBABILITY_OF_NULL, ROW_COUNT, STANDARD_DEVIATION}
+import io.github.datacatering.datacaterer.api.model.Constants.{ARRAY_MINIMUM_LENGTH, DISTINCT_COUNT, DISTRIBUTION, DISTRIBUTION_EXPONENTIAL, DISTRIBUTION_NORMAL, DISTRIBUTION_RATE_PARAMETER, ENABLED_EDGE_CASE, ENABLED_NULL, EXPRESSION, IS_UNIQUE, MAXIMUM, MAXIMUM_LENGTH, MEAN, MINIMUM, MINIMUM_LENGTH, PROBABILITY_OF_EDGE_CASE, PROBABILITY_OF_NULL, ROW_COUNT, STANDARD_DEVIATION}
 import io.github.datacatering.datacaterer.core.generator.provider.RandomDataGenerator._
 import io.github.datacatering.datacaterer.core.model.Constants.INDEX_INC_COL
 import org.apache.spark.sql.types._
@@ -66,8 +66,18 @@ class RandomDataGeneratorTest extends AnyFunSuite {
     assert(sampleData.length <= 20)
   }
 
+  test("Can create random string generator with min and max length") {
+    val metadata = new MetadataBuilder().putString(MINIMUM_LENGTH, "20").putString(MAXIMUM_LENGTH, "25").build()
+    val stringGenerator = new RandomStringDataGenerator(StructField("random_string", StringType, false, metadata))
+    val sampleData = stringGenerator.generate
+
+    assert(stringGenerator.edgeCases.nonEmpty)
+    assert(sampleData.nonEmpty)
+    assert(sampleData.length <= 25 && sampleData.length >= 20)
+  }
+
   test("Can create random string generator with expression that ignores minimum and maximum length") {
-    val metadata = new MetadataBuilder().putString(MINIMUM, "0").putString(MAXIMUM, "5").putString(EXPRESSION, "#{Name.name}").build()
+    val metadata = new MetadataBuilder().putString(MINIMUM_LENGTH, "0").putString(MAXIMUM_LENGTH, "5").putString(EXPRESSION, "#{Name.name}").build()
     val stringGenerator = new RandomStringDataGenerator(StructField("random_string", StringType, false, metadata))
     val sampleData = stringGenerator.generate
 
