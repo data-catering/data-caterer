@@ -54,7 +54,7 @@ object PlanParser {
                   )
                   ValidationBuilder(baseValidation)
                 case None =>
-                  throw new RuntimeException("Failed to find upstream data source configuration")
+                  throw new RuntimeException(s"Failed to find upstream data source configuration, data-source-name=${yamlUpstream.upstreamDataSource}")
               }
             case v => ValidationBuilder(v)
           }

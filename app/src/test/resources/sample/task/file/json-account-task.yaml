@@ -3,9 +3,10 @@ steps:
   - name: "file_account"
     type: "json"
     count:
-      records: 10000
+      records: 1000
     options:
       path: "app/src/test/resources/sample/json/account-gen"
+      saveMode: "overwrite"
     schema:
       fields:
         - name: "account_id"

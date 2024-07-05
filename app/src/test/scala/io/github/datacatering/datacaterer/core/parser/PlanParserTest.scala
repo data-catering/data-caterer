@@ -9,7 +9,7 @@ import org.scalatestplus.junit.JUnitRunner
 class PlanParserTest extends SparkSuite {
 
   test("Can parse plan in YAML file") {
-    val result = PlanParser.parsePlan("src/test/resources/sample/plan/account-create-plan.yaml")
+    val result = PlanParser.parsePlan("src/test/resources/sample/plan/account-create-plan-test.yaml")
 
     assert(result.name.nonEmpty)
     assert(result.description.nonEmpty)

@@ -15,10 +15,10 @@ tasks:
     enabled: false
 
 sinkOptions:
-#  foreignKeys:
-#    - - "solace.jms_account.account_id"
-#      - - "json.file_account.account_id"
-#      - []
+  foreignKeys:
+    - - "solace.jms_account.account_id"
+      - - "json.file_account.account_id"
+      - []
 
 validations:
   - "json_account_checks"

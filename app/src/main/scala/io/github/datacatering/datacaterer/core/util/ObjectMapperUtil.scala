@@ -3,6 +3,7 @@ package io.github.datacatering.datacaterer.core.util
 import com.fasterxml.jackson.annotation.JsonInclude.Include
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
 import com.fasterxml.jackson.module.scala.DefaultScalaModule
 
 object ObjectMapperUtil {
@@ -13,5 +14,6 @@ object ObjectMapperUtil {
 
   val jsonObjectMapper = new ObjectMapper()
   jsonObjectMapper.registerModule(DefaultScalaModule)
+  jsonObjectMapper.registerModule(new JavaTimeModule())
 
 }

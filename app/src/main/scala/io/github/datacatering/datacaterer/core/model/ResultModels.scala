@@ -43,6 +43,14 @@ case class DataSourceResult(
     List(name, format, isSuccess, numRecords)
   }
 
+  def jsonSummary: Map[String, Any] = {
+    Map(
+      "name" -> name,
+      "options" -> step.options,
+      "isSuccess" -> sinkResult.isSuccess,
+      "numRecords" -> sinkResult.count
+    )
+  }
 }
 
 case class TaskResultSummary(

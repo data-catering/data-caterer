@@ -1,7 +1,7 @@
 package io.github.datacatering.datacaterer.core.generator.result
 
 import com.fasterxml.jackson.annotation.JsonInclude.Include
-import io.github.datacatering.datacaterer.api.model.Constants.DEFAULT_GENERATED_REPORTS_FOLDER_PATH
+import io.github.datacatering.datacaterer.api.model.Constants.{DEFAULT_GENERATED_REPORTS_FOLDER_PATH, SPECIFIC_DATA_SOURCE_OPTIONS}
 import io.github.datacatering.datacaterer.api.model.{DataCatererConfiguration, Field, Plan, Step, Task}
 import io.github.datacatering.datacaterer.core.listener.SparkRecordListener
 import io.github.datacatering.datacaterer.core.model.Constants.{REPORT_DATA_SOURCES_HTML, REPORT_FIELDS_HTML, REPORT_HOME_HTML, REPORT_VALIDATIONS_HTML}
@@ -54,6 +54,7 @@ class DataGenerationResultWriter(val dataCatererConfiguration: DataCatererConfig
       fileWriter(REPORT_FIELDS_HTML, htmlWriter.stepDetails(stepSummary))
       fileWriter(REPORT_DATA_SOURCES_HTML, htmlWriter.dataSourceDetails(stepSummary.flatMap(_.dataSourceResults)))
       fileWriter(REPORT_VALIDATIONS_HTML, htmlWriter.validations(validationResults, validationConfig))
+      writeStringToFile(fileSystem, s"$reportFolder/results.json", resultsAsJson(generationResult, validationResults))
 
       copyHtmlResources(fileSystem, reportFolder)
     } catch {
@@ -123,6 +124,31 @@ class DataGenerationResultWriter(val dataCatererConfiguration: DataCatererConfig
         field._2.head
       }).toList
     (totalRecords, isSuccess, sample, fieldMetadata)
+  }
+
+  private def resultsAsJson(generationResult: List[DataSourceResult], validationResults: List[ValidationConfigResult]): String = {
+    val resultMap = Map(
+      "generation" -> getGenerationJsonSummary(generationResult),
+      "validation" -> validationResults.map(_.jsonSummary(validationConfig.numSampleErrorRecords))
+    )
+    OBJECT_MAPPER.writeValueAsString(resultMap)
+  }
+
+  private def getGenerationJsonSummary(generationResult: List[DataSourceResult]): List[Map[String, Any]] = {
+    val generationPerSubDataSource = generationResult.groupBy(dsr => {
+      val dataSpecificOptions = dsr.step.options.filter(opt => SPECIFIC_DATA_SOURCE_OPTIONS.contains(opt._1))
+      (dsr.name, dataSpecificOptions)
+    }).map(grpBySubDataSource => {
+      val totalRecords = grpBySubDataSource._2.map(_.sinkResult.count).sum
+      val isSuccess = grpBySubDataSource._2.forall(_.sinkResult.isSuccess)
+      Map(
+        "name" -> grpBySubDataSource._1._1,
+        "options" -> grpBySubDataSource._1._2,
+        "numRecords" -> totalRecords,
+        "isSuccess" -> isSuccess
+      )
+    }).toList
+    generationPerSubDataSource
   }
 
 }

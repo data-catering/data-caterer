@@ -1,6 +1,6 @@
 package io.github.datacatering.datacaterer.core.generator
 
-import io.github.datacatering.datacaterer.api.model.Constants.{DEFAULT_ENABLE_GENERATE_DATA, ENABLE_DATA_GENERATION}
+import io.github.datacatering.datacaterer.api.model.Constants.{DEFAULT_ENABLE_GENERATE_DATA, ENABLE_DATA_GENERATION, SAVE_MODE}
 import io.github.datacatering.datacaterer.api.model.{FlagsConfig, GenerationConfig, MetadataConfig, Plan, Step, Task, TaskSummary}
 import io.github.datacatering.datacaterer.core.model.DataSourceResult
 import io.github.datacatering.datacaterer.core.sink.SinkFactory
@@ -10,7 +10,7 @@ import io.github.datacatering.datacaterer.core.util.RecordCountUtil.calculateNum
 import io.github.datacatering.datacaterer.core.util.{ForeignKeyUtil, UniqueFieldsUtil}
 import net.datafaker.Faker
 import org.apache.log4j.Logger
-import org.apache.spark.sql.{DataFrame, SparkSession}
+import org.apache.spark.sql.{DataFrame, SaveMode, SparkSession}
 
 import java.io.Serializable
 import java.time.LocalDateTime
@@ -111,8 +111,9 @@ class BatchDataProcessor(connectionConfigsByName: Map[String, Map[String, String
       val (step, task) = stepAndTaskByDataSourceName(df._1)
       val dataSourceConfig = connectionConfigsByName.getOrElse(dataSourceName, Map())
       val stepWithDataSourceConfig = step.copy(options = dataSourceConfig ++ step.options)
-      val sinkResult = sinkFactory.pushToSink(df._2, dataSourceName, stepWithDataSourceConfig, startTime)
-      DataSourceResult(dataSourceName, task, stepWithDataSourceConfig, sinkResult, batchNum)
+      val stepWithSaveMode = checkSaveMode(batchNum, stepWithDataSourceConfig)
+      val sinkResult = sinkFactory.pushToSink(df._2, dataSourceName, stepWithSaveMode, startTime)
+      DataSourceResult(dataSourceName, task, stepWithSaveMode, sinkResult, batchNum)
     })
   }
 
@@ -128,6 +129,17 @@ class BatchDataProcessor(connectionConfigsByName: Map[String, Map[String, String
       uniqueFieldUtil.getUniqueFieldsValues(dataSourceStepName, genDf, step)
     } else {
       genDf
+    }
+  }
+
+  private def checkSaveMode(batchNum: Int, step: Step): Step = {
+    val saveMode = step.options.get(SAVE_MODE)
+    saveMode match {
+      case Some(value) =>
+        if (value.toLowerCase == SaveMode.Overwrite.name().toLowerCase && batchNum > 1) {
+          step.copy(options = step.options ++ Map(SAVE_MODE -> SaveMode.Append.name()))
+        } else step
+      case None => step
     }
   }
 
