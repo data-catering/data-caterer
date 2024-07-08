@@ -52,26 +52,21 @@ class DataGeneratorProcessor(dataCatererConfiguration: DataCatererConfiguration)
     }
     val stepNames = summaryWithTask.map(t => s"task=${t._2.name}, num-steps=${t._2.steps.size}, steps=${t._2.steps.map(_.name).mkString(",")}").mkString("||")
 
-    if (summaryWithTask.isEmpty) {
-      LOGGER.warn("No tasks found or no tasks enabled. No data will be generated or validated")
-      PlanRunResults(List(), List())
-    } else {
-      val generationResult = if (flagsConfig.enableGenerateData) {
-        LOGGER.debug(s"Following tasks are enabled and will be executed: num-tasks=${summaryWithTask.size}, tasks=$stepNames")
-        batchDataProcessor.splitAndProcess(plan, summaryWithTask)
-      } else List()
+    val generationResult = if (flagsConfig.enableGenerateData && summaryWithTask.nonEmpty) {
+      LOGGER.debug(s"Following tasks are enabled and will be executed: num-tasks=${summaryWithTask.size}, tasks=$stepNames")
+      batchDataProcessor.splitAndProcess(plan, summaryWithTask)
+    } else List()
 
-      val validationResults = if (flagsConfig.enableValidation) {
-        new ValidationProcessor(connectionConfigsByName, optValidations, dataCatererConfiguration.validationConfig, foldersConfig)
-          .executeValidations
-      } else List()
+    val validationResults = if (flagsConfig.enableValidation) {
+      new ValidationProcessor(connectionConfigsByName, optValidations, dataCatererConfiguration.validationConfig, foldersConfig)
+        .executeValidations
+    } else List()
 
-      applyPostPlanProcessors(plan, sparkRecordListener, generationResult, validationResults)
-      val optReportPath = if (flagsConfig.enableSaveReports) {
-        plan.runId.map(id => s"${foldersConfig.generatedReportsFolderPath}/$id").orElse(Some(foldersConfig.generatedReportsFolderPath))
-      } else None
-      PlanRunResults(generationResult, validationResults, optReportPath)
-    }
+    applyPostPlanProcessors(plan, sparkRecordListener, generationResult, validationResults)
+    val optReportPath = if (flagsConfig.enableSaveReports) {
+      plan.runId.map(id => s"${foldersConfig.generatedReportsFolderPath}/$id").orElse(Some(foldersConfig.generatedReportsFolderPath))
+    } else None
+    PlanRunResults(generationResult, validationResults, optReportPath)
   }
 
   private def applyPostPlanProcessors(plan: Plan, sparkRecordListener: SparkRecordListener,
