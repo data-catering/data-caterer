@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 
+SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
+
 echo "Checking for vulnerabilities in JAR"
 
-trivy rootfs ../../app/build/libs
+trivy rootfs "${SCRIPT_DIR}/../../app/build/libs"
 
-#gradle dependencyInsight --dependency
+#gradle :app:dependencyInsight --dependency

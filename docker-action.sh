@@ -25,6 +25,4 @@ docker buildx create --use --name builder
 docker buildx inspect --bootstrap builder
 
 docker buildx build --platform $platforms \
-  --build-arg "APP_VERSION=$version" \
-  --build-arg "SPARK_VERSION=$sparkVersion" \
   -t datacatering/data-caterer-basic:$version --push .
