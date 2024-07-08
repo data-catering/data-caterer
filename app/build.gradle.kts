@@ -52,6 +52,7 @@ dependencies {
     basicImpl("org.apache.spark:spark-sql_$scalaVersion:$sparkVersion") {
         exclude(group = "com.google.protobuf")
         exclude(module = "netty-codec-http")
+        exclude(module = "netty-codec-http2")
         exclude(module = "woodstox-core")
         exclude(module = "nimbus-jose-jwt")
         exclude(module = "commons-net")
@@ -71,12 +72,16 @@ dependencies {
         exclude(module = "wildfly-openssl")
         exclude(module = "wildfly-openssl-java")
         exclude(module = "xnio-api")
+        exclude(module = "aircompressor")
+        exclude(module = "zookeeper")
+        exclude(module = "guava")
     }
     basicImpl(project(":api"))
 
     // vulnerabilities in Spark
     basicImpl("com.google.protobuf:protobuf-java:3.25.3")
     basicImpl("io.netty:netty-codec-http:4.1.110.Final")
+    basicImpl("io.netty:netty-codec-http2:4.1.110.Final")
     basicImpl("com.fasterxml.woodstox:woodstox-core:6.6.2")
     basicImpl("com.nimbusds:nimbus-jose-jwt:9.39.3")
     basicImpl("commons-net:commons-net:3.11.0")
@@ -96,6 +101,8 @@ dependencies {
     basicImpl("org.wildfly.openssl:wildfly-openssl:1.1.3.Final")
     basicImpl("org.wildfly.openssl:wildfly-openssl-java:1.1.3.Final")
     basicImpl("org.jboss.xnio:xnio-api:3.8.15.Final")
+    basicImpl("io.airlift:aircompressor:0.27")
+    basicImpl("org.apache.zookeeper:zookeeper:3.9.2")
     //basicImpl("software.amazon.ion:ion-java:1.5.1") //should use: basicImpl("com.amazon.ion:ion-java:1.11.8")
 
     // connectors

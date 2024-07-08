@@ -1,0 +1,49 @@
+name: "jdbc_customer_balance_and_transactions"
+steps:
+  - name: "balances"
+    type: "postgres"
+    count:
+      records: 1000
+    options:
+      dbtable: "account.balances"
+    schema:
+      fields:
+        - name: "account_number"
+          generator:
+            type: "regex"
+            options:
+              regex: "ACC1[0-9]{5,10}"
+              isUnique: true
+        - name: "create_time"
+          type: "timestamp"
+        - name: "account_status"
+          type: "string"
+          generator:
+            type: "oneOf"
+            options:
+              oneOf:
+                - "open"
+                - "closed"
+                - "suspended"
+        - name: "balance"
+          type: "double"
+  - name: "transactions"
+    type: "postgres"
+    count:
+      perColumn:
+        columnNames:
+          - "account_number"
+        count: 5
+    options:
+      dbtable: "account.transactions"
+    schema:
+      fields:
+        - name: "account_number"
+        - name: "create_time"
+          type: "timestamp"
+        - name: "transaction_id"
+          generator:
+            options:
+              regex: "txn-[0-9]{10}"
+        - name: "amount"
+          type: "double"

@@ -1,0 +1,11 @@
+name: "account_balance_and_transactions_create_plan"
+description: "Create balances and transactions in Postgres"
+tasks:
+  - name: "jdbc_customer_balance_and_transactions"
+    dataSourceName: "postgres"
+
+sinkOptions:
+  foreignKeys:
+    - - "postgres.balances.account_number"
+      - - "postgres.transactions.account_number"
+      - []
