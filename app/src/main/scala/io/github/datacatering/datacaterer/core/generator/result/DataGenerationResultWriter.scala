@@ -65,24 +65,26 @@ class DataGenerationResultWriter(val dataCatererConfiguration: DataCatererConfig
 
   private def copyHtmlResources(fileSystem: FileSystem, folder: String): Unit = {
     val resources = List("main.css", "data_catering_transparent.svg")
-    if (!foldersConfig.generatedReportsFolderPath.equalsIgnoreCase(DEFAULT_GENERATED_REPORTS_FOLDER_PATH)) {
-      resources.foreach(resource => {
-        val defaultResourcePath = new Path(s"file:///$DEFAULT_GENERATED_REPORTS_FOLDER_PATH/$resource")
-        val tryLocalUri = Try(new Path(getClass.getResource(s"/report/$resource").toURI))
-        val resourcePath = tryLocalUri match {
-          case Failure(_) =>
-            defaultResourcePath
-          case Success(value) =>
-            Try(value.getName) match {
-              case Failure(_) => defaultResourcePath
-              case Success(name) =>
-                if (name.startsWith("jar:")) defaultResourcePath else value
-            }
-        }
-        val destination = s"file:///$folder/$resource"
-        fileSystem.copyFromLocalFile(resourcePath, new Path(destination))
-      })
-    }
+    resources.foreach(resource => {
+      val defaultResourcePath = new Path(s"file:///$DEFAULT_GENERATED_REPORTS_FOLDER_PATH/$resource")
+      val localResourcePath = new Path(s"file://app/src/main/resources/report/$resource")
+      val tryLocalUri = Try(new Path(getClass.getResource(s"/report/$resource").toURI))
+      val resourcePath = tryLocalUri match {
+        case Failure(_) =>
+          Try(defaultResourcePath.toUri) match {
+            case Failure(_) => localResourcePath
+            case Success(_) => defaultResourcePath
+          }
+        case Success(value) =>
+          Try(value.getName) match {
+            case Failure(_) => defaultResourcePath
+            case Success(name) =>
+              if (name.startsWith("jar:")) defaultResourcePath else value
+          }
+      }
+      val destination = s"file:///$folder/$resource"
+      fileSystem.copyFromLocalFile(resourcePath, new Path(destination))
+    })
   }
 
   private def writeToFile(fileSystem: FileSystem, folderPath: String)(fileName: String, content: Node): Unit = {
