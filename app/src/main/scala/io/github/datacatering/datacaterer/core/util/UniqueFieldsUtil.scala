@@ -100,8 +100,10 @@ class UniqueFieldsUtil(plan: Plan, executableTasks: List[(TaskSummary, Task)])(i
           val uniqueKeys = step.gatherUniqueFields
           val uniqueKeyUf = if (uniqueKeys.nonEmpty) uniqueKeys.map(u => UniqueFields(t._1.dataSourceName, step.name, List(u))) else List()
           val allKeys = primaryKeyUf ++ uniqueKeyUf
-          LOGGER.debug(s"Found unique fields that require unique values, " +
-            s"data-source-name=${t._1.dataSourceName}, step-name=${step.name}, columns=${allKeys.map(_.columns).mkString(",")}")
+          if (allKeys.nonEmpty) {
+            LOGGER.debug(s"Found unique fields that require unique values, " +
+              s"data-source-name=${t._1.dataSourceName}, step-name=${step.name}, columns=${allKeys.map(_.columns).mkString(",")}")
+          }
           allKeys
         })
     })

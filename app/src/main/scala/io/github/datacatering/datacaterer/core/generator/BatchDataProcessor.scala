@@ -68,14 +68,17 @@ class BatchDataProcessor(connectionConfigsByName: Map[String, Map[String, String
                 s"new-num-records=${additionalDf.count()}, actual-num-records=$dfRecordCount")
             }
 
-            while (targetNumRecords != dfRecordCount && retries < maxRetries) {
-              retries += 1
-              generateAdditionalRecords()
-            }
-            if (targetNumRecords != dfRecordCount && retries == maxRetries) {
-              LOGGER.warn("Unable to reach expected number of records due to reaching max retries. " +
-                s"Can be due to limited number of potential unique records, " +
-                s"target-num-records=$targetNumRecords, actual-num-records=${dfRecordCount}")
+            //if random amount of records, don't try to regenerate more records
+            if (s.count.generator.isEmpty && s.count.perColumn.exists(_.generator.isEmpty)) {
+              while (targetNumRecords != dfRecordCount && retries < maxRetries) {
+                retries += 1
+                generateAdditionalRecords()
+              }
+              if (targetNumRecords != dfRecordCount && retries == maxRetries) {
+                LOGGER.warn("Unable to reach expected number of records due to reaching max retries. " +
+                  s"Can be due to limited number of potential unique records, " +
+                  s"target-num-records=$targetNumRecords, actual-num-records=${dfRecordCount}")
+              }
             }
 
             trackRecordsPerStep = trackRecordsPerStep ++ Map(recordStepName -> stepRecords.copy(currentNumRecords = dfRecordCount))
