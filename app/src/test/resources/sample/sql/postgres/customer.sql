@@ -25,6 +25,7 @@ CREATE TABLE IF NOT EXISTS account.balances
 (
     account_number VARCHAR(20) UNIQUE NOT NULL,
     create_time    TIMESTAMP,
+    account_status VARCHAR(10),
     balance        DOUBLE PRECISION,
     PRIMARY KEY (account_number, create_time)
 );
