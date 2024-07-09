@@ -6,6 +6,7 @@ run:
     env:
       PLAN_FILE_PATH: app/src/test/resources/sample/plan/account-balance-transaction-plan.yaml
       TASK_FOLDER_PATH: app/src/test/resources/sample/task
+    generateFirst: false
     test:
       validation:
         postgres:
