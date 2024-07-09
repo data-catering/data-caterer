@@ -13,7 +13,6 @@ steps:
             type: "regex"
             options:
               regex: "ACC1[0-9]{5,10}"
-              isUnique: true
         - name: "create_time"
           type: "timestamp"
         - name: "account_status"

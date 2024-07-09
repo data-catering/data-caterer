@@ -4,7 +4,7 @@ import com.fasterxml.jackson.annotation.JsonInclude.Include
 import io.github.datacatering.datacaterer.api.model.Constants.{DEFAULT_GENERATED_REPORTS_FOLDER_PATH, SPECIFIC_DATA_SOURCE_OPTIONS}
 import io.github.datacatering.datacaterer.api.model.{DataCatererConfiguration, Field, Plan, Step, Task}
 import io.github.datacatering.datacaterer.core.listener.SparkRecordListener
-import io.github.datacatering.datacaterer.core.model.Constants.{REPORT_DATA_SOURCES_HTML, REPORT_FIELDS_HTML, REPORT_HOME_HTML, REPORT_VALIDATIONS_HTML}
+import io.github.datacatering.datacaterer.core.model.Constants.{REPORT_DATA_CATERING_SVG, REPORT_DATA_SOURCES_HTML, REPORT_FIELDS_HTML, REPORT_HOME_HTML, REPORT_MAIN_CSS, REPORT_RESULT_JSON, REPORT_TASK_HTML, REPORT_VALIDATIONS_HTML}
 import io.github.datacatering.datacaterer.core.model.{DataSourceResult, DataSourceResultSummary, StepResultSummary, TaskResultSummary, ValidationConfigResult}
 import io.github.datacatering.datacaterer.core.plan.PostPlanProcessor
 import io.github.datacatering.datacaterer.core.util.FileUtil.writeStringToFile
@@ -50,38 +50,16 @@ class DataGenerationResultWriter(val dataCatererConfiguration: DataCatererConfig
     try {
       fileWriter(REPORT_HOME_HTML, htmlWriter.index(plan, stepSummary, taskSummary, dataSourceSummary,
         validationResults, dataCatererConfiguration.flagsConfig, sparkRecordListener))
-      fileWriter("tasks.html", htmlWriter.taskDetails(taskSummary))
+      fileWriter(REPORT_TASK_HTML, htmlWriter.taskDetails(taskSummary))
       fileWriter(REPORT_FIELDS_HTML, htmlWriter.stepDetails(stepSummary))
       fileWriter(REPORT_DATA_SOURCES_HTML, htmlWriter.dataSourceDetails(stepSummary.flatMap(_.dataSourceResults)))
       fileWriter(REPORT_VALIDATIONS_HTML, htmlWriter.validations(validationResults, validationConfig))
-      writeStringToFile(fileSystem, s"$reportFolder/results.json", resultsAsJson(generationResult, validationResults))
-
-      copyHtmlResources(fileSystem, reportFolder)
+      writeStringToFile(fileSystem, s"$reportFolder/$REPORT_RESULT_JSON", resultsAsJson(generationResult, validationResults))
+      writeStringToFile(fileSystem, s"$reportFolder/$REPORT_DATA_CATERING_SVG", htmlWriter.dataCateringSvg)
+      writeStringToFile(fileSystem, s"$reportFolder/$REPORT_MAIN_CSS", htmlWriter.mainCss)
     } catch {
       case ex: Exception =>
         LOGGER.error("Failed to write data generation summary to HTML files", ex)
-    }
-  }
-
-  private def copyHtmlResources(fileSystem: FileSystem, folder: String): Unit = {
-    val resources = List("main.css", "data_catering_transparent.svg")
-    if (!foldersConfig.generatedReportsFolderPath.equalsIgnoreCase(DEFAULT_GENERATED_REPORTS_FOLDER_PATH)) {
-      resources.foreach(resource => {
-        val defaultResourcePath = new Path(s"file:///$DEFAULT_GENERATED_REPORTS_FOLDER_PATH/$resource")
-        val tryLocalUri = Try(new Path(getClass.getResource(s"/report/$resource").toURI))
-        val resourcePath = tryLocalUri match {
-          case Failure(_) =>
-            defaultResourcePath
-          case Success(value) =>
-            Try(value.getName) match {
-              case Failure(_) => defaultResourcePath
-              case Success(name) =>
-                if (name.startsWith("jar:")) defaultResourcePath else value
-            }
-        }
-        val destination = s"file:///$folder/$resource"
-        fileSystem.copyFromLocalFile(resourcePath, new Path(destination))
-      })
     }
   }
 

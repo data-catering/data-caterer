@@ -25,18 +25,18 @@ CREATE TABLE IF NOT EXISTS account.balances
 (
     account_number VARCHAR(20) UNIQUE NOT NULL,
     create_time    TIMESTAMP,
+    account_status VARCHAR(10),
     balance        DOUBLE PRECISION,
     PRIMARY KEY (account_number, create_time)
 );
 
 CREATE TABLE IF NOT EXISTS account.transactions
 (
-    account_number VARCHAR(20) UNIQUE NOT NULL,
+    account_number VARCHAR(20) NOT NULL REFERENCES account.balances (account_number),
     create_time    TIMESTAMP,
     transaction_id VARCHAR(20),
     amount         DOUBLE PRECISION,
-    PRIMARY KEY (account_number, create_time, transaction_id),
-    CONSTRAINT fk_txn_account_number FOREIGN KEY (account_number) REFERENCES account.balances (account_number)
+    PRIMARY KEY (account_number, create_time, transaction_id)
 );
 
 CREATE TABLE IF NOT EXISTS account.mapping
