@@ -39,6 +39,9 @@ steps:
     schema:
       fields:
         - name: "account_number"
+          generator:
+            options:
+              isUnique: true
         - name: "create_time"
           type: "timestamp"
         - name: "transaction_id"
