@@ -14,13 +14,13 @@ run:
           - options:
               dbtable: account.balances
             validations:
-              - expr: ISNOTNULL(account_id)
+              - expr: ISNOTNULL(account_number)
               - aggType: count
                 aggExpr: count == 1000
           - options:
               dbtable: account.transactions
             validations:
-              - expr: ISNOTNULL(account_id)
+              - expr: ISNOTNULL(account_number)
               - aggType: count
                 aggExpr: count == 5000
               - groupByCols: [account_number]
