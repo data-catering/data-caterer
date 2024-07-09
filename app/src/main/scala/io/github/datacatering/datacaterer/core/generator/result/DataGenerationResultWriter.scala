@@ -77,7 +77,11 @@ class DataGenerationResultWriter(val dataCatererConfiguration: DataCatererConfig
           }
         case Success(value) =>
           Try(value.getName) match {
-            case Failure(_) => defaultResourcePath
+            case Failure(_) =>
+              Try(defaultResourcePath.toUri) match {
+                case Failure(_) => localResourcePath
+                case Success(_) => defaultResourcePath
+              }
             case Success(name) =>
               if (name.startsWith("jar:")) defaultResourcePath else value
           }
