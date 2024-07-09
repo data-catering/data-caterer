@@ -69,7 +69,7 @@ class BatchDataProcessor(connectionConfigsByName: Map[String, Map[String, String
             }
 
             //if random amount of records, don't try to regenerate more records
-            if (s.count.generator.isEmpty && s.count.perColumn.exists(_.generator.isEmpty)) {
+            if (s.count.generator.isEmpty && s.count.perColumn.forall(_.generator.isEmpty)) {
               while (targetNumRecords != dfRecordCount && retries < maxRetries) {
                 retries += 1
                 generateAdditionalRecords()
@@ -79,6 +79,8 @@ class BatchDataProcessor(connectionConfigsByName: Map[String, Map[String, String
                   s"Can be due to limited number of potential unique records, " +
                   s"target-num-records=$targetNumRecords, actual-num-records=${dfRecordCount}")
               }
+            } else {
+              LOGGER.debug("Random amount of records generated, not attempting to generate more records")
             }
 
             trackRecordsPerStep = trackRecordsPerStep ++ Map(recordStepName -> stepRecords.copy(currentNumRecords = dfRecordCount))
