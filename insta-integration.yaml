@@ -6,7 +6,7 @@ run:
     env:
       PLAN_FILE_PATH: app/src/test/resources/sample/plan/account-balance-transaction-plan.yaml
       TASK_FOLDER_PATH: app/src/test/resources/sample/task
-      LOG_LEVEL: debug
+      APPLICATION_CONFIG_PATH: app/src/main/resources/application.conf
     generateFirst: false
     test:
       validation:
