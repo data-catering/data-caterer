@@ -1,6 +1,7 @@
 package io.github.datacatering.datacaterer.core.model
 
 import io.github.datacatering.datacaterer.api.model.{ExpressionValidation, Validation}
+import io.github.datacatering.datacaterer.core.util.ConfigUtil.cleanseOptions
 import io.github.datacatering.datacaterer.core.util.ResultWriterUtil.getSuccessSymbol
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.catalyst.expressions.GenericRowWithSchema
@@ -29,15 +30,19 @@ case class ValidationConfigResult(
   }
 
   def jsonSummary(numErrorSamples: Int): Map[String, Any] = {
-    val validationRes = dataSourceValidationResults.flatMap(_.validationResults)
+    val validationRes = dataSourceValidationResults.flatMap(dsv =>
+      dsv.validationResults.map(v => (dsv.dataSourceName, dsv.options, v))
+    )
     if (validationRes.nonEmpty) {
-      val (numSuccess, successRate, isSuccess) = baseSummary(validationRes)
-      val errorMap = validationRes.filter(!_.isSuccess).map(res => {
-        val validationDetails = res.validation.toOptions.map(v => (v.head, v.last)).toMap
+      val (numSuccess, successRate, isSuccess) = baseSummary(validationRes.map(_._3))
+      val errorMap = validationRes.filter(vr => !vr._3.isSuccess).map(res => {
+        val validationDetails = res._3.validation.toOptions.map(v => (v.head, v.last)).toMap
         Map(
+          "dataSourceName" -> res._1,
+          "options" -> cleanseOptions(res._2),
           "validation" -> validationDetails,
-          "numErrors" -> res.numErrors,
-          "sampleErrorValues" -> getErrorSamplesAsMap(numErrorSamples, res)
+          "numErrors" -> res._3.numErrors,
+          "sampleErrorValues" -> getErrorSamplesAsMap(numErrorSamples, res._3)
         )
       })
       val baseValidationMap = Map(

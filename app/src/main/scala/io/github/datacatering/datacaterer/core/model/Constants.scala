@@ -54,9 +54,13 @@ object Constants {
   lazy val COUNT_NUM_RECORDS = "numRecords"
 
   //report
+  lazy val REPORT_DATA_CATERING_SVG = "data_catering_transparent.svg"
   lazy val REPORT_DATA_SOURCES_HTML = "data-sources.html"
   lazy val REPORT_FIELDS_HTML = "steps.html"
   lazy val REPORT_HOME_HTML = "index.html"
+  lazy val REPORT_MAIN_CSS = "main.css"
+  lazy val REPORT_RESULT_JSON = "results.json"
+  lazy val REPORT_TASK_HTML = "tasks.html"
   lazy val REPORT_VALIDATIONS_HTML = "validations.html"
 
   //connection group type
