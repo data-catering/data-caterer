@@ -1,12 +1,12 @@
 package io.github.datacatering.datacaterer.api.parser
 
 import com.fasterxml.jackson.annotation.JsonTypeInfo.Id
-import com.fasterxml.jackson.core.{JsonGenerator, JsonParser}
+import com.fasterxml.jackson.core.JsonGenerator
 import com.fasterxml.jackson.databind.jsontype.impl.TypeIdResolverBase
-import com.fasterxml.jackson.databind.{DatabindContext, DeserializationContext, JavaType, JsonDeserializer, JsonSerializer, SerializerProvider}
+import com.fasterxml.jackson.databind.{DatabindContext, JavaType, JsonSerializer, SerializerProvider}
 import io.github.datacatering.datacaterer.api.ValidationBuilder
 import io.github.datacatering.datacaterer.api.model.Constants.{VALIDATION_COLUMN_NAME_COUNT_BETWEEN, VALIDATION_COLUMN_NAME_COUNT_EQUAL, VALIDATION_COLUMN_NAME_MATCH_ORDER, VALIDATION_COLUMN_NAME_MATCH_SET}
-import io.github.datacatering.datacaterer.api.model.{ColumnNamesValidation, ExpressionValidation, GroupByValidation, UpstreamDataSourceValidation, Validation}
+import io.github.datacatering.datacaterer.api.model.{ColumnNamesValidation, ExpressionValidation, GroupByValidation, UpstreamDataSourceValidation}
 
 import scala.util.Try
 

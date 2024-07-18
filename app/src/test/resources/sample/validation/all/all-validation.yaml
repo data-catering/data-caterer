@@ -18,14 +18,14 @@ dataSources:
         - groupByCols: ["account_id"]
           aggType: "count"
           aggExpr: "count == 1"
-        - columnNameType: "column_count_equal"
+        - columnNameType: "columnCountEqual"
           count: "3"
-        - columnNameType: "column_count_between"
+        - columnNameType: "columnCountBetween"
           minCount: "1"
           maxCount: "2"
-        - columnNameType: "column_name_match_order"
+        - columnNameType: "columnNameMatchOrder"
           names: ["account_id", "amount", "name"]
-        - columnNameType: "column_name_match_set"
+        - columnNameType: "columnNameMatchSet"
           names: ["account_id", "my_name"]
         - upstreamDataSource: "my_first_json"
           upstreamReadOptions: {}

@@ -1200,7 +1200,7 @@ dataSourcePropertiesMap.set("datahub", {
         }
     }
 });
-dataSourcePropertiesMap.set("great_expectations", {
+dataSourcePropertiesMap.set("greatExpectations", {
     optGroupLabel: "Metadata Source",
     Name: "Great Expectations",
     disabled: "",
@@ -1242,7 +1242,7 @@ dataSourcePropertiesMap.set("marquez", {
         }
     }
 });
-dataSourcePropertiesMap.set("open_api", {
+dataSourcePropertiesMap.set("openApi", {
     optGroupLabel: "Metadata Source",
     Name: "OpenAPI/Swagger",
     disabled: "",
@@ -1256,9 +1256,9 @@ dataSourcePropertiesMap.set("open_api", {
         }
     }
 });
-dataSourcePropertiesMap.set("open_data_contract_standard", {
+dataSourcePropertiesMap.set("openDataContractStandard", {
     optGroupLabel: "Metadata Source",
-    Name: "ODCS",
+    Name: "Open Data Contract Standard (ODCS)",
     disabled: "",
     properties: {
         path: {
@@ -1270,7 +1270,7 @@ dataSourcePropertiesMap.set("open_data_contract_standard", {
         }
     }
 });
-dataSourcePropertiesMap.set("open_metadata", {
+dataSourcePropertiesMap.set("openMetadata", {
     optGroupLabel: "Metadata Source",
     Name: "Open Metadata",
     disabled: "",

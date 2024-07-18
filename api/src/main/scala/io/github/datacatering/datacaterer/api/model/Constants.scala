@@ -310,13 +310,13 @@ object Constants {
   lazy val METADATA_SOURCE_HAS_OPEN_LINEAGE_SUPPORT = "metadataSourceHasOpenLineageSupport"
   lazy val METADATA_SOURCE_URL = "metadataSourceUrl"
   lazy val MARQUEZ = "marquez"
-  lazy val OPEN_METADATA = "open_metadata"
-  lazy val OPEN_API = "open_api"
-  lazy val GREAT_EXPECTATIONS = "great_expectations"
-  lazy val OPEN_DATA_CONTRACT_STANDARD = "open_data_contract_standard"
+  lazy val OPEN_METADATA = "openMetadata"
+  lazy val OPEN_API = "openApi"
+  lazy val GREAT_EXPECTATIONS = "greatExpectations"
+  lazy val OPEN_DATA_CONTRACT_STANDARD = "openDataContractStandard"
   lazy val AMUNDSEN = "amundsen"
   lazy val DATAHUB = "datahub"
-  lazy val DEFAULT_METADATA_SOURCE_NAME = "default_metadata_source"
+  lazy val DEFAULT_METADATA_SOURCE_NAME = "defaultMetadataSource"
 
   //alert source
   lazy val SLACK = "slack"
@@ -467,10 +467,10 @@ object Constants {
   lazy val VALIDATION_SUPPORTING_OPTIONS = List(VALIDATION_COLUMN, VALIDATION_FIELD, VALIDATION_MIN, VALIDATION_MAX, VALIDATION_GROUP_BY_COLUMNS, VALIDATION_DESCRIPTION, VALIDATION_ERROR_THRESHOLD)
 
   lazy val VALIDATION_PREFIX_JOIN_EXPRESSION = "expr:"
-  lazy val VALIDATION_COLUMN_NAME_COUNT_EQUAL = "column_count_equal"
-  lazy val VALIDATION_COLUMN_NAME_COUNT_BETWEEN = "column_count_between"
-  lazy val VALIDATION_COLUMN_NAME_MATCH_ORDER = "column_name_match_order"
-  lazy val VALIDATION_COLUMN_NAME_MATCH_SET = "column_name_match_set"
+  lazy val VALIDATION_COLUMN_NAME_COUNT_EQUAL = "columnCountEqual"
+  lazy val VALIDATION_COLUMN_NAME_COUNT_BETWEEN = "columnCountBetween"
+  lazy val VALIDATION_COLUMN_NAME_MATCH_ORDER = "columnNameMatchOrder"
+  lazy val VALIDATION_COLUMN_NAME_MATCH_SET = "columnNameMatchSet"
 
   //configuration names
   //flags config
