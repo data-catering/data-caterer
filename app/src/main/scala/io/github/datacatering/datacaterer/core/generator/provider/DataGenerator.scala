@@ -2,10 +2,12 @@ package io.github.datacatering.datacaterer.core.generator.provider
 
 import io.github.datacatering.datacaterer.api.model.Constants.{ARRAY_MAXIMUM_LENGTH, ARRAY_MINIMUM_LENGTH, ENABLED_EDGE_CASE, ENABLED_NULL, IS_UNIQUE, PROBABILITY_OF_EDGE_CASE, PROBABILITY_OF_NULL, RANDOM_SEED, STATIC}
 import io.github.datacatering.datacaterer.api.model.generator.BaseGenerator
+import io.github.datacatering.datacaterer.core.model.Constants.DATA_CATERER_RANDOM_LENGTH
 import net.datafaker.Faker
 import org.apache.spark.sql.functions.{expr, rand, when}
 import org.apache.spark.sql.types.StructField
 
+import java.util.regex.Pattern
 import scala.annotation.tailrec
 import scala.collection.mutable
 import scala.language.higherKinds
@@ -49,7 +51,9 @@ trait DataGenerator[T] extends BaseGenerator[T] with Serializable {
           .expr.sql
       case _ => baseSqlExpression
     }
-    replaceLambdaFunction(expression)
+    val replaceLambda = replaceLambdaFunction(expression)
+    val replaceSubScalar = replaceSubScalarFunction(replaceLambda, baseSqlExpression)
+    replaceSubScalar
   }
 
   def generateWrapper(count: Int = 0): T = {
@@ -75,15 +79,32 @@ trait DataGenerator[T] extends BaseGenerator[T] with Serializable {
     }
   }
 
-  @tailrec
   private def replaceLambdaFunction(sql: String): String = {
     val lambdaRegex = ".*lambdafunction\\((.+?), i\\).*".r.pattern
-    val matcher = lambdaRegex.matcher(sql)
+    val replaceTargetFn: String => String = r => s"lambdafunction($r, i)"
+    val replacementFn: String => String = r => s"i -> $r"
+    replaceByRegex(sql, lambdaRegex, replaceTargetFn, replacementFn)
+  }
+
+  private def replaceSubScalarFunction(sql: String, originalSql: String): String = {
+    val lambdaRegex = ".*scalarsubquery\\((.*?)\\).*".r.pattern
+    val replaceTargetFn: String => String = r => s"scalarsubquery()"
+    val originalRegex = s".*\\(SELECT CAST\\((.+?) $DATA_CATERER_RANDOM_LENGTH\\).*".r.pattern
+    val matcher = originalRegex.matcher(originalSql)
+    if (matcher.matches()) {
+      val replacementFn: String => String = _ => s"(SELECT CAST(${matcher.group(1)} $DATA_CATERER_RANDOM_LENGTH)"
+      replaceByRegex(sql, lambdaRegex, replaceTargetFn, replacementFn)
+    } else sql
+  }
+
+  @tailrec
+  private def replaceByRegex(text: String, pattern: Pattern, replaceTargetFn: String => String, replacementFn: String => String): String = {
+    val matcher = pattern.matcher(text)
     if (matcher.matches()) {
       val innerFunction = matcher.group(1)
-      val replace = sql.replace(s"lambdafunction($innerFunction, i)", s"i -> $innerFunction")
-      replaceLambdaFunction(replace)
-    } else sql
+      val replace = text.replace(replaceTargetFn(innerFunction), replacementFn(innerFunction))
+      replaceByRegex(replace, pattern, replaceTargetFn, replacementFn)
+    } else text
   }
 }
 

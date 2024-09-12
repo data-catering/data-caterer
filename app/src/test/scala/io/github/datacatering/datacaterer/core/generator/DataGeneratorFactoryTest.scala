@@ -1,6 +1,6 @@
 package io.github.datacatering.datacaterer.core.generator
 
-import io.github.datacatering.datacaterer.api.model.Constants.{MAXIMUM_LENGTH, MINIMUM_LENGTH}
+import io.github.datacatering.datacaterer.api.model.Constants.{MAXIMUM_LENGTH, MINIMUM_LENGTH, ONE_OF_GENERATOR, RANDOM_GENERATOR, REGEX_GENERATOR, SQL_GENERATOR}
 import io.github.datacatering.datacaterer.api.model.{Count, Field, Generator, PerColumnCount, Schema, Step}
 import io.github.datacatering.datacaterer.core.util.SparkSuite
 import net.datafaker.Faker
@@ -14,11 +14,11 @@ class DataGeneratorFactoryTest extends SparkSuite {
   private val dataGeneratorFactory = new DataGeneratorFactory(new Faker() with Serializable)
   private val schema = Schema(Some(
     List(
-      Field("id", Some("string"), Some(Generator("random", Map(MINIMUM_LENGTH -> "20", MAXIMUM_LENGTH -> "25")))),
+      Field("id", Some("string"), Some(Generator(RANDOM_GENERATOR, Map(MINIMUM_LENGTH -> "20", MAXIMUM_LENGTH -> "25")))),
       Field("amount", Some("double")),
-      Field("debit_credit", Some("string"), Some(Generator("oneOf", Map("oneOf" -> List("D", "C"))))),
-      Field("name", Some("string"), Some(Generator("regex", Map("regex" -> "[A-Z][a-z]{2,6} [A-Z][a-z]{2,8}")))),
-      Field("code", Some("int"), Some(Generator("sql", Map("sql" -> "CASE WHEN debit_credit == 'D' THEN 1 ELSE 0 END")))),
+      Field("debit_credit", Some("string"), Some(Generator(ONE_OF_GENERATOR, Map("oneOf" -> List("D", "C"))))),
+      Field("name", Some("string"), Some(Generator(REGEX_GENERATOR, Map("regex" -> "[A-Z][a-z]{2,6} [A-Z][a-z]{2,8}")))),
+      Field("code", Some("int"), Some(Generator(SQL_GENERATOR, Map("sql" -> "CASE WHEN debit_credit == 'D' THEN 1 ELSE 0 END")))),
     )
   ))
   private val simpleSchema = Schema(Some(List(Field("id"))))
@@ -91,5 +91,38 @@ class DataGeneratorFactoryTest extends SparkSuite {
     val sampleId = df.head().getAs[String]("id")
     val sampleRows = df.filter(_.getAs[String]("id") == sampleId)
     assert(sampleRows.count() == 1L)
+  }
+
+  test("Can generate data with all possible oneOf combinations enabled in step") {
+    val step = Step("transaction", "parquet", Count(),
+      Map("path" -> "sample/output/parquet/transactions", "allCombinations" -> "true"), schema)
+
+    val df = dataGeneratorFactory.generateDataForStep(step, "parquet", 0, 15)
+    df.cache()
+
+    assertResult(2L)(df.count())
+    val idx = df.columns.indexOf("debit_credit")
+    assert(df.collect().exists(r => r.getString(idx) == "D"))
+    assert(df.collect().exists(r => r.getString(idx) == "C"))
+  }
+
+  test("Can generate data with all possible oneOf combinations enabled in step with multiple oneOf fields") {
+    val statusField = Field("status", Some("string"),
+      Some(Generator(ONE_OF_GENERATOR, Map("oneOf" -> List("open", "closed", "suspended")))))
+    val fieldsWithStatus = Some(schema.fields.get ++ List(statusField))
+    val step = Step("transaction", "parquet", Count(),
+      Map("path" -> "sample/output/parquet/transactions", "allCombinations" -> "true"), schema.copy(fields = fieldsWithStatus))
+
+    val df = dataGeneratorFactory.generateDataForStep(step, "parquet", 0, 15)
+    df.cache()
+
+    assertResult(6L)(df.count())
+    val debitIdx = df.columns.indexOf("debit_credit")
+    val statusIdx = df.columns.indexOf("status")
+    assertResult(3)(df.collect().count(r => r.getString(debitIdx) == "D"))
+    assertResult(3)(df.collect().count(r => r.getString(debitIdx) == "C"))
+    assertResult(2)(df.collect().count(r => r.getString(statusIdx) == "open"))
+    assertResult(2)(df.collect().count(r => r.getString(statusIdx) == "closed"))
+    assertResult(2)(df.collect().count(r => r.getString(statusIdx) == "suspended"))
   }
 }
