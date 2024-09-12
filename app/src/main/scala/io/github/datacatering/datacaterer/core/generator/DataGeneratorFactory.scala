@@ -1,6 +1,6 @@
 package io.github.datacatering.datacaterer.core.generator
 
-import io.github.datacatering.datacaterer.api.model.Constants.{ONE_OF_GENERATOR, SQL_GENERATOR}
+import io.github.datacatering.datacaterer.api.model.Constants.{ALL_COMBINATIONS, ONE_OF_GENERATOR, SQL_GENERATOR}
 import io.github.datacatering.datacaterer.api.model.{Field, PerColumnCount, Step}
 import io.github.datacatering.datacaterer.core.exception.InvalidStepCountGeneratorConfigurationException
 import io.github.datacatering.datacaterer.core.generator.provider.DataGenerator
@@ -36,7 +36,7 @@ class DataGeneratorFactory(faker: Faker)(implicit val sparkSession: SparkSession
   }
 
   private def generateDataViaSql(dataGenerators: List[DataGenerator[_]], step: Step, indexedDf: DataFrame): DataFrame = {
-    val allRecordsDf = if (step.options.contains("allCombinations") && step.options("allCombinations").equalsIgnoreCase("true")) {
+    val allRecordsDf = if (step.options.contains(ALL_COMBINATIONS) && step.options(ALL_COMBINATIONS).equalsIgnoreCase("true")) {
       generateCombinationRecords(dataGenerators, indexedDf)
     } else {
       val genSqlExpression = dataGenerators.map(dg => s"${dg.generateSqlExpressionWrapper} AS `${dg.structField.name}`")

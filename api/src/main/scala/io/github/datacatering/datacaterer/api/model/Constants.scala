@@ -112,6 +112,9 @@ object Constants {
   lazy val HTTP_PARAMETER_TYPE = "httpParamType"
   lazy val POST_SQL_EXPRESSION = "postSqlExpression"
 
+  //step options
+  lazy val ALL_COMBINATIONS = "allCombinations"
+
   //field labels
   lazy val LABEL_NAME = "name"
   lazy val LABEL_USERNAME = "username"
@@ -208,6 +211,7 @@ object Constants {
     "spark.sql.adaptive.enabled" -> "true",
     "spark.sql.cbo.planStats.enabled" -> "true",
     "spark.sql.legacy.allowUntypedScalaUDF" -> "true",
+    "spark.sql.legacy.allowParameterlessCount" -> "true",
     "spark.sql.legacy.allowParameterlessCount" -> "true",
     "spark.sql.statistics.histogram.enabled" -> "true",
     "spark.sql.shuffle.partitions" -> "10",

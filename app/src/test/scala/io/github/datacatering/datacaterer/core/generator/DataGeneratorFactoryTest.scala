@@ -1,6 +1,6 @@
 package io.github.datacatering.datacaterer.core.generator
 
-import io.github.datacatering.datacaterer.api.model.Constants.{MAXIMUM_LENGTH, MINIMUM_LENGTH, ONE_OF_GENERATOR, RANDOM_GENERATOR, REGEX_GENERATOR, SQL_GENERATOR}
+import io.github.datacatering.datacaterer.api.model.Constants.{ALL_COMBINATIONS, MAXIMUM_LENGTH, MINIMUM_LENGTH, ONE_OF_GENERATOR, RANDOM_GENERATOR, REGEX_GENERATOR, SQL_GENERATOR}
 import io.github.datacatering.datacaterer.api.model.{Count, Field, Generator, PerColumnCount, Schema, Step}
 import io.github.datacatering.datacaterer.core.util.SparkSuite
 import net.datafaker.Faker
@@ -95,7 +95,7 @@ class DataGeneratorFactoryTest extends SparkSuite {
 
   test("Can generate data with all possible oneOf combinations enabled in step") {
     val step = Step("transaction", "parquet", Count(),
-      Map("path" -> "sample/output/parquet/transactions", "allCombinations" -> "true"), schema)
+      Map("path" -> "sample/output/parquet/transactions", ALL_COMBINATIONS -> "true"), schema)
 
     val df = dataGeneratorFactory.generateDataForStep(step, "parquet", 0, 15)
     df.cache()
@@ -111,7 +111,7 @@ class DataGeneratorFactoryTest extends SparkSuite {
       Some(Generator(ONE_OF_GENERATOR, Map("oneOf" -> List("open", "closed", "suspended")))))
     val fieldsWithStatus = Some(schema.fields.get ++ List(statusField))
     val step = Step("transaction", "parquet", Count(),
-      Map("path" -> "sample/output/parquet/transactions", "allCombinations" -> "true"), schema.copy(fields = fieldsWithStatus))
+      Map("path" -> "sample/output/parquet/transactions", ALL_COMBINATIONS -> "true"), schema.copy(fields = fieldsWithStatus))
 
     val df = dataGeneratorFactory.generateDataForStep(step, "parquet", 0, 15)
     df.cache()

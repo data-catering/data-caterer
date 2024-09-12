@@ -1,6 +1,6 @@
 package io.github.datacatering.datacaterer.api.connection
 
-import io.github.datacatering.datacaterer.api.model.Constants.{ENABLE_DATA_VALIDATION, FORMAT}
+import io.github.datacatering.datacaterer.api.model.Constants.{ALL_COMBINATIONS, ENABLE_DATA_VALIDATION, FORMAT}
 import io.github.datacatering.datacaterer.api.{ConnectionConfigWithTaskBuilder, CountBuilder, FieldBuilder, GeneratorBuilder, MetadataSourceBuilder, SchemaBuilder, StepBuilder, TaskBuilder, TasksBuilder, ValidationBuilder, WaitConditionBuilder}
 import io.github.datacatering.datacaterer.api.model.{Step, Task}
 
@@ -53,6 +53,11 @@ trait ConnectionTaskBuilder[T] {
 
   def count(generatorBuilder: GeneratorBuilder): ConnectionTaskBuilder[T] = {
     this.step = Some(getStep.count(generatorBuilder))
+    this
+  }
+
+  def allCombinations(enable: Boolean): ConnectionTaskBuilder[T] = {
+    this.step = Some(getStep.option(ALL_COMBINATIONS, enable.toString))
     this
   }
 
