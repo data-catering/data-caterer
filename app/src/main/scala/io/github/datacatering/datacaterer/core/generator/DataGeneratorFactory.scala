@@ -1,14 +1,16 @@
 package io.github.datacatering.datacaterer.core.generator
 
-import io.github.datacatering.datacaterer.api.model.Constants.SQL_GENERATOR
+import io.github.datacatering.datacaterer.api.model.Constants.{ALL_COMBINATIONS, ONE_OF_GENERATOR, SQL_GENERATOR}
 import io.github.datacatering.datacaterer.api.model.{Field, PerColumnCount, Step}
 import io.github.datacatering.datacaterer.core.exception.InvalidStepCountGeneratorConfigurationException
 import io.github.datacatering.datacaterer.core.generator.provider.DataGenerator
+import io.github.datacatering.datacaterer.core.generator.provider.OneOfDataGenerator.RandomOneOfDataGenerator
 import io.github.datacatering.datacaterer.core.model.Constants._
 import io.github.datacatering.datacaterer.core.util.GeneratorUtil.{applySqlExpressions, getDataGenerator}
 import io.github.datacatering.datacaterer.core.util.ObjectMapperUtil
 import io.github.datacatering.datacaterer.core.util.PlanImplicits.FieldOps
 import net.datafaker.Faker
+import org.apache.log4j.Logger
 import org.apache.spark.sql.expressions.UserDefinedFunction
 import org.apache.spark.sql.functions._
 import org.apache.spark.sql.types._
@@ -21,10 +23,12 @@ case class Holder(__index_inc: Long)
 
 class DataGeneratorFactory(faker: Faker)(implicit val sparkSession: SparkSession) {
 
+  private val LOGGER = Logger.getLogger(getClass.getName)
   private val OBJECT_MAPPER = ObjectMapperUtil.jsonObjectMapper
   registerSparkFunctions()
 
   def generateDataForStep(step: Step, dataSourceName: String, startIndex: Long, endIndex: Long): DataFrame = {
+    //need to have separate code for generating all possible combinations
     val structFieldsWithDataGenerators = step.schema.fields.map(getStructWithGenerators).getOrElse(List())
     val indexedDf = sparkSession.createDataFrame(Seq.range(startIndex, endIndex).map(Holder))
     generateDataViaSql(structFieldsWithDataGenerators, step, indexedDf)
@@ -32,16 +36,20 @@ class DataGeneratorFactory(faker: Faker)(implicit val sparkSession: SparkSession
   }
 
   private def generateDataViaSql(dataGenerators: List[DataGenerator[_]], step: Step, indexedDf: DataFrame): DataFrame = {
+    val allRecordsDf = if (step.options.contains(ALL_COMBINATIONS) && step.options(ALL_COMBINATIONS).equalsIgnoreCase("true")) {
+      generateCombinationRecords(dataGenerators, indexedDf)
+    } else {
+      val genSqlExpression = dataGenerators.map(dg => s"${dg.generateSqlExpressionWrapper} AS `${dg.structField.name}`")
+      val df = indexedDf.selectExpr(genSqlExpression: _*)
+
+      step.count.perColumn
+        .map(perCol => generateRecordsPerColumn(dataGenerators, step, perCol, df))
+        .getOrElse(df)
+    }
+
+    if (!allRecordsDf.storageLevel.useMemory) allRecordsDf.cache()
     val structType = StructType(dataGenerators.map(_.structField))
-    val genSqlExpression = dataGenerators.map(dg => s"${dg.generateSqlExpressionWrapper} AS `${dg.structField.name}`")
-    val df = indexedDf.selectExpr(genSqlExpression: _*)
-
-    val perColDf = step.count.perColumn
-      .map(perCol => generateRecordsPerColumn(dataGenerators, step, perCol, df))
-      .getOrElse(df)
-    if (!perColDf.storageLevel.useMemory) perColDf.cache()
-
-    val dfWithMetadata = attachMetadata(perColDf, structType)
+    val dfWithMetadata = attachMetadata(allRecordsDf, structType)
     val dfAllFields = attachMetadata(applySqlExpressions(dfWithMetadata), structType)
     if (!dfAllFields.storageLevel.useMemory) dfAllFields.cache()
     dfAllFields
@@ -100,6 +108,31 @@ class DataGeneratorFactory(faker: Faker)(implicit val sparkSession: SparkSession
     explodeCount.select(PER_COLUMN_INDEX_COL + ".*", perColumnCount.columnNames: _*)
   }
 
+  private def generateCombinationRecords(dataGenerators: List[DataGenerator[_]], indexedDf: DataFrame) = {
+    LOGGER.debug("Attempting to generate all combinations of 'oneOf' fields")
+    //TODO could be nested oneOf fields
+    val oneOfFields = dataGenerators
+      .filter(x => x.isInstanceOf[RandomOneOfDataGenerator] || x.options.contains(ONE_OF_GENERATOR))
+    val nonOneOfFields = dataGenerators.filter(x => !x.isInstanceOf[RandomOneOfDataGenerator] && !x.options.contains(ONE_OF_GENERATOR))
+
+    val oneOfFieldsSql = oneOfFields.map(field => {
+      val fieldValues = field.structField.metadata.getStringArray(ONE_OF_GENERATOR)
+      sparkSession.createDataFrame(Seq(1L).map(Holder))
+        .selectExpr(explode(typedlit(fieldValues)).as(field.structField.name).expr.sql)
+    })
+    val nonOneOfFieldsSql = nonOneOfFields.map(dg => s"${dg.generateSqlExpressionWrapper} AS `${dg.structField.name}`")
+
+    if (oneOfFields.nonEmpty) {
+      LOGGER.debug("Found fields defined with 'oneOf', attempting to create all combinations of possible values")
+      val pairwiseCombinations = oneOfFieldsSql.reduce((a, b) => a.crossJoin(b))
+      val selectExpr = pairwiseCombinations.columns.toList ++ nonOneOfFieldsSql
+      pairwiseCombinations.selectExpr(selectExpr: _*)
+    } else {
+      LOGGER.debug("No fields defined with 'oneOf', unable to create all possible combinations")
+      indexedDf
+    }
+  }
+
   private def generateDataWithSchema(dataGenerators: List[DataGenerator[_]]): UserDefinedFunction = {
     udf((sqlGen: Int) => {
       (1L to sqlGen)
@@ -132,58 +165,59 @@ class DataGeneratorFactory(faker: Faker)(implicit val sparkSession: SparkSession
   }
 
   private def defineRandomLengthView(): Unit = {
-    sparkSession.sql(s"""WITH lengths AS (
-                       |  SELECT sequence(1, $DATA_CATERER_RANDOM_LENGTH_MAX_VALUE) AS length_list
-                       |),
-                       |
-                       |-- Explode the sequence into individual length values
-                       |exploded_lengths AS (
-                       |  SELECT explode(length_list) AS length
-                       |  FROM lengths
-                       |),
-                       |
-                       |-- Create the heuristic cumulative distribution dynamically
-                       |length_distribution AS (
-                       |  SELECT
-                       |    length,
-                       |    CASE
-                       |      WHEN length <= 5 THEN 0.001 * POWER(2, length - 1)
-                       |      WHEN length <= 10 THEN 0.01 * POWER(2, length - 6)
-                       |      ELSE 0.1 * POWER(2, length - 11)
-                       |    END AS weight,
-                       |    SUM(CASE
-                       |          WHEN length <= 5 THEN 0.001 * POWER(2, length - 1)
-                       |          WHEN length <= 10 THEN 0.01 * POWER(2, length - 6)
-                       |          ELSE 0.1 * POWER(2, length - 11)
-                       |        END) OVER (ORDER BY length) AS cumulative_weight,
-                       |    SUM(CASE
-                       |          WHEN length <= 5 THEN 0.001 * POWER(2, length - 1)
-                       |          WHEN length <= 10 THEN 0.01 * POWER(2, length - 6)
-                       |          ELSE 0.1 * POWER(2, length - 11)
-                       |        END) OVER () AS total_weight
-                       |  FROM exploded_lengths
-                       |),
-                       |
-                       |-- Calculate cumulative probabilities
-                       |length_probabilities AS (
-                       |  SELECT
-                       |    length,
-                       |    cumulative_weight / total_weight AS cumulative_prob
-                       |  FROM length_distribution
-                       |),
-                       |
-                       |-- Select a single random length based on the heuristic distribution
-                       |random_length AS (
-                       |  SELECT
-                       |    length
-                       |  FROM length_probabilities
-                       |  WHERE cumulative_prob >= rand()
-                       |  ORDER BY cumulative_prob
-                       |  LIMIT 1
-                       |)
-                       |
-                       |-- Final query to get the single random length
-                       |SELECT * FROM random_length;""".stripMargin)
+    sparkSession.sql(
+        s"""WITH lengths AS (
+           |  SELECT sequence(1, $DATA_CATERER_RANDOM_LENGTH_MAX_VALUE) AS length_list
+           |),
+           |
+           |-- Explode the sequence into individual length values
+           |exploded_lengths AS (
+           |  SELECT explode(length_list) AS length
+           |  FROM lengths
+           |),
+           |
+           |-- Create the heuristic cumulative distribution dynamically
+           |length_distribution AS (
+           |  SELECT
+           |    length,
+           |    CASE
+           |      WHEN length <= 5 THEN 0.001 * POWER(2, length - 1)
+           |      WHEN length <= 10 THEN 0.01 * POWER(2, length - 6)
+           |      ELSE 0.1 * POWER(2, length - 11)
+           |    END AS weight,
+           |    SUM(CASE
+           |          WHEN length <= 5 THEN 0.001 * POWER(2, length - 1)
+           |          WHEN length <= 10 THEN 0.01 * POWER(2, length - 6)
+           |          ELSE 0.1 * POWER(2, length - 11)
+           |        END) OVER (ORDER BY length) AS cumulative_weight,
+           |    SUM(CASE
+           |          WHEN length <= 5 THEN 0.001 * POWER(2, length - 1)
+           |          WHEN length <= 10 THEN 0.01 * POWER(2, length - 6)
+           |          ELSE 0.1 * POWER(2, length - 11)
+           |        END) OVER () AS total_weight
+           |  FROM exploded_lengths
+           |),
+           |
+           |-- Calculate cumulative probabilities
+           |length_probabilities AS (
+           |  SELECT
+           |    length,
+           |    cumulative_weight / total_weight AS cumulative_prob
+           |  FROM length_distribution
+           |),
+           |
+           |-- Select a single random length based on the heuristic distribution
+           |random_length AS (
+           |  SELECT
+           |    length
+           |  FROM length_probabilities
+           |  WHERE cumulative_prob >= rand()
+           |  ORDER BY cumulative_prob
+           |  LIMIT 1
+           |)
+           |
+           |-- Final query to get the single random length
+           |SELECT * FROM random_length;""".stripMargin)
       .createOrReplaceTempView(DATA_CATERER_RANDOM_LENGTH)
   }
 }

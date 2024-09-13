@@ -17,6 +17,8 @@ jobs:
       - name: Run integration tests
         id: tests
         uses: data-catering/insta-integration@v1
+        env:
+          LOG_LEVEL: debug
       - name: Print results
         run: |
           echo "Records generated:         ${{ steps.tests.outputs.num_records_generated }}"

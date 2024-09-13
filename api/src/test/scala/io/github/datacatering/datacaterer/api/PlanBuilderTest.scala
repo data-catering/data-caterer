@@ -1,6 +1,6 @@
 package io.github.datacatering.datacaterer.api
 
-import io.github.datacatering.datacaterer.api.model.Constants.FOREIGN_KEY_DELIMITER
+import io.github.datacatering.datacaterer.api.model.Constants.{ALL_COMBINATIONS, FOREIGN_KEY_DELIMITER}
 import io.github.datacatering.datacaterer.api.connection.FileBuilder
 import io.github.datacatering.datacaterer.api.model.{DataCatererConfiguration, ExpressionValidation, ForeignKeyRelation, PauseWaitCondition}
 import org.junit.runner.RunWith
@@ -214,5 +214,15 @@ class PlanBuilderTest extends AnyFunSuite {
     assert(fk.size == 1)
     assert(fk.head._2.isEmpty)
     assert(fk.head._3.size == 1)
+  }
+
+  test("Can create a step that will generate records for all combinations") {
+    val jsonTask = ConnectionConfigWithTaskBuilder().file("my_json", "json")
+      .allCombinations(true)
+
+    assert(jsonTask.step.isDefined)
+    assert(jsonTask.step.get.step.options.nonEmpty)
+    assert(jsonTask.step.get.step.options.contains(ALL_COMBINATIONS))
+    assert(jsonTask.step.get.step.options(ALL_COMBINATIONS).equalsIgnoreCase("true"))
   }
 }

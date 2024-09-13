@@ -33,8 +33,8 @@ object GeneratorUtil {
         case x => throw new UnsupportedDataGeneratorType(x)
       }
     } else {
-      LOGGER.debug(s"No generator defined, will default to random generator, field-name=${structField.name}")
-      RandomDataGenerator.getGeneratorForStructField(structField, faker)
+      LOGGER.debug(s"No generator defined, will get type of generator based on field options, field-name=${structField.name}")
+      getDataGenerator(structField, faker)
     }
   }
 
