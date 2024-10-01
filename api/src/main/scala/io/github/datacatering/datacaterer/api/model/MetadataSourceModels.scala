@@ -1,6 +1,6 @@
 package io.github.datacatering.datacaterer.api.model
 
-import Constants.{GREAT_EXPECTATIONS, MARQUEZ, METADATA_SOURCE_HAS_OPEN_LINEAGE_SUPPORT, METADATA_SOURCE_TYPE, OPEN_API, OPEN_DATA_CONTRACT_STANDARD, OPEN_METADATA}
+import Constants.{DATA_CONTRACT_CLI, GREAT_EXPECTATIONS, MARQUEZ, METADATA_SOURCE_HAS_OPEN_LINEAGE_SUPPORT, METADATA_SOURCE_TYPE, OPEN_API, OPEN_DATA_CONTRACT_STANDARD, OPEN_METADATA}
 
 trait MetadataSource {
 
@@ -41,5 +41,11 @@ case class GreatExpectationsSource(override val connectionOptions: Map[String, S
 case class OpenDataContractStandardSource(override val connectionOptions: Map[String, String] = Map()) extends MetadataSource {
 
   override val `type`: String = OPEN_DATA_CONTRACT_STANDARD
+
+}
+
+case class DataContractCliSource(override val connectionOptions: Map[String, String] = Map()) extends MetadataSource {
+
+  override val `type`: String = DATA_CONTRACT_CLI
 
 }
