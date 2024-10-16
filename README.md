@@ -126,3 +126,56 @@ Different ways to run Data Caterer based on your use case:
 ### Roadmap
 
 [Can check here for full list.](https://data.catering/use-case/roadmap/)
+
+### Mildly Quick Start
+
+#### I want to generate data in Postgres
+
+```scala
+postgres("customer_postgres", "jdbc:postgresql://localhost:5432/customer")  //name and url
+```
+
+#### But I want `account_id` to follow a pattern
+
+```scala
+postgres("customer_postgres", "jdbc:postgresql://localhost:5432/customer")
+  .schema(field.name("account_id").regex("ACC[0-9]{10}"))
+```
+
+#### I also want to generate events
+
+```scala
+kafka("my_kafka", "localhost:29092")
+  .topic("account-topic")
+  .schema(...)
+```
+
+#### But I want the same `account_id` to show in Postgres and Kafka
+
+```scala
+val kafkaTask = kafka("my_kafka", "localhost:29092")
+  .topic("account-topic")
+  .schema(...)
+
+val postgresTask = postgres("customer_postgres", "jdbc:postgresql://localhost:5432/customer")
+  .schema(field.name("account_id").regex("ACC[0-9]{10}"))
+
+plan.addForeignKeyRelationship(
+   kafkaTask, List("account_id"),
+   List(postgresTask -> List("account_id"))
+)
+```
+
+#### I want to generate 5 transactions per `account_id`
+
+```scala
+postgres("customer_postgres", "jdbc:postgresql://localhost:5432/customer")
+  .count(count.recordsPerColumn(5, "account_id"))
+```
+
+#### But I want to generate 0 to 5 transactions per `account_id`
+
+```scala
+postgres("customer_postgres", "jdbc:postgresql://localhost:5432/customer")
+  .count(count.recordsPerColumnGenerator(generator.min(0).max(5), "account_id"))
+```
