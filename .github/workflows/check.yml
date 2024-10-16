@@ -19,8 +19,6 @@ jobs:
         uses: data-catering/insta-integration@v1
         env:
           LOG_LEVEL: debug
-        with:
-          data_caterer_version: 0.11.11
       - name: Print results
         run: |
           echo "Records generated:         ${{ steps.tests.outputs.num_records_generated }}"
