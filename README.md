@@ -153,16 +153,16 @@ kafka("my_kafka", "localhost:29092")
 #### But I want the same `account_id` to show in Postgres and Kafka
 
 ```scala
+val postgresTask = postgres("customer_postgres", "jdbc:postgresql://localhost:5432/customer")
+  .schema(field.name("account_id").regex("ACC[0-9]{10}"))
+
 val kafkaTask = kafka("my_kafka", "localhost:29092")
   .topic("account-topic")
   .schema(...)
 
-val postgresTask = postgres("customer_postgres", "jdbc:postgresql://localhost:5432/customer")
-  .schema(field.name("account_id").regex("ACC[0-9]{10}"))
-
 plan.addForeignKeyRelationship(
-   kafkaTask, List("account_id"),
-   List(postgresTask -> List("account_id"))
+   postgresTask, List("account_id"),
+   List(kafkaTask -> List("account_id"))
 )
 ```
 

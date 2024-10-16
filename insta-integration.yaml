@@ -1,12 +1,12 @@
 services:
   - name: postgres
-    data: ../../app/src/test/resources/sample/sql/postgres
+    data: app/src/test/resources/sample/sql/postgres
 run:
-  - command: java -jar ../../app/build/libs/data-caterer.jar
+  - command: java -jar app/build/libs/data-caterer.jar
     env:
-      PLAN_FILE_PATH: ../../app/src/test/resources/sample/plan/account-balance-transaction-plan.yaml
-      TASK_FOLDER_PATH: ../../app/src/test/resources/sample/task
-      APPLICATION_CONFIG_PATH: ../../app/src/main/resources/application.conf
+      PLAN_FILE_PATH: app/src/test/resources/sample/plan/account-balance-transaction-plan.yaml
+      TASK_FOLDER_PATH: app/src/test/resources/sample/task
+      APPLICATION_CONFIG_PATH: app/src/main/resources/application.conf
     generateFirst: false
     test:
       validation:

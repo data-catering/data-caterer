@@ -18,7 +18,7 @@ jobs:
         id: tests
         uses: data-catering/insta-integration@v1
         with:
-          configuration_file: misc/insta-integration/insta-integration.yaml
+          data_caterer_version: 0.11.11
       - name: Print results
         run: |
           echo "Records generated:         ${{ steps.tests.outputs.num_records_generated }}"
