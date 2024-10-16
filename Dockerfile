@@ -8,7 +8,7 @@ RUN addgroup -S app \
     && apk add --no-cache libc6-compat bash \
     && mkdir -p /opt/app /opt/DataCaterer/connection /opt/DataCaterer/plan /opt/DataCaterer/execution /opt/DataCaterer/report \
     && chown -R app:app /opt/app /opt/DataCaterer/connection /opt/DataCaterer/plan /opt/DataCaterer/execution /opt/DataCaterer/report
-COPY --chown=app:app script app/src/main/resources app/build/libs /opt/app/
+COPY --chown=app:app misc/docker-image app/src/main/resources app/build/libs /opt/app/
 
 USER app
 WORKDIR /opt/app
