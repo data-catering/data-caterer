@@ -2,6 +2,7 @@ package io.github.datacatering.datacaterer.core.validator
 
 import io.github.datacatering.datacaterer.api.model.Constants.FORMAT
 import io.github.datacatering.datacaterer.api.model.{DataExistsWaitCondition, FileExistsWaitCondition, PauseWaitCondition, WaitCondition, WebhookWaitCondition}
+import io.github.datacatering.datacaterer.core.exception.InvalidWaitConditionException
 import io.github.datacatering.datacaterer.core.util.ConfigUtil
 import io.github.datacatering.datacaterer.core.util.HttpUtil.getAuthHeader
 import org.apache.hadoop.fs.{FileSystem, Path}
@@ -10,7 +11,6 @@ import org.apache.spark.sql.SparkSession
 import org.asynchttpclient.Dsl.asyncHttpClient
 
 import scala.util.{Failure, Success, Try}
-
 
 abstract class WaitConditionOps {
   def checkCondition(connectionConfigByName: Map[String, Map[String, String]])(implicit sparkSession: SparkSession): Boolean
@@ -92,7 +92,7 @@ object ValidationWaitImplicits {
         case x: FileExistsWaitCondition => new FileExistsWaitConditionOps(x)
         case x: PauseWaitCondition => new PauseWaitConditionOps(x)
         case x: WebhookWaitCondition => new WebhookWaitConditionOps(x)
-        case x => throw new RuntimeException(s"Unknown type of validation wait condition, class=${x.getClass.getName}")
+        case x => throw InvalidWaitConditionException(s"Unknown type of validation wait condition, class=${x.getClass.getName}")
       }
 
       if (waitCondition.isRetryable) {

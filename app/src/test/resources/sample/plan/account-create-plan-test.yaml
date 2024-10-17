@@ -21,4 +21,4 @@ sinkOptions:
       - []
 
 validations:
-  - "json_account_checks"
+  - "account_checks"

@@ -2,8 +2,9 @@ package io.github.datacatering.datacaterer.core.util
 
 import io.github.datacatering.datacaterer.api.PlanRun
 import io.github.datacatering.datacaterer.api.model.Constants.OMIT
-import io.github.datacatering.datacaterer.api.model.{ForeignKeyRelation, Plan}
-import io.github.datacatering.datacaterer.core.model.ForeignKeyRelationship
+import io.github.datacatering.datacaterer.api.model.Plan
+import io.github.datacatering.datacaterer.core.exception.MissingDataSourceFromForeignKeyException
+import io.github.datacatering.datacaterer.core.model.{ForeignKeyRelationship, ForeignKeyWithGenerateAndDelete}
 import io.github.datacatering.datacaterer.core.util.ForeignKeyRelationHelper.updateForeignKeyName
 import io.github.datacatering.datacaterer.core.util.GeneratorUtil.applySqlExpressions
 import io.github.datacatering.datacaterer.core.util.PlanImplicits.{ForeignKeyRelationOps, SinkOptionsOps}
@@ -36,20 +37,20 @@ object ForeignKeyUtil {
     var taskDfs = generatedDataForeachTask
 
     val foreignKeyAppliedDfs = enabledForeignKeys.flatMap(foreignKeyDetails => {
-      val sourceDfName = foreignKeyDetails._1.dataFrameName
+      val sourceDfName = foreignKeyDetails.source.dataFrameName
       LOGGER.debug(s"Getting source dataframe, source=$sourceDfName")
       if (!taskDfs.contains(sourceDfName)) {
-        throw new RuntimeException(s"Cannot create target foreign key as one of the data sources not created. " +
-          s"Please ensure there exists a data source with name (<plan dataSourceName>.<task step name>): $sourceDfName")
+        throw MissingDataSourceFromForeignKeyException(sourceDfName)
       }
       val sourceDf = taskDfs(sourceDfName)
 
-      val sourceDfsWithForeignKey = foreignKeyDetails._2.map(target => {
+      val sourceDfsWithForeignKey = foreignKeyDetails.generationLinks.map(target => {
         val targetDfName = target.dataFrameName
         LOGGER.debug(s"Getting target dataframe, source=$targetDfName")
         val targetDf = taskDfs(targetDfName)
         if (target.columns.forall(targetDf.columns.contains)) {
-          val dfWithForeignKeys = applyForeignKeysToTargetDf(sourceDf, targetDf, foreignKeyDetails._1.columns, target.columns)
+          LOGGER.info(s"Applying foreign key values to target data source, source-data=${foreignKeyDetails.source.dataSource}, target-data=${target.dataSource}")
+          val dfWithForeignKeys = applyForeignKeysToTargetDf(sourceDf, targetDf, foreignKeyDetails.source.columns, target.columns)
           if (!dfWithForeignKeys.storageLevel.useMemory) dfWithForeignKeys.cache()
           (targetDfName, dfWithForeignKeys)
         } else {
@@ -61,30 +62,31 @@ object ForeignKeyUtil {
       sourceDfsWithForeignKey
     })
 
-    val insertOrder = getInsertOrder(foreignKeyRelations.map(f => (f._1.dataFrameName, f._2.map(_.dataFrameName))))
+    val insertOrder = getInsertOrder(foreignKeyRelations.map(f => (f.source.dataFrameName, f.generationLinks.map(_.dataFrameName))))
     val insertOrderDfs = insertOrder
       .filter(i => foreignKeyAppliedDfs.exists(f => f._1.equalsIgnoreCase(i)))
       .map(s => (s, foreignKeyAppliedDfs.filter(f => f._1.equalsIgnoreCase(s)).head._2))
     taskDfs.toList.filter(t => !insertOrderDfs.exists(_._1.equalsIgnoreCase(t._1))) ++ insertOrderDfs
   }
 
-  private def isValidForeignKeyRelation(generatedDataForeachTask: Map[String, DataFrame], enabledSources: List[String], fkr: (ForeignKeyRelation, List[ForeignKeyRelation])) = {
-    val isMainForeignKeySourceEnabled = enabledSources.contains(fkr._1.dataSource)
-    val subForeignKeySources = fkr._2.map(_.dataSource)
+  private def isValidForeignKeyRelation(generatedDataForeachTask: Map[String, DataFrame], enabledSources: List[String],
+                                        fkr: ForeignKeyWithGenerateAndDelete) = {
+    val isMainForeignKeySourceEnabled = enabledSources.contains(fkr.source.dataSource)
+    val subForeignKeySources = fkr.generationLinks.map(_.dataSource)
     val isSubForeignKeySourceEnabled = subForeignKeySources.forall(enabledSources.contains)
     val disabledSubSources = subForeignKeySources.filter(s => !enabledSources.contains(s))
-    val mainDfFields = generatedDataForeachTask(fkr._1.dataFrameName).schema.fields
-    val columnExistsMain = fkr._1.columns.forall(c => hasDfContainColumn(c, mainDfFields))
+    val mainDfFields = generatedDataForeachTask(fkr.source.dataFrameName).schema.fields
+    val columnExistsMain = fkr.source.columns.forall(c => hasDfContainColumn(c, mainDfFields))
 
     if (!isMainForeignKeySourceEnabled) {
       LOGGER.warn(s"Foreign key data source is not enabled. Data source needs to be enabled for foreign key relationship " +
-        s"to exist from generated data, data-source-name=${fkr._1.dataSource}")
+        s"to exist from generated data, data-source-name=${fkr.source.dataSource}")
     }
     if (!isSubForeignKeySourceEnabled) {
       LOGGER.warn(s"Sub data sources within foreign key relationship are not enabled, disabled-task=${disabledSubSources.mkString(",")}")
     }
     if (!columnExistsMain) {
-      LOGGER.warn(s"Main column for foreign key references is not created, data-source-name=${fkr._1.dataSource}, column=${fkr._1.columns}")
+      LOGGER.warn(s"Main column for foreign key references is not created, data-source-name=${fkr.source.dataSource}, column=${fkr.source.columns}")
     }
     isMainForeignKeySourceEnabled && isSubForeignKeySourceEnabled && columnExistsMain
   }
@@ -150,9 +152,15 @@ object ForeignKeyUtil {
     applySqlExpressions(dfMetadata, targetColumns, false)
   }
 
+  //TODO: Need some way to understand potential relationships between fields of different data sources (i.e. correlations, word2vec) https://spark.apache.org/docs/latest/ml-features
+
   /**
-   * Consolidate all the foreign key relationships into a list of foreign keys to a list of their relationships.
-   * Foreign key relationships string follows the pattern of <dataSourceName>.<stepName>.<column>
+   * Can have logic like this:
+   * 1. Using column metadata, find columns in other data sources that have similar metadata based on data profiling
+   * 2. Assign a score to how similar two columns are across data sources
+   * 3. Get those pairs that are greater than a threshold score
+   * 4. Group all foreign keys together
+   * 4.1. Unsure how to determine what is the primary source of the foreign key (the one that has the most references to it?)
    *
    * @param dataSourceForeignKeys Foreign key relationships for each data source
    * @return Map of data source columns to respective foreign key columns (which may be in other data sources)
@@ -161,24 +169,27 @@ object ForeignKeyUtil {
                                      dataSourceForeignKeys: List[Dataset[ForeignKeyRelationship]],
                                      optPlanRun: Option[PlanRun],
                                      stepNameMapping: Map[String, String]
-                                   ): List[(String, List[String])] = {
+                                   ): List[(String, List[String], List[String])] = {
+    //given all the foreign key relations in each data source, detect if there are any links between data sources, then pass that into plan
+    //the step name may be updated if it has come from a metadata source, need to update foreign key definitions as well with new step name
+
     val generatedForeignKeys = dataSourceForeignKeys.flatMap(_.collect())
       .groupBy(_.key)
-      .map(x => (x._1.toString, x._2.map(_.foreignKey.toString)))
+      .map(x => (x._1.toString, x._2.map(_.foreignKey.toString), List()))
       .toList
     val userForeignKeys = optPlanRun.flatMap(planRun => planRun._plan.sinkOptions.map(_.foreignKeys))
       .getOrElse(List())
       .map(userFk => {
         val fkMapped = updateForeignKeyName(stepNameMapping, userFk._1)
         val subFkNamesMapped = userFk._2.map(subFk => updateForeignKeyName(stepNameMapping, subFk))
-        (fkMapped, subFkNamesMapped)
+        (fkMapped, subFkNamesMapped, List())
       })
 
     val mergedForeignKeys = generatedForeignKeys.map(genFk => {
       userForeignKeys.find(userFk => userFk._1 == genFk._1)
         .map(matchUserFk => {
           //generated foreign key takes precedence due to constraints from underlying data source need to be adhered
-          (matchUserFk._1, matchUserFk._2 ++ genFk._2)
+          (matchUserFk._1, matchUserFk._2 ++ genFk._2, List())
         })
         .getOrElse(genFk)
     })
@@ -186,7 +197,7 @@ object ForeignKeyUtil {
     allForeignKeys
   }
 
-  //get delete order
+  //get insert order
   def getInsertOrder(foreignKeys: List[(String, List[String])]): List[String] = {
     val result = mutable.ListBuffer.empty[String]
     val visited = mutable.Set.empty[String]

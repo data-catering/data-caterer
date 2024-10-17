@@ -1,7 +1,8 @@
-package io.github.datacatering.datacaterer.core.util
+package io.github.datacatering.datacaterer.core.generator.metadata
 
 import io.github.datacatering.datacaterer.api.model.Constants.{EXPRESSION, ONE_OF_GENERATOR}
 import io.github.datacatering.datacaterer.api.model.Schema
+import io.github.datacatering.datacaterer.core.exception.{InvalidFakerExpressionException, UnsupportedFakerReturnTypeException}
 import net.datafaker.Faker
 import org.apache.log4j.Logger
 
@@ -76,10 +77,10 @@ object CombinationCalculator {
         BigInt(expressionValues.size)
       }
     } else {
-      if (spt.length < 2) throw new RuntimeException("Expressions require '.' in name, check test/resources/datafaker/expressions.txt for reference")
+      if (spt.length < 2) throw InvalidFakerExpressionException(key)
       val fileObject = faker.fakeValuesService.fetchObject(spt.head, faker.getContext)
       fileObject match {
-        case stringToStrings: util.Map[String, util.List[String]] =>
+        case JavaMapStringToList(stringToStrings) =>
           val mapFakerExpressions = stringToStrings.asScala.toMap
           fetchNumValues(spt.last, faker, mapFakerExpressions)
         case _ => throw new RuntimeException(s"Unexpected return type from faker object, key=$key")
@@ -89,3 +90,5 @@ object CombinationCalculator {
 
   private def containsFakerExpression(expressions: List[String]): Boolean = expressions.exists(FAKER_EXPRESSION_REGEX.pattern.matcher(_).matches())
 }
+
+case class JavaMapStringToList(value: util.Map[String, util.List[String]])

@@ -2,12 +2,15 @@ package io.github.datacatering.datacaterer.core.plan
 
 import io.github.datacatering.datacaterer.api.PlanRun
 import io.github.datacatering.datacaterer.api.model.Constants.PLAN_CLASS
-import io.github.datacatering.datacaterer.api.model.DataCatererConfiguration
+import io.github.datacatering.datacaterer.api.model.{DataCatererConfiguration, Plan, Task, ValidationConfiguration}
 import io.github.datacatering.datacaterer.core.config.ConfigParser
+import io.github.datacatering.datacaterer.core.exception.PlanRunClassNotFoundException
 import io.github.datacatering.datacaterer.core.generator.DataGeneratorProcessor
+import io.github.datacatering.datacaterer.core.generator.metadata.datasource.DataSourceMetadataFactory
+import io.github.datacatering.datacaterer.core.model.Constants.METADATA_CONNECTION_OPTIONS
 import io.github.datacatering.datacaterer.core.model.PlanRunResults
+import io.github.datacatering.datacaterer.core.parser.PlanParser
 import io.github.datacatering.datacaterer.core.util.SparkProvider
-import io.github.datacatering.datacaterer.javaapi.api
 import org.apache.spark.sql.SparkSession
 
 import scala.util.{Success, Try}
@@ -20,11 +23,11 @@ object PlanProcessor {
       .map(cls => {
         cls.getDeclaredConstructor().newInstance()
         val tryScalaPlan = Try(cls.getDeclaredConstructor().newInstance().asInstanceOf[PlanRun])
-        val tryJavaPlan = Try(cls.getDeclaredConstructor().newInstance().asInstanceOf[api.PlanRun])
+        val tryJavaPlan = Try(cls.getDeclaredConstructor().newInstance().asInstanceOf[io.github.datacatering.datacaterer.javaapi.api.PlanRun])
         (tryScalaPlan, tryJavaPlan) match {
           case (Success(value), _) => value
           case (_, Success(value)) => value.getPlan
-          case _ => throw new RuntimeException(s"Failed to load class as either Java or Scala PlanRun, class=${optPlanClass.get}")
+          case _ => throw PlanRunClassNotFoundException(optPlanClass.get)
         }
       })
       .map(executePlan)
@@ -34,7 +37,7 @@ object PlanProcessor {
       )
   }
 
-  def determineAndExecutePlanJava(planRun: api.PlanRun): PlanRunResults =
+  def determineAndExecutePlanJava(planRun: io.github.datacatering.datacaterer.javaapi.api.PlanRun): PlanRunResults =
     determineAndExecutePlan(Some(planRun.getPlan))
 
   private def executePlan(planRun: PlanRun): PlanRunResults = {
@@ -48,12 +51,22 @@ object PlanProcessor {
   }
 
   private def executePlanWithConfig(dataCatererConfiguration: DataCatererConfiguration, optPlan: Option[PlanRun]): PlanRunResults = {
-    implicit val sparkSession: SparkSession = new SparkProvider(dataCatererConfiguration.master, dataCatererConfiguration.runtimeConfig).getSparkSession
+    val connectionConf = optPlan.map(_._connectionTaskBuilders.flatMap(_.connectionConfigWithTaskBuilder.options).toMap).getOrElse(Map())
+    implicit val sparkSession: SparkSession = new SparkProvider(dataCatererConfiguration.master, dataCatererConfiguration.runtimeConfig ++ connectionConf).getSparkSession
 
+    val planRun = if (optPlan.isDefined) {
+      optPlan.get
+    } else {
+      val (parsedPlan, enabledTasks, validations) = PlanParser.getPlanTasksFromYaml(dataCatererConfiguration)
+      new YamlPlanRun(parsedPlan, enabledTasks, validations, dataCatererConfiguration)
+    }
+
+    val optPlanWithTasks = new DataSourceMetadataFactory(dataCatererConfiguration).extractAllDataSourceMetadata(planRun)
     val dataGeneratorProcessor = new DataGeneratorProcessor(dataCatererConfiguration)
-    optPlan match {
-      case Some(plan) => dataGeneratorProcessor.generateData(plan._plan, plan._tasks, Some(plan._validations))
-      case _ => dataGeneratorProcessor.generateData()
+
+    (optPlanWithTasks, planRun) match {
+      case (Some((genPlan, genTasks, genValidation)), _) => dataGeneratorProcessor.generateData(genPlan, genTasks, Some(genValidation))
+      case (_, plan) => dataGeneratorProcessor.generateData(plan._plan, plan._tasks, Some(plan._validations))
     }
   }
 
@@ -66,4 +79,24 @@ object PlanProcessor {
       case _ => None
     }
   }
+}
+
+class YamlPlanRun(
+                   yamlPlan: Plan,
+                   yamlTasks: List[Task],
+                   validations: Option[List[ValidationConfiguration]],
+                   dataCatererConfiguration: DataCatererConfiguration
+                 ) extends PlanRun {
+  _plan = yamlPlan
+  _tasks = yamlTasks
+  _validations = validations.getOrElse(List())
+  //get any metadata configuration from tasks for data sources and add to configuration
+  private val tasksWithMetadataOptions = yamlTasks.filter(t => t.steps.nonEmpty)
+    .map(t => {
+      val dataSourceName = yamlPlan.tasks.find(ts => ts.name.equalsIgnoreCase(t.name)).get.dataSourceName
+      dataSourceName -> t.steps.flatMap(s => s.options.filter(o => METADATA_CONNECTION_OPTIONS.contains(o._1))).toMap
+    }).toMap
+  private val updatedConnectionConfig = dataCatererConfiguration.connectionConfigByName
+    .map(c => c._1 -> (tasksWithMetadataOptions.getOrElse(c._1, Map()) ++ c._2))
+  _configuration = dataCatererConfiguration.copy(connectionConfigByName = updatedConnectionConfig)
 }

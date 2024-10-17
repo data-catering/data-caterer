@@ -244,7 +244,9 @@ class UiMapperTest extends AnyFunSuite {
       FieldRequest("status", "string", Some(Map(ONE_OF_GENERATOR -> "open,closed"))),
       FieldRequest("details", "struct", nested = Some(FieldRequests(Some(List(FieldRequest("age", "integer")))))),
     )))))
-    val res = UiMapper.fieldMapping(dataSourceRequest)
+    val optFieldMapping = UiMapper.fieldMapping(dataSourceRequest)
+    assert(optFieldMapping._2.isDefined)
+    val res = optFieldMapping._2.get
     assert(res.size == 4)
     val nameField = res.find(_.field.name == "name")
     assert(nameField.exists(_.field.`type`.contains("string")))

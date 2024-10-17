@@ -2,8 +2,9 @@ package io.github.datacatering.datacaterer.core.util
 
 import io.github.datacatering.datacaterer.api.model.Constants.{DEFAULT_FIELD_NULLABLE, FOREIGN_KEY_DELIMITER, FOREIGN_KEY_DELIMITER_REGEX, FOREIGN_KEY_PLAN_FILE_DELIMITER, FOREIGN_KEY_PLAN_FILE_DELIMITER_REGEX, IS_PRIMARY_KEY, IS_UNIQUE, MAXIMUM, MINIMUM, ONE_OF_GENERATOR, PRIMARY_KEY_POSITION, RANDOM_GENERATOR, REGEX_GENERATOR, STATIC}
 import io.github.datacatering.datacaterer.api.model.{Count, Field, ForeignKeyRelation, Generator, PerColumnCount, Schema, SinkOptions, Step, Task}
-import io.github.datacatering.datacaterer.core.exception.InvalidFieldConfigurationException
+import io.github.datacatering.datacaterer.core.exception.{InvalidFieldConfigurationException, InvalidForeignKeyFormatException, NoSchemaDefinedException}
 import io.github.datacatering.datacaterer.core.model.Constants.{COUNT_BASIC, COUNT_COLUMNS, COUNT_GENERATED, COUNT_GENERATED_PER_COLUMN, COUNT_NUM_RECORDS, COUNT_PER_COLUMN, COUNT_TYPE}
+import io.github.datacatering.datacaterer.core.model.ForeignKeyWithGenerateAndDelete
 import org.apache.log4j.Logger
 import org.apache.spark.sql.types.{ArrayType, DataType, Metadata, MetadataBuilder, StructField, StructType}
 
@@ -11,16 +12,16 @@ import scala.language.implicitConversions
 
 
 object ForeignKeyRelationHelper {
-  def fromString(str: String): ForeignKeyRelation = {
-    val strSpt = str.split(FOREIGN_KEY_DELIMITER_REGEX)
-    val strSptPlanFile = str.split(FOREIGN_KEY_PLAN_FILE_DELIMITER_REGEX)
+  def fromString(foreignKey: String): ForeignKeyRelation = {
+    val strSpt = foreignKey.split(FOREIGN_KEY_DELIMITER_REGEX)
+    val strSptPlanFile = foreignKey.split(FOREIGN_KEY_PLAN_FILE_DELIMITER_REGEX)
 
     (strSpt.length, strSptPlanFile.length) match {
-      case (3, _) => ForeignKeyRelation(strSpt.head, strSpt(1), strSpt.last.split(",").toList)
+      case (3, _) => ForeignKeyRelation(strSpt.head, strSpt(1), strSpt.last.split(",(?![^()]*\\))").toList)
       case (2, _) => ForeignKeyRelation(strSpt.head, strSpt.last)
-      case (_, 3) => ForeignKeyRelation(strSptPlanFile.head, strSptPlanFile(1), strSptPlanFile.last.split(",").toList)
+      case (_, 3) => ForeignKeyRelation(strSptPlanFile.head, strSptPlanFile(1), strSptPlanFile.last.split(",(?![^()]*\\))").toList)
       case (_, 2) => ForeignKeyRelation(strSptPlanFile.head, strSptPlanFile.last)
-      case _ => throw new RuntimeException(s"Unexpected foreign key relation format. Should have at least 2 or 3 parts delimited by either $FOREIGN_KEY_DELIMITER or $FOREIGN_KEY_PLAN_FILE_DELIMITER")
+      case _ => throw InvalidForeignKeyFormatException(foreignKey)
     }
   }
 
@@ -48,8 +49,10 @@ object SchemaHelper {
    *                options defined in schema1
    * @return Merged schema
    */
-  def mergeSchemaInfo(schema1: Schema, schema2: Schema): Schema = {
+  def mergeSchemaInfo(schema1: Schema, schema2: Schema, hasMultipleSubDataSources: Boolean = false): Schema = {
     (schema1.fields, schema2.fields) match {
+      case (Some(fields1), Some(fields2)) if fields1.nonEmpty && fields2.isEmpty => schema1
+      case (Some(fields1), Some(fields2)) if fields1.isEmpty && fields2.nonEmpty => schema2
       case (Some(fields1), Some(fields2)) =>
         val mergedFields = fields1.map(field => {
           val filterInSchema2 = fields2.filter(f2 => f2.name == field.name)
@@ -78,11 +81,17 @@ object SchemaHelper {
             Field(field.name, fieldType, fieldGenerator, fieldNullable, fieldStatic, fieldSchema)
           }).getOrElse(field)
         })
-        Schema(Some(mergedFields))
+
+        val fieldsInSchema2NotInSchema1 = if (hasMultipleSubDataSources) {
+          LOGGER.debug(s"Multiple sub data sources created, not adding fields that are manually defined")
+          List()
+        } else {
+          fields2.filter(f2 => !fields1.exists(f1 => f1.name == f2.name))
+        }
+        Schema(Some(mergedFields ++ fieldsInSchema2NotInSchema1))
       case (Some(_), None) => schema1
       case (None, Some(_)) => schema2
-      case _ =>
-        throw new RuntimeException("Schema not defined from auto generation, metadata source or from user")
+      case _ => throw NoSchemaDefinedException()
     }
   }
 
@@ -170,18 +179,32 @@ object PlanImplicits {
   }
 
   implicit class SinkOptionsOps(sinkOptions: SinkOptions) {
-    def gatherForeignKeyRelations(key: String): (ForeignKeyRelation, List[ForeignKeyRelation]) = {
+    def gatherForeignKeyRelations(key: String): ForeignKeyWithGenerateAndDelete = {
       val source = ForeignKeyRelationHelper.fromString(key)
-      val targets = sinkOptions.foreignKeys.filter(f => f._1.equalsIgnoreCase(key)).flatMap(_._2)
-      val targetForeignKeys = targets.map(ForeignKeyRelationHelper.fromString)
-      (source, targetForeignKeys)
+      val generationFk = sinkOptions.foreignKeys.filter(f => f._1.equalsIgnoreCase(key)).flatMap(_._2)
+      val deleteFk = sinkOptions.foreignKeys.filter(f => f._1.equalsIgnoreCase(key)).flatMap(_._3)
+      val generationForeignKeys = generationFk.map(ForeignKeyRelationHelper.fromString)
+      val deleteForeignKeys = deleteFk.map(ForeignKeyRelationHelper.fromString)
+      ForeignKeyWithGenerateAndDelete(source, generationForeignKeys, deleteForeignKeys)
     }
+
+    def foreignKeyStringWithDataSourceAndStep(fk: String): String = fk.split(FOREIGN_KEY_DELIMITER_REGEX).take(2).mkString(FOREIGN_KEY_DELIMITER)
 
     def foreignKeysWithoutColumnNames: List[(String, List[String])] = {
       sinkOptions.foreignKeys.map(foreignKey => {
-        val mainFk = foreignKey._1.split(FOREIGN_KEY_DELIMITER_REGEX).take(2).mkString(FOREIGN_KEY_DELIMITER)
-        val subFks = foreignKey._2.map(sFk => sFk.split(FOREIGN_KEY_DELIMITER_REGEX).take(2).mkString(FOREIGN_KEY_DELIMITER))
-        (mainFk, subFks)
+        val sourceFk = foreignKeyStringWithDataSourceAndStep(foreignKey._1)
+        val generationFk = foreignKey._2.map(foreignKeyStringWithDataSourceAndStep)
+        val deleteFk = foreignKey._3.map(foreignKeyStringWithDataSourceAndStep)
+        (sourceFk, generationFk ++ deleteFk)
+      })
+    }
+
+    def getAllForeignKeyRelations: List[(ForeignKeyRelation, String)] = {
+      sinkOptions.foreignKeys.flatMap(fk => {
+        val sourceFk = ForeignKeyRelationHelper.fromString(fk._1)
+        val generationForeignKeys = fk._2.map(f => (ForeignKeyRelationHelper.fromString(f), "generation"))
+        val deleteForeignKeys = fk._3.map(f => (ForeignKeyRelationHelper.fromString(f), "delete"))
+        List((sourceFk, "source")) ++ generationForeignKeys ++ deleteForeignKeys
       })
     }
   }
@@ -328,7 +351,7 @@ object PlanImplicits {
       } else if (field.`type`.isDefined) {
         StructField(field.name, DataType.fromDDL(field.`type`.get), field.nullable, getMetadata)
       } else {
-        throw new InvalidFieldConfigurationException(this.field)
+        throw InvalidFieldConfigurationException(this.field)
       }
     }
 

@@ -1,5 +1,6 @@
 package io.github.datacatering.datacaterer.core.util
 
+import io.github.datacatering.datacaterer.core.exception.{InvalidColumnAsDataTypeException, MissingColumnException}
 import org.apache.log4j.Logger
 import org.apache.spark.sql.Row
 
@@ -17,11 +18,11 @@ object RowUtil {
         case Failure(exception) =>
           val message = s"Failed to get column as data type, column-name=$colName, exception=$exception"
           LOGGER.error(message)
-          throw new RuntimeException(message, exception)
+          throw InvalidColumnAsDataTypeException(colName, exception)
         case Success(value) => value
       }
     } else if (default == null) {
-      throw new RuntimeException(s"Invalid schema definition due to missing column, column-name=$colName")
+      throw MissingColumnException(colName)
     } else {
       LOGGER.debug(s"Column missing from schema definition, will revert to default value, column-name=$colName, default=$default")
       default

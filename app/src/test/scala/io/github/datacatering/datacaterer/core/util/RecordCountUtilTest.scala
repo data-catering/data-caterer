@@ -95,7 +95,7 @@ class RecordCountUtilTest extends AnyFunSuite {
             new GeneratorBuilder().min(5).max(15),
             "account_id"
           ).count
-      )))
+    )))
     val result = RecordCountUtil.calculateNumBatches(List(task), generationConfig)
 
     assert(result._1 == 10)
@@ -112,7 +112,7 @@ class RecordCountUtilTest extends AnyFunSuite {
       Step(
         "my_step",
         count = new CountBuilder().records(10000).count
-      )))
+    )))
     val result = RecordCountUtil.calculateNumBatches(List(task), generationConfig)
 
     assert(result._1 == 1)
@@ -129,7 +129,7 @@ class RecordCountUtilTest extends AnyFunSuite {
       Step(
         "my_step",
         count = new CountBuilder().records(10000).recordsPerColumn(5, "account_id").count
-      )))
+    )))
     val result = RecordCountUtil.calculateNumBatches(List(task), generationConfig)
 
     assert(result._1 == 1)

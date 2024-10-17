@@ -33,7 +33,7 @@ object OneOfDataGenerator {
         case Failure(_) =>
           val tryString = Try(structField.metadata.getString(ONE_OF_GENERATOR))
           tryString match {
-            case Failure(exception) => throw new RuntimeException(s"Failed to get $ONE_OF_GENERATOR from field metadata, " +
+            case Failure(exception) => throw new IllegalArgumentException(s"Failed to get $ONE_OF_GENERATOR from field metadata, " +
               s"field-name=${structField.name}, field-type=${structField.dataType.typeName}", exception)
             case Success(value) => value.split(ONE_OF_GENERATOR_DELIMITER)
           }

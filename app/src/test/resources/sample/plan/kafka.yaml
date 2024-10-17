@@ -1,0 +1,5 @@
+name: "kafka_plan"
+description: "Create account data in Kafka"
+tasks:
+  - name: "json_account_kafka"
+    dataSourceName: "kafka"

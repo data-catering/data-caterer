@@ -231,12 +231,12 @@ class ForeignKeyUtilTest extends SparkSuite {
     val result = ForeignKeyUtil.getAllForeignKeyRelationships(generatedForeignKeys, optPlanRun, stepNameMapping)
 
     assert(result.size == 3)
-    assert(result.contains(s"my_csv${FOREIGN_KEY_DELIMITER}public.accounts${FOREIGN_KEY_DELIMITER}id" ->
-      List(s"my_postgres${FOREIGN_KEY_DELIMITER}public.accounts${FOREIGN_KEY_DELIMITER}account_id")))
-    assert(result.contains(s"my_json${FOREIGN_KEY_DELIMITER}json_step${FOREIGN_KEY_DELIMITER}id" ->
-      List(s"my_postgres${FOREIGN_KEY_DELIMITER}public.orders${FOREIGN_KEY_DELIMITER}customer_id")))
-    assert(result.contains(s"my_postgres${FOREIGN_KEY_DELIMITER}public.account${FOREIGN_KEY_DELIMITER}account_id" ->
-      List(s"my_postgres${FOREIGN_KEY_DELIMITER}public.orders${FOREIGN_KEY_DELIMITER}customer_id")))
+    assert(result.contains((s"my_csv${FOREIGN_KEY_DELIMITER}public.accounts${FOREIGN_KEY_DELIMITER}id",
+      List(s"my_postgres${FOREIGN_KEY_DELIMITER}public.accounts${FOREIGN_KEY_DELIMITER}account_id"), List())))
+    assert(result.contains((s"my_json${FOREIGN_KEY_DELIMITER}json_step${FOREIGN_KEY_DELIMITER}id",
+      List(s"my_postgres${FOREIGN_KEY_DELIMITER}public.orders${FOREIGN_KEY_DELIMITER}customer_id"), List())))
+    assert(result.contains((s"my_postgres${FOREIGN_KEY_DELIMITER}public.account${FOREIGN_KEY_DELIMITER}account_id",
+      List(s"my_postgres${FOREIGN_KEY_DELIMITER}public.orders${FOREIGN_KEY_DELIMITER}customer_id"), List())))
   }
 
   test("Can link foreign keys with nested column names") {

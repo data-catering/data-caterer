@@ -26,7 +26,10 @@ object RecordCountUtil {
     tasks.flatMap(task =>
       task.steps
         .map(step => {
-          val stepRecords = generationConfig.numRecordsPerStep.map(r => step.count.copy(records = Some(r)).numRecords).getOrElse(step.count.numRecords)
+          val stepRecords = if (generationConfig.numRecordsPerStep.isDefined) {
+            val numRecordsPerStep = generationConfig.numRecordsPerStep.asInstanceOf[Option[String]].get.toLong
+            step.count.copy(records = Some(numRecordsPerStep)).numRecords
+          } else step.count.numRecords
           val averagePerCol = step.count.perColumn.map(_.averageCountPerColumn).getOrElse(1L)
           (
             s"${task.name}_${step.name}",
@@ -41,13 +44,14 @@ object RecordCountUtil {
     val baseStepCounts = tasks.flatMap(task => {
       task.steps.map(step => {
         val stepName = s"${task.name}_${step.name}"
-        val stepCount = generationConfig.numRecordsPerStep
-          .map(c => {
-            LOGGER.debug(s"Step count total is defined in generation config, overriding count total defined in step, " +
-              s"task-name=${task.name}, step-name=${step.name}, records-per-step=$c")
-            step.count.copy(records = Some(c))
-          })
-          .getOrElse(step.count)
+        val stepCount = if (generationConfig.numRecordsPerStep.isDefined) {
+          val numRecordsPerStep = generationConfig.numRecordsPerStep.asInstanceOf[Option[String]].get
+          LOGGER.debug(s"Step count total is defined in generation config, overriding count total defined in step, " +
+            s"task-name=${task.name}, step-name=${step.name}, records-per-step=$numRecordsPerStep")
+          step.count.copy(records = Some(numRecordsPerStep.toLong))
+        } else {
+          step.count
+        }
         (stepName, stepCount.numRecords)
       })
     })

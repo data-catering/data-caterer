@@ -6,7 +6,11 @@ import io.github.datacatering.datacaterer.core.util.ResultWriterUtil.getSuccessS
 
 import java.time.{Duration, LocalDateTime}
 
-case class PlanRunResults(generationResults: List[DataSourceResult], validationResults: List[ValidationConfigResult], optReportPath: Option[String] = None) {
+case class PlanRunResults(
+                           generationResults: List[DataSourceResult] = List(),
+                           validationResults: List[ValidationConfigResult] = List(),
+                           optReportPath: Option[String] = None
+                         ) {
 
   def summariseGenerationResults: (List[List[String]], Long) = {
     val timeTaken = generationResults.map(_.sinkResult.durationInSeconds).max

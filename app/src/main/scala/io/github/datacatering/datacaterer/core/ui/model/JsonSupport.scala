@@ -21,6 +21,7 @@ trait JsonSupport extends SprayJsonSupport with DefaultJsonProtocol {
       case JsString(s) => s
       case JsTrue => true
       case JsFalse => false
+      case x => x.toString()
     }
   }
 

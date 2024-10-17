@@ -1,6 +1,5 @@
 package io.github.datacatering.datacaterer.core.ui.plan
 
-import io.github.datacatering.datacaterer.core.ui.config.UiConfiguration.INSTALL_DIRECTORY
 import io.github.datacatering.datacaterer.core.ui.model.{JsonSupport, PlanRunRequest, SaveConnectionsRequest}
 import org.apache.log4j.Logger
 import org.apache.pekko.actor.typed.scaladsl.AskPattern.{Askable, schedulerFromActorSystem}
@@ -70,10 +69,12 @@ class PlanRoutes(
     },
     pathPrefix("run") {
       concat(
-        post {
-          entity(as[PlanRunRequest]) { runInfo =>
-            planRepository ! PlanRepository.RunPlan(runInfo, planResponseHandler)
-            complete("Plan started")
+        path("delete-data") {
+          post {
+            entity(as[PlanRunRequest]) { runInfo =>
+              planRepository ! PlanRepository.RunPlanDeleteData(runInfo, planResponseHandler)
+              complete("Plan delete data started")
+            }
           }
         },
         path("history") {
@@ -88,6 +89,12 @@ class PlanRoutes(
           val planStatus = planRepository.ask(x => PlanRepository.GetPlanRunStatus(id, x))
           rejectEmptyResponse {
             complete(planStatus)
+          }
+        },
+        post {
+          entity(as[PlanRunRequest]) { runInfo =>
+            planRepository ! PlanRepository.RunPlan(runInfo, planResponseHandler)
+            complete("Plan started")
           }
         }
       )
@@ -156,7 +163,7 @@ class PlanRoutes(
     },
     pathPrefix("report" / """^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$""".r / Remaining) { (runId, resource) =>
       get {
-        getFromFile(s"$INSTALL_DIRECTORY/report/$runId/$resource")
+        getFromFile(s"/tmp/data-caterer/report/$runId/$resource")
       }
     },
     path("shutdown") {

@@ -6,27 +6,29 @@ import io.github.datacatering.datacaterer.api.model.{DataSourceValidation, Expre
 import io.github.datacatering.datacaterer.core.model.{DataSourceValidationResult, ValidationConfigResult, ValidationResult}
 import io.github.datacatering.datacaterer.core.parser.PlanParser
 import io.github.datacatering.datacaterer.core.validator.ValidationHelper.getValidationType
-import io.github.datacatering.datacaterer.core.validator.ValidationWaitImplicits._
+import io.github.datacatering.datacaterer.core.validator.ValidationWaitImplicits.ValidationWaitConditionOps
 import org.apache.log4j.Logger
 import org.apache.spark.sql.{DataFrame, SparkSession}
 
+import java.io.File
 import java.time.LocalDateTime
+import scala.reflect.io.Directory
 import scala.util.{Failure, Success, Try}
 
-/**
- * Given a list of validations, check and report on the success and failure of each
- * Flag to enable
- * Validations can occur on any data source defined in application config
- * Validations will only occur on datasets not on the response from the data source (i.e. no HTTP status code validations)
- * Defined at plan level what validations are run post data generation
- * Validations lie within separate files
- * Validations have a wait condition. Wait for: webhook, pause, file exists, data exists
- * Different types of validations:
- * - simple column validations (amount < 100)
- * - aggregates (sum of amount per account is > 500)
- * - ordering (transactions are ordered by date)
- * - relationship (one account entry in history table per account in accounts table)
- * - data profile (how close the generated data profile is compared to the expected data profile)
+/*
+Given a list of validations, check and report on the success and failure of each
+Flag to enable
+Validations can occur on any data source defined in application config
+Validations will only occur on datasets not on the response from the data source (i.e. no HTTP status code validations)
+Defined at plan level what validations are run post data generation
+Validations lie within separate files
+Validations have a wait condition. Wait for: webhook, pause, file exists, data exists
+Different types of validations:
+- simple column validations (amount < 100)
+- aggregates (sum of amount per account is > 500)
+- ordering (transactions are ordered by date)
+- relationship (one account entry in history table per account in accounts table)
+- data profile (how close the generated data profile is compared to the expected data profile)
  */
 class ValidationProcessor(
                            connectionConfigsByName: Map[String, Map[String, String]],
@@ -83,6 +85,7 @@ class ValidationProcessor(
           df.unpersist()
           LOGGER.debug(s"Finished data validations, name=${vc.name}," +
             s"data-source-name=$dataSourceName, details=${dataSourceValidation.options}, num-validations=${dataSourceValidation.validations.size}")
+          cleanRecordTrackingFiles()
           DataSourceValidationResult(dataSourceName, dataSourceValidation.options, results)
         }
       }
@@ -108,13 +111,21 @@ class ValidationProcessor(
     }
   }
 
+  private def cleanRecordTrackingFiles(): Unit = {
+    if (validationConfig.enableDeleteRecordTrackingFiles) {
+      LOGGER.debug(s"Deleting all record tracking files from directory, " +
+        s"record-tracking-for-validation-directory=${foldersConfig.recordTrackingForValidationFolderPath}")
+      new Directory(new File(foldersConfig.recordTrackingForValidationFolderPath)).deleteRecursively()
+    }
+  }
+
   private def getValidations: Array[ValidationConfiguration] = {
     optValidationConfigs.map(_.toArray)
       .getOrElse(PlanParser.parseValidations(foldersConfig.validationFolderPath, connectionConfigsByName).toArray)
   }
 
   private def getDataFrame(dataSourceName: String, options: Map[String, String]): DataFrame = {
-    val connectionConfig = connectionConfigsByName.getOrElse(dataSourceName, Map()) ++ options
+    val connectionConfig = connectionConfigsByName(dataSourceName) ++ options
     val format = connectionConfig(FORMAT)
     val configWithFormatConfigs = getAdditionalSparkConfig(format, connectionConfig)
 
@@ -157,10 +168,10 @@ class ValidationProcessor(
           s"data-source-options=${dsr.options}, num-validations=${dsr.validationResults.size}, num-failed=${failedValidations.size}, is-success=false")
         failedValidations.foreach(validationRes => {
           val (validationType, validationCheck) = validationRes.validation match {
-            case ExpressionValidation(expr, selectExpr) => ("expression", expr)
+            case ExpressionValidation(expr, _) => ("expression", expr)
             case GroupByValidation(_, _, _, expr) => ("groupByAggregate", expr)
             //TODO get validationCheck from validationBuilder -> make this a recursive method to get validationCheck
-            case UpstreamDataSourceValidation(validationBuilder, upstreamDataSource, _, _, _) => ("upstreamDataSource", "")
+            case UpstreamDataSourceValidation(_, upstreamDataSource, _, _, _) => ("upstreamDataSource", upstreamDataSource.connectionConfigWithTaskBuilder.dataSourceName)
             case _ => ("Unknown", "")
           }
           val sampleErrors = validationRes.sampleErrorValues.get.take(validationConfig.numSampleErrorRecords).map(_.json).mkString(",")

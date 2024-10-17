@@ -48,47 +48,56 @@ configurations {
 }
 
 dependencies {
+    basicImpl(project(":api"))
     basicImpl("org.scala-lang:scala-library:$scalaSpecificVersion")
     basicImpl("org.apache.spark:spark-sql_$scalaVersion:$sparkVersion") {
         exclude(group = "com.google.protobuf")
-        exclude(module = "netty-codec-http")
-        exclude(module = "netty-codec-http2")
-        exclude(module = "woodstox-core")
-        exclude(module = "nimbus-jose-jwt")
-        exclude(module = "commons-net")
-        exclude(module = "netty-handler")
-        exclude(module = "json-smart")
+        exclude(module = "aircompressor")
         exclude(module = "avro")
         exclude(module = "commons-compress")
         exclude(module = "commons-configuration2")
+        exclude(module = "commons-io")
+        exclude(module = "commons-net")
+        exclude(module = "dnsjava")
+        exclude(module = "guava")
+        exclude(module = "ion-java")
+        exclude(module = "ivy")
         exclude(module = "jetty-client")
-        exclude(module = "jetty-io")
         exclude(module = "jetty-http")
+        exclude(module = "jetty-io")
         exclude(module = "jetty-util")
         exclude(module = "jetty-webapp")
         exclude(module = "jetty-xml")
-        exclude(module = "ion-jav")
+        exclude(module = "json-smart")
         exclude(module = "kerb-admin")
+        exclude(module = "netty-codec-http")
+        exclude(module = "netty-codec-http2")
+        exclude(module = "netty-handler")
+        exclude(module = "nimbus-jose-jwt")
+        exclude(module = "protobuf-java")
+        exclude(module = "snappy-java")
         exclude(module = "wildfly-openssl")
         exclude(module = "wildfly-openssl-java")
+        exclude(module = "woodstox-core")
         exclude(module = "xnio-api")
-        exclude(module = "aircompressor")
         exclude(module = "zookeeper")
-        exclude(module = "guava")
     }
-    basicImpl(project(":api"))
 
     // vulnerabilities in Spark
-    basicImpl("com.google.protobuf:protobuf-java:3.25.3")
+    basicImpl("com.google.protobuf:protobuf-java:3.25.5")
     basicImpl("io.netty:netty-codec-http:4.1.110.Final")
     basicImpl("io.netty:netty-codec-http2:4.1.110.Final")
-    basicImpl("com.fasterxml.woodstox:woodstox-core:6.6.2")
-    basicImpl("com.nimbusds:nimbus-jose-jwt:9.39.3")
-    basicImpl("commons-net:commons-net:3.11.0")
-    basicImpl("io.netty:netty-handler:4.1.110.Final")
-    basicImpl("net.minidev:json-smart:2.5.1")
-    basicImpl("org.apache.avro:avro:1.11.3")
-    basicImpl("org.apache.commons:commons-compress:1.26.2")
+    basicImpl("io.netty:netty-tcnative-boringssl-static:2.0.65.Final:windows-x86_64")
+    basicImpl("io.netty:netty-tcnative-boringssl-static:2.0.65.Final:osx-x86_64")
+    basicImpl("io.netty:netty-tcnative-boringssl-static:2.0.65.Final:linux-x86_64")
+    basicImpl("com.fasterxml.woodstox:woodstox-core:5.4.0")
+    basicImpl("com.nimbusds:nimbus-jose-jwt:9.37.2")
+    basicImpl("commons-io:commons-io:2.17.0")
+    basicImpl("commons-net:commons-net:3.9.0")
+    basicImpl("io.netty:netty-handler:4.1.109.Final")
+    basicImpl("net.minidev:json-smart:2.4.9")
+    basicImpl("org.apache.avro:avro:1.11.4")
+    basicImpl("org.apache.commons:commons-compress:1.26.0")
     basicImpl("org.apache.commons:commons-configuration2:2.10.1")
     basicImpl("org.codehaus.jettison:jettison:1.5.4")
     basicImpl("org.eclipse.jetty:jetty-client:9.4.54.v20240208")
@@ -103,13 +112,27 @@ dependencies {
     basicImpl("org.jboss.xnio:xnio-api:3.8.15.Final")
     basicImpl("io.airlift:aircompressor:0.27")
     basicImpl("org.apache.zookeeper:zookeeper:3.9.2")
+    basicImpl("dnsjava:dnsjava:3.6.2")
+    basicImpl("com.amazon.ion:ion-java:1.11.8")
+    basicImpl("org.apache.ivy:ivy:2.5.2")
+    basicImpl("org.xerial.snappy:snappy-java:1.1.10.4")
     //basicImpl("software.amazon.ion:ion-java:1.5.1") //should use: basicImpl("com.amazon.ion:ion-java:1.11.8")
+
+    // additional spark
+    basicImpl("org.apache.spark:spark-avro_$scalaVersion:$sparkVersion") {
+        exclude(group = "org.scala-lang")
+        exclude(group = "com.google.protobuf")
+    }
+    basicImpl("org.apache.spark:spark-protobuf_$scalaVersion:$sparkVersion") {
+        exclude(group = "org.scala-lang")
+        exclude(group = "com.google.protobuf")
+    }
 
     // connectors
     // postgres
     basicImpl("org.postgresql:postgresql:42.7.3")
     // mysql
-    basicImpl("mysql:mysql-connector-java:8.0.33")
+    basicImpl("com.mysql:mysql-connector-j:9.0.0")
     // cassandra
     basicImpl("com.datastax.spark:spark-cassandra-connector_$scalaVersion:3.5.0") {
         exclude(group = "org.scala-lang")
@@ -117,11 +140,8 @@ dependencies {
     // cloud file storage
     basicImpl("org.apache.spark:spark-hadoop-cloud_$scalaVersion:$sparkVersion") {
         exclude(group = "org.scala-lang")
+        exclude(module = "jackson-mapper-asl")
     }
-    // hudi - currently only supports spark 3.4.x
-//    basicImpl("org.apache.hudi:hudi-spark3.4-bundle_$scalaVersion:0.14.1") {
-//        exclude(group = "org.scala-lang")
-//    }
     // iceberg
     basicImpl("org.apache.iceberg:iceberg-spark-runtime-${sparkMajorVersion}_$scalaVersion:1.5.2") {
         exclude(group = "org.scala-lang")
@@ -129,6 +149,24 @@ dependencies {
     // delta lake
     basicImpl("io.delta:delta-spark_$scalaVersion:3.2.0") {
         exclude(group = "org.scala-lang")
+    }
+
+    // http
+    basicImpl("org.asynchttpclient:async-http-client:2.12.3")
+    basicImpl("io.swagger.parser.v3:swagger-parser-v3:2.1.16")
+    // kafka
+    basicImpl("org.apache.spark:spark-sql-kafka-0-10_$scalaVersion:$sparkVersion") {
+        exclude(group = "org.scala-lang")
+    }
+    // jms
+    //TODO implementation("jakarta.jms:jakarta.jms-api:3.1.0") jms 3.x
+    basicImpl("javax.jms:javax.jms-api:2.0.1")
+    basicImpl("com.solacesystems:sol-jms:10.21.0")
+    // metadata
+    basicImpl("org.open-metadata:openmetadata-java-client:1.1.7") {  //1.2.0 has component reliant on java 17
+        exclude(group = "org.antlr")
+        exclude(module = "logback-core")
+        exclude(module = "logback-classic")
     }
 
     // data generation helpers
@@ -148,18 +186,22 @@ dependencies {
     basicImpl("com.globalmentor:hadoop-bare-naked-local-fs:0.1.0")
 
     // misc
-    basicImpl("joda-time:joda-time:2.12.7")
+    basicImpl("joda-time:joda-time:2.12.5")
     basicImpl("com.google.guava:guava:33.2.1-jre")
-    basicImpl("org.asynchttpclient:async-http-client:2.12.3")
-    basicImpl("com.github.pureconfig:pureconfig_$scalaVersion:0.17.6") {
+    basicImpl("com.github.pureconfig:pureconfig_$scalaVersion:0.17.2") {
         exclude(group = "org.scala-lang")
     }
-    basicImpl("com.fasterxml.jackson.core:jackson-databind:2.15.3") //new versions contain transitive deps that use java 21, shadowJar fails
+    basicImpl("com.fasterxml.jackson.core:jackson-databind:2.15.3") {
+        version {
+            strictly("2.15.3")
+        }
+    }
     basicImpl("com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.15.3")
     basicImpl("com.fasterxml.jackson.module:jackson-module-scala_$scalaVersion:2.15.3") {
         exclude(group = "org.scala-lang")
     }
     basicImpl("com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.15.3")
+    //NoClassDefFoundError: shaded/parquet/com/fasterxml/jackson/databind/ObjectMapper
     basicImpl("org.apache.parquet:parquet-jackson:1.13.1")  //new versions contain transitive deps that use java 21, shadowJar fails
     basicImpl("org.scala-lang.modules:scala-xml_$scalaVersion:2.2.0") {
         exclude(group = "org.scala-lang")

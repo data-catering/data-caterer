@@ -13,7 +13,6 @@ trait SparkSuite extends AnyFunSuite with BeforeAndAfterAll with BeforeAndAfterE
       .config("spark.sql.legacy.allowUntypedScalaUDF", "true")
       .config("spark.sql.shuffle.partitions", "2")
       .config("spark.ui.enabled", "false")
-      //      .config("spark.serializer", "org.apache.spark.serializer.KryoSerializer") //used for hudi
       .config("spark.sql.extensions", "org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions,io.delta.sql.DeltaSparkSessionExtension")
       .getOrCreate()
   }

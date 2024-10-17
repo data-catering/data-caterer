@@ -3,7 +3,7 @@ package io.github.datacatering.datacaterer.core.util
 import org.apache.hadoop.fs.{FileSystem, Path}
 import org.apache.spark.sql.SparkSession
 
-import java.io.File
+import java.io.{File, FileNotFoundException}
 import java.nio.charset.StandardCharsets
 import scala.util.matching.Regex
 import scala.util.{Success, Try}
@@ -22,7 +22,7 @@ object FileUtil {
       case (true, _, _) => directFile
       case (_, Success(true), _) => classFile.get
       case (_, _, Success(true)) => classLoaderFile.get
-      case _ => throw new RuntimeException(s"Failed for find file, path=$filePath")
+      case _ => throw new FileNotFoundException(s"Failed for find file, path=$filePath")
     }
   }
 
@@ -32,7 +32,7 @@ object FileUtil {
       case (true, _, _) => directFile
       case (_, Success(true), _) => classFile.get
       case (_, _, Success(true)) => classLoaderFile.get
-      case _ => throw new RuntimeException(s"Failed for find directory, path=$folderPath")
+      case _ => throw new FileNotFoundException(s"Failed for find directory, path=$folderPath")
     }
   }
 

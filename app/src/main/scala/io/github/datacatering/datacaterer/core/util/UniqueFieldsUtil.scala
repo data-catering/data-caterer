@@ -20,7 +20,6 @@ class UniqueFieldsUtil(plan: Plan, executableTasks: List[(TaskSummary, Task)])(i
     if (!finalDf.storageLevel.useMemory) finalDf.cache()
 
     //drop duplicate records for data via dropDuplicates and then anti join with previously generated values
-    //need to take into account step with perColumn count defined
     existingFieldValues.foreach(previouslyGenerated => {
       val columns = previouslyGenerated._1.columns
       LOGGER.debug(s"Only keeping unique values for generated data for columns, " +
@@ -100,10 +99,8 @@ class UniqueFieldsUtil(plan: Plan, executableTasks: List[(TaskSummary, Task)])(i
           val uniqueKeys = step.gatherUniqueFields
           val uniqueKeyUf = if (uniqueKeys.nonEmpty) uniqueKeys.map(u => UniqueFields(t._1.dataSourceName, step.name, List(u))) else List()
           val allKeys = primaryKeyUf ++ uniqueKeyUf
-          if (allKeys.nonEmpty) {
-            LOGGER.debug(s"Found unique fields that require unique values, " +
-              s"data-source-name=${t._1.dataSourceName}, step-name=${step.name}, columns=${allKeys.map(_.columns).mkString(",")}")
-          }
+          LOGGER.debug(s"Found unique fields that require unique values, " +
+            s"data-source-name=${t._1.dataSourceName}, step-name=${step.name}, columns=${allKeys.map(_.columns).mkString(",")}")
           allKeys
         })
     })

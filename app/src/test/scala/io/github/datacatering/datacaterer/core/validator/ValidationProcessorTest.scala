@@ -9,7 +9,6 @@ import org.junit.runner.RunWith
 import org.scalatestplus.junit.JUnitRunner
 
 import java.io.File
-import java.nio.file.{Files, Paths}
 import java.sql.Date
 import scala.reflect.io.Directory
 
@@ -107,3 +106,5 @@ class ValidationProcessorTest extends SparkSuite {
     assertResult(4)(resultValidation.total)
   }
 }
+
+
