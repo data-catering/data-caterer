@@ -81,7 +81,7 @@ class DeleteRecordProcessor(connectionConfigsByName: Map[String, Map[String, Str
     })
   }
 
-  def deleteRecords(dataSourceName: String, plan: Plan, step: Step, stepsByName: Map[String, Step] = Map(),
+  private def deleteRecords(dataSourceName: String, plan: Plan, step: Step, stepsByName: Map[String, Step] = Map(),
                     optSourceForeignKey: Option[String] = None, optFullForeignKey: Option[(ForeignKeyRelation, String)] = None): Unit = {
     val format = step.options(FORMAT)
     val subDataSourcePath = getSubDataSourcePath(dataSourceName, plan.name, step, recordTrackingFolderPath)
@@ -147,13 +147,13 @@ class DeleteRecordProcessor(connectionConfigsByName: Map[String, Map[String, Str
     }
   }
 
-  def getTrackedRecords(dataSourcePath: String): DataFrame = {
+  private def getTrackedRecords(dataSourcePath: String): DataFrame = {
     sparkSession.read.format(RECORD_TRACKING_VALIDATION_FORMAT)
       .option(PATH, dataSourcePath)
       .load()
   }
 
-  def deleteTrackedRecordsFile(dataSourcePath: String): Unit = {
+  private def deleteTrackedRecordsFile(dataSourcePath: String): Unit = {
     new Directory(new File(dataSourcePath)).deleteRecursively()
   }
 

@@ -9,6 +9,7 @@ import org.junit.runner.RunWith
 import org.scalatestplus.junit.JUnitRunner
 
 import java.sql.{Date, Timestamp}
+import java.time.LocalDate
 
 @RunWith(classOf[JUnitRunner])
 class PlanProcessorTest extends SparkSuite {
@@ -112,10 +113,22 @@ class PlanProcessorTest extends SparkSuite {
   }
 
   ignore("Can run Postgres plan run") {
-    PlanProcessor.determineAndExecutePlan(Some(new AdvancedMySqlPlanRun))
+    PlanProcessor.determineAndExecutePlan(Some(new TestPostgres))
   }
 
   class TestPostgres extends PlanRun {
+    val accountTask = postgres("customer_postgres", "jdbc:postgresql://localhost:5432/customer")
+      .table("account", "accounts")
+      .schema(
+        field.name("account_number").regex("[0-9]{10}").unique(true),
+        field.name("customer_id_int").`type`(IntegerType).min(1).max(1000),
+        field.name("created_by").expression("#{Name.name}"),
+        field.name("created_by_fixed_length").sql("CASE WHEN account_status IN ('open', 'closed') THEN 'eod' ELSE 'event' END"),
+        field.name("open_timestamp").`type`(TimestampType).min(Date.valueOf(LocalDate.now())),
+        field.name("account_status").oneOf("open", "closed", "suspended", "pending")
+      )
+      .count(count.records(100))
+
     val jsonTask = json("my_json", "/tmp/data/json", Map("saveMode" -> "overwrite"))
       .schema(
         field.name("account_id").regex("ACC[0-9]{8}"),
@@ -142,7 +155,7 @@ class PlanProcessorTest extends SparkSuite {
       .generatedReportsFolderPath("/tmp/report")
       .enableSinkMetadata(true)
 
-    execute(conf, jsonTask, csvTask)
+    execute(conf, accountTask)
   }
 
   class TestCsvPostgres extends PlanRun {
