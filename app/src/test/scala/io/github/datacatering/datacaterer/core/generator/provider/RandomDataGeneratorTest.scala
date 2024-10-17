@@ -54,7 +54,7 @@ class RandomDataGeneratorTest extends AnyFunSuite {
     assert(booleanGenerator.isInstanceOf[RandomBooleanDataGenerator])
     assert(binaryGenerator.isInstanceOf[RandomBinaryDataGenerator])
     assert(byteGenerator.isInstanceOf[RandomByteDataGenerator])
-    assert(listGenerator.isInstanceOf[RandomArrayDataGenerator[String]])
+    assert(listGenerator.isInstanceOf[RandomArrayDataGenerator[_]])
   }
 
   test("Can create random string generator") {

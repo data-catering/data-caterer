@@ -61,7 +61,7 @@ object ConnectionRepository extends JsonSupport {
   def getConnection(name: String, masking: Boolean = true): Connection = {
     LOGGER.debug(s"Getting connection details, connection-name=$name")
     val connectionFile = Path.of(s"$connectionSaveFolder/$name.csv")
-    val connection = Connection.fromString(Files.readString(connectionFile), masking)
+    val connection = Connection.fromString(Files.readString(connectionFile), name, masking)
     connection.copy(options = connection.options)
   }
 
@@ -73,7 +73,7 @@ object ConnectionRepository extends JsonSupport {
       .iterator()
       .asScala
       .map(file => {
-        val tryParse = Try(Connection.fromString(Files.readString(file), masking))
+        val tryParse = Try(Connection.fromString(Files.readString(file), file.toFile.getName, masking))
         if (tryParse.isFailure) {
           LOGGER.error(s"Failed to parse connection details from file, file=$file, error=${tryParse.failed.get.getMessage}")
         }

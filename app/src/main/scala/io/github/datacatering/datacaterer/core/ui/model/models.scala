@@ -1,6 +1,7 @@
 package io.github.datacatering.datacaterer.core.ui.model
 
 import io.github.datacatering.datacaterer.api.model.Constants.{PLAN_RUN_EXECUTION_DELIMITER, PLAN_RUN_EXECUTION_DELIMITER_REGEX, PLAN_RUN_SUMMARY_DELIMITER}
+import io.github.datacatering.datacaterer.core.exception.InvalidConnectionException
 import io.github.datacatering.datacaterer.core.model.Constants.{CONNECTION_GROUP_DATA_SOURCE, CONNECTION_GROUP_TYPE_MAP, TIMESTAMP_DATE_TIME_FORMATTER, TIMESTAMP_FORMAT}
 import org.joda.time.DateTime
 
@@ -133,8 +134,8 @@ case class Connection(name: String, `type`: String, groupType: Option[String], o
 }
 
 object Connection {
-  def fromString(str: String, masking: Boolean = true): Connection = {
-    val spt = str.split(PLAN_RUN_EXECUTION_DELIMITER_REGEX)
+  def fromString(connectionDefinition: String, connectionName: String, masking: Boolean = true): Connection = {
+    val spt = connectionDefinition.split(PLAN_RUN_EXECUTION_DELIMITER_REGEX)
     if (spt.length > 2) {
       val optionSplitIndex = if (spt(2).contains(":")) 2 else 3
       val options = spt.slice(optionSplitIndex, spt.length).map(o => {
@@ -148,7 +149,7 @@ object Connection {
       } else spt(2)
       Connection(spt.head, spt(1), Some(groupType), options)
     } else {
-      throw new RuntimeException("File content does not contain connection details")
+      throw InvalidConnectionException(connectionName)
     }
   }
 }

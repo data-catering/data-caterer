@@ -6,6 +6,7 @@ import io.github.datacatering.datacaterer.core.exception.InvalidStepCountGenerat
 import io.github.datacatering.datacaterer.core.generator.provider.DataGenerator
 import io.github.datacatering.datacaterer.core.generator.provider.OneOfDataGenerator.RandomOneOfDataGenerator
 import io.github.datacatering.datacaterer.core.model.Constants._
+import io.github.datacatering.datacaterer.core.sink.SinkProcessor
 import io.github.datacatering.datacaterer.core.util.GeneratorUtil.{applySqlExpressions, getDataGenerator}
 import io.github.datacatering.datacaterer.core.util.ObjectMapperUtil
 import io.github.datacatering.datacaterer.core.util.PlanImplicits.FieldOps
@@ -16,7 +17,7 @@ import org.apache.spark.sql.functions._
 import org.apache.spark.sql.types._
 import org.apache.spark.sql.{DataFrame, Row, SparkSession}
 
-import scala.util.Random
+import scala.util.{Failure, Random, Success, Try}
 
 
 case class Holder(__index_inc: Long)
@@ -28,7 +29,6 @@ class DataGeneratorFactory(faker: Faker)(implicit val sparkSession: SparkSession
   registerSparkFunctions()
 
   def generateDataForStep(step: Step, dataSourceName: String, startIndex: Long, endIndex: Long): DataFrame = {
-    //need to have separate code for generating all possible combinations
     val structFieldsWithDataGenerators = step.schema.fields.map(getStructWithGenerators).getOrElse(List())
     val indexedDf = sparkSession.createDataFrame(Seq.range(startIndex, endIndex).map(Holder))
     generateDataViaSql(structFieldsWithDataGenerators, step, indexedDf)
@@ -36,6 +36,9 @@ class DataGeneratorFactory(faker: Faker)(implicit val sparkSession: SparkSession
   }
 
   private def generateDataViaSql(dataGenerators: List[DataGenerator[_]], step: Step, indexedDf: DataFrame): DataFrame = {
+    val structType = StructType(dataGenerators.map(_.structField))
+    SinkProcessor.validateSchema(step.`type`, structType)
+
     val allRecordsDf = if (step.options.contains(ALL_COMBINATIONS) && step.options(ALL_COMBINATIONS).equalsIgnoreCase("true")) {
       generateCombinationRecords(dataGenerators, indexedDf)
     } else {
@@ -48,7 +51,6 @@ class DataGeneratorFactory(faker: Faker)(implicit val sparkSession: SparkSession
     }
 
     if (!allRecordsDf.storageLevel.useMemory) allRecordsDf.cache()
-    val structType = StructType(dataGenerators.map(_.structField))
     val dfWithMetadata = attachMetadata(allRecordsDf, structType)
     val dfAllFields = attachMetadata(applySqlExpressions(dfWithMetadata), structType)
     if (!dfAllFields.storageLevel.useMemory) dfAllFields.cache()
@@ -67,7 +69,7 @@ class DataGeneratorFactory(faker: Faker)(implicit val sparkSession: SparkSession
     } else if (count.records.isDefined) {
       (1L to count.records.get.asInstanceOf[Number].longValue()).map(_ => Row.fromSeq(dataGenerators.map(_.generateWrapper())))
     } else {
-      throw new InvalidStepCountGeneratorConfigurationException(step)
+      throw InvalidStepCountGeneratorConfigurationException(step)
     }
 
     val rddGeneratedData = sparkSession.sparkContext.parallelize(generatedData)
@@ -100,7 +102,7 @@ class DataGeneratorFactory(faker: Faker)(implicit val sparkSession: SparkSession
       val numList = generateDataWithSchema(perColumnCount.count.get, fieldsToBeGenerated)
       df.withColumn(PER_COLUMN_COUNT, numList())
     } else {
-      throw new InvalidStepCountGeneratorConfigurationException(step)
+      throw InvalidStepCountGeneratorConfigurationException(step)
     }
 
     val explodeCount = perColumnRange.withColumn(PER_COLUMN_INDEX_COL, explode(col(PER_COLUMN_COUNT)))

@@ -472,7 +472,13 @@ validationTypeOptionsMap.set("upstream", {
         help: "Name of upstream data generation task."
     },
     addBlock: {type: "validation"},
-    joinColumns: {displayName: "Join Field(s)", default: "", type: "text", help: "Field name(s) to join by.", required: ""},
+    joinColumns: {
+        displayName: "Join Field(s)",
+        default: "",
+        type: "text",
+        help: "Field name(s) to join by.",
+        required: ""
+    },
     joinType: {
         displayName: "Join Type",
         default: "outer",
@@ -480,11 +486,23 @@ validationTypeOptionsMap.set("upstream", {
         choice: ["inner", "outer", "left_outer", "right_outer", "left_semi", "anti", "cross"],
         help: "Type of join."
     },
-    joinExpr: {displayName: "Join Expression", default: "", type: "text", help: "Custom join SQL expression.", required: ""}
+    joinExpr: {
+        displayName: "Join Expression",
+        default: "",
+        type: "text",
+        help: "Custom join SQL expression.",
+        required: ""
+    }
 });
 validationTypeOptionsMap.set("columnNames", {
     ...defaultValidationOptions,
-    countEqual: {displayName: "Count Equal", default: 0, type: "number", help: "Number of fields has to equal value.", required: ""},
+    countEqual: {
+        displayName: "Count Equal",
+        default: 0,
+        type: "number",
+        help: "Number of fields has to equal value.",
+        required: ""
+    },
     countBetween: {
         displayName: "Count Between",
         default: 0,
@@ -587,7 +605,7 @@ configurationOptionsMap.set("flag", {
     "enableRecordTracking": {
         configName: "enableRecordTracking",
         displayName: "Record Tracking",
-        default: "false",
+        default: "true",
         type: "text",
         choice: ["true", "false"],
         paid: "true",
@@ -832,14 +850,14 @@ dataSourcePropertiesMap.set("cassandra", {
             default: "",
             type: "text",
             help: "Keyspace to generate/validate data to/from.",
-            override: "true"
+            override: "true",
         },
         table: {
             displayName: "Table",
             default: "",
             type: "text",
             help: "Table to generate/validate data to/from.",
-            override: "true"
+            override: "true",
         }
     }
 });
@@ -900,7 +918,6 @@ dataSourcePropertiesMap.set("delta", {
 dataSourcePropertiesMap.set("http", {
     optGroupLabel: "Data Source",
     Name: "HTTP",
-    disabled: "",
     properties: {
         user: {
             displayName: "Username",
@@ -993,7 +1010,6 @@ dataSourcePropertiesMap.set("json", {
 dataSourcePropertiesMap.set("kafka", {
     optGroupLabel: "Data Source",
     Name: "Kafka",
-    disabled: "",
     properties: {
         url: {
             displayName: "URL",
@@ -1008,7 +1024,7 @@ dataSourcePropertiesMap.set("kafka", {
             type: "text",
             help: "Topic to generate/validate data to/from.",
             required: "",
-            override: "true"
+            override: "true",
         },
     }
 });
@@ -1042,14 +1058,14 @@ dataSourcePropertiesMap.set("mysql", {
             default: "",
             type: "text",
             help: "Schema to generate/validate data to/from.",
-            override: "true"
+            override: "true",
         },
         table: {
             displayName: "Table",
             default: "",
             type: "text",
             help: "Table to generate/validate data to/from.",
-            override: "true"
+            override: "true",
         }
     }
 });
@@ -1137,21 +1153,20 @@ dataSourcePropertiesMap.set("postgres", {
             default: "",
             type: "text",
             help: "Schema to generate/validate data to/from.",
-            override: "true"
+            override: "true",
         },
         table: {
             displayName: "Table",
             default: "",
             type: "text",
             help: "Table to generate/validate data to/from.",
-            override: "true"
+            override: "true",
         }
     }
 });
 dataSourcePropertiesMap.set("solace", {
     optGroupLabel: "Data Source",
     Name: "Solace",
-    disabled: "",
     properties: {
         url: {
             displayName: "URL",
@@ -1166,7 +1181,7 @@ dataSourcePropertiesMap.set("solace", {
             type: "text",
             help: "JNDI destination to generate/validate data to/from.",
             required: "",
-            override: "true"
+            override: "true",
         }
     }
 });
@@ -1175,7 +1190,6 @@ dataSourcePropertiesMap.set("solace", {
 dataSourcePropertiesMap.set("amundsen", {
     optGroupLabel: "Metadata Source",
     Name: "Amundsen",
-    disabled: "",
     properties: {
         url: {
             displayName: "URL",
@@ -1189,7 +1203,6 @@ dataSourcePropertiesMap.set("amundsen", {
 dataSourcePropertiesMap.set("datahub", {
     optGroupLabel: "Metadata Source",
     Name: "Datahub",
-    disabled: "",
     properties: {
         url: {
             displayName: "URL",
@@ -1200,10 +1213,22 @@ dataSourcePropertiesMap.set("datahub", {
         }
     }
 });
+dataSourcePropertiesMap.set("dataContractCli", {
+    optGroupLabel: "Metadata Source",
+    Name: "Data Contract CLI",
+    properties: {
+        path: {
+            displayName: "Contract File",
+            default: "",
+            type: "text",
+            help: "File path to data contract file.",
+            required: ""
+        }
+    }
+});
 dataSourcePropertiesMap.set("greatExpectations", {
     optGroupLabel: "Metadata Source",
     Name: "Great Expectations",
-    disabled: "",
     properties: {
         path: {
             displayName: "Expectations File",
@@ -1217,7 +1242,6 @@ dataSourcePropertiesMap.set("greatExpectations", {
 dataSourcePropertiesMap.set("marquez", {
     optGroupLabel: "Metadata Source",
     Name: "Marquez",
-    disabled: "",
     properties: {
         url: {
             displayName: "URL",
@@ -1245,7 +1269,6 @@ dataSourcePropertiesMap.set("marquez", {
 dataSourcePropertiesMap.set("openApi", {
     optGroupLabel: "Metadata Source",
     Name: "OpenAPI/Swagger",
-    disabled: "",
     properties: {
         schemaLocation: {
             displayName: "Schema Location",
@@ -1259,7 +1282,6 @@ dataSourcePropertiesMap.set("openApi", {
 dataSourcePropertiesMap.set("openDataContractStandard", {
     optGroupLabel: "Metadata Source",
     Name: "Open Data Contract Standard (ODCS)",
-    disabled: "",
     properties: {
         path: {
             displayName: "Contract File",
@@ -1273,7 +1295,6 @@ dataSourcePropertiesMap.set("openDataContractStandard", {
 dataSourcePropertiesMap.set("openMetadata", {
     optGroupLabel: "Metadata Source",
     Name: "Open Metadata",
-    disabled: "",
     properties: {
         url: {
             displayName: "URL",

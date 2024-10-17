@@ -2,9 +2,10 @@ package io.github.datacatering.datacaterer.core.generator
 
 import io.github.datacatering.datacaterer.api.model.Constants.{ALL_COMBINATIONS, MAXIMUM_LENGTH, MINIMUM_LENGTH, ONE_OF_GENERATOR, RANDOM_GENERATOR, REGEX_GENERATOR, SQL_GENERATOR}
 import io.github.datacatering.datacaterer.api.model.{Count, Field, Generator, PerColumnCount, Schema, Step}
-import io.github.datacatering.datacaterer.core.util.SparkSuite
+import io.github.datacatering.datacaterer.core.util.{Account, SparkSuite}
 import net.datafaker.Faker
 import org.apache.spark.sql.types.{DoubleType, IntegerType, StringType}
+import org.apache.spark.sql.{Dataset, Encoder, Encoders}
 import org.junit.runner.RunWith
 import org.scalatestplus.junit.JUnitRunner
 
@@ -124,5 +125,17 @@ class DataGeneratorFactoryTest extends SparkSuite {
     assertResult(2)(df.collect().count(r => r.getString(statusIdx) == "open"))
     assertResult(2)(df.collect().count(r => r.getString(statusIdx) == "closed"))
     assertResult(2)(df.collect().count(r => r.getString(statusIdx) == "suspended"))
+  }
+
+  ignore("Can run spark streaming output at 2 records per second") {
+    implicit val encoder: Encoder[Account] = Encoders.kryo[Account]
+    val df = sparkSession.readStream
+      .format("rate").option("rowsPerSecond", "10").load()
+      .map(_ => Account())
+      .limit(100)
+    val stream = df.writeStream
+      .foreachBatch((batch: Dataset[_], id: Long) => println(s"batch-id=$id, size=${batch.count()}"))
+      .start()
+    stream.awaitTermination(11000)
   }
 }

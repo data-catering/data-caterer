@@ -28,13 +28,13 @@ public class ExampleJavaPlanRun extends PlanRun {
                         field().name("year").type(IntegerType.instance()).sql("YEAR(date)"),
                         field().name("balance").type(DoubleType.instance()).min(10).max(1000),
                         field().name("date").type(DateType.instance()).min(Date.valueOf("2022-01-01")),
-                        field().name("status").oneOf(accountStatus),
+                        field().name("status").oneOf((Object[]) accountStatus),
                         field().name("update_history")
                                 .type(ArrayType.instance())
                                 .schema(
                                         field().name("updated_time").type(TimestampType.instance()).min(Timestamp.valueOf("2022-01-01 00:00:00")),
-                                        field().name("prev_status").oneOf(accountStatus),
-                                        field().name("new_status").oneOf(accountStatus)
+                                        field().name("prev_status").oneOf((Object[]) accountStatus),
+                                        field().name("new_status").oneOf((Object[]) accountStatus)
                                 ),
                         field().name("customer_details")
                                 .schema(
@@ -62,12 +62,7 @@ public class ExampleJavaPlanRun extends PlanRun {
                 .validations(
                         validation().expr("amount > 0").errorThreshold(0.01),
                         validation().expr("LENGTH(name) > 3").errorThreshold(5),
-                        validation().expr("LENGTH(merchant) > 0").description("Non-empty merchant name"),
-                        validation().preFilter(columnPreFilter("account_id").startsWith("ACC")).col("amount").greaterThan(100),
-                        validation().preFilter(
-                                preFilterBuilder(columnPreFilter("account_id").startsWith("ACC"))
-                                        .and(columnPreFilter("merchant").isNotNull())
-                        ).col("name").isNotNull()
+                        validation().expr("LENGTH(merchant) > 0").description("Non-empty merchant name")
                 );
 
         var foreignKeySetup = plan()

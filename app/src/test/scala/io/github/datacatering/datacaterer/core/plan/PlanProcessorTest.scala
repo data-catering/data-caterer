@@ -1,8 +1,9 @@
 package io.github.datacatering.datacaterer.core.plan
 
 import io.github.datacatering.datacaterer.api.PlanRun
-import io.github.datacatering.datacaterer.api.model.Constants.SAVE_MODE
-import io.github.datacatering.datacaterer.api.model.{ArrayType, DateType, DoubleType, IntegerType, TimestampType}
+import io.github.datacatering.datacaterer.api.model.Constants.{OPEN_METADATA_AUTH_TYPE_OPEN_METADATA, OPEN_METADATA_JWT_TOKEN, OPEN_METADATA_TABLE_FQN, PARTITIONS, ROWS_PER_SECOND, SAVE_MODE}
+import io.github.datacatering.datacaterer.api.model.{ArrayType, DateType, DoubleType, HeaderType, IntegerType, TimestampType}
+import io.github.datacatering.datacaterer.core.model.Constants.METADATA_FILTER_OUT_SCHEMA
 import io.github.datacatering.datacaterer.core.util.{ObjectMapperUtil, SparkSuite}
 import org.junit.runner.RunWith
 import org.scalatestplus.junit.JUnitRunner
@@ -62,22 +63,16 @@ class PlanProcessorTest extends SparkSuite {
           validation.expr("amount > 0").errorThreshold(0.01),
           validation.expr("LENGTH(name) > 3").errorThreshold(5),
           validation.expr("LENGTH(merchant) > 0").description("Non-empty merchant name"),
-          validation.preFilter(columnPreFilter("name").isEqual("peter"))
-            .col("amount").greaterThan(50),
-          validation.preFilter(
-            preFilterBuilder(columnPreFilter("name").startsWith("john"))
-              .and(columnPreFilter("amount").greaterThan(10))
-          ).col("account_id").isNotNull,
         )
 
       val foreignKeySetup = plan
         .addForeignKeyRelationship(
           jsonTask, List("account_id", "_join_txn_name"),
-          List((csvTxns, List("account_id", "name")), (csvTxns, List("account_id", "name")))
+          List((csvTxns, List("account_id", "name")))
         )
-        .addForeignKeyRelationship(jsonTask, List("account_id"), List(), List((csvTxns, List("account_id"))))
       val conf = configuration
         .generatedReportsFolderPath(s"$scalaBaseFolder/report")
+        .recordTrackingForValidationFolderPath(s"$scalaBaseFolder/record-tracking-validation")
         .enableValidation(true)
         .enableSinkMetadata(true)
 
@@ -110,17 +105,14 @@ class PlanProcessorTest extends SparkSuite {
     assert(csvData.forall(r => r.getAs[String]("time").substring(0, 10) == r.getAs[String]("date")))
   }
 
-  test("Write YAML for plan") {
+  ignore("Write YAML for plan") {
     val docPlanRun = new TestValidation()
-    val planWrite = ObjectMapperUtil.yamlObjectMapper.writeValueAsString(docPlanRun._plan)
-    val validWrite = ObjectMapperUtil.yamlObjectMapper.writeValueAsString(docPlanRun._validations)
-    println(validWrite)
-//    Files.writeString(Path.of("/tmp/my-plan.yaml"), planWrite)
-//    Files.writeString(Path.of("/tmp/my-validation.yaml"), validWrite)
+    val planWrite = ObjectMapperUtil.yamlObjectMapper.writeValueAsString(docPlanRun._validations)
+    println(planWrite)
   }
 
   ignore("Can run Postgres plan run") {
-    PlanProcessor.determineAndExecutePlan(Some(new TestForeignKeys))
+    PlanProcessor.determineAndExecutePlan(Some(new AdvancedMySqlPlanRun))
   }
 
   class TestPostgres extends PlanRun {
@@ -178,6 +170,81 @@ class PlanProcessorTest extends SparkSuite {
     execute(myPlan, conf, csvTask, postgresTask)
   }
 
+  class TestOpenMetadata extends PlanRun {
+    val jsonTask = json("my_json", "/tmp/data/json", Map("saveMode" -> "overwrite"))
+      .schema(metadataSource.openMetadata("http://localhost:8585/api", OPEN_METADATA_AUTH_TYPE_OPEN_METADATA,
+        Map(
+          OPEN_METADATA_JWT_TOKEN -> "abc123",
+          OPEN_METADATA_TABLE_FQN -> "sample_data.ecommerce_db.shopify.dim_address"
+        )))
+      .schema(field.name("customer").schema(field.name("sex").oneOf("M", "F")))
+      .count(count.records(10))
+
+    val conf = configuration.enableGeneratePlanAndTasks(true)
+      .enableGenerateValidations(true)
+      .generatedReportsFolderPath("/tmp/report")
+
+    execute(conf, jsonTask)
+  }
+
+  class TestOpenAPI extends PlanRun {
+    val httpTask = http("my_http", options = Map(ROWS_PER_SECOND -> "5"))
+      .schema(metadataSource.openApi("/app/src/test/resources/sample/http/openapi/petstore.json"))
+      .count(count.records(10))
+
+    val conf = configuration.enableGeneratePlanAndTasks(true)
+      .generatedReportsFolderPath("/tmp/report")
+
+    val myPlan = plan.addForeignKeyRelationship(
+      foreignField("my_http", "POST/pets", "bodyContent.id"),
+      foreignField("my_http", "GET/pets/{id}", "pathParamid"),
+      foreignField("my_http", "DELETE/pets/{id}", "pathParamid")
+    )
+
+    execute(myPlan, conf, httpTask)
+  }
+
+  class TestSolace extends PlanRun {
+    val solaceTask = solace("my_solace", "smf://localhost:55554")
+      .destination("/JNDI/T/rest_test_topic")
+      .schema(
+        field.name("value").sql("TO_JSON(content)"),
+        field.name("headers") //set message properties via headers field
+          .`type`(HeaderType.getType)
+          .sql(
+            """ARRAY(
+              |  NAMED_STRUCT('key', 'account-id', 'value', TO_BINARY(content.account_id, 'utf-8')),
+              |  NAMED_STRUCT('key', 'name', 'value', TO_BINARY(content.name, 'utf-8'))
+              |)""".stripMargin
+          ),
+        field.name("content").schema(
+          field.name("account_id"),
+          field.name("name").expression("#{Name.name}"),
+          field.name("age").`type`(IntegerType),
+        )
+      )
+      .count(count.records(10))
+
+    execute(solaceTask)
+  }
+
+  class TestHttp extends PlanRun {
+    val httpTask = http("my_http")
+      .schema(metadataSource.openApi("/app/src/test/resources/sample/http/openapi/petstore.json"))
+      .schema(field.name("bodyContent").schema(field.name("id").regex("ID[0-9]{8}")))
+      .count(count.records(20))
+
+    val myPlan = plan.addForeignKeyRelationship(
+      foreignField("my_http", "POST/pets", "bodyContent.id"),
+      foreignField("my_http", "DELETE/pets/{id}", "pathParamid"),
+      foreignField("my_http", "GET/pets/{id}", "pathParamid"),
+    )
+
+    val conf = configuration.enableGeneratePlanAndTasks(true)
+
+    execute(myPlan, conf, httpTask)
+  }
+
   class TestJson extends PlanRun {
     val jsonTask = json("my_json", "/tmp/data/json", Map("saveMode" -> "overwrite"))
       .schema(
@@ -202,6 +269,45 @@ class PlanProcessorTest extends SparkSuite {
       )
 
     execute(jsonTask)
+  }
+
+  class TestValidationAndInnerSchemaFromMetadataSource extends PlanRun {
+    val csvTask = json("my_big_json", "/tmp/data/big_json", Map("saveMode" -> "overwrite"))
+      .schema(
+        field.name("content").schema(metadataSource.openMetadata("http://localhost:8585/api", OPEN_METADATA_AUTH_TYPE_OPEN_METADATA,
+          Map(
+            OPEN_METADATA_JWT_TOKEN -> "eyJraWQiOiJHYjM4OWEtOWY3Ni1nZGpzLWE5MmotMDI0MmJrOTQzNTYiLCJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJvcGVuLW1ldGFkYXRhLm9yZyIsInN1YiI6ImluZ2VzdGlvbi1ib3QiLCJlbWFpbCI6ImluZ2VzdGlvbi1ib3RAb3Blbm1ldGFkYXRhLm9yZyIsImlzQm90Ijp0cnVlLCJ0b2tlblR5cGUiOiJCT1QiLCJpYXQiOjE2OTcxNzc0MzgsImV4cCI6bnVsbH0.jnO65SJZG9GQuVlJvpyKrrBZejPpjV71crJEvWOMPyeozZkoEyYy-kcb8UkVenidDcoAdie4Zhl4saNyaLudiAO2MKhSU1Rf3yT2M3BQBf37kQ3Ma4pjrx-lXVk2SmCaHsgLFETksSHZTwgPrtx5L3d2FOCfF92dANI_tldTg5Jog51tjHyYWYV4y4_eU4AfC7gXjIhvU35vTJmzUWH7BUkDGfcwHnIVa0AOqLzwZUQT1S717yNoenj2CUTBNS4fxWlATWBQIMG9JaBmQAAYNWOFPKnVWfWGv7Ya1OEW5wtb7A69hyPAT1lS-_FIxOOMkGbdg2u3sFuu9rD1d2JMdg",
+            OPEN_METADATA_TABLE_FQN -> "sample_data.ecommerce_db.shopify.dim_address"
+          ))),
+        field.name("account_id"),
+        field.name("year").`type`(IntegerType).min(2020).max(2023),
+      )
+      .count(count.records(10))
+
+    val jsonTask = json("my_json", "/tmp/data/json")
+      .validations(
+        validation.col("customer_details.name").matches("[A-Z][a-z]+ [A-Z][a-z]+").errorThreshold(0.1).description("Names generally follow the same pattern"),
+        validation.col("date").isNotNull.errorThreshold(10),
+        validation.col("balance").greaterThan(500),
+        validation.expr("YEAR(date) == year"),
+        validation.col("status").in("open", "closed", "pending").errorThreshold(0.2).description("Could be new status introduced"),
+        validation.col("customer_details.age").greaterThan(18),
+        validation.expr("FORALL(update_history, x -> x.updated_time > TIMESTAMP('2022-01-01 00:00:00'))"),
+        validation.unique("account_id"),
+        validation.groupBy().count().isEqual(1000),
+        validation.groupBy("account_id").max("balance").lessThan(900),
+        validation.upstreamData(csvTask).withValidation(validation.col("amount").isEqualCol("balance")),
+      )
+      .enableDataGeneration(false)
+
+    val config = configuration
+      .generatedReportsFolderPath("/tmp/report")
+      .recordTrackingForValidationFolderPath("/tmp/record-tracking")
+      .enableValidation(true)
+      .enableGenerateValidations(true)
+      .enableGeneratePlanAndTasks(true)
+
+    execute(config, csvTask, jsonTask)
   }
 
   class TestValidation extends PlanRun {
@@ -244,12 +350,7 @@ class PlanProcessorTest extends SparkSuite {
       )
       .count(count.records(10).recordsPerColumn(3, "account_id"))
       .validations(
-        validation.preFilter(columnPreFilter("name").isEqual("peter"))
-          .col("amount").greaterThan(50),
-        validation.preFilter(
-          preFilterBuilder(columnPreFilter( "name").startsWith("john"))
-            .and(columnPreFilter("amount").greaterThan(10))
-        ).col("account_id").isNotNull,
+        validation.col("account_id").isNotNull,
         validation.groupBy("account_id").count().isEqual(1),
         validation.columnNames.countEqual(3),
         validation.columnNames.countBetween(1, 2),
@@ -287,6 +388,62 @@ class PlanProcessorTest extends SparkSuite {
     execute(foreignPlan, config, firstJsonTask, secondJsonTask, thirdJsonTask)
   }
 
+  class TestGreatExpectations extends PlanRun {
+    val myJson = json("my_json", "/tmp/data/ge_json")
+      .schema(
+        field.name("vendor_id"),
+        field.name("pickup_datetime").`type`(TimestampType),
+        field.name("dropoff_datetime").`type`(TimestampType),
+        field.name("passenger_count").`type`(IntegerType),
+        field.name("trip_distance").`type`(DoubleType),
+        field.name("rate_code_id"),
+        field.name("store_and_fwd_flag"),
+        field.name("pickup_location_id"),
+        field.name("dropoff_location_id"),
+        field.name("payment_type"),
+        field.name("fare_amount").`type`(DoubleType),
+        field.name("extra"),
+        field.name("mta_tax").`type`(DoubleType),
+        field.name("tip_amount").`type`(DoubleType),
+        field.name("tolls_amount").`type`(DoubleType),
+        field.name("improvement_surcharge").`type`(DoubleType),
+        field.name("total_amount").`type`(DoubleType),
+        field.name("congestion_surcharge").`type`(DoubleType),
+      )
+      .validations(metadataSource.greatExpectations("app/src/test/resources/sample/validation/great-expectations/taxi-expectations.json"))
+
+    val config = configuration.enableGenerateValidations(true)
+      .generatedReportsFolderPath("/tmp/report")
+      .generatedReportsFolderPath("/tmp/app/data/report")
+      .recordTrackingFolderPath("/tmp/record-tracking")
+      .recordTrackingForValidationFolderPath("/tmp/record-tracking-validation")
+
+    execute(config, myJson)
+  }
+
+  class AdvancedMySqlPlanRun extends PlanRun {
+
+    val accountTask = mysql(
+      "customer_mysql",
+      "jdbc:mysql://localhost:3306/customer",
+      "root", "root",
+      Map(METADATA_FILTER_OUT_SCHEMA -> "datahub")
+    )
+      .schema(field.name("account_number").regex("[0-9]{10}"))
+      .count(count.records(10))
+
+    val config = configuration
+      .generatedReportsFolderPath("/tmp/app/data/report")
+      .recordTrackingFolderPath("/tmp/record-tracking")
+      .recordTrackingForValidationFolderPath("/tmp/record-tracking-validation")
+      .enableGeneratePlanAndTasks(true)
+      .enableRecordTracking(true)
+      .enableDeleteGeneratedRecords(false)
+      .enableGenerateData(true)
+
+    execute(config, accountTask)
+  }
+
   class TestOtherFileFormats extends PlanRun {
     val basicSchema = List(
       field.name("account_id").regex("ACC[0-9]{8}"),
@@ -294,16 +451,16 @@ class PlanProcessorTest extends SparkSuite {
       field.name("name").expression("#{Name.name}"),
     )
 
-//    val hudiTask = hudi("my_hudi", "/tmp/data/hudi", "accounts", Map("saveMode" -> "overwrite"))
-//      .schema(basicSchema: _*)
-//
-    val deltaTask = delta("my_delta", "/tmp/data/delta", Map("saveMode" -> "overwrite"))
+    //    val hudiTask = hudi("my_hudi", "/tmp/data/hudi", "accounts", Map("saveMode" -> "overwrite"))
+    //      .schema(basicSchema: _*)
+    //
+    //    val deltaTask = delta("my_delta", "/tmp/data/delta", Map("saveMode" -> "overwrite"))
+    //      .schema(basicSchema: _*)
+    //
+    val icebergTask = iceberg("my_iceberg", "/tmp/data/iceberg", "account.accounts", options = Map("saveMode" -> "overwrite"))
       .schema(basicSchema: _*)
-//
-//    val icebergTask = iceberg("my_iceberg", "/tmp/data/iceberg", "account.accounts", options = Map("saveMode" -> "overwrite"))
-//      .schema(basicSchema: _*)
 
-    execute(deltaTask)
+    execute(icebergTask)
   }
 
   class TestUniqueFields extends PlanRun {
@@ -314,21 +471,78 @@ class PlanProcessorTest extends SparkSuite {
     execute(jsonTask)
   }
 
-  class TestForeignKeys extends PlanRun {
-    val accountTask = csv("accounts", "/tmp/data/account-csv", Map("saveMode" -> "overwrite"))
-      .schema(field.name("account_id"))
-      .count(count.records(1000))
-    val transactionTask = csv("transactions", "/tmp/data/transaction-csv", Map("saveMode" -> "overwrite"))
-      .schema(field.name("account_id"), field.name("amount").`type`(IntegerType))
-      .count(count.recordsPerColumn(5, "account_id"))
+  class TestDeleteViaForeignKey extends PlanRun {
 
-    val conf = configuration
-      .enableCount(true)
-      .generatedReportsFolderPath("/tmp/report")
+    val accountTask = json("customer_json", "/tmp/data/generate-account-json", Map(PARTITIONS -> "1", SAVE_MODE -> "overwrite"))
+      .schema(
+        field.name("account_number").regex("[0-9]{10}"),
+        field.name("year").`type`(IntegerType).min(2020).max(2024),
+        field.name("name").expression("#{Name.name}"),
+      )
+      .count(count.records(10))
 
-    val foreignPlan = plan
-      .addForeignKeyRelationship(accountTask, "account_id", List(transactionTask -> "account_id"))
+    val accountEvents = json("customer_event_json", "/tmp/data/generate-event-json", Map(PARTITIONS -> "1", SAVE_MODE -> "overwrite"))
+      .schema(
+        field.name("account_number").omit(true),
+        field.name("account_id").sql("CONCAT('ACC', account_number)"),
+        field.name("year").`type`(IntegerType),
+        field.name("name"),
+        field.name("status").oneOf("open", "closed"),
+      )
+      .count(count.records(10))
 
-    execute(foreignPlan, conf, accountTask, transactionTask)
+    val generateConfig = configuration
+      .generatedReportsFolderPath("/tmp/app/data/report")
+      .recordTrackingFolderPath("/tmp/record-tracking")
+      .recordTrackingForValidationFolderPath("/tmp/record-tracking-validation")
+      .enableRecordTracking(true)
+      .enableDeleteGeneratedRecords(false)
+      .enableGenerateData(true)
+    val deleteConfig = configuration
+      .generatedReportsFolderPath("/tmp/app/data/report")
+      .recordTrackingFolderPath("/tmp/record-tracking")
+      .recordTrackingForValidationFolderPath("/tmp/record-tracking-validation")
+      .enableRecordTracking(true)
+      .enableDeleteGeneratedRecords(true)
+      .enableGenerateData(false)
+
+    /*
+     * 1. Run with `generatePlan` with `generateConfig`
+     * 2. Run rm -rf /tmp/record-tracking/json/customer_event_json
+     * 2. Run with `deletePlan` with `deleteConfig`
+     */
+    val generatePlan = plan.addForeignKeyRelationship(accountTask, List("account_number"), List((accountEvents, List("account_number"))))
+    val deletePlan = plan.addForeignKeyRelationship(accountTask, List("account_number"), List(), List((accountEvents, List("CONCAT('ACC', account_number) AS account_id"))))
+
+    //    execute(generatePlan, generateConfig, accountTask, accountEvents)
+    execute(deletePlan, deleteConfig, accountTask, accountEvents)
+  }
+
+  class TestSchemaFromODCS extends PlanRun {
+    val accounts = csv("customer_csv", "/tmp/data/odcs-csv", Map("header" -> "true"))
+      .schema(metadataSource.openDataContractStandard("app/src/test/resources/sample/metadata/odcs/full-example.odcs.yaml"))
+      .schema(
+        field.name("rcvr_id").regex("RC[0-9]{8}"),
+        field.name("rcvr_cntry_code").oneOf("AU", "US", "TW")
+      )
+      .count(count.records(100))
+
+    val conf = configuration.enableGeneratePlanAndTasks(true).generatedPlanAndTaskFolderPath("/tmp/data-caterer-gen")
+
+    execute(conf, accounts)
+  }
+
+  class TestSchemaFromDataContractCli extends PlanRun {
+    val accounts = csv("customer_csv", "/tmp/data/datacontract-cli-csv", Map("header" -> "true"))
+      .schema(metadataSource.dataContractCli("app/src/test/resources/sample/metadata/datacontractcli/datacontract.yaml"))
+      .schema(
+        field.name("rcvr_id").regex("RC[0-9]{8}"),
+        field.name("rcvr_cntry_code").oneOf("AU", "US", "TW")
+      )
+      .count(count.records(100))
+
+    val conf = configuration.enableGeneratePlanAndTasks(true).generatedPlanAndTaskFolderPath("/tmp/data-caterer-gen")
+
+    execute(conf, accounts)
   }
 }

@@ -1,6 +1,6 @@
 package io.github.datacatering.datacaterer.core.generator.provider
 
-import io.github.datacatering.datacaterer.api.model.Constants.{ARRAY_MAXIMUM_LENGTH, ARRAY_MINIMUM_LENGTH, DEFAULT_VALUE, DISTINCT_COUNT, DISTRIBUTION, DISTRIBUTION_EXPONENTIAL, DISTRIBUTION_NORMAL, DISTRIBUTION_RATE_PARAMETER, EXPRESSION, MAXIMUM, MAXIMUM_LENGTH, MEAN, MINIMUM, MINIMUM_LENGTH, NUMERIC_PRECISION, NUMERIC_SCALE, ROW_COUNT, STANDARD_DEVIATION}
+import io.github.datacatering.datacaterer.api.model.Constants.{ARRAY_MAXIMUM_LENGTH, ARRAY_MINIMUM_LENGTH, DEFAULT_VALUE, DISTINCT_COUNT, DISTRIBUTION, DISTRIBUTION_EXPONENTIAL, DISTRIBUTION_NORMAL, DISTRIBUTION_RATE_PARAMETER, EXPRESSION, IS_UNIQUE, MAXIMUM, MAXIMUM_LENGTH, MEAN, MINIMUM, MINIMUM_LENGTH, NUMERIC_PRECISION, NUMERIC_SCALE, ROW_COUNT, STANDARD_DEVIATION}
 import io.github.datacatering.datacaterer.core.exception.UnsupportedDataGeneratorType
 import io.github.datacatering.datacaterer.core.model.Constants._
 import io.github.datacatering.datacaterer.core.util.GeneratorUtil
@@ -35,7 +35,7 @@ object RandomDataGenerator {
       case ByteType => new RandomByteDataGenerator(structField, faker)
       case ArrayType(dt, _) => new RandomArrayDataGenerator(structField, dt, faker)
       case StructType(_) => new RandomStructTypeDataGenerator(structField, faker)
-      case x => throw new UnsupportedDataGeneratorType(s"Unsupported type for random data generation: name=${structField.name}, type=${x.typeName}")
+      case x => throw UnsupportedDataGeneratorType(s"Unsupported type for random data generation: name=${structField.name}, type=${x.typeName}")
     }
   }
 
@@ -321,7 +321,7 @@ object RandomDataGenerator {
 
 
   def sqlExpressionForNumeric(metadata: Metadata, typeName: String, sqlRand: String): String = {
-    val (min, max, diff, mean) = typeName match {
+    val (min, max, diff, mean) = typeName.toUpperCase match {
       case "INT" =>
         val min = tryGetValue(metadata, MINIMUM, 0)
         val max = tryGetValue(metadata, MAXIMUM, 100000)
@@ -363,12 +363,17 @@ object RandomDataGenerator {
     val standardDeviation = tryGetValue(metadata, STANDARD_DEVIATION, 1.0)
     val distinctCount = tryGetValue(metadata, DISTINCT_COUNT, 0)
     val count = tryGetValue(metadata, ROW_COUNT, 0)
+    val isUnique = tryGetValue(metadata, IS_UNIQUE, "false")
     // allow for different distributions (exponential, gaussian)
     val distribution = tryGetValue(metadata, DISTRIBUTION, "")
     val rateParameter = tryGetValue(metadata, DISTRIBUTION_RATE_PARAMETER, 1.0)
 
-    val baseFormula = if (defaultValue.toLowerCase.startsWith("nextval") || (distinctCount == count && distinctCount > 0)) {
-      s"$max + $INDEX_INC_COL + 1" //index col starts at 0
+    val baseFormula = if (isIncrementalNumber(defaultValue, distinctCount, count, isUnique)) {
+      if (metadata.contains(MAXIMUM)) {
+        s"$max + $INDEX_INC_COL + 1" //index col starts at 0
+      } else {
+        s"$INDEX_INC_COL + 1"
+      }
     } else if (metadata.contains(STANDARD_DEVIATION) && metadata.contains(MEAN)) {
       val randNormal = sqlRand.replace("RAND", "RANDN")
       s"$randNormal * $standardDeviation + $mean"
@@ -386,6 +391,10 @@ object RandomDataGenerator {
     } else {
       s"CAST($baseFormula AS $typeName)"
     }
+  }
+
+  private def isIncrementalNumber(defaultValue: String, distinctCount: Int, count: Int, isUnique: String) = {
+    defaultValue.toLowerCase.startsWith("nextval") || (distinctCount == count && distinctCount > 0) || isUnique == "true"
   }
 
   def tryGetValue[T](metadata: Metadata, key: String, default: T)(implicit converter: Converter[T]): T = {

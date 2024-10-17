@@ -1,12 +1,13 @@
 package io.github.datacatering.datacaterer.core.ui.plan
 
-import io.github.datacatering.datacaterer.api.model.Constants.{DEFAULT_MASTER, DEFAULT_RUNTIME_CONFIG}
-import io.github.datacatering.datacaterer.core.model.Constants.{FAILED, FINISHED, PARSED_PLAN, STARTED}
+import io.github.datacatering.datacaterer.api.model.Constants.{CONFIG_FLAGS_DELETE_GENERATED_RECORDS, CONFIG_FLAGS_GENERATE_DATA, CONFIG_FLAGS_GENERATE_VALIDATIONS, DEFAULT_MASTER, DEFAULT_RUNTIME_CONFIG}
+import io.github.datacatering.datacaterer.core.exception.SaveFileException
+import io.github.datacatering.datacaterer.core.model.Constants.{CONNECTION_GROUP_METADATA_SOURCE, CONNECTION_GROUP_TYPE, CONNECTION_TYPE, FAILED, FINISHED, PARSED_PLAN, STARTED}
 import io.github.datacatering.datacaterer.core.model.PlanRunResults
 import io.github.datacatering.datacaterer.core.plan.PlanProcessor
 import io.github.datacatering.datacaterer.core.ui.config.UiConfiguration.INSTALL_DIRECTORY
 import io.github.datacatering.datacaterer.core.ui.mapper.UiMapper
-import io.github.datacatering.datacaterer.core.ui.model.{JsonSupport, PlanRunExecution, PlanRunRequest, PlanRunRequests}
+import io.github.datacatering.datacaterer.core.ui.model.{DataSourceRequest, JsonSupport, PlanRunExecution, PlanRunRequest, PlanRunRequests}
 import io.github.datacatering.datacaterer.core.ui.plan.PlanResponseHandler.{KO, OK, Response}
 import io.github.datacatering.datacaterer.core.util.SparkProvider
 import org.apache.log4j.Logger
@@ -45,6 +46,8 @@ object PlanRepository extends JsonSupport {
 
   final case class RunPlan(planRunRequest: PlanRunRequest, replyTo: ActorRef[Response]) extends PlanCommand
 
+  final case class RunPlanDeleteData(planRunRequest: PlanRunRequest, replyTo: ActorRef[Response]) extends PlanCommand
+
   final case class SavePlan(planRunRequest: PlanRunRequest) extends PlanCommand
 
   final case class GetPlans(replyTo: ActorRef[PlanRunRequests]) extends PlanCommand
@@ -68,6 +71,9 @@ object PlanRepository extends JsonSupport {
       Behaviors.receiveMessage {
         case RunPlan(planRunRequest, replyTo) =>
           runPlan(planRunRequest, replyTo)
+          Behaviors.same
+        case RunPlanDeleteData(planRunRequest, replyTo) =>
+          runPlanWithDeleteFlags(planRunRequest, replyTo)
           Behaviors.same
         case SavePlan(planRunRequest) =>
           savePlan(planRunRequest)
@@ -94,18 +100,28 @@ object PlanRepository extends JsonSupport {
     }.onFailure(SupervisorStrategy.restart)
   }
 
-  private def runPlan(planRunRequest: PlanRunRequest, replyTo: ActorRef[Response]): Unit = {
-    // get connection info
-    val dataSourcesWithConnectionInfo = planRunRequest.dataSources.map(ds => {
-      val connectionInfo = ConnectionRepository.getConnection(ds.name, false)
-      val allConnectionOptions = connectionInfo.options ++ ds.options.getOrElse(Map())
-      ds.copy(`type` = Some(connectionInfo.`type`), options = Some(allConnectionOptions))
+  private def runPlanWithDeleteFlags(planRunRequest: PlanRunRequest, replyTo: ActorRef[Response]): Unit = {
+    // alter plan run request to enable delete, disable data generation and validation
+    val optUpdatedConfig = planRunRequest.configuration.map(config => {
+      val updatedFlagConfig = config.flag ++
+        Map(
+          CONFIG_FLAGS_DELETE_GENERATED_RECORDS -> "true",
+          CONFIG_FLAGS_GENERATE_DATA -> "false",
+          CONFIG_FLAGS_GENERATE_VALIDATIONS -> "false",
+        )
+      config.copy(flag = updatedFlagConfig)
     })
+    val updatedPlanRunRequest = planRunRequest.copy(configuration = optUpdatedConfig)
+    runPlan(updatedPlanRunRequest, replyTo, true)
+  }
+
+  private def runPlan(planRunRequest: PlanRunRequest, replyTo: ActorRef[Response], isDeleteRun: Boolean = false): Unit = {
+    // get connection info
+    val dataSourcesWithConnectionInfo = addConnectionDetails(planRunRequest)
     val planRunWithConnectionInfo = planRunRequest.copy(dataSources = dataSourcesWithConnectionInfo)
-    // create new run id
-    // save to file
     val planRunExecution = PlanRunExecution(planRunRequest.name, planRunRequest.id, STARTED)
-    savePlanRunExecution(planRunRequest, planRunExecution)
+    // save to file if not a delete data run
+    savePlanRunExecution(planRunRequest, planRunExecution, isDeleteRun)
 
     val tryPlanRun = Try(UiMapper.mapToPlanRun(planRunWithConnectionInfo, INSTALL_DIRECTORY))
     tryPlanRun match {
@@ -129,28 +145,55 @@ object PlanRepository extends JsonSupport {
     }
   }
 
-  private def savePlanRunExecution(planRunRequest: PlanRunRequest, planRunExecution: PlanRunExecution): Unit = {
+  private def addConnectionDetails(planRunRequest: PlanRunRequest): List[DataSourceRequest] = {
+    planRunRequest.dataSources.map(ds => {
+      // base data source connection
+      val baseConnectionInfo = ConnectionRepository.getConnection(ds.name, false)
+      // metadata source connection info could exist in fields
+      val fieldsWithMetadataConnection = ds.fields.map(fr => {
+        val metadataWithConnectionInfo = fr.optMetadataSource.map(metadataSource => {
+          val baseMetadataConnectionInfo = ConnectionRepository.getConnection(metadataSource.name, false)
+          val typeMap = Map(
+            CONNECTION_TYPE -> baseMetadataConnectionInfo.`type`,
+            CONNECTION_GROUP_TYPE -> baseMetadataConnectionInfo.groupType.getOrElse(CONNECTION_GROUP_METADATA_SOURCE)
+          )
+
+          metadataSource.copy(overrideOptions = Some(
+            baseMetadataConnectionInfo.options ++ metadataSource.overrideOptions.getOrElse(Map()) ++ typeMap
+          ))
+        })
+        fr.copy(optMetadataSource = metadataWithConnectionInfo)
+      })
+      // metadata source connection info could exist in validation
+      val allConnectionOptions = baseConnectionInfo.options ++ ds.options.getOrElse(Map())
+      ds.copy(`type` = Some(baseConnectionInfo.`type`), options = Some(allConnectionOptions), fields = fieldsWithMetadataConnection)
+    })
+  }
+
+  private def savePlanRunExecution(planRunRequest: PlanRunRequest, planRunExecution: PlanRunExecution, isDeleteRun: Boolean = false): Unit = {
     LOGGER.debug(s"Saving plan run execution details, plan-name=${planRunRequest.name}, plan-run-id=${planRunRequest.id}")
-    savePlan(planRunRequest)
+    if (!isDeleteRun) savePlan(planRunRequest)
+    val filePath = s"$executionSaveFolder/${planRunExecution.id}.csv"
     try {
       val basePath = Path.of(executionSaveFolder).toFile
       if (!basePath.exists()) basePath.mkdirs()
-      val executionFile = Path.of(s"$executionSaveFolder/${planRunExecution.id}.csv")
+      val executionFile = Path.of(filePath)
       Files.writeString(executionFile, planRunExecution.toString, StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE)
     } catch {
-      case ex: Exception => throw new RuntimeException(s"Failed to save plan execution to file system, plan-name=${planRunRequest.name}", ex)
+      case ex: Exception => throw SaveFileException(filePath, ex)
     }
   }
 
   private def savePlan(planRunRequest: PlanRunRequest): Unit = {
     LOGGER.debug(s"Saving plan details, plan-name=${planRunRequest.name}")
+    val filePath = s"$planSaveFolder/${planRunRequest.name}.json"
     try {
       val basePath = Path.of(planSaveFolder).toFile
       if (!basePath.exists()) basePath.mkdirs()
-      val planFile = Path.of(s"$planSaveFolder/${planRunRequest.name}.json")
+      val planFile = Path.of(filePath)
       Files.writeString(planFile, planRunRequest.toJson.compactPrint, StandardOpenOption.CREATE, StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING)
     } catch {
-      case ex: Exception => throw new RuntimeException(s"Failed to save plan to file system, plan-name=${planRunRequest.name}", ex)
+      case ex: Exception => throw SaveFileException(filePath, ex)
     }
   }
 
@@ -217,10 +260,10 @@ object PlanRepository extends JsonSupport {
       .flatMap(execFile => {
         val lines = Files.readAllLines(execFile).asScala
         lines.map(line => {
-            val tryParse = Try(PlanRunExecution.fromString(line))
-            if (tryParse.isFailure) LOGGER.error(s"Failed to parse execution details for file, file-name=$execFile")
-            tryParse
-          })
+          val tryParse = Try(PlanRunExecution.fromString(line))
+          if (tryParse.isFailure) LOGGER.error(s"Failed to parse execution details for file, file-name=$execFile")
+          tryParse
+        })
           .filter(_.isSuccess)
           .map(_.get)
       }).toList
@@ -255,7 +298,7 @@ object PlanRepository extends JsonSupport {
       sparkSession.sql("SELECT 1").collect()
       OK
     } catch {
-      case ex => KO("Failed to start up Spark", ex)
+      case ex: Throwable => KO("Failed to start up Spark", ex)
     }
   }
 }

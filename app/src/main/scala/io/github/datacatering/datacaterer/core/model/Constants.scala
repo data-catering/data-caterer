@@ -5,11 +5,28 @@ import org.joda.time.format.{DateTimeFormat, DateTimeFormatter}
 
 object Constants {
 
+  //app type
+  lazy val BASIC_APPLICATION = "basic"
+  lazy val ADVANCED_APPLICATION = "advanced"
+  lazy val TRIAL_APPLICATION = "trial"
+
   //base config
   lazy val RUNTIME_MASTER = "runtime.master"
 
+  //spark data options
+  lazy val DEFAULT_HTTP_METHOD = "GET"
+  lazy val DEFAULT_HTTP_CONTENT_TYPE = "application/json"
+
+  //custom spark options
+  lazy val METADATA_FILTER_OUT_SCHEMA = "filterOutSchema"
+  lazy val METADATA_FILTER_OUT_TABLE = "filterOutTable"
+  lazy val METADATA_CONNECTION_OPTIONS = List(METADATA_SOURCE_TYPE, METADATA_SOURCE_URL, DATA_CONTRACT_FILE,
+    GREAT_EXPECTATIONS_FILE, OPEN_METADATA_HOST, OPEN_METADATA_API_VERSION, OPEN_METADATA_DATABASE, OPEN_METADATA_AUTH_TYPE,
+    OPEN_METADATA_TABLE_FQN, OPEN_METADATA_DATABASE_SCHEMA, SCHEMA_LOCATION)
+
   //supported data formats
   lazy val SUPPORTED_CONNECTION_FORMATS: List[String] = List(CSV, JSON, ORC, PARQUET, CASSANDRA, JDBC, HTTP, JMS, KAFKA)
+  lazy val BASIC_APPLICATION_SUPPORTED_CONNECTION_FORMATS: List[String] = List(CSV, JSON, ORC, PARQUET, JDBC)
 
   //special column names
   lazy val PER_COLUMN_COUNT = "_per_col_count"
@@ -23,6 +40,7 @@ object Constants {
   lazy val REAL_TIME_PARTITION_COL = "partition"
   lazy val REAL_TIME_HEADERS_COL = "headers"
   lazy val REAL_TIME_METHOD_COL = "method"
+  lazy val REAL_TIME_ENDPOINT = "endpoint"
   lazy val REAL_TIME_CONTENT_TYPE_COL = "content_type"
   lazy val REAL_TIME_URL_COL = "url"
   lazy val HTTP_HEADER_COL_PREFIX = "header"
@@ -53,6 +71,9 @@ object Constants {
   lazy val COUNT_COLUMNS = "columns"
   lazy val COUNT_NUM_RECORDS = "numRecords"
 
+  //validation
+  lazy val RECORD_TRACKING_VALIDATION_FORMAT = PARQUET
+
   //report
   lazy val REPORT_DATA_CATERING_SVG = "data_catering_transparent.svg"
   lazy val REPORT_DATA_SOURCES_HTML = "data-sources.html"
@@ -70,6 +91,10 @@ object Constants {
 
   //misc
   lazy val APPLICATION_CONFIG_PATH = "APPLICATION_CONFIG_PATH"
+  lazy val BATCH = "batch"
+  lazy val REAL_TIME = "real-time"
+  lazy val DEFAULT_ROWS_PER_SECOND = "5"
+  lazy val DATA_CATERER_SITE_PRICING = "https://data.catering/pricing/"
 
   //ui
   lazy val TIMESTAMP_FORMAT = "yyyy-MM-dd HH:mm:ss.SSS"

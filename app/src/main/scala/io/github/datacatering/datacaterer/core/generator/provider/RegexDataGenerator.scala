@@ -16,7 +16,7 @@ object RegexDataGenerator {
 
   class RandomRegexDataGenerator(val structField: StructField, val faker: Faker = new Faker()) extends NullableDataGenerator[String] {
     private val regex = Try(structField.metadata.getString(REGEX_GENERATOR))
-      .getOrElse(throw new InvalidDataGeneratorConfigurationException(structField, REGEX_GENERATOR))
+      .getOrElse(throw InvalidDataGeneratorConfigurationException(structField, REGEX_GENERATOR))
 
     override val edgeCases: List[String] = List()
 

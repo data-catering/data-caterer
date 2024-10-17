@@ -5,7 +5,5 @@ dataSources:
   json:
     - options:
         path: "/tmp/yaml-validation-json-test"
-      waitCondition:
-        path: "/tmp/yaml-validation-json-test"
       validations:
         - expr: "STARTSWITH(transaction_id, 'txn')"

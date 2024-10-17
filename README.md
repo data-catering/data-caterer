@@ -1,10 +1,8 @@
 # Data Caterer - Test Data Management Tool
 
-![Data Catering](misc/banner/logo_landscape_banner.svg)
-
 ## Overview
 
-A test data management tool with automated data generation, validation and cleanup.
+A test data management tool with automated data generation, validation and clean up.
 
 ![Basic data flow for Data Caterer](misc/design/high_level_flow-run-config-basic-flow.svg)
 
@@ -17,9 +15,9 @@ and deep dive into issues [from the generated report](https://data.catering/samp
 
 [**Full docs can be found here**](https://data.catering/setup/).
   
-[**A demo of the UI found here**](https://data.catering/sample/ui/index.html).
-  
 [**Scala/Java examples found here**](https://github.com/data-catering/data-caterer-example).
+  
+[**A demo of the UI found here**](https://data.catering/sample/ui/index.html).
 
 ## Features
 
@@ -38,27 +36,25 @@ and deep dive into issues [from the generated report](https://data.catering/samp
 
 ## Quick start
 
-1. [UI App: Mac download](https://nightly.link/data-catering/data-caterer/workflows/build/main/data-caterer-mac.zip)
-2. [UI App: Windows download](https://nightly.link/data-catering/data-caterer/workflows/build/main/data-caterer-windows.zip)
-   1. After downloading, go to 'Downloads' folder and 'Extract All' from data-caterer-windows
-   2. Double-click 'DataCaterer-1.0.0' to install Data Caterer
-   3. Click on 'More info' then at the bottom, click 'Run anyway'
-   4. Go to '/Program Files/DataCaterer' folder and run DataCaterer application
-   5. If your browser doesn't open, go to [http://localhost:9898](http://localhost:9898) in your preferred browser
-3. [UI App: Linux download](https://nightly.link/data-catering/data-caterer/workflows/build/main/data-caterer-linux.zip)
-4. Docker
+1. Docker
    ```shell
    docker run -d -i -p 9898:9898 -e DEPLOY_MODE=standalone --name datacaterer datacatering/data-caterer-basic:0.11.11
    ```
    [Open localhost:9898](http://localhost:9898).
-
-### Run Scala/Java examples
-
-```shell
-git clone git@github.com:data-catering/data-caterer-example.git
-cd data-caterer-example && ./run.sh
-#check results under docker/sample/report/index.html folder
-```
+1. [Run Scala/Java examples](#run-scalajava-examples)
+   ```shell
+   git clone git@github.com:data-catering/data-caterer-example.git
+   cd data-caterer-example && ./run.sh
+   #check results under docker/sample/report/index.html folder
+   ```
+1. [UI App: Mac download](https://nightly.link/data-catering/data-caterer/workflows/build/main/data-caterer-mac.zip)
+1. [UI App: Windows download](https://nightly.link/data-catering/data-caterer/workflows/build/main/data-caterer-windows.zip)
+   1. After downloading, go to 'Downloads' folder and 'Extract All' from data-caterer-windows
+   1. Double-click 'DataCaterer-1.0.0' to install Data Caterer
+   1. Click on 'More info' then at the bottom, click 'Run anyway'
+   1. Go to '/Program Files/DataCaterer' folder and run DataCaterer application
+   1. If your browser doesn't open, go to [http://localhost:9898](http://localhost:9898) in your preferred browser
+1. [UI App: Linux download](https://nightly.link/data-catering/data-caterer/workflows/build/main/data-caterer-linux.zip)
 
 ## Integrations
 
@@ -129,20 +125,63 @@ Different ways to run Data Caterer based on your use case:
 
 ### Mildly Quick Start
 
-#### I want to generate data in Postgres
+#### Generate and validate data
+
+##### [I want to generate data in Postgres](https://github.com/data-catering/data-caterer-example/blob/b0f03fb26f185ec8613241205b998aef1d5f5a01/src/main/scala/io/github/datacatering/plan/PostgresPlanRun.scala)
 
 ```scala
 postgres("customer_postgres", "jdbc:postgresql://localhost:5432/customer")  //name and url
 ```
 
-#### But I want `account_id` to follow a pattern
+##### [But I want `account_id` to follow a pattern and be unique](https://github.com/data-catering/data-caterer-example/blob/b0f03fb26f185ec8613241205b998aef1d5f5a01/src/main/scala/io/github/datacatering/plan/PostgresPlanRun.scala)
 
 ```scala
 postgres("customer_postgres", "jdbc:postgresql://localhost:5432/customer")
-  .schema(field.name("account_id").regex("ACC[0-9]{10}"))
+  .schema(field.name("account_id").regex("ACC[0-9]{10}").unique(true))
 ```
 
-#### I also want to generate events
+##### [I then want to test my job ingests all the data after generating](https://github.com/data-catering/data-caterer-example/blob/b0f03fb26f185ec8613241205b998aef1d5f5a01/src/main/scala/io/github/datacatering/plan/ValidationPlanRun.scala)
+
+```scala
+val postgresTask = postgres("customer_postgres", "jdbc:postgresql://localhost:5432/customer")
+  .schema(field.name("account_id").regex("ACC[0-9]{10}").unique(true))
+
+val parquetValidation = parquet("output_parquet", "/data/parquet/customer")
+  .validation(validation.count.isEqual(1000))
+```
+
+##### [I want to make sure all the `account_id` values in Postgres are in the Parquet file](https://github.com/data-catering/data-caterer-example/blob/b0f03fb26f185ec8613241205b998aef1d5f5a01/src/main/scala/io/github/datacatering/plan/ValidationPlanRun.scala)
+
+```scala
+val postgresTask = postgres("customer_postgres", "jdbc:postgresql://localhost:5432/customer")
+  .schema(field.name("account_id").regex("ACC[0-9]{10}").unique(true))
+
+val parquetValidation = parquet("output_parquet", "/data/parquet/customer")
+  .validation(
+     validation.upstreamData(postgresTask)
+       .joinColumns("account_id")
+       .withValidation(validation.count().isEqual(1000))
+  )
+```
+
+##### [I want to start validating once the Parquet file is available](https://github.com/data-catering/data-caterer-example/blob/b0f03fb26f185ec8613241205b998aef1d5f5a01/src/main/scala/io/github/datacatering/plan/ValidationPlanRun.scala)
+
+```scala
+val postgresTask = postgres("customer_postgres", "jdbc:postgresql://localhost:5432/customer")
+  .schema(field.name("account_id").regex("ACC[0-9]{10}").unique(true))
+
+val parquetValidation = parquet("output_parquet", "/data/parquet/customer")
+  .validation(
+     validation.upstreamData(postgresTask)
+       .joinColumns("account_id")
+       .withValidation(validation.count().isEqual(1000))
+  )
+  .validationWait(waitCondition.file("/data/parquet/customer"))
+```
+
+#### Generate same data across data sources
+
+##### [I also want to generate events in Kafka](https://github.com/data-catering/data-caterer-example/blob/b0f03fb26f185ec8613241205b998aef1d5f5a01/src/main/scala/io/github/datacatering/plan/AdvancedKafkaPlanRun.scala)
 
 ```scala
 kafka("my_kafka", "localhost:29092")
@@ -150,7 +189,7 @@ kafka("my_kafka", "localhost:29092")
   .schema(...)
 ```
 
-#### But I want the same `account_id` to show in Postgres and Kafka
+##### [But I want the same `account_id` to show in Postgres and Kafka](https://github.com/data-catering/data-caterer-example/blob/b0f03fb26f185ec8613241205b998aef1d5f5a01/src/main/scala/io/github/datacatering/plan/AdvancedBatchEventPlanRun.scala)
 
 ```scala
 val postgresTask = postgres("customer_postgres", "jdbc:postgresql://localhost:5432/customer")
@@ -166,16 +205,98 @@ plan.addForeignKeyRelationship(
 )
 ```
 
-#### I want to generate 5 transactions per `account_id`
+#### Generate data and clean up
+
+##### [I want to generate 5 transactions per `account_id`](https://github.com/data-catering/data-caterer-example/blob/b0f03fb26f185ec8613241205b998aef1d5f5a01/src/main/scala/io/github/datacatering/plan/MultipleRecordsPerColPlan.scala)
 
 ```scala
 postgres("customer_postgres", "jdbc:postgresql://localhost:5432/customer")
+  .table("account", "transactions")
   .count(count.recordsPerColumn(5, "account_id"))
 ```
 
-#### But I want to generate 0 to 5 transactions per `account_id`
+##### [Randomly generate 1 to 5 transactions per `account_id`](https://github.com/data-catering/data-caterer-example/blob/b0f03fb26f185ec8613241205b998aef1d5f5a01/src/main/scala/io/github/datacatering/plan/MultipleRecordsPerColPlan.scala)
 
 ```scala
 postgres("customer_postgres", "jdbc:postgresql://localhost:5432/customer")
+  .table("account", "transactions")
+  .count(count.recordsPerColumnGenerator(generator.min(1).max(5), "account_id"))
+```
+
+##### [I want to delete the generated data](https://github.com/data-catering/data-caterer-example/blob/b0f03fb26f185ec8613241205b998aef1d5f5a01/src/main/scala/io/github/datacatering/plan/AdvancedDeletePlanRun.scala)
+
+```scala
+val postgresTask = postgres("customer_postgres", "jdbc:postgresql://localhost:5432/customer")
+  .table("account", "transactions")
   .count(count.recordsPerColumnGenerator(generator.min(0).max(5), "account_id"))
+
+val conf = configuration
+  .enableDeleteGeneratedRecords(true)
+  .enableGenerateData(false)
+```
+
+##### [I also want to delete the data in Cassandra because my job consumed the data in Postgres and pushed to Cassandra](https://github.com/data-catering/data-caterer-example/blob/b0f03fb26f185ec8613241205b998aef1d5f5a01/src/main/scala/io/github/datacatering/plan/AdvancedDeletePlanRun.scala)
+
+```scala
+val postgresTask = postgres("customer_postgres", "jdbc:postgresql://localhost:5432/customer")
+  .table("account", "transactions")
+  .count(count.recordsPerColumnGenerator(generator.min(0).max(5), "account_id"))
+
+val cassandraTxns = cassandra("ingested_data", "localhost:9042")
+  .table("account", "transactions")
+
+val deletePlan = plan.addForeignKeyRelationship(
+   postgresTask, List("account_id"),
+   List(),
+   List(cassandraTxns -> List("account_id"))
+)
+
+val conf = configuration
+  .enableDeleteGeneratedRecords(true)
+  .enableGenerateData(false)
+```
+
+##### [But only the `account_number` is saved in Cassandra from the `account_id`](https://github.com/data-catering/data-caterer-example/blob/b0f03fb26f185ec8613241205b998aef1d5f5a01/src/main/scala/io/github/datacatering/plan/AdvancedDeletePlanRun.scala)
+
+```scala
+val postgresTask = postgres("customer_postgres", "jdbc:postgresql://localhost:5432/customer")
+  .count(count.recordsPerColumnGenerator(generator.min(0).max(5), "account_id"))
+
+val cassandraTxns = cassandra("ingested_data", "localhost:9042")
+  .table("account", "transactions")
+
+val deletePlan = plan.addForeignKeyRelationship(
+   postgresTask, List("account_id"),
+   List(),
+   List(cassandraTxns -> List("SUBSTR(account_id, 3) AS account_number"))
+)
+
+val conf = configuration
+  .enableDeleteGeneratedRecords(true)
+  .enableGenerateData(false)
+```
+
+#### Generate data with schema from metadata source
+
+##### [I have a data contract using the Open Data Contract Standard (ODCS) format](https://github.com/data-catering/data-caterer-example/blob/b0f03fb26f185ec8613241205b998aef1d5f5a01/src/main/scala/io/github/datacatering/plan/AdvancedODCSPlanRun.scala)
+
+```scala
+parquet("customer_parquet", "/data/parquet/customer")
+  .schema(metadataSource.openDataContractStandard("/data/odcs/full-example.odcs.yaml"))
+```
+
+##### [I have an OpenAPI/Swagger doc](https://github.com/data-catering/data-caterer-example/blob/b0f03fb26f185ec8613241205b998aef1d5f5a01/src/main/scala/io/github/datacatering/plan/AdvancedHttpPlanRun.scala)
+
+```scala
+http("my_http")
+  .schema(metadataSource.openApi("/data/http/petstore.json"))
+```
+
+#### Validate data using validations from metadata source
+
+##### [I have expectations from Great Expectations](https://github.com/data-catering/data-caterer-example/blob/b0f03fb26f185ec8613241205b998aef1d5f5a01/src/main/scala/io/github/datacatering/plan/AdvancedGreatExpectationsPlanRun.scala)
+
+```scala
+parquet("customer_parquet", "/data/parquet/customer")
+  .validations(metadataSource.greatExpectations("/data/great-expectations/taxi-expectations.json"))
 ```

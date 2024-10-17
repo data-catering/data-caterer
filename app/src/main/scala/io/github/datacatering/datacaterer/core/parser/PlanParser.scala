@@ -1,8 +1,9 @@
 package io.github.datacatering.datacaterer.core.parser
 
 import io.github.datacatering.datacaterer.api.model.Constants.ONE_OF_GENERATOR
-import io.github.datacatering.datacaterer.api.model.{DataSourceValidation, Plan, Schema, Task, UpstreamDataSourceValidation, ValidationConfiguration, YamlUpstreamDataSourceValidation, YamlValidationConfiguration}
+import io.github.datacatering.datacaterer.api.model.{DataCatererConfiguration, DataSourceValidation, Plan, Schema, Task, UpstreamDataSourceValidation, ValidationConfiguration, YamlUpstreamDataSourceValidation, YamlValidationConfiguration}
 import io.github.datacatering.datacaterer.api.{ConnectionConfigWithTaskBuilder, ValidationBuilder}
+import io.github.datacatering.datacaterer.core.exception.DataValidationMissingUpstreamDataSourceException
 import io.github.datacatering.datacaterer.core.util.FileUtil.{getFileContentFromFileSystem, isCloudStoragePath}
 import io.github.datacatering.datacaterer.core.util.{FileUtil, ObjectMapperUtil}
 import org.apache.hadoop.fs.FileSystem
@@ -13,6 +14,21 @@ object PlanParser {
 
   private val LOGGER = Logger.getLogger(getClass.getName)
   private val OBJECT_MAPPER = ObjectMapperUtil.yamlObjectMapper
+
+  def getPlanTasksFromYaml(dataCatererConfiguration: DataCatererConfiguration)
+                          (implicit sparkSession: SparkSession): (Plan, List[Task], Option[List[ValidationConfiguration]]) = {
+    val parsedPlan = PlanParser.parsePlan(dataCatererConfiguration.foldersConfig.planFilePath)
+    val enabledPlannedTasks = parsedPlan.tasks.filter(_.enabled)
+    val enabledTaskMap = enabledPlannedTasks.map(t => (t.name, t)).toMap
+    val planWithEnabledTasks = parsedPlan.copy(tasks = enabledPlannedTasks)
+
+    val tasks = PlanParser.parseTasks(dataCatererConfiguration.foldersConfig.taskFolderPath)
+    val enabledTasks = tasks.filter(t => enabledTaskMap.contains(t.name)).toList
+    val validations = if (dataCatererConfiguration.flagsConfig.enableValidation) {
+      Some(PlanParser.parseValidations(dataCatererConfiguration.foldersConfig.validationFolderPath, dataCatererConfiguration.connectionConfigByName))
+    } else None
+    (planWithEnabledTasks, enabledTasks, validations)
+  }
 
   def parsePlan(planFilePath: String)(implicit sparkSession: SparkSession): Plan = {
     val parsedPlan = if (isCloudStoragePath(planFilePath)) {
@@ -54,7 +70,7 @@ object PlanParser {
                   )
                   ValidationBuilder(baseValidation)
                 case None =>
-                  throw new RuntimeException(s"Failed to find upstream data source configuration, data-source-name=${yamlUpstream.upstreamDataSource}")
+                  throw DataValidationMissingUpstreamDataSourceException(yamlUpstream.upstreamDataSource)
               }
             case v => ValidationBuilder(v)
           }

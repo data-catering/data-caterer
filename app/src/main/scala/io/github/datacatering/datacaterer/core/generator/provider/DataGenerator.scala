@@ -2,8 +2,10 @@ package io.github.datacatering.datacaterer.core.generator.provider
 
 import io.github.datacatering.datacaterer.api.model.Constants.{ARRAY_MAXIMUM_LENGTH, ARRAY_MINIMUM_LENGTH, ENABLED_EDGE_CASE, ENABLED_NULL, IS_UNIQUE, PROBABILITY_OF_EDGE_CASE, PROBABILITY_OF_NULL, RANDOM_SEED, STATIC}
 import io.github.datacatering.datacaterer.api.model.generator.BaseGenerator
+import io.github.datacatering.datacaterer.core.exception.ExhaustedUniqueValueGenerationException
 import io.github.datacatering.datacaterer.core.model.Constants.DATA_CATERER_RANDOM_LENGTH
 import net.datafaker.Faker
+import org.apache.spark.sql.execution.SparkSqlParser
 import org.apache.spark.sql.functions.{expr, rand, when}
 import org.apache.spark.sql.types.StructField
 
@@ -65,8 +67,7 @@ trait DataGenerator[T] extends BaseGenerator[T] with Serializable {
     }
     if (count > 10) {
       //TODO: logic doesn't work when field is auto_increment, need to be aware if data system automatically takes care of it (therefore, field can be omitted from generation)
-      throw new RuntimeException(s"Failed to generate new unique value for field, retries=$count, name=${structField.name}, " +
-        s"metadata=${structField.metadata}, sample-previously-generated=${prevGenerated.take(3)}")
+      throw ExhaustedUniqueValueGenerationException(count, structField.name, structField.metadata, prevGenerated.take(3).map(_.toString).toList)
     } else if (isUnique) {
       if (prevGenerated.contains(generatedValue)) {
         generateWrapper(count + 1)

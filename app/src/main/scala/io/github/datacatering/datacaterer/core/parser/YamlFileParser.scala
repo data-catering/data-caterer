@@ -51,7 +51,7 @@ object YamlFileParser {
   private def parseFile[T](file: File)(implicit tag: ClassTag[T]): T = {
     val cls = tag.runtimeClass.asInstanceOf[Class[T]]
     Try(OBJECT_MAPPER.readValue[T](file, cls)) match {
-      case Failure(exception) => throw new ParseFileException(file.getAbsolutePath, cls.getName, exception)
+      case Failure(exception) => throw ParseFileException(file.getAbsolutePath, cls.getName, exception)
       case Success(value) => value
     }
   }

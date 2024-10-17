@@ -2,6 +2,7 @@ package io.github.datacatering.datacaterer.core.validator
 
 import io.github.datacatering.datacaterer.api.model.Constants.{AGGREGATION_COUNT, FORMAT, VALIDATION_COLUMN_NAME_COUNT_BETWEEN, VALIDATION_COLUMN_NAME_COUNT_EQUAL, VALIDATION_COLUMN_NAME_MATCH_ORDER, VALIDATION_COLUMN_NAME_MATCH_SET, VALIDATION_PREFIX_JOIN_EXPRESSION, VALIDATION_UNIQUE}
 import io.github.datacatering.datacaterer.api.model.{ColumnNamesValidation, ExpressionValidation, GroupByValidation, UpstreamDataSourceValidation, Validation}
+import io.github.datacatering.datacaterer.core.exception.UnsupportedDataValidationTypeException
 import io.github.datacatering.datacaterer.core.model.ValidationResult
 import io.github.datacatering.datacaterer.core.validator.ValidationHelper.getValidationType
 import org.apache.log4j.Logger
@@ -15,12 +16,16 @@ abstract class ValidationOps(validation: Validation) {
   def validate(df: DataFrame, dfCount: Long): ValidationResult
 
   def filterData(df: DataFrame): DataFrame = {
-    if (!validation.preFilter.forall(_.validate())) {
-      LOGGER.warn(s"Invalid pre-filter defined for validation, defaulting to using unfiltered dataset")
-    }
-    validation.getPreFilterExpression.map(preFilter => {
-      LOGGER.debug(s"Using pre-filter before running data validation, pre-filter-expression=$preFilter")
-      df.where(preFilter)
+    validation.preFilter.map(preFilter => {
+      val isValidFilter = preFilter.validate()
+      if (isValidFilter) {
+        val preFilterExpression = preFilter.toExpression
+        LOGGER.debug(s"Using pre-filter before running data validation, pre-filter-expression=$preFilterExpression")
+        df.where(preFilterExpression)
+      } else {
+        LOGGER.warn(s"Invalid pre-filter defined for validation, defaulting to using unfiltered dataset")
+        df
+      }
     }).getOrElse(df)
   }
 
@@ -53,7 +58,7 @@ object ValidationHelper {
       case grpValid: GroupByValidation => new GroupByValidationOps(grpValid)
       case upValid: UpstreamDataSourceValidation => new UpstreamDataSourceValidationOps(upValid, recordTrackingForValidationFolderPath)
       case colNames: ColumnNamesValidation => new ColumnNamesValidationOps(colNames)
-      case x => throw new RuntimeException(s"Unsupported validation type, validation=$x")
+      case x => throw UnsupportedDataValidationTypeException(x.getClass.getName)
     }
   }
 }
@@ -152,7 +157,7 @@ class ColumnNamesValidationOps(columnNamesValidation: ColumnNamesValidation) ext
         val missingNames = columnNamesValidation.names.filter(n => !df.columns.contains(n)).map(CustomErrorSample)
         (missingNames.isEmpty, missingNames.toList, columnNamesValidation.names.length)
       case x =>
-        LOGGER.error(s"Unknown column name validation type, returning as a failed validation, type=$x")
+        LOGGER.error(s"Unknown field name validation type, returning as a failed validation, type=$x")
         (false, List(), 1)
     }
 

@@ -2,9 +2,12 @@ package io.github.datacatering.datacaterer.core.ui.mapper
 
 import io.github.datacatering.datacaterer.api.connection.{ConnectionTaskBuilder, FileBuilder, JdbcBuilder}
 import io.github.datacatering.datacaterer.api.model.Constants._
-import io.github.datacatering.datacaterer.api.model.DataType
-import io.github.datacatering.datacaterer.api.{BasePlanRun, ColumnNamesValidationBuilder, ColumnValidationBuilder, ConnectionConfigWithTaskBuilder, CountBuilder, DataCatererConfigurationBuilder, FieldBuilder, GeneratorBuilder, GroupByValidationBuilder, PlanBuilder, PlanRun, ValidationBuilder}
-import io.github.datacatering.datacaterer.core.ui.model.{ConfigurationRequest, DataSourceRequest, FieldRequest, ForeignKeyRequest, ForeignKeyRequestItem, PlanRunRequest, ValidationItemRequest, ValidationItemRequests}
+import io.github.datacatering.datacaterer.api.model.{DataType, ForeignKeyRelation}
+import io.github.datacatering.datacaterer.api.{BasePlanRun, ColumnNamesValidationBuilder, ColumnValidationBuilder, ConnectionConfigWithTaskBuilder, CountBuilder, DataCatererConfigurationBuilder, FieldBuilder, GeneratorBuilder, GroupByValidationBuilder, MetadataSourceBuilder, PlanBuilder, PlanRun, ValidationBuilder}
+import io.github.datacatering.datacaterer.core.exception.{InvalidMetadataDataSourceOptionsException, MissingConnectionForForeignKeyException}
+import io.github.datacatering.datacaterer.core.generator.metadata.StepNameProvider
+import io.github.datacatering.datacaterer.core.model.Constants.CONNECTION_TYPE
+import io.github.datacatering.datacaterer.core.ui.model.{ConfigurationRequest, DataSourceRequest, FieldRequest, ForeignKeyRequest, ForeignKeyRequestItem, MetadataSourceRequest, PlanRunRequest, ValidationItemRequest, ValidationItemRequests}
 import org.apache.log4j.Logger
 
 object UiMapper {
@@ -14,10 +17,10 @@ object UiMapper {
   def mapToPlanRun(planRunRequest: PlanRunRequest, installDirectory: String): PlanRun = {
     val plan = new BasePlanRun()
     val planBuilder = plan.plan.name(planRunRequest.name).runId(planRunRequest.id)
-    val configuration = planRunRequest.configuration
-      .map(c => configurationMapping(c, installDirectory))
-      .getOrElse(DataCatererConfigurationBuilder())
     val connections = planRunRequest.dataSources.map(dataSourceToConnection)
+    val configuration = planRunRequest.configuration
+      .map(c => configurationMapping(c, installDirectory, connections))
+      .getOrElse(DataCatererConfigurationBuilder())
     val planBuilderWithForeignKeys = foreignKeyMapping(planRunRequest.foreignKeys, connections, planBuilder)
     // after initial connection mapping, need to get the upstream validations based on the connection mapping
     val connectionsWithUpstreamValidations = connectionsWithUpstreamValidationMapping(connections, planRunRequest.dataSources)
@@ -35,49 +38,70 @@ object UiMapper {
     val countBuilder = countMapping(dataSourceRequest)
     val mappedValidations = validationMapping(dataSourceRequest)
 
-    baseConnection
+    val baseConnectionWithSchema = mappedFields._1.map(baseConnection.schema)
+      .getOrElse(mappedFields._2.map(f => baseConnection.schema(f: _*)).getOrElse(baseConnection))
+    val enableDataGenFromOpts = dataSourceRequest.options.forall(opts => opts.getOrElse(ENABLE_DATA_GENERATION, "true").toBoolean)
+
+    baseConnectionWithSchema
       .name(dataSourceRequest.taskName)
-      .schema(mappedFields: _*)
       .count(countBuilder)
       .validations(mappedValidations: _*)
-      .enableDataGeneration(mappedFields.nonEmpty)
+      .enableDataGeneration(enableDataGenFromOpts || mappedFields._1.nonEmpty || mappedFields._2.nonEmpty)
   }
 
   def foreignKeyMapping(foreignKeyRequests: List[ForeignKeyRequest], connections: List[ConnectionTaskBuilder[_]], planBuilder: PlanBuilder): PlanBuilder = {
     val mappedWithConnections = foreignKeyRequests.map(fkr => {
-      val sourceConnection = getConnectionByTaskName(connections, fkr.source.get.taskName)
-      val sourceColumns = fkr.source.get.columns.split(VALIDATION_OPTION_DELIMITER).toList
-      val generationLinkConnections = mapForeignKeyLinks(connections, fkr.generationLinks)
-      val deleteLinkConnections = mapForeignKeyLinks(connections, fkr.deleteLinks)
+      val sourceFk = mapToForeignKeyRelation(connections, fkr.source.get)
+      val generationLinkConnections = mapForeignKeyLinksToRelations(connections, fkr.generationLinks)
+      val deleteLinkConnections = mapForeignKeyLinksToRelations(connections, fkr.deleteLinks)
 
-      (sourceConnection, sourceColumns, generationLinkConnections, deleteLinkConnections)
+      (sourceFk, generationLinkConnections, deleteLinkConnections)
     })
-    mappedWithConnections.foldLeft(planBuilder)((pb, fk) => pb.addForeignKeyRelationship(fk._1, fk._2, fk._3, fk._4))
+    mappedWithConnections.foldLeft(planBuilder)((pb, fk) => pb.addForeignKeyRelationship(fk._1, fk._2, fk._3))
   }
 
-  private def mapForeignKeyLinks(connections: List[ConnectionTaskBuilder[_]], links: List[ForeignKeyRequestItem]) = {
-    links.map(link => {
-      val matchingConnection = getConnectionByTaskName(connections, link.taskName)
-      (matchingConnection, link.columns.split(VALIDATION_OPTION_DELIMITER).toList)
-    })
+  private def mapToForeignKeyRelation(connections: List[ConnectionTaskBuilder[_]], foreignKeyRequestItem: ForeignKeyRequestItem): ForeignKeyRelation = {
+    val connection = getConnectionByTaskName(connections, foreignKeyRequestItem.taskName)
+    val columns = foreignKeyRequestItem.columns.split(VALIDATION_OPTION_DELIMITER).toList
+    val dataSourceName = connection.connectionConfigWithTaskBuilder.dataSourceName
+    //if there are options defined in the foreign key request item, it needs to be used to define the step name
+    //since if a metadata source is used to generate sub data sources, the options are used to define the step name
+    //i.e. read schema from OpenAPI doc and step name becomes 'GET/my-path'
+    val overrideOptions = foreignKeyRequestItem.options.getOrElse(Map())
+    val baseOptions = connection.connectionConfigWithTaskBuilder.options
+    val stepName = StepNameProvider.fromOptions(baseOptions ++ overrideOptions).getOrElse(connection.step.map(_.step.name).getOrElse(DEFAULT_STEP_NAME))
+    ForeignKeyRelation(dataSourceName, stepName, columns)
+  }
+
+  private def mapForeignKeyLinksToRelations(connections: List[ConnectionTaskBuilder[_]], links: List[ForeignKeyRequestItem]): List[ForeignKeyRelation] = {
+    links.map(link => mapToForeignKeyRelation(connections, link))
   }
 
   private def getConnectionByTaskName(connections: List[ConnectionTaskBuilder[_]], taskName: String): ConnectionTaskBuilder[_] = {
     val matchingConnection = connections.find(c => c.task.exists(taskBuilder => taskBuilder.task.name == taskName))
     matchingConnection match {
       case Some(value) => value
-      case None => throw new RuntimeException(s"No connection found with matching task name, task-name=$taskName")
+      case None => throw MissingConnectionForForeignKeyException(taskName)
     }
   }
 
-  private def configurationMapping(configurationRequest: ConfigurationRequest, installDirectory: String): DataCatererConfigurationBuilder = {
+  private def configurationMapping(
+                                    configurationRequest: ConfigurationRequest,
+                                    installDirectory: String,
+                                    connections: List[ConnectionTaskBuilder[_]]
+                                  ): DataCatererConfigurationBuilder = {
+    val isConnectionContainsMetadataSource = connections.exists(conn => conn.connectionConfigWithTaskBuilder.options.contains(METADATA_SOURCE_TYPE))
+    val configUpdatedFromConnections = if (isConnectionContainsMetadataSource) {
+      configurationRequest.copy(flag = configurationRequest.flag ++ Map(CONFIG_FLAGS_GENERATE_PLAN_AND_TASKS -> isConnectionContainsMetadataSource.toString))
+    } else configurationRequest
+
     val baseConfig = DataCatererConfigurationBuilder()
-    val withFlagConf = mapFlagsConfiguration(configurationRequest, baseConfig)
-    val withFolderConf = mapFolderConfiguration(configurationRequest, installDirectory, withFlagConf)
-    val withMetadataConf = mapMetadataConfiguration(configurationRequest, withFolderConf)
-    val withGenerationConf = mapGenerationConfiguration(configurationRequest, withMetadataConf)
-    val withValidationConf = mapValidationConfiguration(configurationRequest, withGenerationConf)
-    val withAlertConf = mapAlertConfiguration(configurationRequest, withValidationConf)
+    val withFlagConf = mapFlagsConfiguration(configUpdatedFromConnections, baseConfig)
+    val withFolderConf = mapFolderConfiguration(configUpdatedFromConnections, installDirectory, withFlagConf)
+    val withMetadataConf = mapMetadataConfiguration(configUpdatedFromConnections, withFolderConf)
+    val withGenerationConf = mapGenerationConfiguration(configUpdatedFromConnections, withMetadataConf)
+    val withValidationConf = mapValidationConfiguration(configUpdatedFromConnections, withGenerationConf)
+    val withAlertConf = mapAlertConfiguration(configUpdatedFromConnections, withValidationConf)
 
     withAlertConf
   }
@@ -268,30 +292,74 @@ object UiMapper {
     }).getOrElse(CountBuilder())
   }
 
-  def fieldMapping(dataSourceRequest: DataSourceRequest): List[FieldBuilder] = {
-    dataSourceRequest.fields
-      .map(fields => fieldMapping(dataSourceRequest.name, fields.optFields.getOrElse(List())))
-      .getOrElse(List())
+  def fieldMapping(dataSourceRequest: DataSourceRequest): (Option[MetadataSourceBuilder], Option[List[FieldBuilder]]) = {
+    dataSourceRequest.fields.map(fields => {
+      fields.optMetadataSource.map(metadataSource =>
+        (Some(dataGenerationMetadataSourceMapping(metadataSource)), None)
+      ).getOrElse(
+        (None, Some(fieldMapping(dataSourceRequest.name, fields.optFields, fields.optMetadataSource)))
+      )
+    }).getOrElse((None, None))
   }
 
-  private def fieldMapping(dataSourceName: String, fields: List[FieldRequest]): List[FieldBuilder] = {
-    fields.map(field => {
-      assert(field.name.nonEmpty, s"Field name cannot be empty, data-source-name=$dataSourceName")
-      assert(field.`type`.nonEmpty, s"Field type cannot be empty, data-source-name=$dataSourceName, field-name=${field.name}")
-      val options = field.options.getOrElse(Map())
-      val baseBuild = FieldBuilder().name(field.name).`type`(DataType.fromString(field.`type`)).options(options)
-      val withRegex = options.get(REGEX_GENERATOR).map(regex => baseBuild.regex(regex)).getOrElse(baseBuild)
-      val withOneOf = options.get(ONE_OF_GENERATOR).map(oneOf => withRegex.oneOf(oneOf.split(ONE_OF_GENERATOR_DELIMITER).map(_.trim): _*)).getOrElse(withRegex)
-      val optNested = field.nested.map(nestedFields => fieldMapping(dataSourceName, nestedFields.optFields.getOrElse(List())))
-      optNested.map(nested => withOneOf.schema(nested: _*)).getOrElse(withOneOf)
-    })
+  private def dataGenerationMetadataSourceMapping(metadataSource: MetadataSourceRequest): MetadataSourceBuilder = {
+    // metadata source exists and should have options defined (at least type and groupType)
+    if (metadataSource.overrideOptions.isEmpty) {
+      throw InvalidMetadataDataSourceOptionsException(metadataSource.name)
+    }
+    val builder = MetadataSourceBuilder()
+    val baseOptions = metadataSource.overrideOptions.getOrElse(Map())
+    val builderWithOptions = baseOptions(CONNECTION_TYPE) match {
+      case OPEN_METADATA =>
+        checkOptions(metadataSource.name, List(URL, OPEN_METADATA_AUTH_TYPE), baseOptions)
+        builder.openMetadata(baseOptions(URL), baseOptions(OPEN_METADATA_AUTH_TYPE), baseOptions)
+      case OPEN_API =>
+        checkOptions(metadataSource.name, List(SCHEMA_LOCATION), baseOptions)
+        builder.openApi(baseOptions(SCHEMA_LOCATION))
+      case MARQUEZ =>
+        checkOptions(metadataSource.name, List(URL, OPEN_LINEAGE_NAMESPACE), baseOptions)
+        builder.marquez(baseOptions(URL), baseOptions(OPEN_LINEAGE_NAMESPACE))
+      case x =>
+        LOGGER.warn(s"Unsupported metadata source for data generation, metadata-connection-type=$x")
+        builder
+    }
+    builderWithOptions
+  }
+
+  /*
+   * Get field mapping based on manually defined fields or setting the metadata source to get schema details.
+   * Try get metadata source details first. If doesn't exist, fallback to manual fields.
+   * If no manual fields or metadata source exist, then metadata will be gathered from data source.
+   */
+  private def fieldMapping(
+                            dataSourceName: String,
+                            optFields: Option[List[FieldRequest]] = None,
+                            optMetadataSource: Option[MetadataSourceRequest] = None
+                          ): List[FieldBuilder] = {
+    optFields.map(fields => {
+      fields.map(field => {
+        assert(field.name.nonEmpty, s"Field name cannot be empty, data-source-name=$dataSourceName")
+        assert(field.`type`.nonEmpty, s"Field type cannot be empty, data-source-name=$dataSourceName, field-name=${field.name}")
+        val options = field.options.getOrElse(Map())
+        val baseBuild = FieldBuilder().name(field.name).`type`(DataType.fromString(field.`type`)).options(options)
+        val withRegex = options.get(REGEX_GENERATOR).map(regex => baseBuild.regex(regex)).getOrElse(baseBuild)
+        val withOneOf = options.get(ONE_OF_GENERATOR).map(oneOf => withRegex.oneOf(oneOf.split(ONE_OF_GENERATOR_DELIMITER).map(_.trim): _*)).getOrElse(withRegex)
+        val optNested = field.nested.map(nestedFields => fieldMapping(dataSourceName, nestedFields.optFields))
+        optNested.map(nested => withOneOf.schema(nested: _*)).getOrElse(withOneOf)
+      })
+    }).getOrElse(List())
   }
 
   def connectionMapping(dataSourceRequest: DataSourceRequest): ConnectionTaskBuilder[_] = {
     dataSourceRequest.`type` match {
       case Some(CASSANDRA_NAME) => createCassandraConnection(dataSourceRequest)
-      case Some(POSTGRES) | Some(MYSQL) => createJdbcConnection(dataSourceRequest, dataSourceRequest.`type`.get)
-      case Some(CSV) | Some(JSON) | Some(PARQUET) | Some(ORC) | Some(DELTA) => createFileConnection(dataSourceRequest, dataSourceRequest.`type`.get)
+      case Some(POSTGRES) => createJdbcConnection(dataSourceRequest, POSTGRES)
+      case Some(MYSQL) => createJdbcConnection(dataSourceRequest, MYSQL)
+      case Some(CSV) => createFileConnection(dataSourceRequest, CSV)
+      case Some(JSON) => createFileConnection(dataSourceRequest, JSON)
+      case Some(PARQUET) => createFileConnection(dataSourceRequest, PARQUET)
+      case Some(ORC) => createFileConnection(dataSourceRequest, ORC)
+      case Some(DELTA) => createFileConnection(dataSourceRequest, DELTA)
       case Some(ICEBERG) => createIcebergConnection(dataSourceRequest)
       case Some(SOLACE) =>
         val opt = dataSourceRequest.options.getOrElse(Map())
@@ -304,8 +372,7 @@ object UiMapper {
         ConnectionConfigWithTaskBuilder().kafka(dataSourceRequest.name, opt(URL), opt)
       case Some(HTTP) =>
         val opt = dataSourceRequest.options.getOrElse(Map())
-        checkOptions(dataSourceRequest.name, List(USERNAME, PASSWORD), opt)
-        ConnectionConfigWithTaskBuilder().http(dataSourceRequest.name, opt(USERNAME), opt(PASSWORD), opt)
+        ConnectionConfigWithTaskBuilder().http(dataSourceRequest.name, opt.getOrElse(USERNAME, ""), opt.getOrElse(PASSWORD, ""), opt)
       case Some(x) =>
         throw new IllegalArgumentException(s"Unsupported data source from UI, data-source-type=$x")
       case _ =>
@@ -393,7 +460,7 @@ object UiMapper {
               opts.filter(o => o._1 != VALIDATION_AGGREGATION_TYPE && o._1 != VALIDATION_AGGREGATION_COLUMN)
                 .map(opt => columnValidationMapping(aggregateValidation, opts, opt._2, opt))
                 .toList
-            case _ => throw new RuntimeException("Keys 'aggType' and 'aggCol' are expected when defining a group by validation")
+            case _ => throw new IllegalArgumentException("Keys 'aggType' and 'aggCol' are expected when defining a group by validation")
           }
         }).getOrElse(List())
       })
