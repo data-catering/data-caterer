@@ -186,9 +186,9 @@ dependencies {
     basicImpl("com.globalmentor:hadoop-bare-naked-local-fs:0.1.0")
 
     // misc
-    basicImpl("joda-time:joda-time:2.12.5")
+    basicImpl("joda-time:joda-time:2.12.7")
     basicImpl("com.google.guava:guava:33.2.1-jre")
-    basicImpl("com.github.pureconfig:pureconfig_$scalaVersion:0.17.2") {
+    basicImpl("com.github.pureconfig:pureconfig_$scalaVersion:0.17.6") {
         exclude(group = "org.scala-lang")
     }
     basicImpl("com.fasterxml.jackson.core:jackson-databind:2.15.3") {
