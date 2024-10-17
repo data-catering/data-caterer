@@ -25,4 +25,4 @@ docker buildx create --use --name builder
 docker buildx inspect --bootstrap builder
 
 docker buildx build --platform $platforms \
-  -t datacatering/data-caterer-basic:$version --push .
+  -t datacatering/data-caterer:$version --push .
