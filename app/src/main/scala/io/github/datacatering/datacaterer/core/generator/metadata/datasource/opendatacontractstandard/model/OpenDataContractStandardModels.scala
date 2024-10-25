@@ -2,7 +2,6 @@ package io.github.datacatering.datacaterer.core.generator.metadata.datasource.op
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties
 
-@JsonIgnoreProperties(ignoreUnknown = true)
 case class OpenDataContractStandard(
                                      dataset: Array[OpenDataContractStandardDataset],
                                      datasetName: String,
@@ -12,9 +11,12 @@ case class OpenDataContractStandard(
                                      uuid: String,
                                      version: String,
                                      apiVersion: Option[String] = None,
+                                     contractCreatedTs: Option[String] = None,
+                                     customProperties: Option[Array[OpenDataContractStandardCustomProperty]] = None,
                                      database: Option[String] = None,
                                      datasetDomain: Option[String] = None,
                                      datasetKind: Option[String] = None,
+                                     datasetProject: Option[String] = None,
                                      description: Option[OpenDataContractStandardDescription] = None,
                                      driver: Option[String] = None,
                                      driverVersion: Option[String] = None,
@@ -28,12 +30,14 @@ case class OpenDataContractStandard(
                                      tags: Option[Array[String]] = None,
                                      tenant: Option[String] = None,
                                      `type`: Option[String] = None,
+                                     schedulerAppName: Option[String] = None,
                                      server: Option[String] = None,
                                      slaDefaultColumn: Option[String] = None,
                                      slaProperties: Option[Array[OpenDataContractStandardServiceLevelAgreementProperty]] = None,
                                      sourceSystem: Option[String] = None,
                                      sourcePlatform: Option[String] = None,
                                      stakeholders: Option[Array[OpenDataContractStandardStakeholder]] = None,
+                                     systemInstance: Option[String] = None,
                                      username: Option[String] = None,
                                      userConsumptionMode: Option[String] = None,
                                    )
@@ -143,5 +147,5 @@ case class OpenDataContractStandardAuthoritativeDefinition(
 @JsonIgnoreProperties(ignoreUnknown = true)
 case class OpenDataContractStandardCustomProperty(
                                                    property: String,
-                                                   value: String,
+                                                   value: Any,
                                                  )

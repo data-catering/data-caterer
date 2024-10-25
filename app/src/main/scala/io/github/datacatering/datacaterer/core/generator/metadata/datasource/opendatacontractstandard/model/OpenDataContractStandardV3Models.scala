@@ -1,34 +1,51 @@
 package io.github.datacatering.datacaterer.core.generator.metadata.datasource.opendatacontractstandard.model
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties
+import com.fasterxml.jackson.core.`type`.TypeReference
+import com.fasterxml.jackson.module.scala.JsonScalaEnumeration
+import io.github.datacatering.datacaterer.core.generator.metadata.datasource.opendatacontractstandard.model
 
 
 object KindEnum extends Enumeration {
+  type KindEnum = Value
   val DataContract = Value
 }
-
+class KindEnumCls extends TypeReference[KindEnum.type]
 
 object ApiVersionEnum extends Enumeration {
-  val `v3.0.0`, `v2.2.2`, `v2.2.1`, `v2.2.0` = Value
+  type ApiVersionEnum = Value
+  val `v3.0.0`: model.ApiVersionEnum.Value = Value(0, "v3.0.0")
+  val `v2.2.2`: model.ApiVersionEnum.Value = Value(1, "v2.2.2")
+  val `v2.2.1`: model.ApiVersionEnum.Value = Value(2, "v2.2.1")
+  val `v2.2.0`: model.ApiVersionEnum.Value = Value(3, "v2.2.0")
 }
+class ApiVersionEnumCls extends TypeReference[ApiVersionEnum.type]
 
 object ServerTypeEnum extends Enumeration {
-  val api, athena, azure, bigquery, clickhouse, databricks, denodo, dremio, duckdb, glue, cloudsql, db2, informix, kafka, kinesis, local, mysql, oracle, postgresql, postgres, presto, pubsub, redshift, s3, sftp, snowflake, sqlserver, synapse, trino, vertica, custom = Value
+  type ServerTypeEnum = Value
+  val api, athena, azure, bigquery, clickhouse, databricks, denodo, dremio, duckdb, glue, cloudsql, db2, informix,
+  kafka, kinesis, local, mysql, oracle, postgresql, postgres, presto, pubsub, redshift, s3, sftp, snowflake,
+  sqlserver, synapse, trino, vertica, custom = Value
 }
+class ServerTypeEnumCls extends TypeReference[ServerTypeEnum.type]
 
 object LogicalTypeEnum extends Enumeration {
+  type LogicalTypeEnum = Value
   val string, date, number, integer, `object`, array, boolean = Value
 }
+class LogicalTypeEnumCls extends TypeReference[LogicalTypeEnum.type]
 
 object DataQualityTypeEnum extends Enumeration {
+  type DataQualityTypeEnum = Value
   val text, library, sql, custom = Value
 }
+class DataQualityTypeEnumCls extends TypeReference[DataQualityTypeEnum.type]
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 case class OpenDataContractStandardV3(
-                                       apiVersion: ApiVersionEnum.Value,
+                                       @JsonScalaEnumeration(classOf[ApiVersionEnumCls]) apiVersion: ApiVersionEnum.ApiVersionEnum,
                                        id: String,
-                                       kind: KindEnum.Value,
+                                       @JsonScalaEnumeration(classOf[KindEnumCls]) kind: KindEnum.KindEnum,
                                        status: String,
                                        version: String,
                                        contractCreatedTs: Option[String] = None,
@@ -63,7 +80,7 @@ case class OpenDataContractStandardV3(
 @JsonIgnoreProperties(ignoreUnknown = true)
 case class OpenDataContractStandardServerV3(
                                              server: String,
-                                             `type`: ServerTypeEnum.Value,
+                                             @JsonScalaEnumeration(classOf[ServerTypeEnumCls]) `type`: ServerTypeEnum.ServerTypeEnum,
                                              description: Option[String],
                                              environment: Option[String],
                                              roles: Option[Array[OpenDataContractStandardRole]],
@@ -90,7 +107,7 @@ case class OpenDataContractStandardSchemaV3(
 @JsonIgnoreProperties(ignoreUnknown = true)
 case class OpenDataContractStandardElementV3(
                                               name: String,
-                                              logicalType: LogicalTypeEnum.Value,
+                                              @JsonScalaEnumeration(classOf[LogicalTypeEnumCls]) logicalType: LogicalTypeEnum.LogicalTypeEnum,
                                               physicalType: String,
                                               authoritativeDefinitions: Option[Array[OpenDataContractStandardAuthoritativeDefinition]] = None,
                                               businessName: Option[String] = None,
@@ -136,7 +153,7 @@ case class OpenDataContractStandardLogicalTypeOptionsV3(
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 case class OpenDataContractStandardDataQualityV3(
-                                                  `type`: DataQualityTypeEnum.Value,
+                                                  @JsonScalaEnumeration(classOf[DataQualityTypeEnumCls]) `type`: DataQualityTypeEnum.DataQualityTypeEnum,
                                                   authoritativeDefinitions: Option[Array[OpenDataContractStandardAuthoritativeDefinition]] = None,
                                                   businessImpact: Option[String] = None,
                                                   code: Option[String] = None,
