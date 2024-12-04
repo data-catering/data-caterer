@@ -1,6 +1,6 @@
 package io.github.datacatering.datacaterer.core.generator.provider
 
-import io.github.datacatering.datacaterer.api.model.Constants.{ARRAY_MAXIMUM_LENGTH, ARRAY_MINIMUM_LENGTH, DEFAULT_VALUE, DISTINCT_COUNT, DISTRIBUTION, DISTRIBUTION_EXPONENTIAL, DISTRIBUTION_NORMAL, DISTRIBUTION_RATE_PARAMETER, EXPRESSION, IS_UNIQUE, MAXIMUM, MAXIMUM_LENGTH, MEAN, MINIMUM, MINIMUM_LENGTH, NUMERIC_PRECISION, NUMERIC_SCALE, ROW_COUNT, STANDARD_DEVIATION}
+import io.github.datacatering.datacaterer.api.model.Constants.{ARRAY_MAXIMUM_LENGTH, ARRAY_MINIMUM_LENGTH, DEFAULT_VALUE, DISTINCT_COUNT, DISTRIBUTION, DISTRIBUTION_EXPONENTIAL, DISTRIBUTION_NORMAL, DISTRIBUTION_RATE_PARAMETER, EXPRESSION, IS_UNIQUE, MAXIMUM, MAXIMUM_LENGTH, MEAN, MINIMUM, MINIMUM_LENGTH, NUMERIC_PRECISION, NUMERIC_SCALE, ROUND, ROW_COUNT, STANDARD_DEVIATION}
 import io.github.datacatering.datacaterer.core.exception.UnsupportedDataGeneratorType
 import io.github.datacatering.datacaterer.core.model.Constants._
 import io.github.datacatering.datacaterer.core.util.GeneratorUtil
@@ -386,10 +386,15 @@ object RandomDataGenerator {
       s"$sqlRand * $diff + $min"
     }
 
-    if (!baseFormula.contains(INDEX_INC_COL) && (typeName == "INT" || typeName == "SHORT" || typeName == "LONG")) {
-      s"CAST(ROUND($baseFormula, 0) AS $typeName)"
+    val rounded = if (metadata.contains(ROUND)) {
+      val roundValue = metadata.getString(ROUND)
+      s"ROUND($baseFormula, $roundValue)"
+    } else baseFormula
+
+    if (!rounded.contains(INDEX_INC_COL) && (typeName == "INT" || typeName == "SHORT" || typeName == "LONG")) {
+      s"CAST(ROUND($rounded, 0) AS $typeName)"
     } else {
-      s"CAST($baseFormula AS $typeName)"
+      s"CAST($rounded AS $typeName)"
     }
   }
 

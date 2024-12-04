@@ -111,7 +111,7 @@ object MetadataUtil {
     computeColumnStatistics(sourceData, dataSourceReadOptions, dataSourceMetadata.name, dataSourceMetadata.format)
     val columnLevelStatistics = sparkSession.sharedState.cacheManager.lookupCachedData(sourceData).get.cachedRepresentation.stats
     val rowCount = columnLevelStatistics.rowCount.getOrElse(BigInt(0))
-    LOGGER.info(s"Computed metadata statistics for data source, name=${dataSourceMetadata.name}, format=$dataSourceFormat, " +
+    LOGGER.debug(s"Computed metadata statistics for data source, name=${dataSourceMetadata.name}, format=$dataSourceFormat, " +
       s"details=${ConfigUtil.cleanseOptions(dataSourceReadOptions)}, rows-analysed=$rowCount, size-in-bytes=${columnLevelStatistics.sizeInBytes}, " +
       s"num-columns-analysed=${columnLevelStatistics.attributeStats.size}")
 

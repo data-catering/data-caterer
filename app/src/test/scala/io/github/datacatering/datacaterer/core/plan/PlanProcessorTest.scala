@@ -24,7 +24,7 @@ class PlanProcessorTest extends SparkSuite {
         .schema(
           field.name("account_id").regex("ACC[0-9]{8}"),
           field.name("year").`type`(IntegerType).sql("YEAR(date)"),
-          field.name("balance").`type`(DoubleType).min(10).max(1000),
+          field.name("balance").`type`(DoubleType).min(10).max(1000).round(2),
           field.name("date").`type`(DateType).min(Date.valueOf("2022-01-01")),
           field.name("status").oneOf(accountStatus: _*),
           field.name("update_history")

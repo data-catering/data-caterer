@@ -13,7 +13,7 @@ class RecordTrackingProcessor(recordTrackingFolderPath: String) {
 
   def trackRecords(df: DataFrame, dataSourceName: String, planName: String, step: Step): Unit = {
     val subDataSourcePath = getSubDataSourcePath(dataSourceName, planName, step, recordTrackingFolderPath)
-    LOGGER.info(s"Generated record tracking is enabled, data-source-name=$dataSourceName, plan-name=$planName, save-path=$subDataSourcePath")
+    LOGGER.debug(s"Generated record tracking is enabled, data-source-name=$dataSourceName, plan-name=$planName, save-path=$subDataSourcePath")
     if (df.isEmpty || df.schema.isEmpty) {
       LOGGER.debug("Unable to save records for record tracking due to 0 records found or empty schema")
     } else {
