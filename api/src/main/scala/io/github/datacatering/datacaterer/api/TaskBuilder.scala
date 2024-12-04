@@ -905,6 +905,15 @@ case class FieldBuilder(field: Field = Field()) {
     this.modify(_.field.generator).setTo(Some(getGenBuilder.numericScale(scale).generator))
 
   /**
+   * Sets the rounding for the field.
+   *
+   * @param round Number of decimal places to round to
+   * @return the updated `FieldBuilder` instance
+   */
+  def round(round: Int): FieldBuilder =
+    this.modify(_.field.generator).setTo(Some(getGenBuilder.round(round).generator))
+
+  /**
    * Sets whether the field should be omitted from the generated output.
    *
    * @param omit `true` to omit the field, `false` to include it.
@@ -1224,6 +1233,15 @@ case class GeneratorBuilder(generator: Generator = Generator()) {
    */
   def numericScale(scale: Int): GeneratorBuilder =
     this.modify(_.generator.options)(_ ++ Map(NUMERIC_SCALE -> scale.toString))
+
+  /**
+   * Rounding to decimal places for numeric data types
+   *
+   * @param round Number of decimal places to round to
+   * @return GeneratorBuilder
+   */
+  def round(round: Int): GeneratorBuilder =
+    this.modify(_.generator.options)(_ ++ Map(ROUND -> round.toString))
 
   /**
    * Enable/disable including the value in the final output to the data source. Allows you to define intermediate values

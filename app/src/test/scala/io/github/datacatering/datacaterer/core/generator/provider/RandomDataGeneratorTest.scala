@@ -1,6 +1,6 @@
 package io.github.datacatering.datacaterer.core.generator.provider
 
-import io.github.datacatering.datacaterer.api.model.Constants.{ARRAY_MINIMUM_LENGTH, DISTINCT_COUNT, DISTRIBUTION, DISTRIBUTION_EXPONENTIAL, DISTRIBUTION_NORMAL, DISTRIBUTION_RATE_PARAMETER, ENABLED_EDGE_CASE, ENABLED_NULL, EXPRESSION, IS_UNIQUE, MAXIMUM, MAXIMUM_LENGTH, MEAN, MINIMUM, MINIMUM_LENGTH, PROBABILITY_OF_EDGE_CASE, PROBABILITY_OF_NULL, ROW_COUNT, STANDARD_DEVIATION}
+import io.github.datacatering.datacaterer.api.model.Constants.{ARRAY_MINIMUM_LENGTH, DISTINCT_COUNT, DISTRIBUTION, DISTRIBUTION_EXPONENTIAL, DISTRIBUTION_NORMAL, DISTRIBUTION_RATE_PARAMETER, ENABLED_EDGE_CASE, ENABLED_NULL, EXPRESSION, IS_UNIQUE, MAXIMUM, MAXIMUM_LENGTH, MEAN, MINIMUM, MINIMUM_LENGTH, PROBABILITY_OF_EDGE_CASE, PROBABILITY_OF_NULL, ROUND, ROW_COUNT, STANDARD_DEVIATION}
 import io.github.datacatering.datacaterer.core.generator.provider.RandomDataGenerator._
 import io.github.datacatering.datacaterer.core.model.Constants.INDEX_INC_COL
 import org.apache.spark.sql.types._
@@ -187,6 +187,17 @@ class RandomDataGeneratorTest extends AnyFunSuite {
     assert(sampleData >= 5.0)
     assert(sampleData <= 10.0)
     assert(doubleGenerator.generateSqlExpression == "CAST(RAND() * 5.0 + 5.0 AS DOUBLE)")
+  }
+
+  test("Can create random double generator with custom min, max and rounding") {
+    val metadata = new MetadataBuilder().putString(MAXIMUM, "10.0").putString(MINIMUM, "5.0").putString(ROUND, "2").build()
+    val doubleGenerator = new RandomDoubleDataGenerator(StructField("random_double", DoubleType, false, metadata))
+    val sampleData = doubleGenerator.generate
+
+    assert(doubleGenerator.edgeCases.nonEmpty)
+    assert(sampleData >= 5.0)
+    assert(sampleData <= 10.0)
+    assert(doubleGenerator.generateSqlExpression == "CAST(ROUND(RAND() * 5.0 + 5.0, 2) AS DOUBLE)")
   }
 
   test("Can create random float generator") {

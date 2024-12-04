@@ -83,6 +83,7 @@ object Constants {
   lazy val MAXIMUM = "max"
   lazy val STANDARD_DEVIATION = "stddev"
   lazy val MEAN = "mean"
+  lazy val ROUND = "round"
   lazy val DISTRIBUTION = "distribution"
   lazy val DISTRIBUTION_RATE_PARAMETER = "distributionRateParam"
   lazy val DISTRIBUTION_UNIFORM = "uniform"
