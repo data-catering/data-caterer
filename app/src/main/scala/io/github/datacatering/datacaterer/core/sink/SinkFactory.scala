@@ -2,13 +2,15 @@ package io.github.datacatering.datacaterer.core.sink
 
 import com.google.common.util.concurrent.RateLimiter
 import io.github.datacatering.datacaterer.api.model.Constants.{DELTA, DELTA_LAKE_SPARK_CONF, DRIVER, FORMAT, ICEBERG, ICEBERG_SPARK_CONF, JDBC, OMIT, PARTITIONS, PARTITION_BY, POSTGRES_DRIVER, RATE, ROWS_PER_SECOND, SAVE_MODE, TABLE}
-import io.github.datacatering.datacaterer.api.model.{FlagsConfig, MetadataConfig, Step}
+import io.github.datacatering.datacaterer.api.model.{FlagsConfig, FoldersConfig, MetadataConfig, Step}
 import io.github.datacatering.datacaterer.core.exception.{FailedSaveDataDataFrameV2Exception, FailedSaveDataException}
 import io.github.datacatering.datacaterer.core.model.Constants.{BATCH, DEFAULT_ROWS_PER_SECOND, FAILED, FINISHED, PER_COLUMN_INDEX_COL, STARTED}
-import io.github.datacatering.datacaterer.core.model.SinkResult
+import io.github.datacatering.datacaterer.core.model.{RealTimeSinkResult, SinkResult}
+import io.github.datacatering.datacaterer.core.sink.http.model.HttpResult
 import io.github.datacatering.datacaterer.core.util.ConfigUtil
 import io.github.datacatering.datacaterer.core.util.GeneratorUtil.determineSaveTiming
 import io.github.datacatering.datacaterer.core.util.MetadataUtil.getFieldMetadata
+import io.github.datacatering.datacaterer.core.util.ValidationUtil.cleanValidationIdentifier
 import org.apache.log4j.Logger
 import org.apache.spark.sql.catalyst.analysis.TableAlreadyExistsException
 import org.apache.spark.sql.functions.col
@@ -19,7 +21,8 @@ import scala.util.{Failure, Success, Try}
 
 class SinkFactory(
                    val flagsConfig: FlagsConfig,
-                   val metadataConfig: MetadataConfig
+                   val metadataConfig: MetadataConfig,
+                   val foldersConfig: FoldersConfig
                  )(implicit val sparkSession: SparkSession) {
 
   private val LOGGER = Logger.getLogger(getClass.getName)
@@ -120,7 +123,7 @@ class SinkFactory(
 
   private def saveRealTimeGuava(dataSourceName: String, df: DataFrame, format: String, connectionConfig: Map[String, String],
                                 step: Step, rowsPerSecond: String, count: String, startTime: LocalDateTime): SinkResult = {
-    implicit val tryEncoder: Encoder[Try[Unit]] = Encoders.kryo[Try[Unit]]
+    implicit val tryEncoder: Encoder[Try[RealTimeSinkResult]] = Encoders.kryo[Try[RealTimeSinkResult]]
     val permitsPerSecond = Math.max(rowsPerSecond.toInt, 1)
 
     //TODO should return back the response so it could be saved for potential validations (i.e. validate HTTP request and response)
@@ -147,7 +150,13 @@ class SinkFactory(
 
   case class CheckExceptionAndSuccess(optException: Dataset[Option[Throwable]], isSuccess: Boolean)
 
-  private def checkExceptionAndSuccess(dataSourceName: String, format: String, step: Step, count: String, saveResult: Dataset[Try[Unit]]): CheckExceptionAndSuccess = {
+  private def checkExceptionAndSuccess(
+                                        dataSourceName: String,
+                                        format: String,
+                                        step: Step,
+                                        count: String,
+                                        saveResult: Dataset[Try[RealTimeSinkResult]]
+                                      ): CheckExceptionAndSuccess = {
     implicit val optionThrowableEncoder: Encoder[Option[Throwable]] = Encoders.kryo[Option[Throwable]]
     val optException = saveResult.map {
       case Failure(exception) => Some(exception)
@@ -164,6 +173,8 @@ class SinkFactory(
     } else {
       true
     }
+
+    saveRealTimeResponses(step, saveResult)
     CheckExceptionAndSuccess(optException, isSuccess)
   }
 
@@ -269,5 +280,18 @@ class SinkFactory(
     val dfWithoutOmitFields = df.selectExpr(df.columns.filter(c => !dfOmitFields.contains(c)): _*)
     if (!dfWithoutOmitFields.storageLevel.useMemory) dfWithoutOmitFields.cache()
     dfWithoutOmitFields
+  }
+
+  private def saveRealTimeResponses(step: Step, saveResult: Dataset[Try[RealTimeSinkResult]]): Unit = {
+    import sparkSession.implicits._
+    val resultJson = saveResult.map(tryRes => tryRes.getOrElse(RealTimeSinkResult()).result)
+    val jsonSchema = sparkSession.read.json(resultJson).schema
+    val topLevelFieldNames = jsonSchema.fields.map(f => s"result.${f.name}")
+    val parsedResult = resultJson.selectExpr(s"FROM_JSON(value, '${jsonSchema.toDDL}') AS result")
+      .selectExpr(topLevelFieldNames: _*)
+    val cleanStepName = cleanValidationIdentifier(step.name)
+    parsedResult.write
+      .mode(SaveMode.Overwrite)
+      .json(s"${foldersConfig.recordTrackingForValidationFolderPath}/$cleanStepName")
   }
 }

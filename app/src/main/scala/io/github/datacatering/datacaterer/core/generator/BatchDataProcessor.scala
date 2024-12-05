@@ -23,7 +23,7 @@ class BatchDataProcessor(connectionConfigsByName: Map[String, Map[String, String
                          metadataConfig: MetadataConfig, flagsConfig: FlagsConfig, generationConfig: GenerationConfig)(implicit sparkSession: SparkSession) {
 
   private val LOGGER = Logger.getLogger(getClass.getName)
-  private lazy val sinkFactory = new SinkFactory(flagsConfig, metadataConfig)
+  private lazy val sinkFactory = new SinkFactory(flagsConfig, metadataConfig, foldersConfig)
   private lazy val recordTrackingProcessor = new RecordTrackingProcessor(foldersConfig.recordTrackingFolderPath)
   private lazy val validationRecordTrackingProcessor = new RecordTrackingProcessor(foldersConfig.recordTrackingForValidationFolderPath)
   private lazy val maxRetries = 3

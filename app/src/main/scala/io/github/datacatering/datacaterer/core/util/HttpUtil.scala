@@ -1,6 +1,8 @@
 package io.github.datacatering.datacaterer.core.util
 
+import io.github.datacatering.datacaterer.api.converter.Converters.toScalaList
 import io.github.datacatering.datacaterer.api.model.Constants.{PASSWORD, USERNAME}
+import io.netty.handler.codec.http.HttpHeaders
 
 import java.util.Base64
 
@@ -15,5 +17,11 @@ object HttpUtil {
     } else {
       Map()
     }
+  }
+
+  def getHeadersAsMap(httpHeaders: HttpHeaders): Map[String, String] = {
+    toScalaList(httpHeaders.entries())
+      .map(m => m.getKey -> m.getValue)
+      .toMap
   }
 }

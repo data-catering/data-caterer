@@ -3,9 +3,11 @@ package io.github.datacatering.datacaterer.core.sink
 import io.github.datacatering.datacaterer.api.model.Constants.{HTTP, JMS}
 import io.github.datacatering.datacaterer.api.model.Step
 import io.github.datacatering.datacaterer.core.exception.UnsupportedRealTimeDataSourceFormat
+import io.github.datacatering.datacaterer.core.model.RealTimeSinkResult
 import io.github.datacatering.datacaterer.core.sink.http.HttpSinkProcessor
+import io.github.datacatering.datacaterer.core.sink.http.model.HttpResult
 import io.github.datacatering.datacaterer.core.sink.jms.JmsSinkProcessor
-import org.apache.spark.sql.Row
+import org.apache.spark.sql.{Row, SparkSession}
 import org.apache.spark.sql.types.StructType
 
 import java.util.concurrent.LinkedBlockingQueue
@@ -17,7 +19,7 @@ trait SinkProcessor[T] {
 
   def createConnection(connectionConfig: Map[String, String], step: Step): T
 
-  def pushRowToSink(row: Row): Unit
+  def pushRowToSink(row: Row): RealTimeSinkResult
 
   def close: Unit
 }

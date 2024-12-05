@@ -109,6 +109,7 @@ object Constants {
   lazy val STATIC = "static"
   lazy val CLUSTERING_POSITION = "clusteringPos"
   lazy val METADATA_IDENTIFIER = "metadataIdentifier"
+  lazy val VALIDATION_IDENTIFIER = "validationIdentifier"
   lazy val FIELD_LABEL = "label"
   lazy val IS_PII = "isPII"
   lazy val HTTP_PARAMETER_TYPE = "httpParamType"

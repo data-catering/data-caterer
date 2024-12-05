@@ -2,21 +2,29 @@ package io.github.datacatering.datacaterer.core.sink.http
 
 import io.github.datacatering.datacaterer.api.model.Constants.DEFAULT_REAL_TIME_HEADERS_DATA_TYPE
 import io.github.datacatering.datacaterer.api.model.Step
-import io.github.datacatering.datacaterer.core.exception.{AddHttpHeaderException, FailedHttpRequestException}
+import io.github.datacatering.datacaterer.core.exception.AddHttpHeaderException
 import io.github.datacatering.datacaterer.core.model.Constants.{DEFAULT_HTTP_METHOD, HTTP_HEADER_COL_PREFIX, REAL_TIME_BODY_COL, REAL_TIME_HEADERS_COL, REAL_TIME_METHOD_COL, REAL_TIME_URL_COL}
+import io.github.datacatering.datacaterer.core.model.RealTimeSinkResult
+import io.github.datacatering.datacaterer.core.sink.http.model.HttpResult
 import io.github.datacatering.datacaterer.core.sink.{RealTimeSinkProcessor, SinkProcessor}
 import io.github.datacatering.datacaterer.core.util.HttpUtil.getAuthHeader
+import io.github.datacatering.datacaterer.core.util.ObjectMapperUtil
 import io.github.datacatering.datacaterer.core.util.RowUtil.getRowValue
 import io.netty.handler.ssl.SslContextBuilder
 import org.apache.log4j.Logger
-import org.apache.spark.sql.Row
 import org.apache.spark.sql.types.StringType
+import org.apache.spark.sql.{Encoder, Encoders, Row}
 import org.asynchttpclient.Dsl.asyncHttpClient
 import org.asynchttpclient.{AsyncHttpClient, DefaultAsyncHttpClientConfig, ListenableFuture, Request, Response}
 
 import java.security.cert.X509Certificate
+import java.util.concurrent.TimeUnit
 import javax.net.ssl.X509TrustManager
 import scala.annotation.tailrec
+import scala.compat.java8.FutureConverters._
+import scala.concurrent.Await
+import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.duration.Duration
 import scala.util.{Failure, Success, Try}
 
 object HttpSinkProcessor extends RealTimeSinkProcessor[Unit] with Serializable {
@@ -26,6 +34,7 @@ object HttpSinkProcessor extends RealTimeSinkProcessor[Unit] with Serializable {
   var connectionConfig: Map[String, String] = _
   var step: Step = _
   var http: AsyncHttpClient = buildClient
+  implicit val httpResultEncoder: Encoder[HttpResult] = Encoders.kryo[HttpResult]
 
   override val expectedSchema: Map[String, String] = Map(
     REAL_TIME_URL_COL -> StringType.typeName,
@@ -68,11 +77,11 @@ object HttpSinkProcessor extends RealTimeSinkProcessor[Unit] with Serializable {
     }
   }
 
-  override def pushRowToSink(row: Row): Unit = {
-    pushRowToSinkFuture(row)
+  override def pushRowToSink(row: Row): RealTimeSinkResult = {
+    RealTimeSinkResult(pushRowToSinkFuture(row))
   }
 
-  private def pushRowToSinkFuture(row: Row): Unit = {
+  private def pushRowToSinkFuture(row: Row): String = {
     if (http.isClosed) {
       http = buildClient
     }
@@ -85,24 +94,27 @@ object HttpSinkProcessor extends RealTimeSinkProcessor[Unit] with Serializable {
     }
   }
 
-  private def handleResponse(value: ListenableFuture[Response], request: Request) = {
-    value.toCompletableFuture
-      .exceptionally(error => {
-        LOGGER.error(s"Failed to send HTTP request, url=${request.getUri}, method=${request.getMethod}", error)
-        throw error
-      })
-      .whenComplete((resp, error) => {
-        if (error == null && resp.getStatusCode >= 200 && resp.getStatusCode < 300) {
-          LOGGER.debug(s"Successful HTTP request, url=${resp.getUri}, method=${request.getMethod}, status-code=${resp.getStatusCode}, " +
-            s"status-text=${resp.getStatusText}, response-body=${resp.getResponseBody}")
-          //TODO can save response body along with request in file for validations, save as parquet or json?
-          // save request url, request headers, request body, response status code, response status text, response body, response headers, response cookies
+  private def handleResponse(value: ListenableFuture[Response], request: Request): String = {
+    val res = value.toCompletableFuture
+      .toScala
+      .map(HttpResult.fromRequestAndResponse(request, _))
+
+    res.onComplete {
+      case Success(value) =>
+        val resp = value.response
+        if (resp.statusCode >= 200 && resp.statusCode < 300) {
+          LOGGER.debug(s"Successful HTTP request, url=${request.getUrl}, method=${request.getMethod}, status-code=${resp.statusCode}, " +
+            s"status-text=${resp.statusText}, response-body=${resp.body}")
         } else {
-          LOGGER.error(s"Failed HTTP request, url=${resp.getUri}, method=${request.getMethod}, status-code=${resp.getStatusCode}, " +
-            s"status-text=${resp.getStatusText}")
-          if (error == null) throw FailedHttpRequestException() else throw error
+          LOGGER.error(s"Failed HTTP request, url=${request.getUrl}, method=${request.getMethod}, status-code=${resp.statusCode}, " +
+            s"status-text=${resp.statusText}")
         }
-      }).join()
+      case Failure(exception) =>
+        LOGGER.error(s"Failed to send HTTP request, url=${request.getUri}, method=${request.getMethod}", exception)
+        throw exception
+    }
+    val resAsJson = res.map(ObjectMapperUtil.jsonObjectMapper.writeValueAsString)
+    Await.result(resAsJson, Duration.create(5, TimeUnit.SECONDS))
   }
 
   def createHttpRequest(row: Row, connectionConfig: Option[Map[String, String]] = None): Request = {
@@ -155,3 +167,4 @@ object HttpSinkProcessor extends RealTimeSinkProcessor[Unit] with Serializable {
     asyncHttpClient(config)
   }
 }
+

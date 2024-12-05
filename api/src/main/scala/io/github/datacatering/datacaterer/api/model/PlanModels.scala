@@ -6,7 +6,7 @@ import Constants.{DEFAULT_COUNT_RECORDS, DEFAULT_DATA_SOURCE_NAME, DEFAULT_FIELD
 import scala.language.implicitConversions
 
 case class Plan(
-                 name: String = "Default plan",
+                 name: String = "default_plan",
                  description: String = "Data generation plan",
                  tasks: List[TaskSummary] = List(),
                  sinkOptions: Option[SinkOptions] = None,

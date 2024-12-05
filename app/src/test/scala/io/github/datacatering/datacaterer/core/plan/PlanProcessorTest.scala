@@ -1,7 +1,7 @@
 package io.github.datacatering.datacaterer.core.plan
 
 import io.github.datacatering.datacaterer.api.PlanRun
-import io.github.datacatering.datacaterer.api.model.Constants.{OPEN_METADATA_AUTH_TYPE_OPEN_METADATA, OPEN_METADATA_JWT_TOKEN, OPEN_METADATA_TABLE_FQN, PARTITIONS, ROWS_PER_SECOND, SAVE_MODE}
+import io.github.datacatering.datacaterer.api.model.Constants.{KAFKA_TOPIC, OPEN_METADATA_AUTH_TYPE_OPEN_METADATA, OPEN_METADATA_JWT_TOKEN, OPEN_METADATA_TABLE_FQN, PARTITIONS, ROWS_PER_SECOND, SAVE_MODE, VALIDATION_IDENTIFIER}
 import io.github.datacatering.datacaterer.api.model.{ArrayType, DateType, DoubleType, HeaderType, IntegerType, TimestampType}
 import io.github.datacatering.datacaterer.core.model.Constants.METADATA_FILTER_OUT_SCHEMA
 import io.github.datacatering.datacaterer.core.util.{ObjectMapperUtil, SparkSuite}
@@ -113,7 +113,7 @@ class PlanProcessorTest extends SparkSuite {
   }
 
   ignore("Can run Postgres plan run") {
-    PlanProcessor.determineAndExecutePlan(Some(new TestPostgres))
+    PlanProcessor.determineAndExecutePlan(Some(new TestOpenAPI))
   }
 
   class TestPostgres extends PlanRun {
@@ -202,19 +202,29 @@ class PlanProcessorTest extends SparkSuite {
 
   class TestOpenAPI extends PlanRun {
     val httpTask = http("my_http", options = Map(ROWS_PER_SECOND -> "5"))
-      .schema(metadataSource.openApi("/app/src/test/resources/sample/http/openapi/petstore.json"))
+      .schema(metadataSource.openApi("app/src/test/resources/sample/http/openapi/petstore.json"))
       .count(count.records(10))
+
+    val httpGetTask = http("get_http", options = Map(VALIDATION_IDENTIFIER -> "GET/pets/{id}"))
+      .validations(
+        validation.col("request.method").isEqual("GET"),
+        validation.col("request.method").isEqualCol("response.statusText"),
+        validation.col("response.statusCode").isEqual(200),
+        validation.col("response.headers.Content-Length").greaterThan(0),
+        validation.col("response.headers.Content-Type").isEqual("application/json"),
+      )
 
     val conf = configuration.enableGeneratePlanAndTasks(true)
       .generatedReportsFolderPath("/tmp/report")
+      .recordTrackingForValidationFolderPath("/tmp/record-tracking-validation")
 
     val myPlan = plan.addForeignKeyRelationship(
       foreignField("my_http", "POST/pets", "bodyContent.id"),
+      foreignField("my_http", "DELETE/pets/{id}", "pathParamid"),
       foreignField("my_http", "GET/pets/{id}", "pathParamid"),
-      foreignField("my_http", "DELETE/pets/{id}", "pathParamid")
     )
 
-    execute(myPlan, conf, httpTask)
+    execute(myPlan, conf, httpTask, httpGetTask)
   }
 
   class TestSolace extends PlanRun {
