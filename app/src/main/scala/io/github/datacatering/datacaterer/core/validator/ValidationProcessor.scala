@@ -188,7 +188,8 @@ class ValidationProcessor(
           }
           val sampleErrors = validationRes.sampleErrorValues.get.take(validationConfig.numSampleErrorRecords).map(_.json).mkString(",")
           LOGGER.error(s"Failed validation: validation-name=${vcr.name}, description=${vcr.description}, data-source-name=${dsr.dataSourceName}, " +
-            s"data-source-options=${dsr.options}, is-success=${validationRes.isSuccess}, validation-type=$validationType, check=$validationCheck, sample-errors=$sampleErrors")
+            s"data-source-options=${dsr.options}, is-success=${validationRes.isSuccess}, validation-type=$validationType, " +
+            s"check=$validationCheck, sample-errors=$sampleErrors")
         })
       }
     }))

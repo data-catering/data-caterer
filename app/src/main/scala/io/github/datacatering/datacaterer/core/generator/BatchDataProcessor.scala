@@ -111,8 +111,14 @@ class BatchDataProcessor(connectionConfigsByName: Map[String, Map[String, String
     dataSourceResults
   }
 
-  def pushDataToSinks(plan: Plan, executableTasks: List[(TaskSummary, Task)], sinkDf: List[(String, DataFrame)], batchNum: Int,
-                      startTime: LocalDateTime, optValidations: Option[List[ValidationConfiguration]]): List[DataSourceResult] = {
+  private def pushDataToSinks(
+                               plan: Plan,
+                               executableTasks: List[(TaskSummary, Task)],
+                               sinkDf: List[(String, DataFrame)],
+                               batchNum: Int,
+                               startTime: LocalDateTime,
+                               optValidations: Option[List[ValidationConfiguration]]
+                             ): List[DataSourceResult] = {
     val stepAndTaskByDataSourceName = executableTasks.flatMap(task =>
       task._2.steps.map(s => (getDataSourceName(task._1, s), (s, task._2)))
     ).toMap

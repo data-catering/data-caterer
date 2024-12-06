@@ -22,7 +22,7 @@ class SinkOptionsBuilderTest extends AnyFunSuite {
 
     assert(result.seed.contains("10"))
     assert(result.locale.contains("id"))
-    assert(result.foreignKeys.size == 2)
+    assertResult(2)(result.foreignKeys.size)
     assert(result.foreignKeys.contains((s"my_postgres${FOREIGN_KEY_DELIMITER}account${FOREIGN_KEY_DELIMITER}account_id",
       List(s"my_json${FOREIGN_KEY_DELIMITER}account${FOREIGN_KEY_DELIMITER}account_id"), List())))
     assert(result.foreignKeys.contains((s"my_postgres${FOREIGN_KEY_DELIMITER}account${FOREIGN_KEY_DELIMITER}customer_number",

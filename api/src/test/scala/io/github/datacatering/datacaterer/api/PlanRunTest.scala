@@ -27,11 +27,11 @@ class PlanRunTest extends AnyFunSuite {
     }
 
     val dsNames = List("my_csv", "my_json", "my_parquet", "my_orc", "my_postgres", "my_mysql", "my_cassandra", "my_solace", "my_kafka", "my_http")
-    assert(result._plan.tasks.size == 10)
-    assert(result._plan.tasks.map(_.dataSourceName) == dsNames)
-    assert(result._configuration.connectionConfigByName.size == 10)
+    assertResult(10)(result._plan.tasks.size)
+    assertResult(dsNames)(result._plan.tasks.map(_.dataSourceName))
+    assertResult(10)(result._configuration.connectionConfigByName.size)
     assert(result._configuration.connectionConfigByName.keys.forall(dsNames.contains))
-    assert(result._tasks.size == 10)
+    assertResult(10)(result._tasks.size)
   }
 
   test("Can create plan using same connection details from another step") {
@@ -46,22 +46,22 @@ class PlanRunTest extends AnyFunSuite {
       execute(myPostgresAccount, myPostgresTransaction)
     }
 
-    assert(result._plan.tasks.size == 2)
+    assertResult(2)(result._plan.tasks.size)
     assert(result._plan.tasks.map(_.dataSourceName).forall(_ == "my_postgres"))
-    assert(result._configuration.connectionConfigByName.size == 1)
+    assertResult(1)(result._configuration.connectionConfigByName.size)
     assert(result._configuration.connectionConfigByName.contains("my_postgres"))
     assert(result._configuration.connectionConfigByName("my_postgres").contains(URL))
     assert(result._configuration.connectionConfigByName("my_postgres").get(URL).contains("my_postgres_url"))
-    assert(result._tasks.size == 2)
+    assertResult(2)(result._tasks.size)
     val steps = result._tasks.flatMap(_.steps)
     val resAccount = steps.filter(s => s.options.get(JDBC_TABLE).contains("account.accounts")).head
     assert(resAccount.schema.fields.isDefined)
-    assert(resAccount.schema.fields.get.size == 1)
-    assert(resAccount.schema.fields.get.head.name == "account_id")
+    assertResult(1)(resAccount.schema.fields.get.size)
+    assertResult("account_id")(resAccount.schema.fields.get.head.name)
     val resTxn = steps.filter(s => s.options.get(JDBC_TABLE).contains("account.transactions")).head
     assert(resTxn.schema.fields.isDefined)
-    assert(resTxn.schema.fields.get.size == 1)
-    assert(resTxn.schema.fields.get.head.name == "txn_id")
+    assertResult(1)(resTxn.schema.fields.get.size)
+    assertResult("txn_id")(resTxn.schema.fields.get.head.name)
     assert(result._validations.isEmpty)
   }
 
@@ -74,17 +74,17 @@ class PlanRunTest extends AnyFunSuite {
       execute(myCsv)
     }
 
-    assert(result._validations.size == 1)
-    assert(result._validations.head.dataSources.size == 1)
-    assert(result._validations.head.dataSources.head._2.size == 1)
+    assertResult(1)(result._validations.size)
+    assertResult(1)(result._validations.head.dataSources.size)
+    assertResult(1)(result._validations.head.dataSources.head._2.size)
     val dsValidation = result._validations.head.dataSources.head
-    assert(dsValidation._1 == "my_csv")
+    assertResult("my_csv")(dsValidation._1)
     assert(dsValidation._2.head.options.nonEmpty)
-    assert(dsValidation._2.head.options == Map(FORMAT -> "csv", PATH -> "/my/data/path"))
-    assert(dsValidation._2.head.validations.size == 1)
+    assertResult(Map(FORMAT -> "csv", PATH -> "/my/data/path"))(dsValidation._2.head.options)
+    assertResult(1)(dsValidation._2.head.validations.size)
     assert(dsValidation._2.head.validations.head.validation.isInstanceOf[ExpressionValidation])
     val expressionValidation = dsValidation._2.head.validations.head.validation.asInstanceOf[ExpressionValidation]
-    assert(expressionValidation.expr == "account_id != ''")
+    assertResult("account_id != ''")(expressionValidation.expr)
   }
 
   test("Can create plan with multiple validations for one data source") {
@@ -99,15 +99,15 @@ class PlanRunTest extends AnyFunSuite {
       execute(myPostgresAccount, myPostgresTransaction)
     }
 
-    assert(result._validations.size == 1)
-    assert(result._validations.head.dataSources.size == 1)
+    assertResult(1)(result._validations.size)
+    assertResult(1)(result._validations.head.dataSources.size)
     val dsValidation = result._validations.head.dataSources.head
-    assert(dsValidation._1 == "my_postgres")
+    assertResult("my_postgres")(dsValidation._1)
     val accountValid = dsValidation._2.filter(_.options.get(JDBC_TABLE).contains("account.accounts")).head
-    assert(accountValid.validations.size == 1)
+    assertResult(1)(accountValid.validations.size)
     assert(accountValid.validations.exists(v => v.validation.asInstanceOf[ExpressionValidation].expr == "account_id != ''"))
     val txnValid = dsValidation._2.filter(_.options.get(JDBC_TABLE).contains("account.transactions")).head
-    assert(txnValid.validations.size == 1)
+    assertResult(1)(txnValid.validations.size)
     assert(txnValid.validations.exists(v => v.validation.asInstanceOf[ExpressionValidation].expr == "txn_id IS NOT NULL"))
   }
 
@@ -119,14 +119,14 @@ class PlanRunTest extends AnyFunSuite {
       execute(myCsv)
     }
 
-    assert(result._tasks.size == 1)
-    assert(result._validations.size == 1)
+    assertResult(1)(result._tasks.size)
+    assertResult(1)(result._validations.size)
     assert(result._validations.head.dataSources.contains("my_csv"))
     val validRes = result._validations.head.dataSources("my_csv").head
-    assert(validRes.validations.size == 1)
-    assert(validRes.validations.head.validation.asInstanceOf[ExpressionValidation].expr == "account_id != 'acc123'")
+    assertResult(1)(validRes.validations.size)
+    assertResult("account_id != 'acc123'")(validRes.validations.head.validation.asInstanceOf[ExpressionValidation].expr)
     assert(validRes.options.nonEmpty)
-    assert(validRes.options == Map(FORMAT -> "csv", PATH -> "/my/csv"))
+    assertResult(Map(FORMAT -> "csv", PATH -> "/my/csv"))(validRes.options)
   }
 
 

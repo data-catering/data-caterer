@@ -39,14 +39,14 @@ class HttpSinkProcessorTest extends AnyFunSuite with MockFactory {
 //
 //    val res = HttpSinkProcessor.createHttpRequest(mockRow, Some(connectionConfig)).toRequest
 //
-//    assert(res.getUrl == "http://localhost:8080/customer")
-//    assert(res.getMethod == "POST")
+//    assertResult("http://localhost:8080/customer")(res.getUrl)
+//    assertResult("POST")(res.getMethod)
 //    val headers = res.getHeaders
-//    assert(headers.size() == 4)
-//    assert(headers.get("id") == "id123")
-//    assert(headers.get("type") == "account")
-//    assert(headers.get("Authorization") == "Basic YWRtaW46cGFzc3dvcmQ=")
-//    assert(headers.get("Content-Type") == "application/json; charset=UTF-8")
+//    assertResult(4)(headers.size())
+//    assertResult("id123")(headers.get("id"))
+//    assertResult("account")(headers.get("type"))
+//    assertResult("Basic YWRtaW46cGFzc3dvcmQ=")(headers.get("Authorization"))
+//    assertResult("application/json; charset=UTF-8")(headers.get("Content-Type"))
 //  }
 //
 //  test("Can push data to HTTP endpoint using defaults") {

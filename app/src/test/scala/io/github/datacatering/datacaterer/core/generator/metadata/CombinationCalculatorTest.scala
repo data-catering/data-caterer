@@ -20,7 +20,7 @@ class CombinationCalculatorTest extends AnyFunSuite {
     val result = CombinationCalculator.totalCombinationsForSchema(schema, faker)
 
     assert(result.isDefined)
-    assert(result.get == BigInt(103908640))
+    assertResult(BigInt(103908640))(result.get)
   }
 
 }

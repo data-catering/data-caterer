@@ -19,7 +19,7 @@ class PlanImplicitsTest extends AnyFunSuite {
     )
     val result = sinkOptions.foreignKeysWithoutColumnNames
 
-    assert(result == List(s"my_postgres${FOREIGN_KEY_DELIMITER}public.categories" -> List(s"my_csv${FOREIGN_KEY_DELIMITER}account")))
+    assertResult(List(s"my_postgres${FOREIGN_KEY_DELIMITER}public.categories" -> List(s"my_csv${FOREIGN_KEY_DELIMITER}account")))(result)
   }
 
 }

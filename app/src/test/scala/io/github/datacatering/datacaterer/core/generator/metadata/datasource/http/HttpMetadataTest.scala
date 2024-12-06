@@ -12,7 +12,7 @@ class HttpMetadataTest extends SparkSuite {
     val result = HttpMetadata("my_http", "http", Map(SCHEMA_LOCATION -> "src/test/resources/sample/http/openapi/petstore.json"))
       .getSubDataSourcesMetadata
 
-    assert(result.length == 4)
+    assertResult(4)(result.length)
   }
 
 }

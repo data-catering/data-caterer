@@ -1,15 +1,21 @@
 package io.github.datacatering.datacaterer.core.plan
 
 import io.github.datacatering.datacaterer.api.PlanRun
-import io.github.datacatering.datacaterer.api.model.Constants.{KAFKA_TOPIC, OPEN_METADATA_AUTH_TYPE_OPEN_METADATA, OPEN_METADATA_JWT_TOKEN, OPEN_METADATA_TABLE_FQN, PARTITIONS, ROWS_PER_SECOND, SAVE_MODE, VALIDATION_IDENTIFIER}
+import io.github.datacatering.datacaterer.api.model.Constants.{OPEN_METADATA_AUTH_TYPE_OPEN_METADATA, OPEN_METADATA_JWT_TOKEN, OPEN_METADATA_TABLE_FQN, PARTITIONS, ROWS_PER_SECOND, SAVE_MODE, VALIDATION_IDENTIFIER}
 import io.github.datacatering.datacaterer.api.model.{ArrayType, DateType, DoubleType, HeaderType, IntegerType, TimestampType}
 import io.github.datacatering.datacaterer.core.model.Constants.METADATA_FILTER_OUT_SCHEMA
 import io.github.datacatering.datacaterer.core.util.{ObjectMapperUtil, SparkSuite}
+import org.asynchttpclient.DefaultAsyncHttpClientConfig
+import org.asynchttpclient.Dsl.asyncHttpClient
 import org.junit.runner.RunWith
 import org.scalatestplus.junit.JUnitRunner
 
 import java.sql.{Date, Timestamp}
-import java.time.LocalDate
+import java.time.{Instant, LocalDate}
+import scala.compat.java8.FutureConverters._
+import scala.concurrent.Await
+import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.duration.Duration
 
 @RunWith(classOf[JUnitRunner])
 class PlanProcessorTest extends SparkSuite {
@@ -95,7 +101,7 @@ class PlanProcessorTest extends SparkSuite {
     val jsonData = sparkSession.read.json(s"$folder/json").selectExpr("*", "customer_details.name AS name").collect()
     val csvData = sparkSession.read.option("header", "true").csv(s"$folder/csv").collect()
     val csvCount = csvData.length
-    assert(jsonData.length == 100)
+    assertResult(100)(jsonData.length)
     assert(csvCount >= 100 && csvCount <= 200)
     val jsonRecord = jsonData.head
     val jsonAccountId = jsonRecord.getString(0)
@@ -212,9 +218,11 @@ class PlanProcessorTest extends SparkSuite {
         validation.col("response.statusCode").isEqual(200),
         validation.col("response.headers.Content-Length").greaterThan(0),
         validation.col("response.headers.Content-Type").isEqual("application/json"),
+        validation.selectExpr("PERCENTILE(response.timeTakenMs, 0.2) AS pct20").expr("pct20 < 10"),
       )
 
     val conf = configuration.enableGeneratePlanAndTasks(true)
+      .enableDeleteRecordTrackingFiles(false)
       .generatedReportsFolderPath("/tmp/report")
       .recordTrackingForValidationFolderPath("/tmp/record-tracking-validation")
 
@@ -567,5 +575,24 @@ class PlanProcessorTest extends SparkSuite {
     val conf = configuration.enableGeneratePlanAndTasks(true).generatedPlanAndTaskFolderPath("/tmp/data-caterer-gen")
 
     execute(conf, accounts)
+  }
+
+  test("Timing of http calls") {
+    val config = new DefaultAsyncHttpClientConfig.Builder()
+      .setRequestTimeout(5000).build()
+    val client = asyncHttpClient(config)
+    (0 to 10).foreach(i => {
+      val req = client.prepare("GET", s"http://localhost:80/anything/pets/LRCnF8780Ie563kPzOj/$i").build()
+      val startTime = Timestamp.from(Instant.now())
+      val futureResp = client.executeRequest(req)
+        .toCompletableFuture
+        .toScala
+        .map(r => {
+          val endTime = Timestamp.from(Instant.now())
+          println("Time taken: " + {endTime.getTime - startTime.getTime} + "ms")
+          r.getStatusCode
+        })
+      Await.result(futureResp, Duration.Inf)
+    })
   }
 }

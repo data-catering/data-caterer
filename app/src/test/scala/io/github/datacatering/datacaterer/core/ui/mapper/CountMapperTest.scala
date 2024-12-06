@@ -27,7 +27,7 @@ class CountMapperTest extends AnyFunSuite {
     val dataSourceRequest = DataSourceRequest("plan-name", "task-1", count = Some(RecordCountRequest(perColumnNames = Some(List("account_id")), perColumnRecords = Some(10))))
     val res = CountMapper.countMapping(dataSourceRequest).count
     assert(res.perColumn.isDefined)
-    assert(res.perColumn.get.columnNames.size == 1)
+    assertResult(1)(res.perColumn.get.columnNames.size)
     assert(res.perColumn.get.columnNames.contains("account_id"))
     assert(res.perColumn.get.count.contains(10))
   }
@@ -36,7 +36,7 @@ class CountMapperTest extends AnyFunSuite {
     val dataSourceRequest = DataSourceRequest("plan-name", "task-1", count = Some(RecordCountRequest(perColumnNames = Some(List("account_id")), perColumnRecordsMin = Some(10), perColumnRecordsMax = Some(20))))
     val res = CountMapper.countMapping(dataSourceRequest).count
     assert(res.perColumn.isDefined)
-    assert(res.perColumn.get.columnNames.size == 1)
+    assertResult(1)(res.perColumn.get.columnNames.size)
     assert(res.perColumn.get.columnNames.contains("account_id"))
     assert(res.perColumn.get.generator.isDefined)
     assert(res.perColumn.get.generator.get.options.get(MINIMUM).contains("10"))
@@ -47,7 +47,7 @@ class CountMapperTest extends AnyFunSuite {
     val dataSourceRequest = DataSourceRequest("plan-name", "task-1", count = Some(RecordCountRequest(perColumnNames = Some(List("account_id")), perColumnRecordsDistribution = Some(DISTRIBUTION_EXPONENTIAL), perColumnRecordsDistributionRateParam = Some("0.5"))))
     val res = CountMapper.countMapping(dataSourceRequest).count
     assert(res.perColumn.isDefined)
-    assert(res.perColumn.get.columnNames.size == 1)
+    assertResult(1)(res.perColumn.get.columnNames.size)
     assert(res.perColumn.get.columnNames.contains("account_id"))
     assert(res.perColumn.get.generator.isDefined)
     assert(res.perColumn.get.generator.get.options.get(DISTRIBUTION).contains(DISTRIBUTION_EXPONENTIAL))
@@ -58,7 +58,7 @@ class CountMapperTest extends AnyFunSuite {
     val dataSourceRequest = DataSourceRequest("plan-name", "task-1", count = Some(RecordCountRequest(perColumnNames = Some(List("account_id")), perColumnRecordsDistribution = Some(DISTRIBUTION_EXPONENTIAL), perColumnRecordsDistributionRateParam = Some("0.5"), perColumnRecordsMin = Some(1), perColumnRecordsMax = Some(3))))
     val res = CountMapper.countMapping(dataSourceRequest).count
     assert(res.perColumn.isDefined)
-    assert(res.perColumn.get.columnNames.size == 1)
+    assertResult(1)(res.perColumn.get.columnNames.size)
     assert(res.perColumn.get.columnNames.contains("account_id"))
     assert(res.perColumn.get.generator.isDefined)
     assert(res.perColumn.get.generator.get.options.get(DISTRIBUTION).contains(DISTRIBUTION_EXPONENTIAL))
@@ -71,7 +71,7 @@ class CountMapperTest extends AnyFunSuite {
     val dataSourceRequest = DataSourceRequest("plan-name", "task-1", count = Some(RecordCountRequest(perColumnNames = Some(List("account_id")), perColumnRecordsDistribution = Some(DISTRIBUTION_NORMAL), perColumnRecordsMin = Some(1), perColumnRecordsMax = Some(3))))
     val res = CountMapper.countMapping(dataSourceRequest).count
     assert(res.perColumn.isDefined)
-    assert(res.perColumn.get.columnNames.size == 1)
+    assertResult(1)(res.perColumn.get.columnNames.size)
     assert(res.perColumn.get.columnNames.contains("account_id"))
     assert(res.perColumn.get.generator.isDefined)
     assert(res.perColumn.get.generator.get.options.get(DISTRIBUTION).contains(DISTRIBUTION_NORMAL))

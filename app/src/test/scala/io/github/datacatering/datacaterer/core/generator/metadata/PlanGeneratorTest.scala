@@ -28,11 +28,11 @@ class PlanGeneratorTest extends SparkSuite {
 
     val planFolder = new File(folderPath + "/plan")
     assert(planFolder.exists())
-    assert(planFolder.list().length == 1)
+    assertResult(1)(planFolder.list().length)
     val taskFolder = new File(folderPath + "/task/")
     assert(taskFolder.exists())
-    assert(taskFolder.list().length == 1)
-    assert(taskFolder.list().head == "basic_account_task.yaml")
+    assertResult(1)(taskFolder.list().length)
+    assertResult("basic_account_task.yaml")(taskFolder.list().head)
     new Directory(planFolder).deleteRecursively()
     new Directory(taskFolder).deleteRecursively()
   }

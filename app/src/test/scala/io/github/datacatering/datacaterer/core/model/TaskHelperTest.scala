@@ -31,9 +31,9 @@ class TaskHelperTest extends AnyFunSuite {
 
     val result = TaskHelper.fromMetadata(None, "task_name", "json", List(DataSourceDetail(dataSourceMetadata, Map(), structType, List())))
 
-    assert(result._1.name == "task_name")
-    assert(result._1.steps.size == 1)
-    assert(result._1.steps.head.`type` == "json")
+    assertResult("task_name")(result._1.name)
+    assertResult(1)(result._1.steps.size)
+    assertResult("json")(result._1.steps.head.`type`)
     assert(result._1.steps.head.schema.fields.isDefined)
     val resFields = result._1.steps.head.schema.fields.get
     assert(resFields.size == 4)

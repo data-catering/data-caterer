@@ -29,9 +29,9 @@ class OpenLineageMetadataTest extends SparkSuite with MockFactory {
     val result = openLineageMetadata.listDatasets("food_delivery")
     openLineageMetadata.close()
 
-    assert(result.totalCount == 1)
-    assert(result.datasets.size == 1)
-    assert(result.datasets.head.`type` == "DB_TABLE")
+    assertResult(1)(result.totalCount)
+    assertResult(1)(result.datasets.size)
+    assertResult("DB_TABLE")(result.datasets.head.`type`)
   }
 
   test("Can get dataset from Marquez") {
@@ -50,8 +50,8 @@ class OpenLineageMetadataTest extends SparkSuite with MockFactory {
     val result = openLineageMetadata.getDataset("food_delivery", "my_dataset")
     openLineageMetadata.close()
 
-    assert(result.`type` == "DB_TABLE")
-    assert(result.fields.size == 4)
+    assertResult("DB_TABLE")(result.`type`)
+    assertResult(4)(result.fields.size)
   }
 
   test("Can get additional column metadata from Marquez") {
@@ -70,10 +70,10 @@ class OpenLineageMetadataTest extends SparkSuite with MockFactory {
     val result = openLineageMetadata.getSubDataSourcesMetadata.head.optFieldMetadata.get.collect()
     openLineageMetadata.close()
 
-    assert(result.length == 4)
-    assert(result.head.dataSourceReadOptions(METADATA_IDENTIFIER) == "food_delivery_public.categories")
-    assert(result.head.metadata(DATA_SOURCE_NAME) == "food_delivery_db")
-    assert(result.head.metadata(URI) == "postgres://food_delivery:food_delivery@postgres:5432/food_delivery")
+    assertResult(4)(result.length)
+    assertResult("food_delivery_public.categories")(result.head.dataSourceReadOptions(METADATA_IDENTIFIER))
+    assertResult("food_delivery_db")(result.head.metadata(DATA_SOURCE_NAME))
+    assertResult("postgres://food_delivery:food_delivery@postgres:5432/food_delivery")(result.head.metadata(URI))
     assert(
       List(("id", "integer"), ("name", "string"), ("menu_id", "integer"), ("description", "string"))
         .forall(colName => result.exists(c => c.field == colName._1 && c.metadata(FIELD_DATA_TYPE) == colName._2))

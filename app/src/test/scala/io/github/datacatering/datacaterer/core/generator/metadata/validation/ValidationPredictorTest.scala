@@ -19,15 +19,15 @@ class ValidationPredictorTest extends AnyFunSuite {
     )
     val result = ValidationPredictor.suggestValidations(PostgresMetadata("my_postgres", Map()), Map(), fields).map(_.validation)
 
-    assert(result.size == 3)
+    assertResult(3)(result.size)
     val expectedExprValidations = List("isNotNull(id)", "DATE(open_date) <= DATE(close_date)")
     result.filter(_.isInstanceOf[ExpressionValidation]).forall(v => expectedExprValidations.contains(v.asInstanceOf[ExpressionValidation].expr))
     result.filter(_.isInstanceOf[GroupByValidation]).foreach(v => {
       val grp = v.asInstanceOf[GroupByValidation]
-      assert(grp.groupByCols == Seq("id"))
-      assert(grp.aggCol == "unique")
-      assert(grp.aggType == "count")
-      assert(grp.aggExpr == "count == 1")
+      assertResult(Seq("id"))(grp.groupByCols)
+      assertResult("unique")(grp.aggCol)
+      assertResult("count")(grp.aggType)
+      assertResult("count == 1")(grp.aggExpr)
     })
   }
 

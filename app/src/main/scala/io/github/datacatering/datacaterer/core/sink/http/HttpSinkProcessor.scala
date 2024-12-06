@@ -18,6 +18,8 @@ import org.asynchttpclient.Dsl.asyncHttpClient
 import org.asynchttpclient.{AsyncHttpClient, DefaultAsyncHttpClientConfig, ListenableFuture, Request, Response}
 
 import java.security.cert.X509Certificate
+import java.sql.Timestamp
+import java.time.Instant
 import java.util.concurrent.TimeUnit
 import javax.net.ssl.X509TrustManager
 import scala.annotation.tailrec
@@ -86,20 +88,21 @@ object HttpSinkProcessor extends RealTimeSinkProcessor[Unit] with Serializable {
       http = buildClient
     }
     val request = createHttpRequest(row)
+    val startTime = Timestamp.from(Instant.now())
     Try(http.executeRequest(request)) match {
       case Failure(exception) =>
         LOGGER.error(s"Failed to execute HTTP request, url=${request.getUri}, method=${request.getMethod}", exception)
         throw exception
-      case Success(value) => handleResponse(value, request)
+      case Success(value) => handleResponse(value, request, startTime)
     }
   }
 
-  private def handleResponse(value: ListenableFuture[Response], request: Request): String = {
-    val res = value.toCompletableFuture
+  private def handleResponse(value: ListenableFuture[Response], request: Request, startTime: Timestamp): String = {
+    val futureResult = value.toCompletableFuture
       .toScala
-      .map(HttpResult.fromRequestAndResponse(request, _))
+      .map(HttpResult.fromRequestAndResponse(startTime, request, _))
 
-    res.onComplete {
+    futureResult.onComplete {
       case Success(value) =>
         val resp = value.response
         if (resp.statusCode >= 200 && resp.statusCode < 300) {
@@ -113,8 +116,8 @@ object HttpSinkProcessor extends RealTimeSinkProcessor[Unit] with Serializable {
         LOGGER.error(s"Failed to send HTTP request, url=${request.getUri}, method=${request.getMethod}", exception)
         throw exception
     }
-    val resAsJson = res.map(ObjectMapperUtil.jsonObjectMapper.writeValueAsString)
-    Await.result(resAsJson, Duration.create(5, TimeUnit.SECONDS))
+    val futureResultAsJson = futureResult.map(ObjectMapperUtil.jsonObjectMapper.writeValueAsString)
+    Await.result(futureResultAsJson, Duration.create(5, TimeUnit.SECONDS))
   }
 
   def createHttpRequest(row: Row, connectionConfig: Option[Map[String, String]] = None): Request = {

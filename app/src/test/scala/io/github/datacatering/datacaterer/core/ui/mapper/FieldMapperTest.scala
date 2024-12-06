@@ -20,7 +20,7 @@ class FieldMapperTest extends AnyFunSuite {
     val optFieldMapping = FieldMapper.fieldMapping(dataSourceRequest)
     assert(optFieldMapping._2.isDefined)
     val res = optFieldMapping._2.get
-    assert(res.size == 4)
+    assertResult(4)(res.size)
     val nameField = res.find(_.field.name == "name")
     assert(nameField.exists(_.field.`type`.contains("string")))
     val accountField = res.find(_.field.name == "account_id")

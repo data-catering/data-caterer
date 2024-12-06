@@ -24,7 +24,7 @@ class MetadataUtilTest extends SparkSuite {
 
     val result = MetadataUtil.metadataToMap(metadata)
 
-    assert(result.size == 5)
+    assertResult(5)(result.size)
     assert(List("string_key", "long_key", "double_key", "boolean_key", "array_key").forall(result.contains))
   }
 
@@ -44,20 +44,20 @@ class MetadataUtilTest extends SparkSuite {
 
     val result = MetadataUtil.mapToStructFields(df, readOptions, dataProfilingMetadata, columnMetadata)
 
-    assert(result.length == 5)
+    assertResult(5)(result.length)
     result.find(_.name == "account_id")
       .foreach(s => {
-        assert(s.metadata.getString("minLen") == "2")
-        assert(s.metadata.getString("maxLen") == "10")
-        assert(s.metadata.getString("sourceDataType") == "varchar")
+        assertResult("2")(s.metadata.getString("minLen"))
+        assertResult("10")(s.metadata.getString("maxLen"))
+        assertResult("varchar")(s.metadata.getString("sourceDataType"))
         assert(s.nullable)
       })
     result.find(_.name == "name")
       .foreach(s => {
         assert(s.metadata.contains("oneOf"))
         assert(s.metadata.getStringArray("oneOf") sameElements Array("peter", "john"))
-        assert(s.metadata.getString("distinctCount") == "2")
-        assert(s.metadata.getString("count") == "100")
+        assertResult("2")(s.metadata.getString("distinctCount"))
+        assertResult("100")(s.metadata.getString("count"))
         assert(s.nullable)
       })
     result.find(_.name == "open_date")
@@ -77,7 +77,7 @@ class MetadataUtilTest extends SparkSuite {
 
     val result = MetadataUtil.getFieldDataProfilingMetadata(df, Map(), dataSourceMetadata, MetadataConfig(100, 100, 0.5, 1))
 
-    assert(result.size == 5)
+    assertResult(5)(result.size)
     val accountIdField = result.find(_.columnName == "account_id").get
     assertResult(Map("count" -> "4", "distinctCount" -> "4", "maxLen" -> "6", "avgLen" -> "6", "nullCount" -> "0"))(accountIdField.metadata)
     val nameField = result.find(_.columnName == "name").get

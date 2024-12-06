@@ -27,12 +27,12 @@ class UniqueFieldsUtilTest extends SparkSuite {
     val uniqueColumnUtil = new UniqueFieldsUtil(Plan(), tasks)
 
     val uniqueColumns = uniqueColumnUtil.uniqueFieldsDf
-    assert(uniqueColumns.size == 2)
-    assert(uniqueColumnUtil.uniqueFieldsDf.size == 2)
+    assertResult(2)(uniqueColumns.size)
+    assertResult(2)(uniqueColumnUtil.uniqueFieldsDf.size)
     assert(uniqueColumnUtil.uniqueFieldsDf.head._2.isEmpty)
     val col = uniqueColumns.filter(_._1.columns == List("account_id")).head
-    assert(col._1.dataSource == "postgresAccount")
-    assert(col._1.step == "accounts")
+    assertResult("postgresAccount")(col._1.dataSource)
+    assertResult("accounts")(col._1.step)
 
     val generatedData = sparkSession.createDataFrame(Seq(
       Account("acc1", "peter"), Account("acc1", "john"), Account("acc2", "jack"), Account("acc3", "bob")
@@ -41,10 +41,10 @@ class UniqueFieldsUtilTest extends SparkSuite {
 
     val data = result.select("account_id").collect().map(_.getString(0))
     val expectedUniqueAccounts = Array("acc1", "acc2", "acc3")
-    assert(data.length == 3)
+    assertResult(3)(data.length)
     data.foreach(a => assert(expectedUniqueAccounts.contains(a)))
-    assert(uniqueColumnUtil.uniqueFieldsDf.size == 2)
-    assert(uniqueColumnUtil.uniqueFieldsDf.head._2.count() == 3)
+    assertResult(2)(uniqueColumnUtil.uniqueFieldsDf.size)
+    assertResult(3)(uniqueColumnUtil.uniqueFieldsDf.head._2.count())
     val currentUniqueAcc = uniqueColumnUtil.uniqueFieldsDf.filter(_._1.columns == List("account_id")).head._2.collect().map(_.getString(0))
     currentUniqueAcc.foreach(a => assert(expectedUniqueAccounts.contains(a)))
 

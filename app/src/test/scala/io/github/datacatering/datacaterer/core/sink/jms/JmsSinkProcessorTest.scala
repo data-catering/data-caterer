@@ -94,15 +94,15 @@ class JmsSinkProcessorTest extends SparkSuite with MockFactory {
     )
 
     val res = JmsSinkProcessor.getConnectionProperties(connectionConfig)
-    assert(res.size() == 4)
+    assertResult(4)(res.size())
     assert(res.containsKey(Context.INITIAL_CONTEXT_FACTORY))
-    assert(res.getProperty(Context.INITIAL_CONTEXT_FACTORY) == connectionConfig("initialContextFactory"))
+    assertResult(connectionConfig("initialContextFactory"))(res.getProperty(Context.INITIAL_CONTEXT_FACTORY))
     assert(res.containsKey(Context.SECURITY_PRINCIPAL))
-    assert(res.getProperty(Context.SECURITY_PRINCIPAL) == connectionConfig("user") + "@" + connectionConfig("vpnName"))
+    assertResult(connectionConfig("user") + "@" + connectionConfig("vpnName"))(res.getProperty(Context.SECURITY_PRINCIPAL))
     assert(res.containsKey(Context.SECURITY_CREDENTIALS))
-    assert(res.getProperty(Context.SECURITY_CREDENTIALS) == connectionConfig("password"))
+    assertResult(connectionConfig("password"))(res.getProperty(Context.SECURITY_CREDENTIALS))
     assert(res.containsKey(Context.PROVIDER_URL))
-    assert(res.getProperty(Context.PROVIDER_URL) == connectionConfig("url"))
+    assertResult(connectionConfig("url"))(res.getProperty(Context.PROVIDER_URL))
   }
 
   test("Throw exception when incomplete connection configuration provided") {

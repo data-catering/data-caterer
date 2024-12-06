@@ -19,7 +19,7 @@ class ValidationMapperTest extends AnyFunSuite {
     val res = ValidationMapper.validationMapping(dataSourceRequest)
     assertResult(1)(res.size)
     val exprValid = res.head.validation.asInstanceOf[ExpressionValidation]
-    assertResult("account_id == abc123")(exprValid.expr)
+    assertResult("`account_id` == abc123")(exprValid.expr)
     assertResult(Some("valid desc"))(exprValid.description)
     assertResult(Some(2.0))(exprValid.errorThreshold)
     assertResult(1)(exprValid.selectExpr.size)
@@ -237,7 +237,7 @@ class ValidationMapperTest extends AnyFunSuite {
     assertResult("task-2")(upstreamValidation.upstreamDataSource.task.get.task.name)
     val exprValid = upstreamValidation.validation.validation.asInstanceOf[ExpressionValidation]
     assertResult(List("*"))(exprValid.selectExpr)
-    assertResult("year == 2020")(exprValid.expr)
+    assertResult("`year` == 2020")(exprValid.expr)
   }
 
   test("Can convert UI upstream validation mapping with join expression") {
@@ -265,7 +265,7 @@ class ValidationMapperTest extends AnyFunSuite {
     assertResult("task-2")(upstreamValidation.upstreamDataSource.task.get.task.name)
     val exprValid = upstreamValidation.validation.validation.asInstanceOf[ExpressionValidation]
     assertResult(List("*"))(exprValid.selectExpr)
-    assertResult("year == 2020")(exprValid.expr)
+    assertResult("`year` == 2020")(exprValid.expr)
   }
 
   test("Can convert UI upstream validation mapping with join columns only") {
@@ -292,7 +292,7 @@ class ValidationMapperTest extends AnyFunSuite {
     assertResult("task-2")(upstreamValidation.upstreamDataSource.task.get.task.name)
     val exprValid = upstreamValidation.validation.validation.asInstanceOf[ExpressionValidation]
     assertResult(List("*"))(exprValid.selectExpr)
-    assertResult("year == 2020")(exprValid.expr)
+    assertResult("`year` == 2020")(exprValid.expr)
   }
 
   test("Can convert UI upstream validation mapping with join expression only") {
@@ -319,6 +319,6 @@ class ValidationMapperTest extends AnyFunSuite {
     assertResult("task-2")(upstreamValidation.upstreamDataSource.task.get.task.name)
     val exprValid = upstreamValidation.validation.validation.asInstanceOf[ExpressionValidation]
     assertResult(List("*"))(exprValid.selectExpr)
-    assertResult("year == 2020")(exprValid.expr)
+    assertResult("`year` == 2020")(exprValid.expr)
   }
 }

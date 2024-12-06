@@ -50,8 +50,8 @@ class ValidationOperationsTest extends SparkSuite {
 
     assert(!result.isSuccess)
     assert(result.sampleErrorValues.isDefined)
-    assert(result.sampleErrorValues.get.count() == 2)
-    assert(result.sampleErrorValues.get.filter(r => r.getAs[Double]("amount") >= 100).count() == 2)
+    assertResult(2)(result.sampleErrorValues.get.count())
+    assertResult(2)(result.sampleErrorValues.get.filter(r => r.getAs[Double]("amount") >= 100).count())
   }
 
   test("Can get sample rows when validation is not successful by error threshold greater than 1") {
@@ -60,8 +60,8 @@ class ValidationOperationsTest extends SparkSuite {
 
     assert(!result.isSuccess)
     assert(result.sampleErrorValues.isDefined)
-    assert(result.sampleErrorValues.get.count() == 3)
-    assert(result.sampleErrorValues.get.filter(r => r.getAs[Double]("amount") >= 20).count() == 3)
+    assertResult(3)(result.sampleErrorValues.get.count())
+    assertResult(3)(result.sampleErrorValues.get.filter(r => r.getAs[Double]("amount") >= 20).count())
   }
 
   test("Can get sample rows when validation is not successful by error threshold less than 1") {
@@ -70,8 +70,8 @@ class ValidationOperationsTest extends SparkSuite {
 
     assert(!result.isSuccess)
     assert(result.sampleErrorValues.isDefined)
-    assert(result.sampleErrorValues.get.count() == 2)
-    assert(result.sampleErrorValues.get.filter(r => r.getAs[Double]("amount") >= 100).count() == 2)
+    assertResult(2)(result.sampleErrorValues.get.count())
+    assertResult(2)(result.sampleErrorValues.get.filter(r => r.getAs[Double]("amount") >= 100).count())
   }
 
   test("Can check column names count is equal") {
@@ -79,8 +79,8 @@ class ValidationOperationsTest extends SparkSuite {
     val result = new ColumnNamesValidationOps(validation).validate(df, 4)
 
     assert(result.isSuccess)
-    assert(result.total == 1)
-    assert(result.numErrors == 0)
+    assertResult(1)(result.total)
+    assertResult(0)(result.numErrors)
     assert(result.sampleErrorValues.isEmpty)
   }
 
@@ -89,8 +89,8 @@ class ValidationOperationsTest extends SparkSuite {
     val result = new ColumnNamesValidationOps(validation).validate(df, 4)
 
     assert(result.isSuccess)
-    assert(result.total == 1)
-    assert(result.numErrors == 0)
+    assertResult(1)(result.total)
+    assertResult(0)(result.numErrors)
     assert(result.sampleErrorValues.isEmpty)
   }
 
@@ -99,10 +99,10 @@ class ValidationOperationsTest extends SparkSuite {
     val result = new ColumnNamesValidationOps(validation).validate(df, 4)
 
     assert(!result.isSuccess)
-    assert(result.total == 5)
-    assert(result.numErrors == 2)
+    assertResult(5)(result.total)
+    assertResult(2)(result.numErrors)
     assert(result.sampleErrorValues.isDefined)
-    assert(result.sampleErrorValues.get.count() == 2)
+    assertResult(2)(result.sampleErrorValues.get.count())
   }
 
   test("Can show error when column name not in set") {
@@ -110,9 +110,9 @@ class ValidationOperationsTest extends SparkSuite {
     val result = new ColumnNamesValidationOps(validation).validate(df, 4)
 
     assert(!result.isSuccess)
-    assert(result.total == 4)
-    assert(result.numErrors == 1)
+    assertResult(4)(result.total)
+    assertResult(1)(result.numErrors)
     assert(result.sampleErrorValues.isDefined)
-    assert(result.sampleErrorValues.get.count() == 1)
+    assertResult(1)(result.sampleErrorValues.get.count())
   }
 }
