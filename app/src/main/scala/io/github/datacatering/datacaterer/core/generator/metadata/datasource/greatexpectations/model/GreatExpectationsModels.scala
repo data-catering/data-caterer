@@ -6,6 +6,7 @@ import io.github.datacatering.datacaterer.api.model.Constants.{AGGREGATION_AVG, 
 import io.github.datacatering.datacaterer.core.generator.metadata.datasource.greatexpectations.model.GreatExpectationsExpectationType._
 import io.github.datacatering.datacaterer.core.generator.metadata.datasource.greatexpectations.model.GreatExpectationsParam._
 import io.github.datacatering.datacaterer.core.model.ExternalDataValidation
+import io.github.datacatering.datacaterer.core.util.ValidationUtil.cleanColumnName
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 case class GreatExpectationsTestSuite(
@@ -46,7 +47,8 @@ case class ColumnDistinctInSetValidation() extends GreatExpectationsDataValidati
   override def getValidation(inputParams: Map[String, Any]): List[ValidationBuilder] = {
     val valueSet = convertListToString(inputParams(VALUE_SET).asInstanceOf[List[Any]])
     val column = inputParams(COLUMN).toString
-    List(ValidationBuilder().selectExpr(s"COLLECT_SET($column) AS ${column}_distinct")
+    val cleanColumn = cleanColumnName(inputParams(COLUMN).toString)
+    List(ValidationBuilder().selectExpr(s"COLLECT_SET($cleanColumn) AS ${column}_distinct")
       .expr(s"FORALL(${column}_distinct, x -> ARRAY_CONTAINS(ARRAY($valueSet), x))"))
   }
 }
@@ -58,7 +60,8 @@ case class ColumnDistinctContainSetValidation() extends GreatExpectationsDataVal
   override def getValidation(inputParams: Map[String, Any]): List[ValidationBuilder] = {
     val valueSet = convertListToString(inputParams(VALUE_SET).asInstanceOf[List[Any]])
     val column = inputParams(COLUMN).toString
-    List(ValidationBuilder().selectExpr(s"COLLECT_SET($column) AS ${column}_distinct")
+    val cleanColumn = cleanColumnName(inputParams(COLUMN).toString)
+    List(ValidationBuilder().selectExpr(s"COLLECT_SET($cleanColumn) AS ${column}_distinct")
       .expr(s"FORALL(ARRAY($valueSet), x -> ARRAY_CONTAINS(${column}_distinct, x))"))
   }
 }
@@ -99,11 +102,12 @@ case class ColumnMedianBetweenValidation() extends GreatExpectationsDataValidati
 
   override def getValidation(inputParams: Map[String, Any]): List[ValidationBuilder] = {
     val column = inputParams(COLUMN).toString
+    val cleanColumn = cleanColumnName(inputParams(COLUMN).toString)
     val minValue = inputParams(MIN_VALUE).toString
     val maxValue = inputParams(MAX_VALUE).toString
     List(
       ValidationBuilder()
-        .selectExpr(s"PERCENTILE($column, 0.5) AS ${column}_median")
+        .selectExpr(s"PERCENTILE($cleanColumn, 0.5) AS ${column}_median")
         .expr(s"${column}_median BETWEEN $minValue AND $maxValue")
     )
   }
@@ -144,9 +148,10 @@ case class ColumnLengthsBetweenValidation() extends GreatExpectationsDataValidat
   override val params: List[String] = List(COLUMN, MIN_VALUE, MAX_VALUE)
 
   override def getValidation(inputParams: Map[String, Any]): List[ValidationBuilder] = {
+    val cleanColumn = cleanColumnName(inputParams(COLUMN).toString)
     List(
       ValidationBuilder()
-        .expr(s"LENGTH(${inputParams(COLUMN).toString}) BETWEEN ${inputParams(MIN_VALUE)} AND ${inputParams(MAX_VALUE)}")
+        .expr(s"LENGTH($cleanColumn) BETWEEN ${inputParams(MIN_VALUE)} AND ${inputParams(MAX_VALUE)}")
     )
   }
 }
@@ -156,7 +161,7 @@ case class ColumnLengthEqualValidation() extends GreatExpectationsDataValidation
   override val params: List[String] = List(COLUMN, VALUE)
 
   override def getValidation(inputParams: Map[String, Any]): List[ValidationBuilder] = {
-    List(ValidationBuilder().col(s"LENGTH(${inputParams(COLUMN).toString})").isEqual(inputParams(VALUE)))
+    List(ValidationBuilder().expr(s"LENGTH(${inputParams(COLUMN).toString}) == ${inputParams(VALUE)}"))
   }
 }
 
@@ -184,8 +189,8 @@ case class ColumnValuesInTypeListValidation() extends GreatExpectationsDataValid
   override val params: List[String] = List(COLUMN, TYPE_LIST)
 
   override def getValidation(inputParams: Map[String, Any]): List[ValidationBuilder] = {
-    val valueSet = inputParams(TYPE_LIST).asInstanceOf[List[Any]]
-    List(ValidationBuilder().col(s"TYPEOF(${inputParams(COLUMN).toString})").in(valueSet: _*))
+    val valueSet = inputParams(TYPE_LIST).asInstanceOf[List[String]]
+    List(ValidationBuilder().expr(s"TYPEOF(${inputParams(COLUMN).toString}) IN (${valueSet.map(v => s"'$v'").mkString(",")})"))
   }
 }
 
@@ -277,8 +282,9 @@ case class ColumnValuesLikePatternListValidation() extends GreatExpectationsData
 
   override def getValidation(inputParams: Map[String, Any]): List[ValidationBuilder] = {
     val mkStringValue = if (inputParams.get(MATCH_ON).contains("all")) " AND " else " OR "
+    val cleanColumn = cleanColumnName(inputParams(COLUMN).toString)
     val checkAllPatterns = inputParams(LIKE_PATTERN_LIST).asInstanceOf[List[String]]
-      .map(likePattern => s"LIKE(${inputParams(COLUMN).toString}, '$likePattern')")
+      .map(likePattern => s"LIKE($cleanColumn, '$likePattern')")
       .mkString(mkStringValue)
     List(ValidationBuilder().expr(checkAllPatterns))
   }
@@ -289,8 +295,8 @@ case class ColumnValuesNotLikePatternValidation() extends GreatExpectationsDataV
   override val params: List[String] = List(COLUMN, LIKE_PATTERN)
 
   override def getValidation(inputParams: Map[String, Any]): List[ValidationBuilder] = {
-    val column = inputParams(COLUMN).toString
-    List(ValidationBuilder().expr(s"NOT LIKE($column, '${inputParams(LIKE_PATTERN).toString}')"))
+    val cleanColumn = cleanColumnName(inputParams(COLUMN).toString)
+    List(ValidationBuilder().expr(s"NOT LIKE($cleanColumn, '${inputParams(LIKE_PATTERN).toString}')"))
   }
 }
 
@@ -299,8 +305,9 @@ case class ColumnValuesNotLikePatternListValidation() extends GreatExpectationsD
   override val params: List[String] = List(COLUMN, LIKE_PATTERN_LIST)
 
   override def getValidation(inputParams: Map[String, Any]): List[ValidationBuilder] = {
+    val cleanColumn = cleanColumnName(inputParams(COLUMN).toString)
     val checkAllPatterns = inputParams(LIKE_PATTERN_LIST).asInstanceOf[List[String]]
-      .map(likePattern => s"LIKE(${inputParams(COLUMN).toString}, '$likePattern')")
+      .map(likePattern => s"LIKE($cleanColumn, '$likePattern')")
       .mkString(" OR ")
     List(ValidationBuilder().expr(s"NOT ($checkAllPatterns)"))
   }
@@ -321,8 +328,9 @@ case class ColumnValuesMatchRegexListValidation() extends GreatExpectationsDataV
 
   override def getValidation(inputParams: Map[String, Any]): List[ValidationBuilder] = {
     val mkStringValue = if (inputParams.get(MATCH_ON).contains("all")) " AND " else " OR "
+    val cleanColumn = cleanColumnName(inputParams(COLUMN).toString)
     val checkAllPatterns = inputParams(REGEX_LIST).asInstanceOf[List[String]]
-      .map(regex => s"REGEXP(${inputParams(COLUMN).toString}, '$regex')")
+      .map(regex => s"REGEXP($cleanColumn, '$regex')")
       .mkString(mkStringValue)
     List(ValidationBuilder().expr(checkAllPatterns))
   }
@@ -342,8 +350,9 @@ case class ColumnValuesNotMatchRegexListValidation() extends GreatExpectationsDa
   override val params: List[String] = List(COLUMN, REGEX_LIST)
 
   override def getValidation(inputParams: Map[String, Any]): List[ValidationBuilder] = {
+    val cleanColumn = cleanColumnName(inputParams(COLUMN).toString)
     val checkAllPatterns = inputParams(REGEX_LIST).asInstanceOf[List[String]]
-      .map(regex => s"REGEXP(${inputParams(COLUMN).toString}, '$regex')")
+      .map(regex => s"REGEXP($cleanColumn, '$regex')")
       .mkString(" OR ")
     List(ValidationBuilder().expr(s"NOT ($checkAllPatterns)"))
   }
@@ -355,8 +364,8 @@ case class ColumnValuesMatchDateTimeFormatValidation() extends GreatExpectations
 
   override def getValidation(inputParams: Map[String, Any]): List[ValidationBuilder] = {
     val format = inputParams(STRFTIME_FORMAT).toString
-    val column = inputParams(COLUMN).toString
-    List(ValidationBuilder().expr(s"TRY_TO_TIMESTAMP($column, '$format') IS NOT NULL"))
+    val cleanColumn = cleanColumnName(inputParams(COLUMN).toString)
+    List(ValidationBuilder().expr(s"TRY_TO_TIMESTAMP($cleanColumn, '$format') IS NOT NULL"))
   }
 }
 
@@ -397,10 +406,11 @@ case class ColumnMostCommonValueInSetValidation() extends GreatExpectationsDataV
 
   override def getValidation(inputParams: Map[String, Any]): List[ValidationBuilder] = {
     val column = inputParams(COLUMN).toString
+    val cleanColumn = cleanColumnName(column)
     val valueSet = convertListToString(inputParams(VALUE_SET).asInstanceOf[List[Any]])
     List(
       ValidationBuilder()
-        .selectExpr(s"MODE($column) AS ${column}_mode")
+        .selectExpr(s"MODE($cleanColumn) AS ${column}_mode")
         .expr(s"ARRAY_CONTAINS(ARRAY($valueSet), ${column}_mode)")
     )
   }
@@ -411,11 +421,11 @@ case class ColumnPairValueAGreaterThanBValidation() extends GreatExpectationsDat
   override val params: List[String] = List(COLUMN_A, COLUMN_B)
 
   override def getValidation(inputParams: Map[String, Any]): List[ValidationBuilder] = {
-    val columnA = inputParams(COLUMN_A).toString
-    val columnB = inputParams(COLUMN_B).toString
+    val cleanColumnA = cleanColumnName(inputParams(COLUMN_A).toString)
+    val cleanColumnB = cleanColumnName(inputParams(COLUMN_B).toString)
     val isEqual = inputParams.get(OR_EQUAL).exists(_.toString.toBoolean)
     val greaterThanSign = if (isEqual) ">=" else ">"
-    List(ValidationBuilder().expr(s"$columnA $greaterThanSign $columnB"))
+    List(ValidationBuilder().expr(s"$cleanColumnA $greaterThanSign $cleanColumnB"))
   }
 }
 
@@ -424,9 +434,9 @@ case class ColumnPairValueAEqualToBValidation() extends GreatExpectationsDataVal
   override val params: List[String] = List(COLUMN_A, COLUMN_B)
 
   override def getValidation(inputParams: Map[String, Any]): List[ValidationBuilder] = {
-    val columnA = inputParams(COLUMN_A).toString
-    val columnB = inputParams(COLUMN_B).toString
-    List(ValidationBuilder().expr(s"$columnA == $columnB"))
+    val cleanColumnA = cleanColumnName(inputParams(COLUMN_A).toString)
+    val cleanColumnB = cleanColumnName(inputParams(COLUMN_B).toString)
+    List(ValidationBuilder().expr(s"$cleanColumnA == $cleanColumnB"))
   }
 }
 
@@ -435,13 +445,13 @@ case class ColumnPairValuesInSetValidation() extends GreatExpectationsDataValida
   override val params: List[String] = List(COLUMN_A, COLUMN_B, VALUE_PAIRS_SET)
 
   override def getValidation(inputParams: Map[String, Any]): List[ValidationBuilder] = {
-    val columnA = inputParams(COLUMN_A).toString
-    val columnB = inputParams(COLUMN_B).toString
+    val cleanColumnA = cleanColumnName(inputParams(COLUMN_A).toString)
+    val cleanColumnB = cleanColumnName(inputParams(COLUMN_B).toString)
     val valuePairsSet = inputParams(VALUE_PAIRS_SET).asInstanceOf[List[List[Any]]]
     val condition = valuePairsSet.map(pair => {
       val pair1Parsed = if (pair.head.isInstanceOf[String]) s"'${pair.head}'" else pair.head.toString
       val pair2Parsed = if (pair.last.isInstanceOf[String]) s"'${pair.last}'" else pair.last.toString
-      s"($columnA == $pair1Parsed AND $columnB == $pair2Parsed)"
+      s"($cleanColumnA == $pair1Parsed AND $cleanColumnB == $pair2Parsed)"
     }).mkString(" OR ")
     List(ValidationBuilder().expr(condition))
   }
@@ -453,10 +463,11 @@ case class ColumnUniqueValuesProportionBetweenValidation() extends GreatExpectat
 
   override def getValidation(inputParams: Map[String, Any]): List[ValidationBuilder] = {
     val column = inputParams(COLUMN).toString
+    val cleanColumn = cleanColumnName(column)
     val minValue = inputParams.get(MIN_VALUE).map(_.toString.toDouble).getOrElse(0.0)
     val maxValue = inputParams.get(MAX_VALUE).map(_.toString.toDouble).getOrElse(1.0)
     List(
-      ValidationBuilder().selectExpr(s"COUNT(DISTINCT $column) / COUNT(1) AS ${column}_unique_proportion")
+      ValidationBuilder().selectExpr(s"COUNT(DISTINCT $cleanColumn) / COUNT(1) AS ${column}_unique_proportion")
         .expr(s"${column}_unique_proportion BETWEEN $minValue AND $maxValue")
     )
   }
@@ -468,6 +479,7 @@ case class ColumnQuantileValuesBetweenValidation() extends GreatExpectationsData
 
   override def getValidation(inputParams: Map[String, Any]): List[ValidationBuilder] = {
     val column = inputParams(COLUMN).toString
+    val cleanColumn = cleanColumnName(column)
     val quantileRanges = inputParams(QUANTILE_RANGES).asInstanceOf[Map[String, List[Any]]]
     val quantiles = quantileRanges(QUANTILES).map(_.toString.toFloat)
     val valueRanges = quantileRanges(VALUE_RANGES).map(range => range.asInstanceOf[List[Any]])
@@ -476,7 +488,7 @@ case class ColumnQuantileValuesBetweenValidation() extends GreatExpectationsData
 
     val quantileExprs = quantiles.zipWithIndex.map(quantile => {
       val percentileColName = s"${column}_percentile_${quantile._2}"
-      val selectExpr = s"PERCENTILE($column, ${quantile._1}) AS $percentileColName"
+      val selectExpr = s"PERCENTILE($cleanColumn, ${quantile._1}) AS $percentileColName"
       val whereExpr = s"$percentileColName BETWEEN ${minRanges(quantile._2)} AND ${maxRanges(quantile._2)}"
       (selectExpr, whereExpr)
     })
@@ -503,8 +515,8 @@ case class ColumnValuesDateParseableValidation() extends GreatExpectationsDataVa
   override val params: List[String] = List(COLUMN)
 
   override def getValidation(inputParams: Map[String, Any]): List[ValidationBuilder] = {
-    val column = inputParams(COLUMN).toString
-    List(ValidationBuilder().expr(s"CAST($column AS DATE) IS NOT NULL"))
+    val cleanColumn = cleanColumnName(inputParams(COLUMN).toString)
+    List(ValidationBuilder().expr(s"CAST($cleanColumn AS DATE) IS NOT NULL"))
   }
 }
 
@@ -514,7 +526,7 @@ case class MultiColumnSumEqualValidation() extends GreatExpectationsDataValidati
 
   override def getValidation(inputParams: Map[String, Any]): List[ValidationBuilder] = {
     val columns = inputParams(COLUMN_LIST).asInstanceOf[List[String]]
-    val columnSumExpr = s"${columns.mkString(" + ")} AS _column_sum"
+    val columnSumExpr = s"${columns.map(cleanColumnName).mkString(" + ")} AS _column_sum"
     List(
       ValidationBuilder().selectExpr(columnSumExpr)
         .expr(s"_column_sum == ${inputParams(SUM_TOTAL)}")
@@ -536,7 +548,7 @@ case class MultiColumnValuesUniqueWithinRecordValidation() extends GreatExpectat
   override val params: List[String] = List(COLUMN_LIST)
 
   override def getValidation(inputParams: Map[String, Any]): List[ValidationBuilder] = {
-    val columns = inputParams(COLUMN_LIST).asInstanceOf[List[String]]
+    val columns = inputParams(COLUMN_LIST).asInstanceOf[List[String]].map(cleanColumnName)
     List(ValidationBuilder().selectExpr(s"COLLECT_SET(CONCAT(${columns.mkString(",")})) AS _unique_multi_column")
       .expr(s"SIZE(_unique_multi_column) == ${columns.size}"))
   }

@@ -22,7 +22,7 @@ class ForeignKeyUtilTest extends SparkSuite {
 
     val result = ForeignKeyUtil.getDataFramesWithForeignKeys(plan, dfMap)
 
-    assert(dfMap.toList == result)
+    assertResult(result)(dfMap.toList)
   }
 
   test("Can get insert order") {
@@ -32,7 +32,7 @@ class ForeignKeyUtilTest extends SparkSuite {
       "reviews" -> List("products", "customers")
     )
     val result = ForeignKeyUtil.getInsertOrder(foreignKeys)
-    assert(result.head == "reviews")
+    assertResult("reviews")(result.head)
   }
 
   test("Can link foreign keys between data sets") {
@@ -172,14 +172,14 @@ class ForeignKeyUtilTest extends SparkSuite {
       s"postgres${FOREIGN_KEY_DELIMITER}balances${FOREIGN_KEY_DELIMITER}account_id",
       s"postgres${FOREIGN_KEY_DELIMITER}accounts${FOREIGN_KEY_DELIMITER}account_id"
     )
-    assert(deleteOrder == expected)
+    assertResult(expected)(deleteOrder)
 
     val foreignKeys1 = List(
       s"postgres${FOREIGN_KEY_DELIMITER}balances${FOREIGN_KEY_DELIMITER}account_id" -> List(s"postgres${FOREIGN_KEY_DELIMITER}transactions${FOREIGN_KEY_DELIMITER}account_id"),
       s"postgres${FOREIGN_KEY_DELIMITER}accounts${FOREIGN_KEY_DELIMITER}account_id" -> List(s"postgres${FOREIGN_KEY_DELIMITER}balances${FOREIGN_KEY_DELIMITER}account_id"),
     )
     val deleteOrder1 = ForeignKeyUtil.getDeleteOrder(foreignKeys1)
-    assert(deleteOrder1 == expected)
+    assertResult(expected)(deleteOrder1)
 
     val foreignKeys2 = List(
       s"postgres${FOREIGN_KEY_DELIMITER}accounts${FOREIGN_KEY_DELIMITER}account_id" -> List(s"postgres${FOREIGN_KEY_DELIMITER}balances${FOREIGN_KEY_DELIMITER}account_id"),
@@ -188,7 +188,7 @@ class ForeignKeyUtilTest extends SparkSuite {
     )
     val deleteOrder2 = ForeignKeyUtil.getDeleteOrder(foreignKeys2)
     val expected2 = List(s"postgres${FOREIGN_KEY_DELIMITER}customer${FOREIGN_KEY_DELIMITER}account_id") ++ expected
-    assert(deleteOrder2 == expected2)
+    assertResult(expected2)(deleteOrder2)
   }
 
   test("Can generate correct values when per column count is defined over multiple columns that are also defined as foreign keys") {
@@ -230,7 +230,7 @@ class ForeignKeyUtilTest extends SparkSuite {
 
     val result = ForeignKeyUtil.getAllForeignKeyRelationships(generatedForeignKeys, optPlanRun, stepNameMapping)
 
-    assert(result.size == 3)
+    assertResult(3)(result.size)
     assert(result.contains((s"my_csv${FOREIGN_KEY_DELIMITER}public.accounts${FOREIGN_KEY_DELIMITER}id",
       List(s"my_postgres${FOREIGN_KEY_DELIMITER}public.accounts${FOREIGN_KEY_DELIMITER}account_id"), List())))
     assert(result.contains((s"my_json${FOREIGN_KEY_DELIMITER}json_step${FOREIGN_KEY_DELIMITER}id",

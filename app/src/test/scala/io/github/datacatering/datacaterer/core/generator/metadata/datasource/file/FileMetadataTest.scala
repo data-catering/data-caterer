@@ -13,7 +13,7 @@ class FileMetadataTest extends SparkSuite {
 
     val result = fileMetadata.getSubDataSourcesMetadata
 
-    assert(result.length == 2)
+    assertResult(2)(result.length)
     assert(result.forall(m => m.readOptions("format") == "csv"))
     assert(result.forall(m => m.readOptions("path").contains(s"$baseFolder/csv/account") || m.readOptions("path").contains(s"$baseFolder/csv/transactions")))
   }
@@ -23,7 +23,7 @@ class FileMetadataTest extends SparkSuite {
 
     val result = fileMetadata.getSubDataSourcesMetadata
 
-    assert(result.length == 3)
+    assertResult(3)(result.length)
     assert(result.forall(m => m.readOptions("format") == "parquet"))
     assert(result.forall(m =>
       m.readOptions("path").contains(s"$baseFolder/parquet/account") ||
@@ -36,7 +36,7 @@ class FileMetadataTest extends SparkSuite {
 
     val result = fileMetadata.getSubDataSourcesMetadata
 
-    assert(result.length == 2)
+    assertResult(2)(result.length)
     assert(result.forall(m => m.readOptions("format") == "json"))
     assert(result.forall(m => m.readOptions("path").contains(s"$baseFolder/json") || m.readOptions("path").contains(s"$baseFolder/csv/json")))
   }

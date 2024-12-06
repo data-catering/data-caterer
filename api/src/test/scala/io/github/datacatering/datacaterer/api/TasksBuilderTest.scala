@@ -15,8 +15,8 @@ class TasksBuilderTest extends AnyFunSuite {
       .dataSource("account_json")
       .taskSummary
 
-    assert(result.name == "my task")
-    assert(result.dataSourceName == "account_json")
+    assertResult("my task")(result.name)
+    assertResult("account_json")(result.dataSourceName)
     assert(!result.enabled)
   }
 
@@ -31,11 +31,11 @@ class TasksBuilderTest extends AnyFunSuite {
       .options(Map("stringtype" -> "undefined"))
       .step
 
-    assert(result.name == "my step")
-    assert(result.`type` == "csv")
+    assertResult("my step")(result.name)
+    assertResult("csv")(result.`type`)
     assert(!result.enabled)
     assert(result.schema.fields.isEmpty)
-    assert(result.count == Count())
+    assertResult(Count())(result.count)
     assert(result.options == Map(
       "dbtable" -> "account.history",
       "stringtype" -> "undefined"
@@ -60,7 +60,7 @@ class TasksBuilderTest extends AnyFunSuite {
     assert(result.records.contains(1000))
     assert(result.perColumn.isDefined)
     assert(result.perColumn.get.count.contains(20))
-    assert(result.perColumn.get.columnNames == List("account_id"))
+    assertResult(List("account_id"))(result.perColumn.get.columnNames)
     assert(result.perColumn.get.generator.isEmpty)
     assert(result.generator.isEmpty)
   }
@@ -73,7 +73,7 @@ class TasksBuilderTest extends AnyFunSuite {
     assert(result.records.contains(1000))
     assert(result.perColumn.isDefined)
     assert(result.perColumn.get.count.contains(20))
-    assert(result.perColumn.get.columnNames == List("account_id"))
+    assertResult(List("account_id"))(result.perColumn.get.columnNames)
     assert(result.perColumn.get.generator.isEmpty)
     assert(result.generator.isEmpty)
   }
@@ -86,7 +86,7 @@ class TasksBuilderTest extends AnyFunSuite {
     assert(result.records.contains(1000))
     assert(result.perColumn.isDefined)
     assert(result.perColumn.get.count.contains(10))
-    assert(result.perColumn.get.columnNames == List("account_id"))
+    assertResult(List("account_id"))(result.perColumn.get.columnNames)
     assert(result.perColumn.get.generator.isDefined)
     assert(result.generator.isEmpty)
   }
@@ -99,7 +99,7 @@ class TasksBuilderTest extends AnyFunSuite {
     assert(result.records.contains(100))
     assert(result.perColumn.isDefined)
     assert(result.perColumn.get.count.contains(10))
-    assert(result.perColumn.get.columnNames == List("account_id"))
+    assertResult(List("account_id"))(result.perColumn.get.columnNames)
     assert(result.perColumn.get.generator.isDefined)
     assert(result.generator.isEmpty)
   }
@@ -116,10 +116,10 @@ class TasksBuilderTest extends AnyFunSuite {
     assert(result.records.contains(1000))
     assert(result.perColumn.isDefined)
     assert(result.perColumn.get.count.contains(10))
-    assert(result.perColumn.get.columnNames == List("account_id"))
+    assertResult(List("account_id"))(result.perColumn.get.columnNames)
     assert(result.perColumn.get.generator.isDefined)
-    assert(result.perColumn.get.generator.get.`type` == "random")
-    assert(result.perColumn.get.generator.get.options("min") == "5")
+    assertResult("random")(result.perColumn.get.generator.get.`type`)
+    assertResult("5")(result.perColumn.get.generator.get.options("min"))
     assert(result.generator.isEmpty)
   }
 
@@ -131,7 +131,7 @@ class TasksBuilderTest extends AnyFunSuite {
       .schema
 
     assert(result.fields.isDefined)
-    assert(result.fields.get.size == 3)
+    assertResult(3)(result.fields.get.size)
     assert(result.fields.get.contains(Field("account_id", Some("string"))))
     assert(result.fields.get.contains(Field("year", Some("integer"))))
     assert(result.fields.get.contains(Field("name", Some("string"))))
@@ -145,7 +145,7 @@ class TasksBuilderTest extends AnyFunSuite {
       .generator(GeneratorBuilder())
       .field
 
-    assert(result.name == "account_id")
+    assertResult("account_id")(result.name)
     assert(result.`type`.contains("string"))
     assert(!result.nullable)
     assert(result.generator.isDefined)
@@ -158,52 +158,52 @@ class TasksBuilderTest extends AnyFunSuite {
       .sql("SUBSTRING(account, 1, 5)")
       .field
 
-    assert(result.name == "account_id")
+    assertResult("account_id")(result.name)
     assert(result.`type`.contains("string"))
     assert(result.generator.isDefined)
-    assert(result.generator.get.`type` == "sql")
-    assert(result.generator.get.options("sql") == "SUBSTRING(account, 1, 5)")
+    assertResult("sql")(result.generator.get.`type`)
+    assertResult("SUBSTRING(account, 1, 5)")(result.generator.get.options("sql"))
   }
 
   test("Can create field generated from one of list of doubles") {
     val result = FieldBuilder().name("account_id").oneOf(123.1, 789.2).field
 
-    assert(result.name == "account_id")
+    assertResult("account_id")(result.name)
     assert(result.`type`.contains("double"))
     assert(result.generator.isDefined)
-    assert(result.generator.get.options("oneOf") == List(123.1, 789.2))
+    assertResult(List(123.1, 789.2))(result.generator.get.options("oneOf"))
   }
 
   test("Can create field generated from one of list of strings") {
     val result = FieldBuilder().name("status").oneOf("open", "closed").field
 
-    assert(result.name == "status")
+    assertResult("status")(result.name)
     assert(result.`type`.contains("string"))
-    assert(result.generator.get.options("oneOf") == List("open", "closed"))
+    assertResult(List("open", "closed"))(result.generator.get.options("oneOf"))
   }
 
   test("Can create field generated from one of list of long") {
     val result = FieldBuilder().name("amount").oneOf(100L, 200L).field
 
-    assert(result.name == "amount")
+    assertResult("amount")(result.name)
     assert(result.`type`.contains("long"))
-    assert(result.generator.get.options("oneOf") == List(100L, 200L))
+    assertResult(List(100L, 200L))(result.generator.get.options("oneOf"))
   }
 
   test("Can create field generated from one of list of int") {
     val result = FieldBuilder().name("amount").oneOf(100, 200).field
 
-    assert(result.name == "amount")
+    assertResult("amount")(result.name)
     assert(result.`type`.contains("integer"))
-    assert(result.generator.get.options("oneOf") == List(100, 200))
+    assertResult(List(100, 200))(result.generator.get.options("oneOf"))
   }
 
   test("Can create field generated from one of list of boolean") {
     val result = FieldBuilder().name("is_open").oneOf(true, false).field
 
-    assert(result.name == "is_open")
+    assertResult("is_open")(result.name)
     assert(result.`type`.contains("boolean"))
-    assert(result.generator.get.options("oneOf") == List(true, false))
+    assertResult(List(true, false))(result.generator.get.options("oneOf"))
   }
 
   test("Can create field with nested schema") {
@@ -215,7 +215,7 @@ class TasksBuilderTest extends AnyFunSuite {
       ))
       .field
 
-    assert(result.name == "txn_list")
+    assertResult("txn_list")(result.name)
     assert(result.`type`.contains("array<date>"))
   }
 
@@ -252,38 +252,38 @@ class TasksBuilderTest extends AnyFunSuite {
       .option("data" -> "big")
       .field
 
-    assert(result.name == "account_id")
+    assertResult("account_id")(result.name)
     assert(result.`type`.contains("string"))
     assert(!result.nullable)
-    assert(result.generator.get.`type` == "regex")
+    assertResult("regex")(result.generator.get.`type`)
     val gen = result.generator.get.options
-    assert(gen("regex") == "acc[0-9]{3}")
-    assert(gen("seed") == "1")
-    assert(gen("min") == "2")
-    assert(gen("max") == "10")
-    assert(gen("minLen") == "3")
-    assert(gen("maxLen") == "4")
-    assert(gen("avgLen") == "3")
-    assert(gen("arrayMinLen") == "2")
-    assert(gen("arrayMaxLen") == "2")
-    assert(gen("expression") == "hello")
-    assert(gen("static") == "acc123")
-    assert(gen("arrayType") == "boolean")
-    assert(gen("precision") == "10")
-    assert(gen("scale") == "1")
-    assert(gen("enableEdgeCase") == "true")
-    assert(gen("edgeCaseProb") == "0.5")
-    assert(gen("enableNull") == "true")
-    assert(gen("nullProb") == "0.1")
-    assert(gen("isUnique") == "true")
-    assert(gen("omit") == "false")
-    assert(gen("isPrimaryKey") == "true")
-    assert(gen("primaryKeyPos") == "1")
-    assert(gen("clusteringPos") == "1")
-    assert(gen("customMetadata") == "yes")
-    assert(gen("data") == "big")
-    assert(gen("stddev") == "0.1")
-    assert(gen("mean") == "5.1")
+    assertResult("acc[0-9]{3}")(gen("regex"))
+    assertResult("1")(gen("seed"))
+    assertResult("2")(gen("min"))
+    assertResult("10")(gen("max"))
+    assertResult("3")(gen("minLen"))
+    assertResult("4")(gen("maxLen"))
+    assertResult("3")(gen("avgLen"))
+    assertResult("2")(gen("arrayMinLen"))
+    assertResult("2")(gen("arrayMaxLen"))
+    assertResult("hello")(gen("expression"))
+    assertResult("acc123")(gen("static"))
+    assertResult("boolean")(gen("arrayType"))
+    assertResult("10")(gen("precision"))
+    assertResult("1")(gen("scale"))
+    assertResult("true")(gen("enableEdgeCase"))
+    assertResult("0.5")(gen("edgeCaseProb"))
+    assertResult("true")(gen("enableNull"))
+    assertResult("0.1")(gen("nullProb"))
+    assertResult("true")(gen("isUnique"))
+    assertResult("false")(gen("omit"))
+    assertResult("true")(gen("isPrimaryKey"))
+    assertResult("1")(gen("primaryKeyPos"))
+    assertResult("1")(gen("clusteringPos"))
+    assertResult("yes")(gen("customMetadata"))
+    assertResult("big")(gen("data"))
+    assertResult("0.1")(gen("stddev"))
+    assertResult("5.1")(gen("mean"))
   }
 
 }

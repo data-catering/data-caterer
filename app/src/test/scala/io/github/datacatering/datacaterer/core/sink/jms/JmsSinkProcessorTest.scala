@@ -2,6 +2,7 @@ package io.github.datacatering.datacaterer.core.sink.jms
 
 import io.github.datacatering.datacaterer.api.model.{Count, Field, Schema, Step}
 import io.github.datacatering.datacaterer.core.model.Constants.{REAL_TIME_BODY_COL, REAL_TIME_HEADERS_COL, REAL_TIME_PARTITION_COL, REAL_TIME_URL_COL}
+import io.github.datacatering.datacaterer.core.util.SparkSuite
 import org.apache.spark.sql.catalyst.expressions.GenericRowWithSchema
 import org.apache.spark.sql.types.{ArrayType, BinaryType, IntegerType, StringType, StructField, StructType}
 import org.junit.runner.RunWith
@@ -16,7 +17,7 @@ import javax.naming.Context
 import scala.collection.mutable
 
 @RunWith(classOf[JUnitRunner])
-class JmsSinkProcessorTest extends AnyFunSuite with MockFactory {
+class JmsSinkProcessorTest extends SparkSuite with MockFactory {
 
   private val mockConnection = mock[Connection]
   private val basicFields = List(Field(REAL_TIME_BODY_COL))
@@ -93,15 +94,15 @@ class JmsSinkProcessorTest extends AnyFunSuite with MockFactory {
     )
 
     val res = JmsSinkProcessor.getConnectionProperties(connectionConfig)
-    assert(res.size() == 4)
+    assertResult(4)(res.size())
     assert(res.containsKey(Context.INITIAL_CONTEXT_FACTORY))
-    assert(res.getProperty(Context.INITIAL_CONTEXT_FACTORY) == connectionConfig("initialContextFactory"))
+    assertResult(connectionConfig("initialContextFactory"))(res.getProperty(Context.INITIAL_CONTEXT_FACTORY))
     assert(res.containsKey(Context.SECURITY_PRINCIPAL))
-    assert(res.getProperty(Context.SECURITY_PRINCIPAL) == connectionConfig("user") + "@" + connectionConfig("vpnName"))
+    assertResult(connectionConfig("user") + "@" + connectionConfig("vpnName"))(res.getProperty(Context.SECURITY_PRINCIPAL))
     assert(res.containsKey(Context.SECURITY_CREDENTIALS))
-    assert(res.getProperty(Context.SECURITY_CREDENTIALS) == connectionConfig("password"))
+    assertResult(connectionConfig("password"))(res.getProperty(Context.SECURITY_CREDENTIALS))
     assert(res.containsKey(Context.PROVIDER_URL))
-    assert(res.getProperty(Context.PROVIDER_URL) == connectionConfig("url"))
+    assertResult(connectionConfig("url"))(res.getProperty(Context.PROVIDER_URL))
   }
 
   test("Throw exception when incomplete connection configuration provided") {

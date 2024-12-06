@@ -12,13 +12,13 @@ class DataCatererConfigurationBuilderTest extends AnyFunSuite {
   test("Can create basic configuration with defaults") {
     val result = DataCatererConfigurationBuilder().build
 
-    assert(result.flagsConfig == FlagsConfig())
-    assert(result.foldersConfig == FoldersConfig())
-    assert(result.metadataConfig == MetadataConfig())
-    assert(result.generationConfig == GenerationConfig())
+    assertResult(FlagsConfig())(result.flagsConfig)
+    assertResult(FoldersConfig())(result.foldersConfig)
+    assertResult(MetadataConfig())(result.metadataConfig)
+    assertResult(GenerationConfig())(result.generationConfig)
     assert(result.connectionConfigByName.isEmpty)
-    assert(result.runtimeConfig.size == 16)
-    assert(result.master == "local[*]")
+    assertResult(16)(result.runtimeConfig.size)
+    assertResult("local[*]")(result.master)
   }
 
   test("Can create postgres connection configuration") {
@@ -27,14 +27,14 @@ class DataCatererConfigurationBuilderTest extends AnyFunSuite {
       .build
       .connectionConfigByName
 
-    assert(result.size == 1)
+    assertResult(1)(result.size)
     assert(result.contains("my_postgres"))
     val config = result("my_postgres")
-    assert(config("url") == DEFAULT_POSTGRES_URL)
-    assert(config("user") == DEFAULT_POSTGRES_USERNAME)
-    assert(config("password") == DEFAULT_POSTGRES_PASSWORD)
-    assert(config("format") == "jdbc")
-    assert(config("driver") == "org.postgresql.Driver")
+    assertResult(DEFAULT_POSTGRES_URL)(config("url"))
+    assertResult(DEFAULT_POSTGRES_USERNAME)(config("user"))
+    assertResult(DEFAULT_POSTGRES_PASSWORD)(config("password"))
+    assertResult("jdbc")(config("format"))
+    assertResult("org.postgresql.Driver")(config("driver"))
   }
 
   test("Can create postgres connection with custom configuration") {
@@ -43,12 +43,12 @@ class DataCatererConfigurationBuilderTest extends AnyFunSuite {
       .build
       .connectionConfigByName
 
-    assert(result.size == 1)
+    assertResult(1)(result.size)
     assert(result.contains("my_postgres"))
     val config = result("my_postgres")
-    assert(config.size == 6)
-    assert(config("url") == "jdbc:postgresql://localhost:5432/customer")
-    assert(config("stringtype") == "undefined")
+    assertResult(6)(config.size)
+    assertResult("jdbc:postgresql://localhost:5432/customer")(config("url"))
+    assertResult("undefined")(config("stringtype"))
   }
 
   test("Can create mysql connection configuration") {
@@ -57,14 +57,14 @@ class DataCatererConfigurationBuilderTest extends AnyFunSuite {
       .build
       .connectionConfigByName
 
-    assert(result.size == 1)
+    assertResult(1)(result.size)
     assert(result.contains("my_mysql"))
     val config = result("my_mysql")
-    assert(config("url") == DEFAULT_MYSQL_URL)
-    assert(config("user") == DEFAULT_MYSQL_USERNAME)
-    assert(config("password") == DEFAULT_MYSQL_PASSWORD)
-    assert(config("format") == "jdbc")
-    assert(config("driver") == "com.mysql.cj.jdbc.Driver")
+    assertResult(DEFAULT_MYSQL_URL)(config("url"))
+    assertResult(DEFAULT_MYSQL_USERNAME)(config("user"))
+    assertResult(DEFAULT_MYSQL_PASSWORD)(config("password"))
+    assertResult("jdbc")(config("format"))
+    assertResult("com.mysql.cj.jdbc.Driver")(config("driver"))
   }
 
   test("Can create cassandra connection configuration") {
@@ -73,14 +73,14 @@ class DataCatererConfigurationBuilderTest extends AnyFunSuite {
       .build
       .connectionConfigByName
 
-    assert(result.size == 1)
+    assertResult(1)(result.size)
     assert(result.contains("my_cassandra"))
     val config = result("my_cassandra")
-    assert(config("spark.cassandra.connection.host") == "cassandraserver")
-    assert(config("spark.cassandra.connection.port") == "9042")
-    assert(config("spark.cassandra.auth.username") == DEFAULT_CASSANDRA_USERNAME)
-    assert(config("spark.cassandra.auth.password") == DEFAULT_CASSANDRA_PASSWORD)
-    assert(config("format") == "org.apache.spark.sql.cassandra")
+    assertResult("cassandraserver")(config("spark.cassandra.connection.host"))
+    assertResult("9042")(config("spark.cassandra.connection.port"))
+    assertResult(DEFAULT_CASSANDRA_USERNAME)(config("spark.cassandra.auth.username"))
+    assertResult(DEFAULT_CASSANDRA_PASSWORD)(config("spark.cassandra.auth.password"))
+    assertResult("org.apache.spark.sql.cassandra")(config("format"))
   }
 
   test("Can create solace connection configuration") {
@@ -89,16 +89,16 @@ class DataCatererConfigurationBuilderTest extends AnyFunSuite {
       .build
       .connectionConfigByName
 
-    assert(result.size == 1)
+    assertResult(1)(result.size)
     assert(result.contains("my_solace"))
     val config = result("my_solace")
-    assert(config("url") == DEFAULT_SOLACE_URL)
-    assert(config("user") == DEFAULT_SOLACE_USERNAME)
-    assert(config("password") == DEFAULT_SOLACE_PASSWORD)
-    assert(config("format") == "jms")
-    assert(config("vpnName") == DEFAULT_SOLACE_VPN_NAME)
-    assert(config("connectionFactory") == DEFAULT_SOLACE_CONNECTION_FACTORY)
-    assert(config("initialContextFactory") == DEFAULT_SOLACE_INITIAL_CONTEXT_FACTORY)
+    assertResult(DEFAULT_SOLACE_URL)(config("url"))
+    assertResult(DEFAULT_SOLACE_USERNAME)(config("user"))
+    assertResult(DEFAULT_SOLACE_PASSWORD)(config("password"))
+    assertResult("jms")(config("format"))
+    assertResult(DEFAULT_SOLACE_VPN_NAME)(config("vpnName"))
+    assertResult(DEFAULT_SOLACE_CONNECTION_FACTORY)(config("connectionFactory"))
+    assertResult(DEFAULT_SOLACE_INITIAL_CONTEXT_FACTORY)(config("initialContextFactory"))
   }
 
   test("Can create kafka connection configuration") {
@@ -107,11 +107,11 @@ class DataCatererConfigurationBuilderTest extends AnyFunSuite {
       .build
       .connectionConfigByName
 
-    assert(result.size == 1)
+    assertResult(1)(result.size)
     assert(result.contains("my_kafka"))
     val config = result("my_kafka")
-    assert(config("kafka.bootstrap.servers") == DEFAULT_KAFKA_URL)
-    assert(config("format") == "kafka")
+    assertResult(DEFAULT_KAFKA_URL)(config("kafka.bootstrap.servers"))
+    assertResult("kafka")(config("format"))
   }
 
   test("Can create http connection configuration") {
@@ -120,11 +120,11 @@ class DataCatererConfigurationBuilderTest extends AnyFunSuite {
       .build
       .connectionConfigByName
 
-    assert(result.size == 1)
+    assertResult(1)(result.size)
     assert(result.contains("my_http"))
     val config = result("my_http")
-    assert(config("user") == "user")
-    assert(config("password") == "pw")
+    assertResult("user")(config("user"))
+    assertResult("pw")(config("password"))
   }
 
   test("Can enable/disable flags") {
@@ -165,12 +165,12 @@ class DataCatererConfigurationBuilderTest extends AnyFunSuite {
       .build
       .foldersConfig
 
-    assert(result.planFilePath == "/my_plan")
-    assert(result.taskFolderPath == "/my_task")
-    assert(result.recordTrackingFolderPath == "/my_record_tracking")
-    assert(result.validationFolderPath == "/my_validation")
-    assert(result.generatedReportsFolderPath == "/my_generation_results")
-    assert(result.generatedPlanAndTaskFolderPath == "/my_generated_plan_tasks")
+    assertResult("/my_plan")(result.planFilePath)
+    assertResult("/my_task")(result.taskFolderPath)
+    assertResult("/my_record_tracking")(result.recordTrackingFolderPath)
+    assertResult("/my_validation")(result.validationFolderPath)
+    assertResult("/my_generation_results")(result.generatedReportsFolderPath)
+    assertResult("/my_generated_plan_tasks")(result.generatedPlanAndTaskFolderPath)
   }
 
   test("Can alter metadata configurations") {
@@ -183,11 +183,11 @@ class DataCatererConfigurationBuilderTest extends AnyFunSuite {
       .build
       .metadataConfig
 
-    assert(result.numRecordsFromDataSource == 1)
-    assert(result.numRecordsForAnalysis == 2)
-    assert(result.numGeneratedSamples == 3)
-    assert(result.oneOfMinCount == 100)
-    assert(result.oneOfDistinctCountVsCountThreshold == 0.3)
+    assertResult(1)(result.numRecordsFromDataSource)
+    assertResult(2)(result.numRecordsForAnalysis)
+    assertResult(3)(result.numGeneratedSamples)
+    assertResult(100)(result.oneOfMinCount)
+    assertResult(0.3)(result.oneOfDistinctCountVsCountThreshold)
   }
 
   test("Can alter generation configurations") {
@@ -197,7 +197,7 @@ class DataCatererConfigurationBuilderTest extends AnyFunSuite {
       .build
       .generationConfig
 
-    assert(result.numRecordsPerBatch == 100)
+    assertResult(100)(result.numRecordsPerBatch)
     assert(result.numRecordsPerStep.contains(10))
   }
 }

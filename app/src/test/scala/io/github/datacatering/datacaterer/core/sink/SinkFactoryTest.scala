@@ -1,7 +1,7 @@
 package io.github.datacatering.datacaterer.core.sink
 
 import io.github.datacatering.datacaterer.api.model.Constants.{DELTA, FORMAT, ICEBERG, PATH, SAVE_MODE, TABLE}
-import io.github.datacatering.datacaterer.api.model.{FlagsConfig, MetadataConfig, Step}
+import io.github.datacatering.datacaterer.api.model.{FlagsConfig, FoldersConfig, MetadataConfig, Step}
 import io.github.datacatering.datacaterer.core.util.{SparkSuite, Transaction}
 import org.junit.runner.RunWith
 import org.scalatestplus.junit.JUnitRunner
@@ -23,7 +23,7 @@ class SinkFactoryTest extends SparkSuite {
   private val df = sparkSession.createDataFrame(sampleData)
 
   test("Can save data in Iceberg format") {
-    val sinkFactory = new SinkFactory(FlagsConfig(), MetadataConfig())
+    val sinkFactory = new SinkFactory(FlagsConfig(), MetadataConfig(), FoldersConfig())
     val step = Step(options = Map(FORMAT -> ICEBERG, TABLE -> "account.transactions", PATH -> "/tmp/iceberg-test"))
     val res = sinkFactory.pushToSink(df, "iceberg-data-source", step, LocalDateTime.now())
 
@@ -36,7 +36,7 @@ class SinkFactoryTest extends SparkSuite {
   test("Can save data in Delta Lake format") {
     val path = "/tmp/delta-test"
     new Directory(new File(path)).deleteRecursively()
-    val sinkFactory = new SinkFactory(FlagsConfig(), MetadataConfig())
+    val sinkFactory = new SinkFactory(FlagsConfig(), MetadataConfig(), FoldersConfig())
     val step = Step(options = Map(FORMAT -> DELTA, PATH -> path))
     val res = sinkFactory.pushToSink(df, "delta-data-source", step, LocalDateTime.now())
 
@@ -48,7 +48,7 @@ class SinkFactoryTest extends SparkSuite {
 
   ignore("Can overwrite existing Iceberg data") {
     sparkSession.sql("DELETE FROM iceberg.account.transactions_overwrite").count()
-    val sinkFactory = new SinkFactory(FlagsConfig(), MetadataConfig())
+    val sinkFactory = new SinkFactory(FlagsConfig(), MetadataConfig(), FoldersConfig())
     val options = Map(FORMAT -> ICEBERG, TABLE -> "account.transactions_overwrite", PATH -> "/tmp/iceberg-test")
     val step = Step(options = options)
     val existingDataRes = sinkFactory.pushToSink(df, "iceberg-data-source", step, LocalDateTime.now())

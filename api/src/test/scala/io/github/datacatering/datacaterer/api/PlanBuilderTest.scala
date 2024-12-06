@@ -22,10 +22,10 @@ class PlanBuilderTest extends AnyFunSuite {
       .description(desc)
       .taskSummaries(taskSummaries)
 
-    assert(result.plan.name == name)
-    assert(result.plan.description == desc)
-    assert(result.plan.tasks.size == 1)
-    assert(result.plan.tasks.head == taskSummaries.taskSummary)
+    assertResult(name)(result.plan.name)
+    assertResult(desc)(result.plan.description)
+    assertResult(1)(result.plan.tasks.size)
+    assertResult(taskSummaries.taskSummary)(result.plan.tasks.head)
   }
 
   test("Can implement PlanRun") {
@@ -73,14 +73,14 @@ class PlanBuilderTest extends AnyFunSuite {
       execute(List(t), p, c, List(v))
     }
 
-    assert(result._tasks.size == 1)
-    assert(result._tasks.head.name == "my task")
-    assert(result._tasks.head.steps.head.schema.fields.get.head.name == "account_id")
+    assertResult(1)(result._tasks.size)
+    assertResult("my task")(result._tasks.head.name)
+    assertResult("account_id")(result._tasks.head.steps.head.schema.fields.get.head.name)
 
-    assert(result._plan.name == "my plan")
-    assert(result._plan.tasks.size == 1)
-    assert(result._plan.tasks.head.name == "my task")
-    assert(result._plan.tasks.head.dataSourceName == "account_json")
+    assertResult("my plan")(result._plan.name)
+    assertResult(1)(result._plan.tasks.size)
+    assertResult("my task")(result._plan.tasks.head.name)
+    assertResult("account_json")(result._plan.tasks.head.dataSourceName)
     assert(result._plan.tasks.head.enabled)
     assert(result._plan.sinkOptions.get.seed.contains("1"))
     assert(result._plan.sinkOptions.get.locale.contains("en"))
@@ -106,26 +106,26 @@ class PlanBuilderTest extends AnyFunSuite {
     assert(!result._configuration.flagsConfig.enableSinkMetadata)
     assert(result._configuration.flagsConfig.enableSaveReports)
     assert(result._configuration.flagsConfig.enableValidation)
-    assert(result._configuration.connectionConfigByName.size == 2)
+    assertResult(2)(result._configuration.connectionConfigByName.size)
     assert(result._configuration.connectionConfigByName.contains("account_json"))
-    assert(result._configuration.connectionConfigByName("account_json") == Map("format" -> "json"))
+    assertResult(Map("format" -> "json"))(result._configuration.connectionConfigByName("account_json"))
     assert(result._configuration.connectionConfigByName.contains("txn_db"))
-    assert(result._configuration.connectionConfigByName("txn_db") == Map("format" -> "postgres"))
-    assert(result._configuration.runtimeConfig == DataCatererConfiguration().runtimeConfig ++ Map("spark.sql.shuffle.partitions" -> "2"))
+    assertResult(Map("format" -> "postgres"))(result._configuration.connectionConfigByName("txn_db"))
+    assertResult(DataCatererConfiguration().runtimeConfig ++ Map("spark.sql.shuffle.partitions" -> "2"))(result._configuration.runtimeConfig)
 
-    assert(result._validations.size == 1)
-    assert(result._validations.head.dataSources.size == 1)
+    assertResult(1)(result._validations.size)
+    assertResult(1)(result._validations.head.dataSources.size)
     val dataSourceHead = result._validations.head.dataSources.head
-    assert(dataSourceHead._1 == "account_json")
-    assert(dataSourceHead._2.size == 1)
-    assert(dataSourceHead._2.head.validations.size == 1)
+    assertResult("account_json")(dataSourceHead._1)
+    assertResult(1)(dataSourceHead._2.size)
+    assertResult(1)(dataSourceHead._2.head.validations.size)
     val validationHead = dataSourceHead._2.head.validations.head.validation
     assert(validationHead.description.contains("name is equal to Peter"))
     assert(validationHead.errorThreshold.contains(0.1))
     assert(validationHead.isInstanceOf[ExpressionValidation])
-    assert(validationHead.asInstanceOf[ExpressionValidation].expr == "name == 'Peter'")
-    assert(dataSourceHead._2.head.options == Map("path" -> "test/path/json"))
-    assert(dataSourceHead._2.head.waitCondition == PauseWaitCondition())
+    assertResult("name == 'Peter'")(validationHead.asInstanceOf[ExpressionValidation].expr)
+    assertResult(Map("path" -> "test/path/json"))(dataSourceHead._2.head.options)
+    assertResult(PauseWaitCondition())(dataSourceHead._2.head.waitCondition)
   }
 
   test("Can define random seed and locale that get used across all data generators") {
@@ -149,7 +149,7 @@ class PlanBuilderTest extends AnyFunSuite {
     assert(result.sinkOptions.isDefined)
     val fk = result.sinkOptions.get.foreignKeys
     assert(fk.nonEmpty)
-    assert(fk.size == 1)
+    assertResult(1)(fk.size)
     assert(fk.exists(f => f._1.startsWith("my_json") && f._1.endsWith("account_id") &&
       f._2.size == 1 && f._2.head.startsWith("my_csv") && f._2.head.endsWith("account_id")
     ))
@@ -162,7 +162,7 @@ class PlanBuilderTest extends AnyFunSuite {
     assert(result2.sinkOptions.isDefined)
     val fk2 = result2.sinkOptions.get.foreignKeys
     assert(fk2.nonEmpty)
-    assert(fk2.size == 1)
+    assertResult(1)(fk2.size)
   }
 
   test("Throw runtime exception when foreign key column is not defined in data sources") {
@@ -196,7 +196,7 @@ class PlanBuilderTest extends AnyFunSuite {
     assert(result.sinkOptions.isDefined)
     val fk = result.sinkOptions.get.foreignKeys
     assert(fk.nonEmpty)
-    assert(fk.size == 1)
+    assertResult(1)(fk.size)
   }
 
   test("Don't throw runtime exception when delete foreign key column, defined by SQL, is not defined in data sources") {
@@ -211,9 +211,9 @@ class PlanBuilderTest extends AnyFunSuite {
     assert(result.sinkOptions.isDefined)
     val fk = result.sinkOptions.get.foreignKeys
     assert(fk.nonEmpty)
-    assert(fk.size == 1)
+    assertResult(1)(fk.size)
     assert(fk.head._2.isEmpty)
-    assert(fk.head._3.size == 1)
+    assertResult(1)(fk.head._3.size)
   }
 
   test("Can create a step that will generate records for all combinations") {

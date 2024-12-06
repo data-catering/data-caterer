@@ -11,7 +11,7 @@ class RecordCountUtilTest extends AnyFunSuite {
   test("Set number of batches to 0 when no tasks defined") {
     val result = RecordCountUtil.calculateNumBatches(List(), GenerationConfig())
 
-    assert(result._1 == 0)
+    assertResult(0)(result._1)
     assert(result._2.isEmpty)
   }
 
@@ -19,24 +19,24 @@ class RecordCountUtilTest extends AnyFunSuite {
     val task = Task("my_task", List(Step("my_step", count = Count(Some(10)))))
     val result = RecordCountUtil.calculateNumBatches(List(task), generationConfig)
 
-    assert(result._1 == 1)
-    assert(result._2.size == 1)
-    assert(result._2.head._1 == "my_task_my_step")
-    assert(result._2.head._2.numTotalRecords == 10)
-    assert(result._2.head._2.currentNumRecords == 0)
-    assert(result._2.head._2.numRecordsPerBatch == 10)
+    assertResult(1)(result._1)
+    assertResult(1)(result._2.size)
+    assertResult("my_task_my_step")(result._2.head._1)
+    assertResult(10)(result._2.head._2.numTotalRecords)
+    assertResult(0)(result._2.head._2.currentNumRecords)
+    assertResult(10)(result._2.head._2.numRecordsPerBatch)
   }
 
   test("Set number of batches to 2 when records from task is more than num records per batch from config") {
     val task = Task("my_task", List(Step("my_step", count = Count(Some(200)))))
     val result = RecordCountUtil.calculateNumBatches(List(task), generationConfig)
 
-    assert(result._1 == 2)
-    assert(result._2.size == 1)
-    assert(result._2.head._1 == "my_task_my_step")
-    assert(result._2.head._2.numTotalRecords == 200)
-    assert(result._2.head._2.currentNumRecords == 0)
-    assert(result._2.head._2.numRecordsPerBatch == 100)
+    assertResult(2)(result._1)
+    assertResult(1)(result._2.size)
+    assertResult("my_task_my_step")(result._2.head._1)
+    assertResult(200)(result._2.head._2.numTotalRecords)
+    assertResult(0)(result._2.head._2.currentNumRecords)
+    assertResult(100)(result._2.head._2.numRecordsPerBatch)
   }
 
   test("Can calculate number of batches and number of records per batch foreach task when multiple tasks defined") {
@@ -46,8 +46,8 @@ class RecordCountUtilTest extends AnyFunSuite {
     ))
     val result = RecordCountUtil.calculateNumBatches(List(task), generationConfig)
 
-    assert(result._1 == 2)
-    assert(result._2.size == 2)
+    assertResult(2)(result._1)
+    assertResult(2)(result._2.size)
     assert(result._2.forall(_._2.numTotalRecords == 100))
     assert(result._2.forall(_._2.currentNumRecords == 0))
     assert(result._2.forall(_._2.numRecordsPerBatch == 50))
@@ -61,12 +61,12 @@ class RecordCountUtilTest extends AnyFunSuite {
     ))
     val result = RecordCountUtil.calculateNumBatches(List(task), generationConfig)
 
-    assert(result._1 == 1)
-    assert(result._2.size == 1)
-    assert(result._2.head._1 == "my_task_my_step")
-    assert(result._2.head._2.numTotalRecords == 100)
-    assert(result._2.head._2.currentNumRecords == 0)
-    assert(result._2.head._2.numRecordsPerBatch == 100)
+    assertResult(1)(result._1)
+    assertResult(1)(result._2.size)
+    assertResult("my_task_my_step")(result._2.head._1)
+    assertResult(100)(result._2.head._2.numTotalRecords)
+    assertResult(0)(result._2.head._2.currentNumRecords)
+    assertResult(100)(result._2.head._2.numRecordsPerBatch)
   }
 
   test("Can calculate record count based on per column count, task records per batch should be the pre-records per column count") {
@@ -77,12 +77,12 @@ class RecordCountUtilTest extends AnyFunSuite {
       )))
     val result = RecordCountUtil.calculateNumBatches(List(task), generationConfig)
 
-    assert(result._1 == 10)
-    assert(result._2.size == 1)
-    assert(result._2.head._1 == "my_task_my_step")
-    assert(result._2.head._2.numTotalRecords == 1000)
-    assert(result._2.head._2.currentNumRecords == 0)
-    assert(result._2.head._2.numRecordsPerBatch == 10)
+    assertResult(10)(result._1)
+    assertResult(1)(result._2.size)
+    assertResult("my_task_my_step")(result._2.head._1)
+    assertResult(1000)(result._2.head._2.numTotalRecords)
+    assertResult(0)(result._2.head._2.currentNumRecords)
+    assertResult(10)(result._2.head._2.numRecordsPerBatch)
   }
 
   test("Can calculate average record count based on per column generator count, task records per batch should be the pre-records per column count") {
@@ -98,12 +98,12 @@ class RecordCountUtilTest extends AnyFunSuite {
     )))
     val result = RecordCountUtil.calculateNumBatches(List(task), generationConfig)
 
-    assert(result._1 == 10)
-    assert(result._2.size == 1)
-    assert(result._2.head._1 == "my_task_my_step")
-    assert(result._2.head._2.numTotalRecords == 1000)
-    assert(result._2.head._2.currentNumRecords == 0)
-    assert(result._2.head._2.numRecordsPerBatch == 10)
+    assertResult(10)(result._1)
+    assertResult(1)(result._2.size)
+    assertResult("my_task_my_step")(result._2.head._1)
+    assertResult(1000)(result._2.head._2.numTotalRecords)
+    assertResult(0)(result._2.head._2.currentNumRecords)
+    assertResult(10)(result._2.head._2.numRecordsPerBatch)
   }
 
   test("Can override record count per step from config") {
@@ -115,12 +115,12 @@ class RecordCountUtilTest extends AnyFunSuite {
     )))
     val result = RecordCountUtil.calculateNumBatches(List(task), generationConfig)
 
-    assert(result._1 == 1)
-    assert(result._2.size == 1)
-    assert(result._2.head._1 == "my_task_my_step")
-    assert(result._2.head._2.numTotalRecords == 10)
-    assert(result._2.head._2.currentNumRecords == 0)
-    assert(result._2.head._2.numRecordsPerBatch == 10)
+    assertResult(1)(result._1)
+    assertResult(1)(result._2.size)
+    assertResult("my_task_my_step")(result._2.head._1)
+    assertResult(10)(result._2.head._2.numTotalRecords)
+    assertResult(0)(result._2.head._2.currentNumRecords)
+    assertResult(10)(result._2.head._2.numRecordsPerBatch)
   }
 
   test("Can override record count per step from config but still preserve per column count") {
@@ -132,11 +132,11 @@ class RecordCountUtilTest extends AnyFunSuite {
     )))
     val result = RecordCountUtil.calculateNumBatches(List(task), generationConfig)
 
-    assert(result._1 == 1)
-    assert(result._2.size == 1)
-    assert(result._2.head._1 == "my_task_my_step")
-    assert(result._2.head._2.numTotalRecords == 50)
-    assert(result._2.head._2.currentNumRecords == 0)
-    assert(result._2.head._2.numRecordsPerBatch == 10)
+    assertResult(1)(result._1)
+    assertResult(1)(result._2.size)
+    assertResult("my_task_my_step")(result._2.head._1)
+    assertResult(50)(result._2.head._2.numTotalRecords)
+    assertResult(0)(result._2.head._2.currentNumRecords)
+    assertResult(10)(result._2.head._2.numRecordsPerBatch)
   }
 }

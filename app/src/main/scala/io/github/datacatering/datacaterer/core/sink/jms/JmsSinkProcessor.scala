@@ -4,10 +4,12 @@ import io.github.datacatering.datacaterer.api.model.Constants.{DEFAULT_REAL_TIME
 import io.github.datacatering.datacaterer.api.model.Step
 import io.github.datacatering.datacaterer.core.exception.{FailedJmsMessageCreateException, FailedJmsMessageGetBodyException, FailedJmsMessageSendException}
 import io.github.datacatering.datacaterer.core.model.Constants.{REAL_TIME_BODY_COL, REAL_TIME_HEADERS_COL, REAL_TIME_PARTITION_COL}
+import io.github.datacatering.datacaterer.core.model.RealTimeSinkResult
+import io.github.datacatering.datacaterer.core.sink.http.model.{HttpRequest, HttpResult}
 import io.github.datacatering.datacaterer.core.sink.{RealTimeSinkProcessor, SinkProcessor}
 import io.github.datacatering.datacaterer.core.util.RowUtil.getRowValue
 import org.apache.log4j.Logger
-import org.apache.spark.sql.Row
+import org.apache.spark.sql.{Row, SparkSession}
 import org.apache.spark.sql.types.{IntegerType, StringType}
 
 import java.nio.charset.StandardCharsets
@@ -32,11 +34,12 @@ object JmsSinkProcessor extends RealTimeSinkProcessor[(MessageProducer, Session,
     REAL_TIME_HEADERS_COL -> DEFAULT_REAL_TIME_HEADERS_DATA_TYPE
   )
 
-  override def pushRowToSink(row: Row): Unit = {
+  override def pushRowToSink(row: Row): RealTimeSinkResult = {
     val body = tryGetBody(row)
     val (messageProducer, session, connection) = getConnectionFromPool
     val message = tryCreateMessage(body, messageProducer, session, connection)
     trySendMessage(row, messageProducer, session, connection, message)
+    RealTimeSinkResult("")
   }
 
   private def trySendMessage(row: Row, messageProducer: MessageProducer, session: Session, connection: Connection, message: TextMessage): Unit = {

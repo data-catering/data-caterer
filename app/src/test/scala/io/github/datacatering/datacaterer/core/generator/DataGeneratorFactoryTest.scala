@@ -30,7 +30,7 @@ class DataGeneratorFactoryTest extends SparkSuite {
     val df = dataGeneratorFactory.generateDataForStep(step, "parquet", 0, 10)
     df.cache()
 
-    assert(df.count() == 10L)
+    assertResult(10L)(df.count())
     assert(df.columns sameElements Array("id", "amount", "debit_credit", "name", "code"))
     assert(df.schema.fields.map(x => (x.name, x.dataType)) sameElements Array(
       ("id", StringType),
@@ -56,10 +56,10 @@ class DataGeneratorFactoryTest extends SparkSuite {
     val df = dataGeneratorFactory.generateDataForStep(step, "parquet", 0, 10)
     df.cache()
 
-    assert(df.count() == 20L)
+    assertResult(20L)(df.count())
     val sampleId = df.head().getAs[String]("id")
     val sampleRows = df.filter(_.getAs[String]("id") == sampleId)
-    assert(sampleRows.count() == 2L)
+    assertResult(2L)(sampleRows.count())
   }
 
   test("Can generate data with generated number of rows per column by a generator") {
@@ -91,7 +91,7 @@ class DataGeneratorFactoryTest extends SparkSuite {
     assert(df.count() <= 20L)
     val sampleId = df.head().getAs[String]("id")
     val sampleRows = df.filter(_.getAs[String]("id") == sampleId)
-    assert(sampleRows.count() == 1L)
+    assertResult(1L)(sampleRows.count())
   }
 
   test("Can generate data with all possible oneOf combinations enabled in step") {

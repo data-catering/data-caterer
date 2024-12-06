@@ -58,24 +58,24 @@ class ValidationConfigurationHelperTest extends AnyFunSuite {
 
     val result = ValidationConfigurationHelper.merge(userValidations, generatedValidations)
 
-    assert(result.name == "my_validation")
-    assert(result.description == "my_valid_description")
-    assert(result.dataSources.size == 3)
+    assertResult("my_validation")(result.name)
+    assertResult("my_valid_description")(result.description)
+    assertResult(3)(result.dataSources.size)
     assert(result.dataSources.contains("my_postgres"))
     assert(result.dataSources.contains("my_csv"))
     assert(result.dataSources.contains("my_json"))
     val dsValidations = result.dataSources("my_postgres")
-    assert(dsValidations.size == 2)
+    assertResult(2)(dsValidations.size)
     val publicCatValid = dsValidations.find(_.options.get("dbtable").contains("public.categories")).get
     assert(publicCatValid.waitCondition.isInstanceOf[PauseWaitCondition])
-    assert(publicCatValid.waitCondition.asInstanceOf[PauseWaitCondition].pauseInSeconds == 5)
-    assert(publicCatValid.validations.size == 3)
+    assertResult(5)(publicCatValid.waitCondition.asInstanceOf[PauseWaitCondition].pauseInSeconds)
+    assertResult(3)(publicCatValid.validations.size)
     val expectedPublicCatValid = List("age > 0", "DATE(open_date) <= DATE(close_date)")
     publicCatValid.validations.map(_.validation)
       .filter(_.isInstanceOf[ExpressionValidation])
       .forall(valid => expectedPublicCatValid.contains(valid.asInstanceOf[ExpressionValidation].expr))
     val publicOrdValid = dsValidations.find(_.options.get("dbtable").contains("public.orders")).get
-    assert(publicOrdValid.validations.head.validation.asInstanceOf[ExpressionValidation].expr == "TIMESTAMP(order_ts) <= TIMESTAMP(deliver_ts)")
+    assertResult("TIMESTAMP(order_ts) <= TIMESTAMP(deliver_ts)")(publicOrdValid.validations.head.validation.asInstanceOf[ExpressionValidation].expr)
   }
 
 }

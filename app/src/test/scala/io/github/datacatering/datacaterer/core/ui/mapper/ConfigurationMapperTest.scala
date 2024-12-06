@@ -49,9 +49,9 @@ class ConfigurationMapperTest extends AnyFunSuite {
     val baseConf = DataCatererConfigurationBuilder()
     val res = ConfigurationMapper.mapAlertConfiguration(configRequest, baseConf).build
 
-    assert(res.alertConfig.triggerOn == "failure")
-    assert(res.alertConfig.slackAlertConfig.token == "abc123")
-    assert(res.alertConfig.slackAlertConfig.channels == List("job-fail"))
+    assertResult("failure")(res.alertConfig.triggerOn)
+    assertResult("abc123")(res.alertConfig.slackAlertConfig.token)
+    assertResult(List("job-fail"))(res.alertConfig.slackAlertConfig.channels)
   }
 
   test("Can convert UI validation config") {
@@ -60,7 +60,7 @@ class ConfigurationMapperTest extends AnyFunSuite {
     val baseConf = DataCatererConfigurationBuilder()
     val res = ConfigurationMapper.mapValidationConfiguration(configRequest, baseConf).build
 
-    assert(res.validationConfig.numSampleErrorRecords == 2)
+    assertResult(2)(res.validationConfig.numSampleErrorRecords)
     assert(!res.validationConfig.enableDeleteRecordTrackingFiles)
   }
 
@@ -70,7 +70,7 @@ class ConfigurationMapperTest extends AnyFunSuite {
     val baseConf = DataCatererConfigurationBuilder()
     val res = ConfigurationMapper.mapGenerationConfiguration(configRequest, baseConf).build
 
-    assert(res.generationConfig.numRecordsPerBatch == 100)
+    assertResult(100)(res.generationConfig.numRecordsPerBatch)
     assert(res.generationConfig.numRecordsPerStep.contains(10))
   }
 
@@ -86,11 +86,11 @@ class ConfigurationMapperTest extends AnyFunSuite {
     val baseConf = DataCatererConfigurationBuilder()
     val res = ConfigurationMapper.mapMetadataConfiguration(configRequest, baseConf).build
 
-    assert(res.metadataConfig.numRecordsFromDataSource == 100)
-    assert(res.metadataConfig.numRecordsForAnalysis == 10)
-    assert(res.metadataConfig.oneOfDistinctCountVsCountThreshold == 1)
-    assert(res.metadataConfig.oneOfMinCount == 5)
-    assert(res.metadataConfig.numGeneratedSamples == 7)
+    assertResult(100)(res.metadataConfig.numRecordsFromDataSource)
+    assertResult(10)(res.metadataConfig.numRecordsForAnalysis)
+    assertResult(1)(res.metadataConfig.oneOfDistinctCountVsCountThreshold)
+    assertResult(5)(res.metadataConfig.oneOfMinCount)
+    assertResult(7)(res.metadataConfig.numGeneratedSamples)
   }
 
   test("Can convert UI folder config") {
@@ -107,13 +107,13 @@ class ConfigurationMapperTest extends AnyFunSuite {
     val baseConf = DataCatererConfigurationBuilder()
     val res = ConfigurationMapper.mapFolderConfiguration(configRequest, "/my-install", baseConf).build
 
-    assert(res.foldersConfig.planFilePath == "/tmp/plan-file")
-    assert(res.foldersConfig.taskFolderPath == "/tmp/task-folder")
-    assert(res.foldersConfig.generatedPlanAndTaskFolderPath == "/tmp/gen")
-    assert(res.foldersConfig.generatedReportsFolderPath == "/tmp/report")
-    assert(res.foldersConfig.recordTrackingFolderPath == "/tmp/record")
-    assert(res.foldersConfig.validationFolderPath == "/tmp/valid")
-    assert(res.foldersConfig.recordTrackingForValidationFolderPath == "/tmp/record-valid")
+    assertResult("/tmp/plan-file")(res.foldersConfig.planFilePath)
+    assertResult("/tmp/task-folder")(res.foldersConfig.taskFolderPath)
+    assertResult("/tmp/gen")(res.foldersConfig.generatedPlanAndTaskFolderPath)
+    assertResult("/tmp/report")(res.foldersConfig.generatedReportsFolderPath)
+    assertResult("/tmp/record")(res.foldersConfig.recordTrackingFolderPath)
+    assertResult("/tmp/valid")(res.foldersConfig.validationFolderPath)
+    assertResult("/tmp/record-valid")(res.foldersConfig.recordTrackingForValidationFolderPath)
   }
 
   test("Can convert UI folder config with install directory") {
@@ -130,12 +130,12 @@ class ConfigurationMapperTest extends AnyFunSuite {
     val baseConf = DataCatererConfigurationBuilder()
     val res = ConfigurationMapper.mapFolderConfiguration(configRequest, "/my-install", baseConf).build
 
-    assert(res.foldersConfig.planFilePath == DEFAULT_PLAN_FILE_PATH)
-    assert(res.foldersConfig.taskFolderPath == "/my-install/task")
-    assert(res.foldersConfig.generatedPlanAndTaskFolderPath == "/my-install/generated-plan-task")
-    assert(res.foldersConfig.generatedReportsFolderPath == "/my-install/report")
-    assert(res.foldersConfig.recordTrackingFolderPath == "/my-install/record-tracking")
-    assert(res.foldersConfig.validationFolderPath == "/my-install/validation")
-    assert(res.foldersConfig.recordTrackingForValidationFolderPath == "/my-install/record-tracking-validation")
+    assertResult(DEFAULT_PLAN_FILE_PATH)(res.foldersConfig.planFilePath)
+    assertResult("/my-install/task")(res.foldersConfig.taskFolderPath)
+    assertResult("/my-install/generated-plan-task")(res.foldersConfig.generatedPlanAndTaskFolderPath)
+    assertResult("/my-install/report")(res.foldersConfig.generatedReportsFolderPath)
+    assertResult("/my-install/record-tracking")(res.foldersConfig.recordTrackingFolderPath)
+    assertResult("/my-install/validation")(res.foldersConfig.validationFolderPath)
+    assertResult("/my-install/record-tracking-validation")(res.foldersConfig.recordTrackingForValidationFolderPath)
   }
 }

@@ -24,7 +24,17 @@ class UniqueFieldsUtil(plan: Plan, executableTasks: List[(TaskSummary, Task)])(i
       val columns = previouslyGenerated._1.columns
       LOGGER.debug(s"Only keeping unique values for generated data for columns, " +
         s"data-source-step=$dataSourceStep, columns=${columns.mkString(",")}")
-      val dfWithUnique = finalDf.dropDuplicates(columns)
+      //check if it is a nested column, need to bring column to top level before dropping duplicates
+      val dfWithUnique = if (columns.exists(c => c.contains("."))) {
+        LOGGER.debug("Nested columns exist, required to bring to top level data frame before dropping duplicates")
+        val mappedCols = columns.map(c => if (c.contains(".")) c -> s"_dedup_$c" else c -> c).toMap
+        val dedupCols = mappedCols.values.filter(c => c.startsWith("_dedup_")).toList
+        finalDf.withColumns(mappedCols.filter(_._2.startsWith("_dedup_")).map(c => c._2 -> col(c._1)))
+          .dropDuplicates(mappedCols.values.toList)
+          .drop(dedupCols: _*)
+      } else {
+        finalDf.dropDuplicates(columns)
+      }
       //if there is a perColumn count, then need to create unique set of values, then run a left semi join with original dataset
       finalDf = if (step.count.perColumn.isDefined) {
         getUniqueWithPerColumnCount(step, finalDf, previouslyGenerated, columns, dfWithUnique)

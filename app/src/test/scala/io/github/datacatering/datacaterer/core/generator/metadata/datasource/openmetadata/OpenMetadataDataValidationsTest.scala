@@ -15,12 +15,12 @@ class OpenMetadataDataValidationsTest extends AnyFunSuite {
 
     val result = OpenMetadataDataValidations.getDataValidations(testCase, params, Some("id"))
 
-    assert(result.size == 2)
+    assertResult(2)(result.size)
     assert(result.forall(_.validation.description.isEmpty))
     assert(result.forall(_.validation.errorThreshold.isEmpty))
     assert(result.forall(_.validation.isInstanceOf[ExpressionValidation]))
-    assert(result.exists(v => v.validation.asInstanceOf[ExpressionValidation].expr == "id >= 123.0"))
-    assert(result.exists(v => v.validation.asInstanceOf[ExpressionValidation].expr == "id <= 321.0"))
+    assert(result.exists(v => v.validation.asInstanceOf[ExpressionValidation].expr == "`id` >= 123.0"))
+    assert(result.exists(v => v.validation.asInstanceOf[ExpressionValidation].expr == "`id` <= 321.0"))
   }
 
   test("Can convert to min check when only minValue is defined") {
@@ -29,9 +29,9 @@ class OpenMetadataDataValidationsTest extends AnyFunSuite {
 
     val result = OpenMetadataDataValidations.getDataValidations(testCase, params, Some("id"))
 
-    assert(result.size == 1)
+    assertResult(1)(result.size)
     assert(result.forall(_.validation.isInstanceOf[ExpressionValidation]))
-    assert(result.exists(v => v.validation.asInstanceOf[ExpressionValidation].expr == "id >= 123.0"))
+    assert(result.exists(v => v.validation.asInstanceOf[ExpressionValidation].expr == "`id` >= 123.0"))
   }
 
   test("Can convert to max check when only maxValue is defined") {
@@ -40,9 +40,9 @@ class OpenMetadataDataValidationsTest extends AnyFunSuite {
 
     val result = OpenMetadataDataValidations.getDataValidations(testCase, params, Some("id"))
 
-    assert(result.size == 1)
+    assertResult(1)(result.size)
     assert(result.forall(_.validation.isInstanceOf[ExpressionValidation]))
-    assert(result.exists(v => v.validation.asInstanceOf[ExpressionValidation].expr == "id <= 321.0"))
+    assert(result.exists(v => v.validation.asInstanceOf[ExpressionValidation].expr == "`id` <= 321.0"))
   }
 
   test("Can convert from generic sql expression") {
@@ -51,7 +51,7 @@ class OpenMetadataDataValidationsTest extends AnyFunSuite {
 
     val result = OpenMetadataDataValidations.getDataValidations(testCase, params, None)
 
-    assert(result.size == 1)
+    assertResult(1)(result.size)
     assert(result.forall(_.validation.isInstanceOf[ExpressionValidation]))
     assert(result.exists(v => v.validation.asInstanceOf[ExpressionValidation].expr == "my sql"))
   }
@@ -62,7 +62,7 @@ class OpenMetadataDataValidationsTest extends AnyFunSuite {
 
     val result = OpenMetadataDataValidations.getDataValidations(testCase, params, None)
 
-    assert(result.size == 1)
+    assertResult(1)(result.size)
     assert(result.forall(_.validation.isInstanceOf[GroupByValidation]))
     assert(result.exists(v => v.validation.asInstanceOf[GroupByValidation].aggExpr == "count >= 1.0"))
     assert(result.exists(v => v.validation.asInstanceOf[GroupByValidation].groupByCols.isEmpty))
@@ -76,7 +76,7 @@ class OpenMetadataDataValidationsTest extends AnyFunSuite {
 
     val result = OpenMetadataDataValidations.getDataValidations(testCase, params, None)
 
-    assert(result.size == 1)
+    assertResult(1)(result.size)
     assert(result.forall(_.validation.isInstanceOf[GroupByValidation]))
     assert(result.exists(v => v.validation.asInstanceOf[GroupByValidation].aggExpr == "count <= 100.0"))
     assert(result.exists(v => v.validation.asInstanceOf[GroupByValidation].groupByCols.isEmpty))
@@ -90,7 +90,7 @@ class OpenMetadataDataValidationsTest extends AnyFunSuite {
 
     val result = OpenMetadataDataValidations.getDataValidations(testCase, params, None)
 
-    assert(result.size == 2)
+    assertResult(2)(result.size)
     assert(result.forall(_.validation.isInstanceOf[GroupByValidation]))
     assert(result.exists(v => v.validation.asInstanceOf[GroupByValidation].aggExpr == "count >= 1.0"))
     assert(result.exists(v => v.validation.asInstanceOf[GroupByValidation].aggExpr == "count <= 100.0"))
@@ -105,7 +105,7 @@ class OpenMetadataDataValidationsTest extends AnyFunSuite {
 
     val result = OpenMetadataDataValidations.getDataValidations(testCase, params, None)
 
-    assert(result.size == 1)
+    assertResult(1)(result.size)
     assert(result.forall(_.validation.isInstanceOf[GroupByValidation]))
     assert(result.exists(v => v.validation.asInstanceOf[GroupByValidation].aggExpr == "count == 10.0"))
     assert(result.exists(v => v.validation.asInstanceOf[GroupByValidation].groupByCols.isEmpty))
@@ -119,7 +119,7 @@ class OpenMetadataDataValidationsTest extends AnyFunSuite {
 
     val result = OpenMetadataDataValidations.getDataValidations(testCase, params, Some("amount"))
 
-    assert(result.size == 2)
+    assertResult(2)(result.size)
     assert(result.forall(_.validation.isInstanceOf[GroupByValidation]))
     assert(result.exists(v => v.validation.asInstanceOf[GroupByValidation].aggExpr == "max(amount) >= 10.0"))
     assert(result.exists(v => v.validation.asInstanceOf[GroupByValidation].aggExpr == "max(amount) <= 20.0"))
@@ -134,7 +134,7 @@ class OpenMetadataDataValidationsTest extends AnyFunSuite {
 
     val result = OpenMetadataDataValidations.getDataValidations(testCase, params, Some("amount"))
 
-    assert(result.size == 1)
+    assertResult(1)(result.size)
     assert(result.forall(_.validation.isInstanceOf[GroupByValidation]))
     assert(result.exists(v => v.validation.asInstanceOf[GroupByValidation].aggExpr == "max(amount) >= 10.0"))
     assert(result.exists(v => v.validation.asInstanceOf[GroupByValidation].groupByCols.isEmpty))
@@ -148,7 +148,7 @@ class OpenMetadataDataValidationsTest extends AnyFunSuite {
 
     val result = OpenMetadataDataValidations.getDataValidations(testCase, params, Some("amount"))
 
-    assert(result.size == 1)
+    assertResult(1)(result.size)
     assert(result.forall(_.validation.isInstanceOf[GroupByValidation]))
     assert(result.exists(v => v.validation.asInstanceOf[GroupByValidation].aggExpr == "max(amount) <= 20.0"))
     assert(result.exists(v => v.validation.asInstanceOf[GroupByValidation].groupByCols.isEmpty))
@@ -162,7 +162,7 @@ class OpenMetadataDataValidationsTest extends AnyFunSuite {
 
     val result = OpenMetadataDataValidations.getDataValidations(testCase, params, Some("amount"))
 
-    assert(result.size == 1)
+    assertResult(1)(result.size)
     assert(result.forall(_.validation.isInstanceOf[GroupByValidation]))
     assert(result.exists(v => v.validation.asInstanceOf[GroupByValidation].aggExpr == "avg(amount) >= 10.0"))
     assert(result.exists(v => v.validation.asInstanceOf[GroupByValidation].groupByCols.isEmpty))
@@ -185,7 +185,7 @@ class OpenMetadataDataValidationsTest extends AnyFunSuite {
 
     val result = OpenMetadataDataValidations.getDataValidations(testCase, params, Some("amount"))
 
-    assert(result.size == 1)
+    assertResult(1)(result.size)
     assert(result.forall(_.validation.isInstanceOf[GroupByValidation]))
     assert(result.exists(v => v.validation.asInstanceOf[GroupByValidation].aggExpr == "min(amount) >= 10.0"))
     assert(result.exists(v => v.validation.asInstanceOf[GroupByValidation].groupByCols.isEmpty))
@@ -199,7 +199,7 @@ class OpenMetadataDataValidationsTest extends AnyFunSuite {
 
     val result = OpenMetadataDataValidations.getDataValidations(testCase, params, Some("amount"))
 
-    assert(result.size == 1)
+    assertResult(1)(result.size)
     assert(result.forall(_.validation.isInstanceOf[GroupByValidation]))
     assert(result.exists(v => v.validation.asInstanceOf[GroupByValidation].aggExpr == "stddev(amount) >= 10.0"))
     assert(result.exists(v => v.validation.asInstanceOf[GroupByValidation].groupByCols.isEmpty))
@@ -213,7 +213,7 @@ class OpenMetadataDataValidationsTest extends AnyFunSuite {
 
     val result = OpenMetadataDataValidations.getDataValidations(testCase, params, Some("amount"))
 
-    assert(result.size == 1)
+    assertResult(1)(result.size)
     assert(result.forall(_.validation.isInstanceOf[GroupByValidation]))
     assert(result.exists(v => v.validation.asInstanceOf[GroupByValidation].aggExpr == "sum(amount) >= 10.0"))
     assert(result.exists(v => v.validation.asInstanceOf[GroupByValidation].groupByCols.isEmpty))
@@ -227,11 +227,11 @@ class OpenMetadataDataValidationsTest extends AnyFunSuite {
 
     val result = OpenMetadataDataValidations.getDataValidations(testCase, params, Some("name"))
 
-    assert(result.size == 3)
+    assertResult(3)(result.size)
     assert(result.forall(_.validation.isInstanceOf[ExpressionValidation]))
-    assert(result.exists(v => v.validation.asInstanceOf[ExpressionValidation].expr == "ISNOTNULL(name)"))
-    assert(result.exists(v => v.validation.asInstanceOf[ExpressionValidation].expr == "name != ''"))
-    assert(result.exists(v => v.validation.asInstanceOf[ExpressionValidation].expr == "name != 'N/A'"))
+    assert(result.exists(v => v.validation.asInstanceOf[ExpressionValidation].expr == "ISNOTNULL(`name`)"))
+    assert(result.exists(v => v.validation.asInstanceOf[ExpressionValidation].expr == "`name` != ''"))
+    assert(result.exists(v => v.validation.asInstanceOf[ExpressionValidation].expr == "`name` != 'N/A'"))
   }
 
   test("Can convert to column in set validation") {
@@ -240,9 +240,9 @@ class OpenMetadataDataValidationsTest extends AnyFunSuite {
 
     val result = OpenMetadataDataValidations.getDataValidations(testCase, params, Some("name"))
 
-    assert(result.size == 1)
+    assertResult(1)(result.size)
     assert(result.forall(_.validation.isInstanceOf[ExpressionValidation]))
-    assert(result.exists(v => v.validation.asInstanceOf[ExpressionValidation].expr == "name IN ('peter','flook')"))
+    assert(result.exists(v => v.validation.asInstanceOf[ExpressionValidation].expr == "`name` IN ('peter','flook')"))
   }
 
   test("Can convert to column not in set validation") {
@@ -251,9 +251,9 @@ class OpenMetadataDataValidationsTest extends AnyFunSuite {
 
     val result = OpenMetadataDataValidations.getDataValidations(testCase, params, Some("name"))
 
-    assert(result.size == 1)
+    assertResult(1)(result.size)
     assert(result.forall(_.validation.isInstanceOf[ExpressionValidation]))
-    assert(result.exists(v => v.validation.asInstanceOf[ExpressionValidation].expr == "NOT name IN ('peter','flook')"))
+    assert(result.exists(v => v.validation.asInstanceOf[ExpressionValidation].expr == "NOT `name` IN ('peter','flook')"))
   }
 
   test("Can convert to column not null validation") {
@@ -262,9 +262,9 @@ class OpenMetadataDataValidationsTest extends AnyFunSuite {
 
     val result = OpenMetadataDataValidations.getDataValidations(testCase, params, Some("name"))
 
-    assert(result.size == 1)
+    assertResult(1)(result.size)
     assert(result.forall(_.validation.isInstanceOf[ExpressionValidation]))
-    assert(result.exists(v => v.validation.asInstanceOf[ExpressionValidation].expr == "ISNOTNULL(name)"))
+    assert(result.exists(v => v.validation.asInstanceOf[ExpressionValidation].expr == "ISNOTNULL(`name`)"))
   }
 
   test("Can convert to column unique validation") {
@@ -273,7 +273,7 @@ class OpenMetadataDataValidationsTest extends AnyFunSuite {
 
     val result = OpenMetadataDataValidations.getDataValidations(testCase, params, Some("name"))
 
-    assert(result.size == 1)
+    assertResult(1)(result.size)
     assert(result.forall(_.validation.isInstanceOf[GroupByValidation]))
     assert(result.exists(v => v.validation.asInstanceOf[GroupByValidation].aggExpr == "count == 1"))
     assert(result.exists(v => v.validation.asInstanceOf[GroupByValidation].aggType == "count"))
@@ -287,9 +287,9 @@ class OpenMetadataDataValidationsTest extends AnyFunSuite {
 
     val result = OpenMetadataDataValidations.getDataValidations(testCase, params, Some("name"))
 
-    assert(result.size == 1)
+    assertResult(1)(result.size)
     assert(result.forall(_.validation.isInstanceOf[ExpressionValidation]))
-    assert(result.exists(v => v.validation.asInstanceOf[ExpressionValidation].expr == "REGEXP(name, '^abc123$')"))
+    assert(result.exists(v => v.validation.asInstanceOf[ExpressionValidation].expr == "REGEXP(`name`, '^abc123$')"))
   }
 
   test("Can convert to column not match regex validation") {
@@ -298,9 +298,9 @@ class OpenMetadataDataValidationsTest extends AnyFunSuite {
 
     val result = OpenMetadataDataValidations.getDataValidations(testCase, params, Some("name"))
 
-    assert(result.size == 1)
+    assertResult(1)(result.size)
     assert(result.forall(_.validation.isInstanceOf[ExpressionValidation]))
-    assert(result.exists(v => v.validation.asInstanceOf[ExpressionValidation].expr == "!REGEXP(name, '^abc123$')"))
+    assert(result.exists(v => v.validation.asInstanceOf[ExpressionValidation].expr == "!REGEXP(`name`, '^abc123$')"))
   }
 
   private def createTestCaseWithParams(params: Map[String, String]): TestCase = {

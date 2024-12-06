@@ -49,21 +49,21 @@ class MetadataSourceBuilderTest extends AnyFunSuite {
     val result = MetadataSourceBuilder().openApi("localhost:8080").metadataSource
 
     assert(result.isInstanceOf[OpenAPISource])
-    assert(result.asInstanceOf[OpenAPISource].connectionOptions == Map(SCHEMA_LOCATION -> "localhost:8080"))
+    assertResult(Map(SCHEMA_LOCATION -> "localhost:8080"))(result.asInstanceOf[OpenAPISource].connectionOptions)
   }
 
   test("Can create Great Expectations metadata source") {
     val result = MetadataSourceBuilder().greatExpectations("/tmp/expectations").metadataSource
 
     assert(result.isInstanceOf[GreatExpectationsSource])
-    assert(result.asInstanceOf[GreatExpectationsSource].connectionOptions == Map(GREAT_EXPECTATIONS_FILE -> "/tmp/expectations"))
+    assertResult(Map(GREAT_EXPECTATIONS_FILE -> "/tmp/expectations"))(result.asInstanceOf[GreatExpectationsSource].connectionOptions)
   }
 
   test("Can create Open Data Contract Standard metadata source") {
     val result = MetadataSourceBuilder().openDataContractStandard("/tmp/odcs").metadataSource
 
     assert(result.isInstanceOf[OpenDataContractStandardSource])
-    assert(result.asInstanceOf[OpenDataContractStandardSource].connectionOptions == Map(DATA_CONTRACT_FILE -> "/tmp/odcs"))
+    assertResult(Map(DATA_CONTRACT_FILE -> "/tmp/odcs"))(result.asInstanceOf[OpenDataContractStandardSource].connectionOptions)
   }
 
   test("Can create Open Data Contract Standard metadata source with schema name") {
@@ -80,7 +80,7 @@ class MetadataSourceBuilderTest extends AnyFunSuite {
     val result = MetadataSourceBuilder().dataContractCli("/tmp/datacli").metadataSource
 
     assert(result.isInstanceOf[DataContractCliSource])
-    assert(result.asInstanceOf[DataContractCliSource].connectionOptions == Map(DATA_CONTRACT_FILE -> "/tmp/datacli"))
+    assertResult(Map(DATA_CONTRACT_FILE -> "/tmp/datacli"))(result.asInstanceOf[DataContractCliSource].connectionOptions)
   }
 
   test("Can create Data Contract CLI metadata source with schema name") {

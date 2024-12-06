@@ -21,7 +21,7 @@ class ForeignKeyMapperTest extends AnyFunSuite {
     assertResult(1)(res.plan.sinkOptions.get.foreignKeys.size)
     assert(res.plan.sinkOptions.get.foreignKeys.head._1.startsWith("json"))
     assert(res.plan.sinkOptions.get.foreignKeys.head._1.endsWith("account_id,year"))
-    assert(res.plan.sinkOptions.get.foreignKeys.head._2.size == 1)
+    assertResult(1)(res.plan.sinkOptions.get.foreignKeys.head._2.size)
     assert(res.plan.sinkOptions.get.foreignKeys.head._2.head.startsWith("json"))
     assert(res.plan.sinkOptions.get.foreignKeys.head._2.head.endsWith("account_number,year"))
   }

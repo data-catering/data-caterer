@@ -87,3 +87,5 @@ case class SinkResult(
 
   def durationInSeconds: Long = Duration.between(startTime, endTime).toSeconds
 }
+
+case class RealTimeSinkResult(result: String = "")

@@ -2,6 +2,7 @@ package io.github.datacatering.datacaterer.api
 
 import com.fasterxml.jackson.databind.annotation.JsonSerialize
 import com.softwaremill.quicklens.ModifyPimp
+import io.github.datacatering.datacaterer.api.ValidationHelper.cleanColumnName
 import io.github.datacatering.datacaterer.api.connection.{ConnectionTaskBuilder, FileBuilder}
 import io.github.datacatering.datacaterer.api.model.ConditionType.ConditionType
 import io.github.datacatering.datacaterer.api.model.Constants.{AGGREGATION_AVG, AGGREGATION_COUNT, AGGREGATION_MAX, AGGREGATION_MIN, AGGREGATION_STDDEV, AGGREGATION_SUM, DEFAULT_VALIDATION_JOIN_TYPE, DEFAULT_VALIDATION_WEBHOOK_HTTP_DATA_SOURCE_NAME, VALIDATION_COLUMN_NAME_COUNT_BETWEEN, VALIDATION_COLUMN_NAME_COUNT_EQUAL, VALIDATION_COLUMN_NAME_MATCH_ORDER, VALIDATION_COLUMN_NAME_MATCH_SET, VALIDATION_PREFIX_JOIN_EXPRESSION, VALIDATION_UNIQUE}
@@ -164,7 +165,7 @@ case class ValidationBuilder(validation: Validation = ExpressionValidation(), op
    * @return ColumnValidationBuilder
    */
   def col(column: String): ColumnValidationBuilder = {
-    ColumnValidationBuilder(this, column)
+    ColumnValidationBuilder(this, cleanColumnName(column))
   }
 
   /**
@@ -932,4 +933,8 @@ case class CombinationPreFilterBuilder(
       }.mkString(" ")
     )
   }
+}
+
+object ValidationHelper {
+  def cleanColumnName(column: String): String = column.split("\\.").map(c => s"`$c`").mkString(".")
 }

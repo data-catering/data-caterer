@@ -19,7 +19,7 @@ class RegexDataGeneratorTest extends AnyFunSuite {
     assert(regexDataGenerator.edgeCases.isEmpty)
     (1 to 10).foreach(_ => {
       val data = regexDataGenerator.generate
-      assert(data.length == 11)
+      assertResult(11)(data.length)
       assert(data.startsWith("ACC100"))
       assert(data.matches(regex))
     })

@@ -58,7 +58,7 @@ class DateTimestampValidationPredictionCheckTest extends AnyFunSuite {
     val structFields = Array(StructField("id", StringType), StructField("my_create_txn", DateType), StructField("my_update_txn", DateType), StructField("my_end_txn", DateType))
     val result = new DateTimestampValidationPredictionCheck().check(structFields)
 
-    assert(result.size == 3)
+    assertResult(3)(result.size)
     val expectedExpressions = List(
       "DATE(my_create_txn) <= DATE(my_update_txn)",
       "DATE(my_update_txn) <= DATE(my_end_txn)",
@@ -76,6 +76,6 @@ class DateTimestampValidationPredictionCheckTest extends AnyFunSuite {
 
     assert(result.nonEmpty)
     assert(result.head.validation.isInstanceOf[ExpressionValidation])
-    assert(result.head.validation.asInstanceOf[ExpressionValidation].expr == s"${dataType.sql}($firstColName) <= ${dataType.sql}($secondColName)")
+    assertResult(s"${dataType.sql}($firstColName) <= ${dataType.sql}($secondColName)")(result.head.validation.asInstanceOf[ExpressionValidation].expr)
   }
 }
