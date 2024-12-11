@@ -5,6 +5,7 @@ import io.github.datacatering.datacaterer.api.model.{Field, MetadataConfig, Step
 import io.github.datacatering.datacaterer.core.exception.UnsupportedDataFormatForTrackingException
 import io.github.datacatering.datacaterer.core.generator.metadata.ExpressionPredictor
 import io.github.datacatering.datacaterer.core.generator.metadata.datasource.DataSourceMetadata
+import io.github.datacatering.datacaterer.core.generator.metadata.datasource.confluentschemaregistry.ConfluentSchemaRegistryMetadata
 import io.github.datacatering.datacaterer.core.generator.metadata.datasource.database.{CassandraMetadata, FieldMetadata, MysqlMetadata, PostgresMetadata}
 import io.github.datacatering.datacaterer.core.generator.metadata.datasource.datacontractcli.DataContractCliDataSourceMetadata
 import io.github.datacatering.datacaterer.core.generator.metadata.datasource.file.FileMetadata
@@ -217,6 +218,7 @@ object MetadataUtil {
           case GREAT_EXPECTATIONS => Some(GreatExpectationsDataSourceMetadata(connectionConfig._1, format, connectionConfig._2))
           case OPEN_DATA_CONTRACT_STANDARD => Some(OpenDataContractStandardDataSourceMetadata(connectionConfig._1, format, connectionConfig._2))
           case DATA_CONTRACT_CLI => Some(DataContractCliDataSourceMetadata(connectionConfig._1, format, connectionConfig._2))
+          case CONFLUENT_SCHEMA_REGISTRY => Some(ConfluentSchemaRegistryMetadata(connectionConfig._1, format, connectionConfig._2))
           case metadataSourceType =>
             LOGGER.warn(s"Unsupported external metadata source, connection-name=${connectionConfig._1}, metadata-source-type=$metadataSourceType")
             None

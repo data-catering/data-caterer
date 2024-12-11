@@ -193,6 +193,21 @@ case class InvalidOpenMetadataTableRowCountBetweenException() extends RuntimeExc
   "Expected at least one of 'minValue' or 'maxValue' to be defined in test parameters from OpenMetadata"
 )
 
+//confluent schema registry
+case class FailedConfluentSchemaRegistryHttpCallException(url: String, throwable: Throwable) extends RuntimeException(
+  s"Failed to call HTTP url for Confluent Schema Registry, url=$url",
+  throwable
+)
+
+case class InvalidConfluentSchemaRegistryResponseException(throwable: Throwable) extends RuntimeException(
+  "Failed to parse response from Confluent Schema Registry",
+  throwable
+)
+
+case class InvalidConfluentSchemaRegistrySchemaRequestException(missingField: String) extends RuntimeException(
+  s"Required field for Confluent Schema Registry Schema Request is missing, missing-field(s)=$missingField"
+)
+
 //jms
 case class FailedJmsMessageSendException(throwable: Throwable) extends RuntimeException(throwable)
 
@@ -208,4 +223,9 @@ case class InvalidColumnAsDataTypeException(columnName: String, throwable: Throw
 
 case class MissingColumnException(columnName: String) extends RuntimeException(
   s"Invalid schema definition due to missing column, column-name=$columnName"
+)
+
+//protobuf
+case class UnsupportedProtobufType(protobufType: String) extends RuntimeException(
+  s"Unsupported protobuf data type, protobuf-type=$protobufType"
 )

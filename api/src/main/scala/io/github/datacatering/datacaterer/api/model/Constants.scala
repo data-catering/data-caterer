@@ -79,6 +79,8 @@ object Constants {
   lazy val MAXIMUM_LENGTH = "maxLen"
   lazy val ARRAY_MAXIMUM_LENGTH = "arrayMaxLen"
   lazy val SOURCE_MAXIMUM_LENGTH = "sourceMaxLen"
+  lazy val MAP_MINIMUM_SIZE = "mapMinSize"
+  lazy val MAP_MAXIMUM_SIZE = "mapMaxSize"
   lazy val MINIMUM = "min"
   lazy val MAXIMUM = "max"
   lazy val STANDARD_DEVIATION = "stddev"
@@ -324,6 +326,7 @@ object Constants {
   lazy val DATA_CONTRACT_CLI = "dataContractCli"
   lazy val AMUNDSEN = "amundsen"
   lazy val DATAHUB = "datahub"
+  lazy val CONFLUENT_SCHEMA_REGISTRY = "confluentSchemaRegistry"
   lazy val DEFAULT_METADATA_SOURCE_NAME = "defaultMetadataSource"
 
   //alert source
@@ -377,6 +380,13 @@ object Constants {
   lazy val OPEN_METADATA_DATABASE_SCHEMA = "databaseSchema"
   lazy val OPEN_METADATA_TABLE_FQN = "tableFqn"
   lazy val OPEN_METADATA_SERVICE = "service"
+
+  //confluent schema registry
+  lazy val CONFLUENT_SCHEMA_REGISTRY_SUBJECT = "subject"
+  lazy val CONFLUENT_SCHEMA_REGISTRY_VERSION = "version"
+  lazy val CONFLUENT_SCHEMA_REGISTRY_ID = "id"
+  lazy val CONFLUENT_SCHEMA_REGISTRY_MESSAGE_NAME = "messageName"
+  lazy val DEFAULT_CONFLUENT_SCHEMA_REGISTRY_VERSION = "latest"
 
   //delta
   lazy val DELTA_LAKE_SPARK_CONF = Map(

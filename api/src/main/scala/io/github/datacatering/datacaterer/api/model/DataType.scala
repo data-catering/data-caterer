@@ -111,6 +111,14 @@ case object ArrayType extends ArrayType(StringType) {
   def instance: ArrayType.type = this
 }
 
+class MapType(keyType: DataType = StringType, valueType: DataType = StringType) extends DataType {
+  override def toString: String = s"map<${keyType.toString},${valueType.toString}>"
+}
+
+case object MapType extends MapType(StringType, StringType) {
+  def instance: MapType.type = this
+}
+
 class StructType(innerType: List[(String, DataType)] = List()) extends DataType {
 
   def this(innerType: java.util.List[java.util.Map.Entry[String, DataType]]) = {

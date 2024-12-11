@@ -2,7 +2,7 @@ package io.github.datacatering.datacaterer.core.plan
 
 import io.github.datacatering.datacaterer.api.PlanRun
 import io.github.datacatering.datacaterer.api.model.Constants.{OPEN_METADATA_AUTH_TYPE_OPEN_METADATA, OPEN_METADATA_JWT_TOKEN, OPEN_METADATA_TABLE_FQN, PARTITIONS, ROWS_PER_SECOND, SAVE_MODE, VALIDATION_IDENTIFIER}
-import io.github.datacatering.datacaterer.api.model.{ArrayType, DateType, DoubleType, HeaderType, IntegerType, TimestampType}
+import io.github.datacatering.datacaterer.api.model.{ArrayType, DateType, DoubleType, HeaderType, IntegerType, MapType, TimestampType}
 import io.github.datacatering.datacaterer.core.model.Constants.METADATA_FILTER_OUT_SCHEMA
 import io.github.datacatering.datacaterer.core.util.{ObjectMapperUtil, SparkSuite}
 import org.asynchttpclient.DefaultAsyncHttpClientConfig
@@ -33,6 +33,7 @@ class PlanProcessorTest extends SparkSuite {
           field.name("balance").`type`(DoubleType).min(10).max(1000).round(2),
           field.name("date").`type`(DateType).min(Date.valueOf("2022-01-01")),
           field.name("status").oneOf(accountStatus: _*),
+          field.name("rand_map").`type`(MapType),
           field.name("update_history")
             .`type`(ArrayType)
             .schema(

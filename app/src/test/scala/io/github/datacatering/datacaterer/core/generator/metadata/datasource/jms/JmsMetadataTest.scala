@@ -1,6 +1,7 @@
 package io.github.datacatering.datacaterer.core.generator.metadata.datasource.jms
 
 import io.github.datacatering.datacaterer.core.generator.Holder
+import io.github.datacatering.datacaterer.core.parser.ProtobufParser
 import io.github.datacatering.datacaterer.core.util.{ProtobufUtil, SparkSuite}
 import org.apache.spark.sql.avro.functions.from_avro
 import org.apache.spark.sql.functions.lit
@@ -10,6 +11,7 @@ import org.junit.runner.RunWith
 import org.scalatestplus.junit.JUnitRunner
 
 import java.io.File
+import java.nio.file.Paths
 
 @RunWith(classOf[JUnitRunner])
 class JmsMetadataTest extends SparkSuite {
@@ -48,10 +50,16 @@ class JmsMetadataTest extends SparkSuite {
     protobufData.printSchema()
   }
 
-  ignore("can read all structs from proto descriptor file") {
+  test("can read all structs from proto descriptor file") {
     val protoFile = new File("app/src/test/resources/sample/files/protobuf/example.desc").getAbsolutePath
     val structs = ProtobufUtil.toStructType(protoFile)
     structs
+  }
+
+  test("can read all structs from proto file") {
+    val protoFile = new File("app/src/test/resources/sample/files/protobuf/example.proto")
+    val schema = ProtobufParser.getSchemaFromProtoFile(Paths.get(protoFile.toURI), "Proto3AllTypes")
+    schema
   }
 
 }
