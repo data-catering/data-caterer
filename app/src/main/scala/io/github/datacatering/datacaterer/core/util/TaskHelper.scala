@@ -69,7 +69,7 @@ object TaskHelper {
 
     val count = optUserConf.flatMap(_._1.step.map(_.step.count)).getOrElse(Count())
     //there might be some schemas inside the user schema that are gathered from metadata sources like Marquez or OpenMetadata
-    val optUserSchema = optUserConf.flatMap(_._1.step.map(_.step.schema))
+    val optUserSchema = optUserConf.flatMap(_._1.step.map(_.step.fields))
     val generatedSchema = SchemaHelper.fromStructType(generatedDetails.structType)
     //if multiple sub data sources exist, merged schema should not create new fields from user schema
     val mergedSchema = optUserSchema.map(userSchema => SchemaHelper.mergeSchemaInfo(generatedSchema, userSchema, hasMultipleSubDataSources))

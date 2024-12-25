@@ -30,23 +30,24 @@ function getExistingPlans() {
             let plans = respJson.plans;
             for (let plan of plans) {
                 numPlans += 1;
-                let accordionItem = createAccordionItem(numPlans, plan.name, "", syntaxHighlight(plan));
+                let planName = plan.plan.name;
+                let accordionItem = createAccordionItem(numPlans, planName, "", syntaxHighlight(plan));
 
                 let editButton = createButton(`plan-edit-${numPlans}`, "Plan edit", "btn btn-primary", "Edit");
                 let executeButton = createButton(`plan-execute-${numPlans}`, "Plan execute", "btn btn-primary", "Execute");
                 let deleteButton = createButton(`plan-delete-${numPlans}`, "Plan delete", "btn btn-danger", "Delete");
 
                 editButton.addEventListener("click", function() {
-                    location.href = `http://localhost:9898/?plan-name=${plan.name}`;
+                    location.href = `http://localhost:9898/?plan-name=${planName}`;
                 });
                 executeButton.addEventListener("click", function () {
                     let runId = crypto.randomUUID();
                     plan.id = runId;
-                    executePlan(plan, plan.name, runId);
+                    executePlan(plan, planName, runId);
                 });
                 deleteButton.addEventListener("click", async function () {
-                    await fetch(`http://localhost:9898/plan/${plan.name}`, {method: "DELETE"});
-                    createToast(plan.name, `Plan ${plan.name} deleted!`, "success");
+                    await fetch(`http://localhost:9898/plan/${planName}`, {method: "DELETE"});
+                    createToast(plan.name, `Plan ${planName} deleted!`, "success");
                     planList.removeChild(accordionItem);
                 });
 

@@ -50,7 +50,7 @@ class DataGeneratorProcessor(dataCatererConfiguration: DataCatererConfiguration)
       summaryWithTask.foreach(t => LOGGER.debug(s"Enabled task details: ${t._2.toTaskDetailString}"))
     }
     val numSteps = summaryWithTask.map(t =>
-      t._2.steps.count(s => if (s.schema.fields.isDefined && s.schema.fields.get.nonEmpty) true else false)
+      t._2.steps.count(s => if (s.fields.nonEmpty) true else false)
     ).sum
     val stepNames = summaryWithTask.map(t => s"task=${t._2.name}, num-steps=${t._2.steps.size}, steps=${t._2.steps.map(_.name).mkString(",")}").mkString("||")
 
@@ -58,7 +58,7 @@ class DataGeneratorProcessor(dataCatererConfiguration: DataCatererConfiguration)
       LOGGER.debug(s"Following tasks are enabled and will be executed: num-tasks=${summaryWithTask.size}, tasks=$stepNames")
       batchDataProcessor.splitAndProcess(plan, summaryWithTask, optValidations)
     } else {
-      LOGGER.debug(s"No data will be generated as it is either disabled or there are no tasks defined with a schema, " +
+      LOGGER.warn(s"No data will be generated as it is either disabled or there are no tasks defined with a schema, " +
         s"enable-generate-data=${flagsConfig.enableGenerateData}, num-steps=$numSteps")
       List()
     }

@@ -1,7 +1,7 @@
 package io.github.datacatering.datacaterer.core.util
 
 import io.github.datacatering.datacaterer.api.model.Constants.IS_UNIQUE
-import io.github.datacatering.datacaterer.api.model.{Count, Field, Generator, PerColumnCount, Plan, Schema, Step, Task, TaskSummary}
+import io.github.datacatering.datacaterer.api.model.{Count, Field, PerFieldCount, Plan, Step, Task, TaskSummary}
 import org.junit.runner.RunWith
 import org.scalatestplus.junit.JUnitRunner
 
@@ -10,48 +10,48 @@ import java.sql.Date
 @RunWith(classOf[JUnitRunner])
 class UniqueFieldsUtilTest extends SparkSuite {
 
-  private val FIELDS = Some(List(
-    Field("account_id", Some("string"), generator = Some(Generator("random", Map(IS_UNIQUE -> "true")))),
-    Field("name", Some("string"), generator = Some(Generator("random", Map(IS_UNIQUE -> "true")))),
-    Field("open_date", Some("date"), generator = Some(Generator())),
-    Field("age", Some("int"), generator = Some(Generator())),
-  ))
+  private val FIELDS = List(
+    Field("account_id", Some("string"), Map(IS_UNIQUE -> "true")),
+    Field("name", Some("string"), Map(IS_UNIQUE -> "true")),
+    Field("open_date", Some("date")),
+    Field("age", Some("int")),
+  )
 
-  test("Can identify the unique columns and create a data frame with unique values for column") {
+  test("Can identify the unique fields and create a data frame with unique values for field") {
     val tasks = List((
       TaskSummary("gen data", "postgresAccount"),
       Task("account_postgres", List(
-        Step("accounts", "postgres", Count(), Map(), Schema(fields = FIELDS))
+        Step("accounts", "postgres", Count(), Map(), FIELDS)
       ))
     ))
-    val uniqueColumnUtil = new UniqueFieldsUtil(Plan(), tasks)
+    val uniqueFieldUtil = new UniqueFieldsUtil(Plan(), tasks)
 
-    val uniqueColumns = uniqueColumnUtil.uniqueFieldsDf
-    assertResult(2)(uniqueColumns.size)
-    assertResult(2)(uniqueColumnUtil.uniqueFieldsDf.size)
-    assert(uniqueColumnUtil.uniqueFieldsDf.head._2.isEmpty)
-    val col = uniqueColumns.filter(_._1.columns == List("account_id")).head
+    val uniqueFields = uniqueFieldUtil.uniqueFieldsDf
+    assertResult(2)(uniqueFields.size)
+    assertResult(2)(uniqueFieldUtil.uniqueFieldsDf.size)
+    assert(uniqueFieldUtil.uniqueFieldsDf.head._2.isEmpty)
+    val col = uniqueFields.filter(_._1.fields == List("account_id")).head
     assertResult("postgresAccount")(col._1.dataSource)
     assertResult("accounts")(col._1.step)
 
     val generatedData = sparkSession.createDataFrame(Seq(
       Account("acc1", "peter"), Account("acc1", "john"), Account("acc2", "jack"), Account("acc3", "bob")
     ))
-    val result = uniqueColumnUtil.getUniqueFieldsValues("postgresAccount.accounts", generatedData, Step())
+    val result = uniqueFieldUtil.getUniqueFieldsValues("postgresAccount.accounts", generatedData, Step())
 
     val data = result.select("account_id").collect().map(_.getString(0))
     val expectedUniqueAccounts = Array("acc1", "acc2", "acc3")
     assertResult(3)(data.length)
     data.foreach(a => assert(expectedUniqueAccounts.contains(a)))
-    assertResult(2)(uniqueColumnUtil.uniqueFieldsDf.size)
-    assertResult(3)(uniqueColumnUtil.uniqueFieldsDf.head._2.count())
-    val currentUniqueAcc = uniqueColumnUtil.uniqueFieldsDf.filter(_._1.columns == List("account_id")).head._2.collect().map(_.getString(0))
+    assertResult(2)(uniqueFieldUtil.uniqueFieldsDf.size)
+    assertResult(3)(uniqueFieldUtil.uniqueFieldsDf.head._2.count())
+    val currentUniqueAcc = uniqueFieldUtil.uniqueFieldsDf.filter(_._1.fields == List("account_id")).head._2.collect().map(_.getString(0))
     currentUniqueAcc.foreach(a => assert(expectedUniqueAccounts.contains(a)))
 
     val generatedData2 = sparkSession.createDataFrame(Seq(
       Account("acc1", "dog"), Account("acc3", "bob"), Account("acc4", "cat"), Account("acc5", "peter")
     ))
-    val result2 = uniqueColumnUtil.getUniqueFieldsValues("postgresAccount.accounts", generatedData2, Step())
+    val result2 = uniqueFieldUtil.getUniqueFieldsValues("postgresAccount.accounts", generatedData2, Step())
 
     val data2 = result2.select("account_id", "name").collect()
     val expectedUniqueNames = Array("peter", "jack", "bob", "cat")
@@ -61,25 +61,25 @@ class UniqueFieldsUtilTest extends SparkSuite {
     assertResult("acc4")(data2.head.getString(0))
     assertResult("cat")(data2.head.getString(1))
 
-    val currentUniqueAcc2 = uniqueColumnUtil.uniqueFieldsDf.filter(_._1.columns == List("account_id")).head._2.collect().map(_.getString(0))
+    val currentUniqueAcc2 = uniqueFieldUtil.uniqueFieldsDf.filter(_._1.fields == List("account_id")).head._2.collect().map(_.getString(0))
     currentUniqueAcc2.foreach(a => assert(expectedUniqueAccounts2.contains(a)))
-    val currentUniqueName = uniqueColumnUtil.uniqueFieldsDf.filter(_._1.columns == List("name")).head._2.collect().map(_.getString(0))
+    val currentUniqueName = uniqueFieldUtil.uniqueFieldsDf.filter(_._1.fields == List("name")).head._2.collect().map(_.getString(0))
     currentUniqueName.foreach(a => assert(expectedUniqueNames.contains(a)))
   }
 
-  test("Can identify the unique columns and create a data frame with unique values with per column count defined") {
+  test("Can identify the unique fields and create a data frame with unique values with per field count defined") {
     val step = Step(
       "accounts",
       "postgres",
-      Count(perColumn = Some(PerColumnCount(List("account_id", "name"), Some(2)))),
+      Count(perField = Some(PerFieldCount(List("account_id", "name"), Some(2)))),
       Map(),
-      Schema(fields = FIELDS)
+      FIELDS
     )
     val tasks = List((
       TaskSummary("gen data", "postgresAccount"),
       Task("account_postgres", List(step))
     ))
-    val uniqueColumnUtil = new UniqueFieldsUtil(Plan(), tasks)
+    val uniqueFieldUtil = new UniqueFieldsUtil(Plan(), tasks)
 
     val firstDate = Date.valueOf("2020-01-01")
     val secDate = Date.valueOf("2020-01-02")
@@ -88,16 +88,16 @@ class UniqueFieldsUtilTest extends SparkSuite {
       Account("acc2", "jack", firstDate), Account("acc2", "jack", secDate),
       Account("acc3", "susie", firstDate), Account("acc3", "susie", secDate), Account("acc3", "susie", Date.valueOf("2020-01-03"))
     ))
-    val result = uniqueColumnUtil.getUniqueFieldsValues("postgresAccount.accounts", generatedData, step)
+    val result = uniqueFieldUtil.getUniqueFieldsValues("postgresAccount.accounts", generatedData, step)
 
     val data = result.select("account_id").collect().map(_.getString(0))
     val expectedUniqueAccounts = Array("acc1", "acc2")
     assertResult(4)(data.length)
     data.foreach(a => assert(expectedUniqueAccounts.contains(a)))
-    assertResult(2)(uniqueColumnUtil.uniqueFieldsDf.size)
-    assertResult(4)(uniqueColumnUtil.uniqueFieldsDf.head._2.count())
-    assertResult(4)(uniqueColumnUtil.uniqueFieldsDf.last._2.count())
-    val currentUniqueAcc = uniqueColumnUtil.uniqueFieldsDf.filter(_._1.columns == List("account_id")).head._2.collect().map(_.getString(0))
+    assertResult(2)(uniqueFieldUtil.uniqueFieldsDf.size)
+    assertResult(4)(uniqueFieldUtil.uniqueFieldsDf.head._2.count())
+    assertResult(4)(uniqueFieldUtil.uniqueFieldsDf.last._2.count())
+    val currentUniqueAcc = uniqueFieldUtil.uniqueFieldsDf.filter(_._1.fields == List("account_id")).head._2.collect().map(_.getString(0))
     currentUniqueAcc.foreach(a => assert(expectedUniqueAccounts.contains(a)))
   }
 }

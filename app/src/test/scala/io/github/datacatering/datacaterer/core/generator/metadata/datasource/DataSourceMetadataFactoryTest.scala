@@ -10,12 +10,12 @@ class DataSourceMetadataFactoryTest extends SparkSuite {
 
   class ManualGenerationPlan extends PlanRun {
     val myJson = json("my_json", "/tmp/my_json")
-      .schema(
+      .fields(
         field.name("account_id"),
         field.name("name"),
       )
       .validations(metadataSource.greatExpectations("src/test/resources/sample/validation/great-expectations/taxi-expectations.json"))
-      .validations(validation.col("account_id").isNotNull)
+      .validations(validation.field("account_id").isNull(true))
 
     val conf = configuration
       .enableGenerateValidations(true)
@@ -26,11 +26,11 @@ class DataSourceMetadataFactoryTest extends SparkSuite {
 
   class ODCSPlan extends PlanRun {
     val myJson = json("my_json", "/tmp/my_json", Map("saveMode" -> "overwrite"))
-      .schema(metadataSource.openDataContractStandard("src/test/resources/sample/metadata/odcs/full-example.odcs.yaml"))
-      .schema(field.name("rcvr_cntry_code").oneOf("AUS", "FRA"))
+      .fields(metadataSource.openDataContractStandard("src/test/resources/sample/metadata/odcs/full-example.odcs.yaml"))
+      .fields(field.name("rcvr_cntry_code").oneOf("AUS", "FRA"))
       .validations(
         validation.count().isEqual(100),
-        validation.col("rcvr_cntry_code").in("AUS", "FRA")
+        validation.field("rcvr_cntry_code").in("AUS", "FRA")
       )
       .count(count.records(100))
 
@@ -49,8 +49,8 @@ class DataSourceMetadataFactoryTest extends SparkSuite {
     assert(result.nonEmpty)
     assertResult(1)(result.get._2.size)
     assertResult(1)(result.get._2.head.steps.size)
-    assert(result.get._2.head.steps.head.schema.fields.nonEmpty)
-    assertResult(2)(result.get._2.head.steps.head.schema.fields.get.size)
+    assert(result.get._2.head.steps.head.fields.nonEmpty)
+    assertResult(2)(result.get._2.head.steps.head.fields.size)
     assertResult(1)(result.get._3.size)
     assertResult(1)(result.get._3.head.dataSources.size)
     assertResult(1)(result.get._3.head.dataSources.head._2.size)
@@ -64,8 +64,8 @@ class DataSourceMetadataFactoryTest extends SparkSuite {
     assert(result.nonEmpty)
     assertResult(1)(result.get._2.size)
     assertResult(1)(result.get._2.head.steps.size)
-    assert(result.get._2.head.steps.head.schema.fields.nonEmpty)
-    assertResult(3)(result.get._2.head.steps.head.schema.fields.get.size)
+    assert(result.get._2.head.steps.head.fields.nonEmpty)
+    assertResult(3)(result.get._2.head.steps.head.fields.size)
     assertResult(1)(result.get._3.size)
     assertResult(1)(result.get._3.head.dataSources.size)
     assertResult(1)(result.get._3.head.dataSources.head._2.size)

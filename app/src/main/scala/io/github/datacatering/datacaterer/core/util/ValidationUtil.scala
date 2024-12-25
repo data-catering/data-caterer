@@ -4,6 +4,5 @@ object ValidationUtil {
 
   def cleanValidationIdentifier(identifier: String): String = identifier.replaceAll("[{}]", "")
 
-  def cleanColumnName(column: String): String = column.split("\\.").map(c => s"`$c`").mkString(".")
-
+  def cleanFieldName(field: String): String = field.split("\\.").map(c => s"`$c`").mkString(".")
 }

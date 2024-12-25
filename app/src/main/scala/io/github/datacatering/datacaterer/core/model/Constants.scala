@@ -28,24 +28,24 @@ object Constants {
   lazy val SUPPORTED_CONNECTION_FORMATS: List[String] = List(CSV, JSON, ORC, PARQUET, CASSANDRA, JDBC, HTTP, JMS, KAFKA)
   lazy val BASIC_APPLICATION_SUPPORTED_CONNECTION_FORMATS: List[String] = List(CSV, JSON, ORC, PARQUET, JDBC)
 
-  //special column names
-  lazy val PER_COLUMN_COUNT = "_per_col_count"
-  lazy val PER_COLUMN_COUNT_GENERATED = "_per_col_count_gen"
-  lazy val JOIN_FOREIGN_KEY_COL = "_join_foreign_key"
-  lazy val PER_COLUMN_INDEX_COL = "_per_col_index"
-  lazy val RECORD_COUNT_GENERATOR_COL = "record_count_generator"
-  lazy val INDEX_INC_COL = "__index_inc"
-  lazy val REAL_TIME_BODY_COL = "value"
-  lazy val REAL_TIME_BODY_CONTENT_COL = "bodyContent"
-  lazy val REAL_TIME_PARTITION_COL = "partition"
-  lazy val REAL_TIME_HEADERS_COL = "headers"
-  lazy val REAL_TIME_METHOD_COL = "method"
+  //special field names
+  lazy val PER_FIELD_COUNT = "_per_field_count"
+  lazy val PER_FIELD_COUNT_GENERATED = "_per_field_count_gen"
+  lazy val JOIN_FOREIGN_KEY_FIELD = "_join_foreign_key"
+  lazy val PER_FIELD_INDEX_FIELD = "_per_field_index"
+  lazy val RECORD_COUNT_GENERATOR_FIELD = "record_count_generator"
+  lazy val INDEX_INC_FIELD = "__index_inc"
+  lazy val REAL_TIME_BODY_FIELD = "value"
+  lazy val REAL_TIME_BODY_CONTENT_FIELD = "bodyContent"
+  lazy val REAL_TIME_PARTITION_FIELD = "partition"
+  lazy val REAL_TIME_HEADERS_FIELD = "headers"
+  lazy val REAL_TIME_METHOD_FIELD = "method"
   lazy val REAL_TIME_ENDPOINT = "endpoint"
-  lazy val REAL_TIME_CONTENT_TYPE_COL = "content_type"
-  lazy val REAL_TIME_URL_COL = "url"
-  lazy val HTTP_HEADER_COL_PREFIX = "header"
-  lazy val HTTP_PATH_PARAM_COL_PREFIX = "pathParam"
-  lazy val HTTP_QUERY_PARAM_COL_PREFIX = "queryParam"
+  lazy val REAL_TIME_CONTENT_TYPE_FIELD = "content_type"
+  lazy val REAL_TIME_URL_FIELD = "url"
+  lazy val HTTP_HEADER_FIELD_PREFIX = "header"
+  lazy val HTTP_PATH_PARAM_FIELD_PREFIX = "pathParam"
+  lazy val HTTP_QUERY_PARAM_FIELD_PREFIX = "queryParam"
 
   //special table name
   lazy val DATA_CATERER_RANDOM_LENGTH = "data_caterer_random_length"
@@ -66,9 +66,9 @@ object Constants {
   lazy val COUNT_TYPE = "countType"
   lazy val COUNT_BASIC = "basic-count"
   lazy val COUNT_GENERATED = "generated-count"
-  lazy val COUNT_PER_COLUMN = "per-column-count"
-  lazy val COUNT_GENERATED_PER_COLUMN = "generated-per-column-count"
-  lazy val COUNT_COLUMNS = "columns"
+  lazy val COUNT_PER_FIELD = "per-field-count"
+  lazy val COUNT_GENERATED_PER_FIELD = "generated-per-field-count"
+  lazy val COUNT_FIELDS = "fields"
   lazy val COUNT_NUM_RECORDS = "numRecords"
 
   //validation

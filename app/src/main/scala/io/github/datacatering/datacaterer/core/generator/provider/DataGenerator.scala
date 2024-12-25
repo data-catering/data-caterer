@@ -1,11 +1,10 @@
 package io.github.datacatering.datacaterer.core.generator.provider
 
-import io.github.datacatering.datacaterer.api.model.Constants.{ARRAY_MAXIMUM_LENGTH, ARRAY_MINIMUM_LENGTH, ENABLED_EDGE_CASE, ENABLED_NULL, IS_UNIQUE, PROBABILITY_OF_EDGE_CASE, PROBABILITY_OF_NULL, RANDOM_SEED, STATIC}
+import io.github.datacatering.datacaterer.api.model.Constants.{ARRAY_MAXIMUM_LENGTH, ARRAY_MINIMUM_LENGTH, ENABLED_EDGE_CASE, ENABLED_NULL, IS_UNIQUE, MAP_MAXIMUM_SIZE, MAP_MINIMUM_SIZE, PROBABILITY_OF_EDGE_CASE, PROBABILITY_OF_NULL, RANDOM_SEED, STATIC}
 import io.github.datacatering.datacaterer.api.model.generator.BaseGenerator
 import io.github.datacatering.datacaterer.core.exception.ExhaustedUniqueValueGenerationException
 import io.github.datacatering.datacaterer.core.model.Constants.DATA_CATERER_RANDOM_LENGTH
 import net.datafaker.Faker
-import org.apache.spark.sql.execution.SparkSqlParser
 import org.apache.spark.sql.functions.{expr, rand, when}
 import org.apache.spark.sql.types.StructField
 
@@ -133,9 +132,26 @@ trait ArrayDataGenerator[T] extends NullableDataGenerator[List[T]] {
   def elementGenerator: DataGenerator[T]
 
   override def generate: List[T] = {
-    val listSize = random.nextInt(arrayMaxSize) + arrayMinSize
-    (arrayMinSize to listSize)
+    val listSize = (random.nextDouble() * (arrayMaxSize - arrayMinSize) + arrayMinSize).toInt
+    (1 to listSize)
       .map(_ => elementGenerator.generate)
       .toList
+  }
+}
+
+trait MapDataGenerator[T, K] extends NullableDataGenerator[Map[T, K]] {
+
+  lazy val mapMaxSize: Int = if (structField.metadata.contains(MAP_MAXIMUM_SIZE)) structField.metadata.getString(MAP_MAXIMUM_SIZE).toInt else 5
+  lazy val mapMinSize: Int = if (structField.metadata.contains(MAP_MINIMUM_SIZE)) structField.metadata.getString(MAP_MINIMUM_SIZE).toInt else 0
+
+  def keyGenerator: DataGenerator[T]
+
+  def valueGenerator: DataGenerator[K]
+
+  override def generate: Map[T, K] = {
+    val mapSize = (random.nextDouble() * (mapMaxSize - mapMinSize) + mapMinSize).toInt
+    (1 to mapSize)
+      .map(_ => keyGenerator.generate -> valueGenerator.generate)
+      .toMap
   }
 }

@@ -1,7 +1,7 @@
 /*
 Different types of validation:
-- Basic column
-- Dataset (column names, row count)
+- Basic field
+- Dataset (field names, row count)
 - Group by/aggregate
 - Upstream
 - External source (great expectations)
@@ -28,91 +28,71 @@ export function incValidations() {
 }
 
 function createGroupByValidationFromPlan(newValidation, validationOpts, validation) {
-    let updatedGroupByCols = $(newValidation).find("[aria-label=GroupByColumns]").val(validationOpts.groupByColumns)
+    let updatedGroupByCols = $(newValidation).find("[aria-label=GroupByFields]").val(validation.groupByFields)
     dispatchEvent(updatedGroupByCols, "input");
     // can be nested validations
 
-    if (validation.nested && validation.nested.validations) {
-        for (let nestedValidation of validation.nested.validations) {
-            numValidations += 1;
-            let dataValidationContainer = $(newValidation).find("[id^=data-validation-container]")[0];
-            let metadata = Object.create(validationTypeOptionsMap.get("groupBy")[nestedValidation.options["aggType"]]);
-            metadata["default"] = nestedValidation.options["aggCol"];
-            addNewDataTypeAttribute(nestedValidation.options["aggType"], metadata, `groupBy-validation-${numValidations}`, "data-validation-field", dataValidationContainer);
-            let aggregationRow = $(dataValidationContainer).find(".data-source-validation-container-nested-validation").last().find(".row").first();
+    let dataValidationContainer = $(newValidation).find("[id^=data-validation-container]")[0];
+    let metadata = Object.create(validationTypeOptionsMap.get("groupBy")[validation.aggType]);
+    metadata["default"] = validation.aggField;
+    addNewDataTypeAttribute(validation.aggType, metadata, `groupBy-validation-${numValidations}`, "data-validation-field", dataValidationContainer);
+    let aggregationRow = $(dataValidationContainer).find(".data-source-validation-container-nested-validation").last().find(".row").first();
 
-            if (nestedValidation.options) {
-                for (let [optKey, optVal] of Object.entries(nestedValidation.options)) {
-                    if (optKey !== "aggType" && optKey !== "aggCol") {
-                        createNewValidateAttribute(optKey, "column", optVal, aggregationRow);
-                    }
-                }
-            }
-        }
-    }
+    addFieldValidations(validation, aggregationRow);
 }
 
-function createNewValidateAttribute(optKey, validationType, optVal, mainContainer) {
+function createNewValidateAttribute(optKey, validationType, optVal, checked, mainContainer) {
     numValidations += 1;
-    let baseKey = optKey;
-    if (optKey.startsWith("not")) {
-        baseKey = optKey.charAt(3).toLowerCase() + optKey.slice(4);
-    } else if (optKey.startsWith("equalOr")) {
-        baseKey = optKey.charAt(7).toLowerCase() + optKey.slice(8);
-    }
-
-    // if it is 'notEqual' or `equalOrLessThan`, need to ensure checkbox is checked
-    if (optKey === "notNull") {
-        let baseOptions = Object.create(validationTypeOptionsMap.get(validationType)[optKey]);
-        addNewDataTypeAttribute(optKey, baseOptions, `data-validation-container-${numValidations}-${optKey}`, "data-validation-field", mainContainer);
-    } else {
-        let baseOptions = Object.create(validationTypeOptionsMap.get(validationType)[baseKey]);
-        if (baseKey !== optKey) baseOptions.group.checked = "true";
-        baseOptions["default"] = optVal;
-        addNewDataTypeAttribute(baseKey, baseOptions, `data-validation-container-${numValidations}-${optKey}`, "data-validation-field", mainContainer);
-    }
+    let baseOptions = Object.create(validationTypeOptionsMap.get(validationType)[optKey]);
+    if (checked) baseOptions.group.checked = "true";
+    if (optVal) baseOptions["default"] = optVal;
+    addNewDataTypeAttribute(optKey, baseOptions, `data-validation-container-${numValidations}-${optKey}`, "data-validation-field", mainContainer);
     document.getElementById(`data-validation-container-${numValidations}-${optKey}`).dispatchEvent(new Event("input"));
 }
 
-async function createValidationsFromDataSource(dataSource, manualValidation) {
-    for (const validation of dataSource.optValidations) {
+async function createValidationsFromDataSource(validations, validationOpts, manualValidation) {
+    for (const validation of validations) {
         numValidations += 1;
         let newValidation = await createNewField(numValidations, "validation");
         $(manualValidation).children(".accordion").append(newValidation);
-        let updatedValidationType = $(newValidation).find("select[class~=validation-type]").selectpicker("val", validation.type);
-        dispatchEvent(updatedValidationType, "change");
-        let validationOpts = validation.options;
         let mainContainer = $(newValidation).find("[id^=data-validation-container]")[0];
 
-        if (validation.type === "column" && validationOpts.field) {
-            let updatedValidationCol = $(newValidation).find("[aria-label=Field]").val(validationOpts.field);
+        if (validation.field && validation.validation) {
+            let updatedValidationType = $(newValidation).find("select[class~=validation-type]").selectpicker("val", "field");
+            dispatchEvent(updatedValidationType, "change");
+            let updatedValidationCol = $(newValidation).find("[aria-label=Field]").val(validation.field);
             dispatchEvent(updatedValidationCol, "input");
-        } else if (validation.type === "groupBy" && validationOpts.groupByColumns) {
+            addFieldValidations(validation, mainContainer);
+        } else if (validation.groupByFields && validation.validation) {
+            let updatedValidationType = $(newValidation).find("select[class~=validation-type]").selectpicker("val", "groupBy");
+            dispatchEvent(updatedValidationType, "change");
             createGroupByValidationFromPlan(newValidation, validationOpts, validation);
-        } else if (validation.type === "upstream" && validationOpts.upstreamTaskName) {
-            let updatedUpstreamTaskName = $(newValidation).find("[aria-label=UpstreamTaskName]").val(validationOpts.upstreamTaskName);
+        } else if (validation.upstreamTaskName && validation.validation) {
+            let updatedValidationType = $(newValidation).find("select[class~=validation-type]").selectpicker("val", "upstream");
+            dispatchEvent(updatedValidationType, "change");
+            let updatedUpstreamTaskName = $(newValidation).find("[aria-label=UpstreamTaskName]").val(validation.upstreamTaskName);
             dispatchEvent(updatedUpstreamTaskName, "input");
-            // can be nested validations
+            //update joinFields, joinType or joinEpr
+            createNewValidateAttribute("joinFields", "upstream", validation.joinFields, false, mainContainer);
+            createNewValidateAttribute("joinType", "upstream", validation.joinType, false, mainContainer);
+            if (validation.joinExpr) {
+                createNewValidateAttribute("joinExpr", "upstream", validation.joinExpr, false, mainContainer);
+            }
 
-            if (validation.nested && validation.nested.validations) {
+            if (validation.validation && validation.validation.length > 0) {
                 let nestedManualValidation = $(newValidation).find(".data-source-validation-container-nested-validation").first();
-                await createValidationsFromDataSource(validation.nested, nestedManualValidation);
+                await createValidationsFromDataSource(validation.validation, validationOpts, nestedManualValidation);
             }
         }
-        //otherwise it is column name validation which doesn't have any default options
-
-        for (const [optKey, optVal] of Object.entries(validationOpts)) {
-            if (optKey !== "groupByColumns" && optKey !== "column" && optKey !== "field" && optKey !== "upstreamTaskName") {
-                createNewValidateAttribute(optKey, validation.type, optVal, mainContainer);
-            }
-        }
+        //otherwise it is field name validation which doesn't have any default options
     }
 }
 
 export async function createValidationFromPlan(dataSource, newDataSource, numDataSources) {
     let dataSourceValidationContainer = $(newDataSource).find("#data-source-validation-config-container");
 
-    if (dataSource.validations && dataSource.validations.optMetadataSource) {
+    console.log(dataSource);
+    if (dataSource.validations && dataSource.options["metadataSourceName"]) {
         $(dataSourceValidationContainer).find("[id^=auto-from-metadata-source-validation-checkbox]").prop("checked", true);
         let autoFromMetadataSchema = await createAutoFromMetadataSourceContainer(numDataSources);
         $(dataSourceValidationContainer).find(".manual").after(autoFromMetadataSchema);
@@ -120,17 +100,34 @@ export async function createValidationFromPlan(dataSource, newDataSource, numDat
         await createAutoFromMetadata(autoFromMetadataSchema, dataSource);
     }
 
-    if (dataSource.validations && dataSource.validations.optValidations && dataSource.validations.optValidations.length > 0) {
+    if (dataSource.validations && dataSource.validations.length > 0) {
         let manualValidation = createManualContainer(numValidations, "validation");
         let dataSourceGenContainer = $(newDataSource).find("#data-source-validation-config-container");
         dataSourceGenContainer.append(manualValidation);
         $(dataSourceGenContainer).find("[id^=manual-validation-checkbox]").prop("checked", true);
 
-        await createValidationsFromDataSource(dataSource.validations, manualValidation);
+        await createValidationsFromDataSource(dataSource.validations, dataSource.options, manualValidation);
+    }
+}
+
+function addFieldValidations(validation, container) {
+    if (validation.validation && validation.validation.length > 0) {
+        for (const valid of validation.validation) {
+            let key = valid.type;
+            let value = valid.value;
+            let checked = false;
+            if (valid.negate) {
+                checked = true;
+            } else if (!valid.strictly) {
+                checked = true;
+            }
+            createNewValidateAttribute(key, "field", value, checked, container);
+        }
     }
 }
 
 function getValidationsFromContainer(dataSourceValidations, visitedValidations) {
+    let aggLabels = Array("sum", "average", "max", "min", "standardDeviation", "median", "mode", "count");
     let dataValidationContainers = findNextLevelNodesByClass($(dataSourceValidations), ["data-validation-container"]);
     return dataValidationContainers.map(validation => {
         let validationAttributes = findNextLevelNodesByClass($(validation), "data-validation-field", ["card", "data-validation-container", "data-source-validation-container-nested-validation"]);
@@ -147,56 +144,69 @@ function getValidationsFromContainer(dataSourceValidations, visitedValidations) 
                         // nested fields can be defined for upstream and groupBy
                         let nestedValidations = Array.from(validation.querySelectorAll(".data-source-validation-container-nested-validation").values());
                         let allNestedValidations = [];
+
                         for (let nestedValidation of nestedValidations) {
                             let currNested = getValidationsFromContainer(nestedValidation, visitedValidations);
+                            if (!jQuery.isEmptyObject(currNested)) {
+                                currNested.forEach(n => {
+                                    if (!jQuery.isEmptyObject(n)) {
+                                        console.log(n);
+                                        if (fieldValue === "upstream") {
+                                            if (options["validation"]) {
+                                                options["validation"].push(n);
+                                            } else {
+                                                options["validation"] = [n];
+                                            }
+                                        } else if (fieldValue === "groupBy") {
+                                            Object.entries(n).forEach(o => options[o[0]] = o[1]);
+                                        }
+                                    }
+                                });
+                            }
                             allNestedValidations.push(currNested);
                         }
                         options[label] = fieldValue;
-                        options["nested"] = {validations: allNestedValidations.flat().filter(o => !jQuery.isEmptyObject(o))};
-                    } else if (label === "sum" || label === "average" || label === "max" || label === "min" || label === "standardDeviation" || label === "count") {
-                        // then we need to set the type as column and set the column name
-                        options["type"] = "column";
-                        let currOpts = (options["options"] || new Map());
-                        currOpts.set("aggType", label);
-                        currOpts.set("aggCol", fieldValue);
-                        options["options"] = currOpts;
-                    } else if (label === "name" || label === "type") {
+                        // options["validation"] = allNestedValidations.flat().filter(o => !jQuery.isEmptyObject(o));
+                    } else if (aggLabels.includes(label)) {
+                        options["aggType"] = label;
+                        options["aggField"] = fieldValue;
+                    } else if (label === "name" || label === "field" || label === "upstreamTaskName" || label === "joinType" || label === "joinExpr" || label === "description" || label === "errorThreshold") {
                         options[label] = fieldValue;
+                    } else if (label === "joinFields" || label === "groupByFields") {
+                        options[label] = fieldValue.includes(",") ? fieldValue.split(",") : [fieldValue];
+                    } else if (label === "type") {
+
                     } else {
                         let currOpts = (options["options"] || new Map());
+                        currOpts.set("type", label);
+                        currOpts.set("value", fieldValue);
+                        //TODO need to map the validation type params to key -> value pairs
                         // need to check if it is part of input group
                         let checkbox = $(attr).closest(".input-group").find(".form-check-input");
                         if (checkbox && checkbox.length > 0) {
                             if (checkbox[0].checked) {
-                                // then we need to get the opposite of the label (i.e. equal -> notEqual)
                                 switch (label) {
-                                    case "equal":
-                                    case "contains":
-                                    case "between":
-                                    case "in":
-                                    case "matches":
-                                    case "startsWith":
-                                    case "endsWith":
-                                    case "null":
-                                    case "size":
-                                        let oppositeLabel = "not" + label.charAt(0).toUpperCase() + label.slice(1);
-                                        currOpts.set(oppositeLabel, fieldValue);
-                                        break;
                                     case "lessThan":
                                     case "greaterThan":
                                     case "lessThanSize":
                                     case "greaterThanSize":
-                                        let equalLabel = "equalOr" + label.charAt(0).toUpperCase() + label.slice(1);
-                                        currOpts.set(equalLabel, fieldValue);
+                                    case "isDecreasing":
+                                    case "isIncreasing":
+                                        currOpts.set("strictly", "false");
+                                        break;
+                                    default:
+                                        currOpts.set("negate", "true");
                                         break;
                                 }
-                            } else {
-                                currOpts.set(label, fieldValue);
                             }
-                        } else {
-                            currOpts.set(label, fieldValue);
                         }
-                        options["options"] = currOpts;
+                        if (currOpts.size > 0) {
+                            if (options["validation"]) {
+                                options["validation"].push(currOpts);
+                            } else {
+                                options["validation"] = [currOpts];
+                            }
+                        }
                     }
                     return options;
                 } else {
@@ -206,41 +216,38 @@ function getValidationsFromContainer(dataSourceValidations, visitedValidations) 
     });
 }
 
-export function getValidations(dataSource, currentDataSource) {
-    let dataValidationInfo = {};
+export function getValidations(dataSource, currentValidation) {
     // check which checkboxes are enabled: auto, auto with external, manual
     let isAutoChecked = $(dataSource).find("[id^=auto-validation-checkbox]").is(":checked");
     let isAutoFromMetadataChecked = $(dataSource).find("[id^=auto-from-metadata-source-validation-checkbox]").is(":checked");
     let isManualChecked = $(dataSource).find("[id^=manual-validation-checkbox]").is(":checked");
+    currentValidation["options"] = {};
 
     if (isAutoChecked) {
         // need to enable data generation within data source options
-        currentDataSource["options"] = {enableDataValidation: "true"};
+        currentValidation["options"]["enableDataValidation"] = "true";
     } else if (isAutoFromMetadataChecked) {
-        let dataSourceAutoSchemaContainer = $(dataSource).find("[class~=data-source-auto-from-metadata-container]")[0];
+        let dataSourceValidationContainer = $(dataSource).find("[id^=data-source-validation-config-container]")[0];
+        let dataSourceAutoSchemaContainer = $(dataSourceValidationContainer).find("[class~=data-source-auto-from-metadata-container]")[0];
         let metadataConnectionName = $(dataSourceAutoSchemaContainer).find("select[class~=metadata-connection-name]").val();
-        let metadataConnectionOptions = $(dataSourceAutoSchemaContainer).find("input[class~=metadata-source-property]").toArray()
+        $(dataSourceAutoSchemaContainer).find("input[class~=metadata-source-property]").toArray()
             .reduce(function (map, option) {
                 if (option.value !== "") {
-                    map[option.getAttribute("aria-label")] = option.value;
+                    currentValidation["options"][option.getAttribute("aria-label")] = option.value;
                 }
                 return map;
             }, {});
-        dataValidationInfo["optMetadataSource"] = {
-            name: metadataConnectionName,
-            overrideOptions: metadataConnectionOptions
-        };
+        currentValidation["options"]["metadataSourceName"] = metadataConnectionName;
     } else if (isManualChecked) {
         // get top level validation container
         let dataSourceValidations = $(dataSource).find("[id^=data-source-validation-container]")[0];
         let visitedValidations = new Set();
         let dataValidationsWithAttributes = getValidationsFromContainer(dataSourceValidations, visitedValidations);
-        dataValidationInfo["optValidations"] = Object.values(dataValidationsWithAttributes);
+        currentValidation["validations"] = Object.values(dataValidationsWithAttributes);
     }
-    currentDataSource["validations"] = dataValidationInfo;
 }
 
-export function addColumnValidationBlock(newAttributeRow, mainContainer, attributeContainerId, inputClass) {
+export function addFieldValidationBlock(newAttributeRow, mainContainer, attributeContainerId, inputClass) {
     numValidations += 1;
     let cardDiv = document.createElement("div");
     cardDiv.setAttribute("class", "card m-1 data-source-validation-container-nested-validation");
@@ -250,9 +257,9 @@ export function addColumnValidationBlock(newAttributeRow, mainContainer, attribu
     cardDiv.append(cardBody);
     mainContainer.append(cardDiv);
 
-    // column validation applied after group by
+    // field validation applied after group by
     let {buttonWithMenuDiv, addAttributeButton, menu} = createButtonWithMenu(mainContainer);
-    addItemsToAttributeMenu(validationTypeOptionsMap.get("column"), menu);
+    addItemsToAttributeMenu(validationTypeOptionsMap.get("field"), menu);
     newAttributeRow.append(buttonWithMenuDiv);
     let closeButton = createCloseButton(cardDiv);
     newAttributeRow.append(closeButton);
@@ -260,7 +267,7 @@ export function addColumnValidationBlock(newAttributeRow, mainContainer, attribu
         let attribute = event.target.getAttribute("value");
         // check if attribute already exists
         if ($(newAttributeRow).find(`[aria-label=${attribute}]`).length === 0) {
-            let validationMetadata = validationTypeOptionsMap.get("column")[attribute];
+            let validationMetadata = validationTypeOptionsMap.get("field")[attribute];
             addNewDataTypeAttribute(attribute, validationMetadata, `${attributeContainerId}-${attribute}`, inputClass, newAttributeRow);
         }
     });

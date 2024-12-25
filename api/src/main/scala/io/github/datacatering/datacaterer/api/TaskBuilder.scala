@@ -3,7 +3,7 @@ package io.github.datacatering.datacaterer.api
 import com.softwaremill.quicklens.ModifyPimp
 import io.github.datacatering.datacaterer.api.converter.Converters.toScalaMap
 import io.github.datacatering.datacaterer.api.model.Constants._
-import io.github.datacatering.datacaterer.api.model.{Count, DataType, Field, Generator, PerColumnCount, Schema, Step, StringType, Task, TaskSummary}
+import io.github.datacatering.datacaterer.api.model.{Count, DataType, Field, PerFieldCount, Step, StringType, Task, TaskSummary}
 
 import scala.annotation.varargs
 
@@ -266,13 +266,13 @@ case class StepBuilder(step: Step = Step(), optValidation: Option[DataSourceVali
     this.modify(_.step.options)(_ ++ Map(PATH -> path))
 
   /**
-   * The columns within the generated data to use as partitions for a file data source.
-   * Order of partition columns defined is used to define order of partitions.<br>
+   * The fields within the generated data to use as partitions for a file data source.
+   * Order of partition fields defined is used to define order of partitions.<br>
    * For example, {{{partitionBy("year", "account_id")}}}
    * will ensure that `year` is used as the top level partition
    * before `account_id`.
    *
-   * @param partitionsBy Partition column names in order
+   * @param partitionsBy Partition field names in order
    * @return StepBuilder
    */
   @varargs def partitionBy(partitionsBy: String*): StepBuilder =
@@ -314,7 +314,7 @@ case class StepBuilder(step: Step = Step(), optValidation: Option[DataSourceVali
 
   /**
    * Define number of records to be generated.
-   * If you also have defined a per column count, this value will not represent the full number of records generated.
+   * If you also have defined a per field count, this value will not represent the full number of records generated.
    *
    * @param records Number of records to generate
    * @return StepBuilder
@@ -325,7 +325,7 @@ case class StepBuilder(step: Step = Step(), optValidation: Option[DataSourceVali
 
   /**
    * Define a generator to be used for determining the number of records to generate.
-   * If you also have defined a per column count, the value generated will be combined with the per column count to
+   * If you also have defined a per field count, the value generated will be combined with the per field count to
    * determine the total number of records
    *
    * @param generator Generator builder for determining number of records to generate
@@ -336,28 +336,17 @@ case class StepBuilder(step: Step = Step(), optValidation: Option[DataSourceVali
     this.modify(_.step.count).setTo(CountBuilder().generator(generator).count)
 
   /**
-   * Define the number of records to generate based off certain columns.<br>
-   * For example, if you had a data set with columns account_id and amount, you can set that 10 records to be generated
-   * per account_id via {{{.count(new PerColumnCountBuilder().total(10, "account_id")}}}.
+   * Define the number of records to generate based off certain fields.<br>
+   * For example, if you had a data set with fields account_id and amount, you can set that 10 records to be generated
+   * per account_id via {{{.count(new PerFieldCountBuilder().total(10, "account_id")}}}.
    * The total number of records generated is also influenced by other count configurations.
    *
-   * @param perColumnCountBuilder Per column count builder
+   * @param perFieldCountBuilder Per field count builder
    * @return StepBuilder
    * @see <a href=https://data.catering/setup/generator/count/>Count definition</a> for details
    */
-  def count(perColumnCountBuilder: PerColumnCountBuilder): StepBuilder =
-    this.modify(_.step.count).setTo(CountBuilder().perColumn(perColumnCountBuilder).count)
-
-  /**
-   * Schema to use when generating data for data source.
-   * The schema includes various metadata about each field to guide the data generator on what the data should look
-   * like.
-   *
-   * @param schemaBuilder Schema builder
-   * @return StepBuilder
-   */
-  def schema(schemaBuilder: SchemaBuilder): StepBuilder =
-    this.modify(_.step.schema).setTo(schemaBuilder.schema)
+  def count(perFieldCountBuilder: PerFieldCountBuilder): StepBuilder =
+    this.modify(_.step.count).setTo(CountBuilder().perField(perFieldCountBuilder).count)
 
   /**
    * Define fields of the schema of the data source to use when generating data.
@@ -365,8 +354,8 @@ case class StepBuilder(step: Step = Step(), optValidation: Option[DataSourceVali
    * @param fields Fields of the schema
    * @return StepBuilder
    */
-  @varargs def schema(fields: FieldBuilder*): StepBuilder =
-    this.modify(_.step.schema).setTo(SchemaBuilder().addFields(fields: _*).schema)
+  @varargs def fields(fields: FieldBuilder*): StepBuilder =
+    this.modify(_.step.fields).setTo(step.fields ++ fields.map(_.field))
 
   /**
    * Define data validations once data has been generated. The result of the validations is logged out and included
@@ -424,162 +413,131 @@ case class CountBuilder(count: Count = Count()) {
    * @return the modified count builder
    */
   def generator(generator: GeneratorBuilder): CountBuilder =
-    this.modify(_.count.generator).setTo(Some(generator.generator))
+    this.modify(_.count.options).setTo(generator.options)
       .modify(_.count.records).setTo(None)
 
   /**
-   * Sets the per-column count for the task builder.
+   * Sets the per-field count for the task builder.
    *
-   * @param perColumnCountBuilder the builder for the per-column count
+   * @param perFieldCountBuilder the builder for the per-field count
    * @return the updated task builder
    */
-  def perColumn(perColumnCountBuilder: PerColumnCountBuilder): CountBuilder =
-    this.modify(_.count.perColumn).setTo(Some(perColumnCountBuilder.perColumnCount))
+  def perField(perFieldCountBuilder: PerFieldCountBuilder): CountBuilder =
+    this.modify(_.count.perField).setTo(Some(perFieldCountBuilder.perFieldCount))
 
   /**
-   * Sets the number of records per column for the task builder.
+   * Sets the number of records per field for the task builder.
    *
-   * @param records the number of records per column
-   * @param cols    the column names to apply the records per column setting to
+   * @param records the number of records per field
+   * @param fields    the field names to apply the records per field setting to
    * @return the updated task builder
    */
-  @varargs def recordsPerColumn(records: Long, cols: String*): CountBuilder =
-    this.modify(_.count.perColumn).setTo(Some(perColCount.records(records, cols: _*).perColumnCount))
+  @varargs def recordsPerField(records: Long, fields: String*): CountBuilder =
+    this.modify(_.count.perField).setTo(Some(perFieldCount.records(records, fields: _*).perFieldCount))
 
   /**
-   * Generates a `CountBuilder` that records the number of records per column.
+   * Generates a `CountBuilder` that records the number of records per field.
    *
-   * @param generator The `GeneratorBuilder` to use for generating the per-column counts.
-   * @param cols      The column names to generate per-column counts for.
-   * @return A `CountBuilder` that records the number of records per column.
+   * @param generator The `GeneratorBuilder` to use for generating the per-field counts.
+   * @param fields      The field names to generate per-field counts for.
+   * @return A `CountBuilder` that records the number of records per field.
    */
-  @varargs def recordsPerColumnGenerator(generator: GeneratorBuilder, cols: String*): CountBuilder =
-    this.modify(_.count.perColumn).setTo(Some(perColCount.generator(generator, cols: _*).perColumnCount))
+  @varargs def recordsPerFieldGenerator(generator: GeneratorBuilder, fields: String*): CountBuilder =
+    this.modify(_.count.perField).setTo(Some(perFieldCount.generator(generator, fields: _*).perFieldCount))
 
   /**
-   * Generates a `CountBuilder` with the specified number of records and a generator for the per-column counts.
+   * Generates a `CountBuilder` with the specified number of records and a generator for the per-field counts.
    *
    * @param records   the total number of records to generate
-   * @param generator the `GeneratorBuilder` to use for generating the per-column counts
-   * @param cols      the names of the columns to generate counts for
-   * @return a `CountBuilder` with the specified record and per-column count settings
+   * @param generator the `GeneratorBuilder` to use for generating the per-field counts
+   * @param fields      the names of the fields to generate counts for
+   * @return a `CountBuilder` with the specified record and per-field count settings
    */
-  @varargs def recordsPerColumnGenerator(records: Long, generator: GeneratorBuilder, cols: String*): CountBuilder =
+  @varargs def recordsPerFieldGenerator(records: Long, generator: GeneratorBuilder, fields: String*): CountBuilder =
     this.modify(_.count.records).setTo(Some(records))
-      .modify(_.count.perColumn).setTo(Some(perColCount.generator(generator, cols: _*).perColumnCount))
+      .modify(_.count.perField).setTo(Some(perFieldCount.generator(generator, fields: _*).perFieldCount))
 
   /**
-   * Generates a normal distribution of records per column for the specified columns.
+   * Generates a normal distribution of records per field for the specified fields.
    *
-   * @param min  the minimum number of records per column
-   * @param max  the maximum number of records per column
-   * @param cols the columns to generate the normal distribution for
+   * @param min  the minimum number of records per field
+   * @param max  the maximum number of records per field
+   * @param fields the fields to generate the normal distribution for
    * @return a `CountBuilder` instance with the normal distribution configuration applied
    */
-  @varargs def recordsPerColumnNormalDistribution(min: Long, max: Long, cols: String*): CountBuilder = {
+  @varargs def recordsPerFieldNormalDistribution(min: Long, max: Long, fields: String*): CountBuilder = {
     val generator = GeneratorBuilder().min(min).max(max).normalDistribution()
-    this.modify(_.count.perColumn).setTo(Some(perColCount.generator(generator, cols: _*).perColumnCount))
+    this.modify(_.count.perField).setTo(Some(perFieldCount.generator(generator, fields: _*).perFieldCount))
   }
 
   /**
-   * Configures the task builder to generate records per column using an exponential distribution.
+   * Configures the task builder to generate records per field using an exponential distribution.
    *
-   * @param min           the minimum number of records per column
-   * @param max           the maximum number of records per column
+   * @param min           the minimum number of records per field
+   * @param max           the maximum number of records per field
    * @param rateParameter the rate parameter for the exponential distribution
-   * @param cols          the columns to apply the distribution to
+   * @param fields          the fields to apply the distribution to
    * @return the modified task builder
    */
-  @varargs def recordsPerColumnExponentialDistribution(min: Long, max: Long, rateParameter: Double, cols: String*): CountBuilder = {
+  @varargs def recordsPerFieldExponentialDistribution(min: Long, max: Long, rateParameter: Double, fields: String*): CountBuilder = {
     val generator = GeneratorBuilder().min(min).max(max).exponentialDistribution(rateParameter)
-    this.modify(_.count.perColumn).setTo(Some(perColCount.generator(generator, cols: _*).perColumnCount))
+    this.modify(_.count.perField).setTo(Some(perFieldCount.generator(generator, fields: _*).perFieldCount))
   }
 
   /**
-   * Generates a list of records per column using an exponential distribution.
+   * Generates a list of records per field using an exponential distribution.
    *
    * @param rateParameter the rate parameter for the exponential distribution
-   * @param cols          the columns to generate records for
+   * @param fields          the fields to generate records for
    * @return a [[CountBuilder]] that can be used to build the records
    */
-  @varargs def recordsPerColumnExponentialDistribution(rateParameter: Double, cols: String*): CountBuilder =
-    recordsPerColumnExponentialDistribution(0, 100, rateParameter, cols: _*)
+  @varargs def recordsPerFieldExponentialDistribution(rateParameter: Double, fields: String*): CountBuilder =
+    recordsPerFieldExponentialDistribution(0, 100, rateParameter, fields: _*)
 
-  private def perColCount: PerColumnCountBuilder = {
-    count.perColumn match {
-      case Some(value) => PerColumnCountBuilder(value)
-      case None => PerColumnCountBuilder()
+  private def perFieldCount: PerFieldCountBuilder = {
+    count.perField match {
+      case Some(value) => PerFieldCountBuilder(value)
+      case None => PerFieldCountBuilder()
     }
   }
 }
 
 /**
- * Define number of records to generate based on certain column values. This is used in situations where
- * you want to generate multiple records for a given set of column values to closer represent the real production
+ * Define number of records to generate based on certain field values. This is used in situations where
+ * you want to generate multiple records for a given set of field values to closer represent the real production
  * data setting. For example, you may have a data set containing bank transactions where you want to generate
  * multiple transactions per account.
  */
-case class PerColumnCountBuilder(perColumnCount: PerColumnCount = PerColumnCount()) {
+case class PerFieldCountBuilder(perFieldCount: PerFieldCount = PerFieldCount()) {
 
   /**
-   * Define the set of columns that should have multiple records generated for.
+   * Define the set of fields that should have multiple records generated for.
    *
-   * @param cols Column names
-   * @return PerColumnCountBuilder
+   * @param fieldNames Field names
+   * @return PerFieldCountBuilder
    */
-  @varargs def columns(cols: String*): PerColumnCountBuilder =
-    this.modify(_.perColumnCount.columnNames).setTo(cols.toList)
+  @varargs def fieldNames(fieldNames: String*): PerFieldCountBuilder =
+    this.modify(_.perFieldCount.fieldNames).setTo(fieldNames.toList)
 
   /**
-   * Number of records to generate per set of column values defined
+   * Number of records to generate per set of field values defined
    *
    * @param records Number of records
-   * @param cols    Column names
-   * @return PerColumnCountBuilder
+   * @param fields    Field names
+   * @return PerFieldCountBuilder
    */
-  @varargs def records(records: Long, cols: String*): PerColumnCountBuilder =
-    columns(cols: _*).modify(_.perColumnCount.count).setTo(Some(records))
+  @varargs def records(records: Long, fields: String*): PerFieldCountBuilder =
+    fieldNames(fields: _*).modify(_.perFieldCount.count).setTo(Some(records))
 
   /**
-   * Define a generator to determine the number of records to generate per set of column value defined
+   * Define a generator to determine the number of records to generate per set of field value defined
    *
    * @param generator Generator for number of records
-   * @param cols      Column names
-   * @return PerColumnCountBuilder
+   * @param fields      Field names
+   * @return PerFieldCountBuilder
    */
-  @varargs def generator(generator: GeneratorBuilder, cols: String*): PerColumnCountBuilder =
-    columns(cols: _*).modify(_.perColumnCount.generator).setTo(Some(generator.generator))
-}
-
-/**
- * Builds a new `Schema` instance with the provided initial state.
- *
- * @param schema the initial `Schema` instance to use, defaults to a new `Schema` instance
- */
-case class SchemaBuilder(schema: Schema = Schema()) {
-  def this() = this(Schema())
-
-  /**
-   * Adds a new field to the schema builder with the specified name and data type.
-   *
-   * @param name the name of the field to add
-   * @param type the data type of the field, defaulting to `StringType` if not provided
-   * @return the updated schema builder
-   */
-  def addField(name: String, `type`: DataType = StringType): SchemaBuilder =
-    addFields(FieldBuilder().name(name).`type`(`type`))
-
-  /**
-   * Adds the specified fields to the schema.
-   *
-   * @param fields The fields to add to the schema.
-   * @return The updated `SchemaBuilder` instance.
-   */
-  @varargs def addFields(fields: FieldBuilder*): SchemaBuilder =
-    this.modify(_.schema.fields).setTo(schema.fields match {
-      case Some(value) => Some(value ++ fields.map(_.field))
-      case None => Some(fields.map(_.field).toList)
-    })
+  @varargs def generator(generator: GeneratorBuilder, fields: String*): PerFieldCountBuilder =
+    fieldNames(fields: _*).modify(_.perFieldCount.options).setTo(generator.options)
 }
 
 /**
@@ -609,31 +567,13 @@ case class FieldBuilder(field: Field = Field()) {
     this.modify(_.field.`type`).setTo(Some(`type`.toString))
 
   /**
-   * Sets the schema for the current field builder.
-   *
-   * @param schema the schema to set for the field
-   * @return the current field builder instance
-   */
-  def schema(schema: SchemaBuilder): FieldBuilder =
-    this.modify(_.field.schema).setTo(Some(schema.schema))
-
-  /**
-   * Sets the schema for the current field.
-   *
-   * @param schema the schema to set for the field
-   * @return a new `FieldBuilder` instance with the schema set
-   */
-  def schema(schema: Schema): FieldBuilder =
-    this.modify(_.field.schema).setTo(Some(schema))
-
-  /**
    * Adds the specified fields to the schema of this `FieldBuilder`.
    *
    * @param fields the fields to add to the schema
    * @return a new `FieldBuilder` with the updated schema
    */
-  @varargs def schema(fields: FieldBuilder*): FieldBuilder =
-    this.modify(_.field.schema).setTo(Some(getSchema.addFields(fields: _*).schema))
+  @varargs def fields(fields: FieldBuilder*): FieldBuilder =
+    this.modify(_.field.fields).setTo(field.fields ++ fields.map(_.field))
 
   /**
    * Sets the field generator for the `TaskBuilder` instance, using the options from the provided `MetadataSourceBuilder`.
@@ -641,8 +581,8 @@ case class FieldBuilder(field: Field = Field()) {
    * @param metadataSourceBuilder the `MetadataSourceBuilder` instance to use for the field generator options
    * @return the updated `FieldBuilder` instance
    */
-  def schema(metadataSourceBuilder: MetadataSourceBuilder): FieldBuilder =
-    this.modify(_.field.generator).setTo(Some(getGenBuilder.options(metadataSourceBuilder.metadataSource.allOptions).generator))
+  def fields(metadataSourceBuilder: MetadataSourceBuilder): FieldBuilder =
+    this.modify(_.field.options).setTo(metadataSourceBuilder.metadataSource.allOptions)
 
   /**
    * Sets whether the field is nullable or not.
@@ -660,24 +600,7 @@ case class FieldBuilder(field: Field = Field()) {
    * @return the updated field builder
    */
   def generator(generator: GeneratorBuilder): FieldBuilder =
-    this.modify(_.field.generator).setTo(Some(generator.generator))
-
-  /**
-   * Sets the generator for the current field builder.
-   *
-   * @param generator the generator to use for the field
-   * @return the updated field builder
-   */
-  def generator(generator: Generator): FieldBuilder =
-    this.modify(_.field.generator).setTo(Some(generator))
-
-  /**
-   * Sets the field generator to a random generator.
-   *
-   * @return a new `FieldBuilder` instance with the field generator set to a random generator
-   */
-  def random: FieldBuilder =
-    this.modify(_.field.generator).setTo(Some(getGenBuilder.random.generator))
+    this.modify(_.field.options).setTo(generator.options)
 
   /**
    * Sets the SQL query to be used for this field.
@@ -686,7 +609,7 @@ case class FieldBuilder(field: Field = Field()) {
    * @return a new `FieldBuilder` instance with the SQL query set
    */
   def sql(sql: String): FieldBuilder =
-    this.modify(_.field.generator).setTo(Some(getGenBuilder.sql(sql).generator))
+    this.modify(_.field.options).setTo(getGenBuilder.sql(sql).options)
 
   /**
    * Sets the regular expression pattern to be used for the field generator.
@@ -695,7 +618,7 @@ case class FieldBuilder(field: Field = Field()) {
    * @return the updated `FieldBuilder` instance
    */
   def regex(regex: String): FieldBuilder =
-    this.modify(_.field.generator).setTo(Some(getGenBuilder.regex(regex).generator))
+    this.modify(_.field.options).setTo(getGenBuilder.regex(regex).options)
 
   /**
    * Builds a field that can take on one of the provided values.
@@ -704,7 +627,7 @@ case class FieldBuilder(field: Field = Field()) {
    * @return A FieldBuilder that has been modified to use the provided values.
    */
   @varargs def oneOf(values: Any*): FieldBuilder =
-    this.modify(_.field.generator).setTo(Some(getGenBuilder.oneOf(values: _*).generator))
+    this.modify(_.field.options).setTo(getGenBuilder.oneOf(values: _*).options)
       .modify(_.field.`type`)
       .setTo(
         values match {
@@ -724,7 +647,7 @@ case class FieldBuilder(field: Field = Field()) {
    * @return the updated FieldBuilder instance
    */
   def options(options: Map[String, Any]): FieldBuilder =
-    this.modify(_.field.generator).setTo(Some(getGenBuilder.options(options).generator))
+    this.modify(_.field.options).setTo(getGenBuilder.options(options).options)
 
   /**
    * Adds an option to the field generator.
@@ -733,7 +656,7 @@ case class FieldBuilder(field: Field = Field()) {
    * @return the updated `FieldBuilder` instance
    */
   def option(option: (String, Any)): FieldBuilder =
-    this.modify(_.field.generator).setTo(Some(getGenBuilder.option(option).generator))
+    this.modify(_.field.options).setTo(getGenBuilder.option(option).options)
 
   /**
    * Sets the seed for the field generator.
@@ -741,7 +664,7 @@ case class FieldBuilder(field: Field = Field()) {
    * @param seed the seed value to use for the field generator
    * @return the updated `FieldBuilder` instance
    */
-  def seed(seed: Long): FieldBuilder = this.modify(_.field.generator).setTo(Some(getGenBuilder.seed(seed).generator))
+  def seed(seed: Long): FieldBuilder = this.modify(_.field.options).setTo(getGenBuilder.seed(seed).options)
 
   /**
    * Enables or disables null values for the field.
@@ -750,7 +673,7 @@ case class FieldBuilder(field: Field = Field()) {
    * @return the updated `FieldBuilder` instance
    */
   def enableNull(enable: Boolean): FieldBuilder =
-    this.modify(_.field.generator).setTo(Some(getGenBuilder.enableNull(enable).generator))
+    this.modify(_.field.options).setTo(getGenBuilder.enableNull(enable).options)
 
   /**
    * Sets the null probability for the field generator.
@@ -759,7 +682,7 @@ case class FieldBuilder(field: Field = Field()) {
    * @return The updated `FieldBuilder` instance.
    */
   def nullProbability(probability: Double): FieldBuilder =
-    this.modify(_.field.generator).setTo(Some(getGenBuilder.nullProbability(probability).generator))
+    this.modify(_.field.options).setTo(getGenBuilder.nullProbability(probability).options)
 
   /**
    * Enables or disables edge cases for the field generator.
@@ -768,7 +691,7 @@ case class FieldBuilder(field: Field = Field()) {
    * @return the updated `FieldBuilder` instance
    */
   def enableEdgeCases(enable: Boolean): FieldBuilder =
-    this.modify(_.field.generator).setTo(Some(getGenBuilder.enableEdgeCases(enable).generator))
+    this.modify(_.field.options).setTo(getGenBuilder.enableEdgeCases(enable).options)
 
   /**
    * Sets the edge case probability for the field generator.
@@ -777,7 +700,7 @@ case class FieldBuilder(field: Field = Field()) {
    * @return The updated `FieldBuilder` instance.
    */
   def edgeCaseProbability(probability: Double): FieldBuilder =
-    this.modify(_.field.generator).setTo(Some(getGenBuilder.edgeCaseProbability(probability).generator))
+    this.modify(_.field.options).setTo(getGenBuilder.edgeCaseProbability(probability).options)
 
   /**
    * Creates a `FieldBuilder` with a static value generator.
@@ -786,7 +709,7 @@ case class FieldBuilder(field: Field = Field()) {
    * @return A `FieldBuilder` with the static value generator set.
    */
   def static(value: Any): FieldBuilder =
-    this.modify(_.field.generator).setTo(Some(getGenBuilder.static(value).generator))
+    this.modify(_.field.options).setTo(getGenBuilder.static(value).options)
 
   /**
    * Constructs a `FieldBuilder` with a static value.
@@ -803,7 +726,7 @@ case class FieldBuilder(field: Field = Field()) {
    * @return the updated `FieldBuilder` instance.
    */
   def unique(isUnique: Boolean): FieldBuilder =
-    this.modify(_.field.generator).setTo(Some(getGenBuilder.unique(isUnique).generator))
+    this.modify(_.field.options).setTo(getGenBuilder.unique(isUnique).options)
 
   /**
    * Sets the field generator to an array type with the specified element type.
@@ -812,7 +735,7 @@ case class FieldBuilder(field: Field = Field()) {
    * @return a new `FieldBuilder` instance with the array type set
    */
   def arrayType(`type`: String): FieldBuilder =
-    this.modify(_.field.generator).setTo(Some(getGenBuilder.arrayType(`type`).generator))
+    this.modify(_.field.options).setTo(getGenBuilder.arrayType(`type`).options)
 
   /**
    * Sets the faker expression for the field generator.
@@ -821,7 +744,7 @@ case class FieldBuilder(field: Field = Field()) {
    * @return the updated `FieldBuilder` instance
    */
   def expression(expr: String): FieldBuilder =
-    this.modify(_.field.generator).setTo(Some(getGenBuilder.expression(expr).generator))
+    this.modify(_.field.options).setTo(getGenBuilder.expression(expr).options)
 
   /**
    * Sets the field generator to use an average length generator with the specified length.
@@ -830,7 +753,7 @@ case class FieldBuilder(field: Field = Field()) {
    * @return the updated `FieldBuilder` instance
    */
   def avgLength(length: Int): FieldBuilder =
-    this.modify(_.field.generator).setTo(Some(getGenBuilder.avgLength(length).generator))
+    this.modify(_.field.options).setTo(getGenBuilder.avgLength(length).options)
 
   /**
    * Sets the minimum value for the field.
@@ -839,7 +762,7 @@ case class FieldBuilder(field: Field = Field()) {
    * @return The updated `FieldBuilder` instance.
    */
   def min(min: Any): FieldBuilder =
-    this.modify(_.field.generator).setTo(Some(getGenBuilder.min(min).generator))
+    this.modify(_.field.options).setTo(getGenBuilder.min(min).options)
 
   /**
    * Sets the minimum length of the field value.
@@ -848,7 +771,7 @@ case class FieldBuilder(field: Field = Field()) {
    * @return the updated `FieldBuilder` instance
    */
   def minLength(length: Int): FieldBuilder =
-    this.modify(_.field.generator).setTo(Some(getGenBuilder.minLength(length).generator))
+    this.modify(_.field.options).setTo(getGenBuilder.minLength(length).options)
 
   /**
    * Sets the minimum length for the array generated by this `FieldBuilder`.
@@ -857,7 +780,7 @@ case class FieldBuilder(field: Field = Field()) {
    * @return the updated `FieldBuilder` instance
    */
   def arrayMinLength(length: Int): FieldBuilder =
-    this.modify(_.field.generator).setTo(Some(getGenBuilder.arrayMinLength(length).generator))
+    this.modify(_.field.options).setTo(getGenBuilder.arrayMinLength(length).options)
 
   /**
    * Sets the maximum value for the field generator.
@@ -866,7 +789,7 @@ case class FieldBuilder(field: Field = Field()) {
    * @return The updated `FieldBuilder` instance.
    */
   def max(max: Any): FieldBuilder =
-    this.modify(_.field.generator).setTo(Some(getGenBuilder.max(max).generator))
+    this.modify(_.field.options).setTo(getGenBuilder.max(max).options)
 
   /**
    * Sets the maximum length of the field.
@@ -875,7 +798,7 @@ case class FieldBuilder(field: Field = Field()) {
    * @return the updated `FieldBuilder` instance
    */
   def maxLength(length: Int): FieldBuilder =
-    this.modify(_.field.generator).setTo(Some(getGenBuilder.maxLength(length).generator))
+    this.modify(_.field.options).setTo(getGenBuilder.maxLength(length).options)
 
   /**
    * Sets the maximum length of the array generated by the field's generator.
@@ -884,7 +807,7 @@ case class FieldBuilder(field: Field = Field()) {
    * @return the updated `FieldBuilder` instance
    */
   def arrayMaxLength(length: Int): FieldBuilder =
-    this.modify(_.field.generator).setTo(Some(getGenBuilder.arrayMaxLength(length).generator))
+    this.modify(_.field.options).setTo(getGenBuilder.arrayMaxLength(length).options)
 
   /**
    * Sets the numeric precision for the field.
@@ -893,7 +816,7 @@ case class FieldBuilder(field: Field = Field()) {
    * @return The updated `FieldBuilder` instance.
    */
   def numericPrecision(precision: Int): FieldBuilder =
-    this.modify(_.field.generator).setTo(Some(getGenBuilder.numericPrecision(precision).generator))
+    this.modify(_.field.options).setTo(getGenBuilder.numericPrecision(precision).options)
 
   /**
    * Sets the numeric scale for the field.
@@ -902,7 +825,7 @@ case class FieldBuilder(field: Field = Field()) {
    * @return the updated `FieldBuilder` instance
    */
   def numericScale(scale: Int): FieldBuilder =
-    this.modify(_.field.generator).setTo(Some(getGenBuilder.numericScale(scale).generator))
+    this.modify(_.field.options).setTo(getGenBuilder.numericScale(scale).options)
 
   /**
    * Sets the rounding for the field.
@@ -911,7 +834,7 @@ case class FieldBuilder(field: Field = Field()) {
    * @return the updated `FieldBuilder` instance
    */
   def round(round: Int): FieldBuilder =
-    this.modify(_.field.generator).setTo(Some(getGenBuilder.round(round).generator))
+    this.modify(_.field.options).setTo(getGenBuilder.round(round).options)
 
   /**
    * Sets whether the field should be omitted from the generated output.
@@ -920,7 +843,7 @@ case class FieldBuilder(field: Field = Field()) {
    * @return a new `FieldBuilder` instance with the updated omit setting.
    */
   def omit(omit: Boolean): FieldBuilder =
-    this.modify(_.field.generator).setTo(Some(getGenBuilder.omit(omit).generator))
+    this.modify(_.field.options).setTo(getGenBuilder.omit(omit).options)
 
   /**
    * Sets the primary key flag for the current field.
@@ -929,7 +852,7 @@ case class FieldBuilder(field: Field = Field()) {
    * @return The updated `FieldBuilder` instance.
    */
   def primaryKey(isPrimaryKey: Boolean): FieldBuilder =
-    this.modify(_.field.generator).setTo(Some(getGenBuilder.primaryKey(isPrimaryKey).generator))
+    this.modify(_.field.options).setTo(getGenBuilder.primaryKey(isPrimaryKey).options)
 
   /**
    * Sets the primary key position for the field being built.
@@ -938,7 +861,7 @@ case class FieldBuilder(field: Field = Field()) {
    * @return the updated FieldBuilder instance
    */
   def primaryKeyPosition(position: Int): FieldBuilder =
-    this.modify(_.field.generator).setTo(Some(getGenBuilder.primaryKeyPosition(position).generator))
+    this.modify(_.field.options).setTo(getGenBuilder.primaryKeyPosition(position).options)
 
   /**
    * Sets the clustering position for the field generator.
@@ -947,7 +870,7 @@ case class FieldBuilder(field: Field = Field()) {
    * @return the updated `FieldBuilder` instance
    */
   def clusteringPosition(position: Int): FieldBuilder =
-    this.modify(_.field.generator).setTo(Some(getGenBuilder.clusteringPosition(position).generator))
+    this.modify(_.field.options).setTo(getGenBuilder.clusteringPosition(position).options)
 
   /**
    * Sets the standard deviation of the field generator.
@@ -956,7 +879,7 @@ case class FieldBuilder(field: Field = Field()) {
    * @return the updated `FieldBuilder` instance
    */
   def standardDeviation(stddev: Double): FieldBuilder =
-    this.modify(_.field.generator).setTo(Some(getGenBuilder.standardDeviation(stddev).generator))
+    this.modify(_.field.options).setTo(getGenBuilder.standardDeviation(stddev).options)
 
   /**
    * Sets the mean value for the field generator.
@@ -965,48 +888,28 @@ case class FieldBuilder(field: Field = Field()) {
    * @return the updated `FieldBuilder` instance
    */
   def mean(mean: Double): FieldBuilder =
-    this.modify(_.field.generator).setTo(Some(getGenBuilder.mean(mean).generator))
+    this.modify(_.field.options).setTo(getGenBuilder.mean(mean).options)
 
   private def getGenBuilder: GeneratorBuilder = {
-    field.generator match {
-      case Some(gen) => GeneratorBuilder(gen)
-      case None => GeneratorBuilder()
-    }
-  }
-
-  private def getSchema: SchemaBuilder = {
-    field.schema match {
-      case Some(schema) => SchemaBuilder(schema)
-      case None => SchemaBuilder()
-    }
+    GeneratorBuilder(field.options)
   }
 }
 
 /**
  * Data generator contains all the metadata, related to either a field or count generation, required to create new data.
  */
-case class GeneratorBuilder(generator: Generator = Generator()) {
-  def this() = this(Generator())
+case class GeneratorBuilder(options: Map[String, Any] = Map()) {
+  def this() = this(Map())
 
   /**
-   * Create a random data generator. Depending on the data type, particular defaults are set for the metadata
-   *
-   * @return GeneratorBuilder GeneratorBuilder
-   * @see <a href="https://data.catering/setup/generator/data-generator/">Data generator</a> default details here
-   */
-  def random: GeneratorBuilder =
-    this.modify(_.generator.`type`).setTo(RANDOM_GENERATOR)
-
-  /**
-   * Create a SQL based generator. You can reference other columns and SQL functions to generate data. The output data
+   * Create a SQL based generator. You can reference other fields and SQL functions to generate data. The output data
    * type from the SQL expression should also match the data type defined otherwise a runtime error will be thrown
    *
    * @param sql SQL expression
    * @return GeneratorBuilder
    */
   def sql(sql: String): GeneratorBuilder =
-    this.modify(_.generator.`type`).setTo(SQL_GENERATOR)
-      .modify(_.generator.options)(_ ++ Map(SQL_GENERATOR -> sql))
+    this.modify(_.options)(_ ++ Map(SQL_GENERATOR -> sql))
 
   /**
    * Create a generator based on a particular regex
@@ -1015,8 +918,7 @@ case class GeneratorBuilder(generator: Generator = Generator()) {
    * @return GeneratorBuilder
    */
   def regex(regex: String): GeneratorBuilder =
-    this.modify(_.generator.`type`).setTo(REGEX_GENERATOR)
-      .modify(_.generator.options)(_ ++ Map(REGEX_GENERATOR -> regex))
+    this.modify(_.options)(_ ++ Map(REGEX_GENERATOR -> regex))
 
   /**
    * Create a generator that can only generate values from a set of values defined.
@@ -1024,8 +926,7 @@ case class GeneratorBuilder(generator: Generator = Generator()) {
    * @param values Set of valid values
    * @return GeneratorBuilder
    */
-  @varargs def oneOf(values: Any*): GeneratorBuilder = this.modify(_.generator.`type`).setTo(ONE_OF_GENERATOR)
-    .modify(_.generator.options)(_ ++ Map(ONE_OF_GENERATOR -> values))
+  @varargs def oneOf(values: Any*): GeneratorBuilder = this.modify(_.options)(_ ++ Map(ONE_OF_GENERATOR -> values))
 
   /**
    * Define metadata map for your generator. Add/overwrites existing metadata
@@ -1034,7 +935,7 @@ case class GeneratorBuilder(generator: Generator = Generator()) {
    * @return GeneratorBuilder
    */
   def options(options: Map[String, Any]): GeneratorBuilder =
-    this.modify(_.generator.options)(_ ++ options)
+    this.modify(_.options)(_ ++ options)
 
   /**
    * Wrapper for Java Map
@@ -1052,7 +953,7 @@ case class GeneratorBuilder(generator: Generator = Generator()) {
    * @return GeneratorBuilder
    */
   def option(option: (String, Any)): GeneratorBuilder =
-    this.modify(_.generator.options)(_ ++ Map(option))
+    this.modify(_.options)(_ ++ Map(option))
 
   /**
    * Seed to use for random generator. If you want to generate a consistent set of values, use this method
@@ -1061,7 +962,7 @@ case class GeneratorBuilder(generator: Generator = Generator()) {
    * @return GeneratorBuilder
    */
   def seed(seed: Long): GeneratorBuilder =
-    this.modify(_.generator.options)(_ ++ Map(RANDOM_SEED -> seed.toString))
+    this.modify(_.options)(_ ++ Map(RANDOM_SEED -> seed.toString))
 
   /**
    * Enable/disable null values to be generated for this field
@@ -1070,7 +971,7 @@ case class GeneratorBuilder(generator: Generator = Generator()) {
    * @return GeneratorBuilder
    */
   def enableNull(enable: Boolean): GeneratorBuilder =
-    this.modify(_.generator.options)(_ ++ Map(ENABLED_NULL -> enable.toString))
+    this.modify(_.options)(_ ++ Map(ENABLED_NULL -> enable.toString))
 
   /**
    * If [[enableNull]] is enabled, the generator will generate null values with the probability defined.
@@ -1080,7 +981,7 @@ case class GeneratorBuilder(generator: Generator = Generator()) {
    * @return GeneratorBuilder
    */
   def nullProbability(probability: Double): GeneratorBuilder =
-    this.modify(_.generator.options)(_ ++ Map(PROBABILITY_OF_NULL -> probability.toString))
+    this.modify(_.options)(_ ++ Map(PROBABILITY_OF_NULL -> probability.toString))
 
   /**
    * Enable/disable edge case values to be generated. The edge cases are based on the data type defined.
@@ -1090,7 +991,7 @@ case class GeneratorBuilder(generator: Generator = Generator()) {
    * @see <a href="https://data.catering/setup/generator/data-generator/">Generator</a> details here
    */
   def enableEdgeCases(enable: Boolean): GeneratorBuilder =
-    this.modify(_.generator.options)(_ ++ Map(ENABLED_EDGE_CASE -> enable.toString))
+    this.modify(_.options)(_ ++ Map(ENABLED_EDGE_CASE -> enable.toString))
 
 
   /**
@@ -1101,7 +1002,7 @@ case class GeneratorBuilder(generator: Generator = Generator()) {
    * @return GeneratorBuilder
    */
   def edgeCaseProbability(probability: Double): GeneratorBuilder =
-    this.modify(_.generator.options)(_ ++ Map(PROBABILITY_OF_EDGE_CASE -> probability.toString))
+    this.modify(_.options)(_ ++ Map(PROBABILITY_OF_EDGE_CASE -> probability.toString))
 
   /**
    * Generator will always give back the static value, ignoring all other metadata defined
@@ -1110,7 +1011,7 @@ case class GeneratorBuilder(generator: Generator = Generator()) {
    * @return GeneratorBuilder
    */
   def static(value: Any): GeneratorBuilder =
-    this.modify(_.generator.options)(_ ++ Map(STATIC -> value.toString))
+    this.modify(_.options)(_ ++ Map(STATIC -> value.toString))
 
   /**
    * Wrapper for Java given `static` is a keyword
@@ -1130,7 +1031,7 @@ case class GeneratorBuilder(generator: Generator = Generator()) {
    * @return GeneratorBuilder
    */
   def unique(isUnique: Boolean): GeneratorBuilder =
-    this.modify(_.generator.options)(_ ++ Map(IS_UNIQUE -> isUnique.toString))
+    this.modify(_.options)(_ ++ Map(IS_UNIQUE -> isUnique.toString))
 
   /**
    * If data type is array, define the inner data type of the array
@@ -1139,7 +1040,7 @@ case class GeneratorBuilder(generator: Generator = Generator()) {
    * @return GeneratorBuilder
    */
   def arrayType(`type`: String): GeneratorBuilder =
-    this.modify(_.generator.options)(_ ++ Map(ARRAY_TYPE -> `type`))
+    this.modify(_.options)(_ ++ Map(ARRAY_TYPE -> `type`))
 
   /**
    * Use a DataFaker expression to generate data. If you want to know what is possible to use as an expression, follow
@@ -1150,7 +1051,7 @@ case class GeneratorBuilder(generator: Generator = Generator()) {
    * @see <a href="https://data.catering/setup/generator/data-generator/#string">Expression</a> details
    */
   def expression(expr: String): GeneratorBuilder =
-    this.modify(_.generator.options)(_ ++ Map(EXPRESSION -> expr))
+    this.modify(_.options)(_ ++ Map(EXPRESSION -> expr))
 
   /**
    * Average length of data generated. Length is specifically used for String data type and is ignored for other data types
@@ -1159,7 +1060,7 @@ case class GeneratorBuilder(generator: Generator = Generator()) {
    * @return GeneratorBuilder
    */
   def avgLength(length: Int): GeneratorBuilder =
-    this.modify(_.generator.options)(_ ++ Map(AVERAGE_LENGTH -> length.toString))
+    this.modify(_.options)(_ ++ Map(AVERAGE_LENGTH -> length.toString))
 
   /**
    * Minimum value to be generated. This can be used for any data type except for Struct and Array.
@@ -1168,7 +1069,7 @@ case class GeneratorBuilder(generator: Generator = Generator()) {
    * @return GeneratorBuilder
    */
   def min(min: Any): GeneratorBuilder =
-    this.modify(_.generator.options)(_ ++ Map(MINIMUM -> min.toString))
+    this.modify(_.options)(_ ++ Map(MINIMUM -> min.toString))
 
   /**
    * Minimum length of data generated. Length is specifically used for String data type and is ignored for other data types
@@ -1177,7 +1078,7 @@ case class GeneratorBuilder(generator: Generator = Generator()) {
    * @return GeneratorBuilder
    */
   def minLength(length: Int): GeneratorBuilder =
-    this.modify(_.generator.options)(_ ++ Map(MINIMUM_LENGTH -> length.toString))
+    this.modify(_.options)(_ ++ Map(MINIMUM_LENGTH -> length.toString))
 
   /**
    * Minimum length of array generated. Only used when data type is Array
@@ -1186,17 +1087,17 @@ case class GeneratorBuilder(generator: Generator = Generator()) {
    * @return GeneratorBuilder
    */
   def arrayMinLength(length: Int): GeneratorBuilder =
-    this.modify(_.generator.options)(_ ++ Map(ARRAY_MINIMUM_LENGTH -> length.toString))
+    this.modify(_.options)(_ ++ Map(ARRAY_MINIMUM_LENGTH -> length.toString))
 
   /**
    * Maximum value to be generated. This can be used for any data type except for Struct and Array. Can be ignored in
-   * scenario where database column is auto increment where values generated start from the max value.
+   * scenario where database field is auto increment where values generated start from the max value.
    *
    * @param max Maximum value
    * @return GeneratorBuilder
    */
   def max(max: Any): GeneratorBuilder =
-    this.modify(_.generator.options)(_ ++ Map(MAXIMUM -> max.toString))
+    this.modify(_.options)(_ ++ Map(MAXIMUM -> max.toString))
 
   /**
    * Maximum length of data generated. Length is specifically used for String data type and is ignored for other data types
@@ -1205,7 +1106,7 @@ case class GeneratorBuilder(generator: Generator = Generator()) {
    * @return GeneratorBuilder
    */
   def maxLength(length: Int): GeneratorBuilder =
-    this.modify(_.generator.options)(_ ++ Map(MAXIMUM_LENGTH -> length.toString))
+    this.modify(_.options)(_ ++ Map(MAXIMUM_LENGTH -> length.toString))
 
   /**
    * Maximum length of array generated. Only used when data type is Array
@@ -1214,7 +1115,7 @@ case class GeneratorBuilder(generator: Generator = Generator()) {
    * @return GeneratorBuilder
    */
   def arrayMaxLength(length: Int): GeneratorBuilder =
-    this.modify(_.generator.options)(_ ++ Map(ARRAY_MAXIMUM_LENGTH -> length.toString))
+    this.modify(_.options)(_ ++ Map(ARRAY_MAXIMUM_LENGTH -> length.toString))
 
   /**
    * Numeric precision used for Decimal data type
@@ -1223,7 +1124,7 @@ case class GeneratorBuilder(generator: Generator = Generator()) {
    * @return GeneratorBuilder
    */
   def numericPrecision(precision: Int): GeneratorBuilder =
-    this.modify(_.generator.options)(_ ++ Map(NUMERIC_PRECISION -> precision.toString))
+    this.modify(_.options)(_ ++ Map(NUMERIC_PRECISION -> precision.toString))
 
   /**
    * Numeric scale for Decimal data type
@@ -1232,7 +1133,7 @@ case class GeneratorBuilder(generator: Generator = Generator()) {
    * @return GeneratorBuilder
    */
   def numericScale(scale: Int): GeneratorBuilder =
-    this.modify(_.generator.options)(_ ++ Map(NUMERIC_SCALE -> scale.toString))
+    this.modify(_.options)(_ ++ Map(NUMERIC_SCALE -> scale.toString))
 
   /**
    * Rounding to decimal places for numeric data types
@@ -1241,17 +1142,17 @@ case class GeneratorBuilder(generator: Generator = Generator()) {
    * @return GeneratorBuilder
    */
   def round(round: Int): GeneratorBuilder =
-    this.modify(_.generator.options)(_ ++ Map(ROUND -> round.toString))
+    this.modify(_.options)(_ ++ Map(ROUND -> round.toString))
 
   /**
    * Enable/disable including the value in the final output to the data source. Allows you to define intermediate values
-   * that can be used to generate other columns
+   * that can be used to generate other fields
    *
    * @param omit Enable/disable the value being in output to data source
    * @return GeneratorBuilder
    */
   def omit(omit: Boolean): GeneratorBuilder =
-    this.modify(_.generator.options)(_ ++ Map(OMIT -> omit.toString))
+    this.modify(_.options)(_ ++ Map(OMIT -> omit.toString))
 
   /**
    * Field is a primary key of the data source.
@@ -1260,7 +1161,7 @@ case class GeneratorBuilder(generator: Generator = Generator()) {
    * @return GeneratorBuilder
    */
   def primaryKey(isPrimaryKey: Boolean): GeneratorBuilder =
-    this.modify(_.generator.options)(_ ++ Map(IS_PRIMARY_KEY -> isPrimaryKey.toString))
+    this.modify(_.options)(_ ++ Map(IS_PRIMARY_KEY -> isPrimaryKey.toString))
 
   /**
    * If [[primaryKey]] is enabled, this defines the position of the primary key. Starts at 1.
@@ -1269,7 +1170,7 @@ case class GeneratorBuilder(generator: Generator = Generator()) {
    * @return GeneratorBuilder
    */
   def primaryKeyPosition(position: Int): GeneratorBuilder =
-    this.modify(_.generator.options)(_ ++ Map(PRIMARY_KEY_POSITION -> position.toString))
+    this.modify(_.options)(_ ++ Map(PRIMARY_KEY_POSITION -> position.toString))
 
   /**
    * If the data source supports clustering order (like Cassandra), this represents the order of the clustering key.
@@ -1279,7 +1180,7 @@ case class GeneratorBuilder(generator: Generator = Generator()) {
    * @return GeneratorBuilder
    */
   def clusteringPosition(position: Int): GeneratorBuilder =
-    this.modify(_.generator.options)(_ ++ Map(CLUSTERING_POSITION -> position.toString))
+    this.modify(_.options)(_ ++ Map(CLUSTERING_POSITION -> position.toString))
 
   /**
    * The standard deviation of the data if it follows a normal distribution.
@@ -1288,7 +1189,7 @@ case class GeneratorBuilder(generator: Generator = Generator()) {
    * @return GeneratorBuilder
    */
   def standardDeviation(stddev: Double): GeneratorBuilder =
-    this.modify(_.generator.options)(_ ++ Map(STANDARD_DEVIATION -> stddev.toString))
+    this.modify(_.options)(_ ++ Map(STANDARD_DEVIATION -> stddev.toString))
 
   /**
    * The mean of the data if it follows a normal distribution.
@@ -1297,7 +1198,7 @@ case class GeneratorBuilder(generator: Generator = Generator()) {
    * @return GeneratorBuilder
    */
   def mean(mean: Double): GeneratorBuilder =
-    this.modify(_.generator.options)(_ ++ Map(MEAN -> mean.toString))
+    this.modify(_.options)(_ ++ Map(MEAN -> mean.toString))
 
   /**
    * The distribution of the data is exponential.
@@ -1306,7 +1207,7 @@ case class GeneratorBuilder(generator: Generator = Generator()) {
    * @return GeneratorBuilder
    */
   def exponentialDistribution(rate: Double): GeneratorBuilder =
-    this.modify(_.generator.options)(_ ++ Map(DISTRIBUTION -> DISTRIBUTION_EXPONENTIAL, DISTRIBUTION_RATE_PARAMETER -> rate.toString))
+    this.modify(_.options)(_ ++ Map(DISTRIBUTION -> DISTRIBUTION_EXPONENTIAL, DISTRIBUTION_RATE_PARAMETER -> rate.toString))
 
   /**
    * The distribution of the data is normal.
@@ -1314,5 +1215,5 @@ case class GeneratorBuilder(generator: Generator = Generator()) {
    * @return GeneratorBuilder
    */
   def normalDistribution(): GeneratorBuilder =
-    this.modify(_.generator.options)(_ ++ Map(DISTRIBUTION -> DISTRIBUTION_NORMAL))
+    this.modify(_.options)(_ ++ Map(DISTRIBUTION -> DISTRIBUTION_NORMAL))
 }

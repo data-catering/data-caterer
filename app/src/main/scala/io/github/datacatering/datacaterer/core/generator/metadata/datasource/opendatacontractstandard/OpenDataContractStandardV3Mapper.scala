@@ -12,7 +12,7 @@ object OpenDataContractStandardV3Mapper {
 
   private val LOGGER = Logger.getLogger(getClass.getName)
 
-  implicit val columnMetadataEncoder: Encoder[FieldMetadata] = Encoders.kryo[FieldMetadata]
+  implicit val fieldMetadataEncoder: Encoder[FieldMetadata] = Encoders.kryo[FieldMetadata]
 
   def toSubDataSourceMetadata(
                                value: OpenDataContractStandardV3,
@@ -75,7 +75,7 @@ object OpenDataContractStandardV3Mapper {
         new StructType(innerType)
       case LogicalTypeEnum.boolean => BooleanType
       case x =>
-        LOGGER.warn(s"Unable to find corresponding known data type for column in ODCS file, defaulting to string, property=$element, data-type=$x")
+        LOGGER.warn(s"Unable to find corresponding known data type for field in ODCS file, defaulting to string, property=$element, data-type=$x")
         StringType
     }
   }

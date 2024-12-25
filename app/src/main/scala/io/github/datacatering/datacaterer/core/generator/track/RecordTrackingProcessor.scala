@@ -17,7 +17,7 @@ class RecordTrackingProcessor(recordTrackingFolderPath: String) {
     if (df.isEmpty || df.schema.isEmpty) {
       LOGGER.debug("Unable to save records for record tracking due to 0 records found or empty schema")
     } else {
-      getColumnsToTrack(df, step).write
+      getFieldsToTrack(df, step).write
         .format(RECORD_TRACKING_VALIDATION_FORMAT)
         .mode(SaveMode.Append)
         .option(PATH, subDataSourcePath)
@@ -25,9 +25,9 @@ class RecordTrackingProcessor(recordTrackingFolderPath: String) {
     }
   }
 
-  def getColumnsToTrack(df: DataFrame, step: Step): DataFrame = {
-    val primaryKeys = step.schema.fields.get
-      .filter(f => f.generator.get.options.contains(IS_PRIMARY_KEY) && f.generator.get.options(IS_PRIMARY_KEY).toString == "true")
+  def getFieldsToTrack(df: DataFrame, step: Step): DataFrame = {
+    val primaryKeys = step.fields
+      .filter(f => f.options.contains(IS_PRIMARY_KEY) && f.options(IS_PRIMARY_KEY).toString == "true")
       .map(_.name)
     LOGGER.debug(s"Found primary keys for data, primary-keys=${primaryKeys.mkString(",")}")
     if (primaryKeys.isEmpty) df else df.selectExpr(primaryKeys: _*)

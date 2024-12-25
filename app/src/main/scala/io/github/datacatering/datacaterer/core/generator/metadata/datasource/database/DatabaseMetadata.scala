@@ -1,6 +1,6 @@
 package io.github.datacatering.datacaterer.core.generator.metadata.datasource.database
 
-import io.github.datacatering.datacaterer.api.model.Constants.{DEFAULT_VALUE, FIELD_DATA_TYPE, IS_NULLABLE, IS_PRIMARY_KEY, IS_UNIQUE, JDBC, JDBC_QUERY, JDBC_TABLE, MAXIMUM_LENGTH, NUMERIC_PRECISION, NUMERIC_SCALE, PRIMARY_KEY_POSITION, SOURCE_COLUMN_DATA_TYPE}
+import io.github.datacatering.datacaterer.api.model.Constants.{DEFAULT_VALUE, FIELD_DATA_TYPE, IS_NULLABLE, IS_PRIMARY_KEY, IS_UNIQUE, JDBC, JDBC_QUERY, JDBC_TABLE, MAXIMUM_LENGTH, NUMERIC_PRECISION, NUMERIC_SCALE, PRIMARY_KEY_POSITION, SOURCE_FIELD_DATA_TYPE}
 import io.github.datacatering.datacaterer.api.model.{ForeignKeyRelation, StringType, StructType}
 import io.github.datacatering.datacaterer.core.generator.metadata.datasource.{DataSourceMetadata, SubDataSourceMetadata}
 import io.github.datacatering.datacaterer.core.model.Constants.{METADATA_FILTER_OUT_SCHEMA, METADATA_FILTER_OUT_TABLE}
@@ -77,26 +77,26 @@ trait JdbcMetadata extends DatabaseMetadata {
       ForeignKeyRelationship(
         new ForeignKeyRelation(name,
           toStepName(Map(JDBC_TABLE -> r.getAs[String]("foreign_dbtable"))),
-          r.getAs[String]("foreign_column")
+          r.getAs[String]("foreign_field")
         ),
         new ForeignKeyRelation(name,
           toStepName(Map(JDBC_TABLE -> r.getAs[String]("dbtable"))),
-          r.getAs[String]("column")
+          r.getAs[String]("field")
         )
       )
     )
   }
 
-  override def getAdditionalColumnMetadata(implicit sparkSession: SparkSession): Dataset[FieldMetadata] = {
-    val filteredTableConstraintData: DataFrame = runQuery(sparkSession, additionalColumnMetadataQuery)
+  override def getAdditionalFieldMetadata(implicit sparkSession: SparkSession): Dataset[FieldMetadata] = {
+    val filteredTableConstraintData: DataFrame = runQuery(sparkSession, additionalFieldMetadataQuery)
 
     filteredTableConstraintData.map(r => {
       val isPrimaryKey = if (r.getAs[String]("is_primary_key").equalsIgnoreCase("yes")) "true" else "false"
       val isUnique = if (r.getAs[String]("is_unique").equalsIgnoreCase("yes")) "true" else "false"
       val isNullable = if (r.getAs[String]("is_nullable").equalsIgnoreCase("yes")) "true" else "false"
 
-      val columnMetadata = Map(
-        SOURCE_COLUMN_DATA_TYPE -> r.getAs[String]("source_data_type"),
+      val fieldMetadata = Map(
+        SOURCE_FIELD_DATA_TYPE -> r.getAs[String]("source_data_type"),
         IS_PRIMARY_KEY -> isPrimaryKey,
         PRIMARY_KEY_POSITION -> r.getAs[String]("primary_key_position"),
         IS_UNIQUE -> isUnique,
@@ -104,44 +104,44 @@ trait JdbcMetadata extends DatabaseMetadata {
         MAXIMUM_LENGTH -> r.getAs[String]("character_maximum_length"),
         NUMERIC_PRECISION -> r.getAs[String]("numeric_precision"),
         NUMERIC_SCALE -> r.getAs[String]("numeric_scale"),
-        DEFAULT_VALUE -> r.getAs[String]("column_default")
+        DEFAULT_VALUE -> r.getAs[String]("field_default")
       ).filter(m => m._2 != null) ++ dataSourceGenerationMetadata(r)
 
       val dataSourceReadOptions = Map(JDBC_TABLE -> s"${r.getAs[String]("schema")}.${r.getAs("table")}")
-      FieldMetadata(r.getAs("column"), dataSourceReadOptions, columnMetadata)
+      FieldMetadata(r.getAs("field"), dataSourceReadOptions, fieldMetadata)
     })
   }
 
   /*
-    Foreign key query requires the following return columns names to be returned:
+    Foreign key query requires the following return fields names to be returned:
     - schema
     - table
     - dbtable
-    - column
+    - field
     - foreign_dbtable
-    - foreign_column
+    - foreign_field
      */
   def foreignKeyQuery: String
 
   /*
-  Additional column metadata query requires the following return columns names to be returned:
+  Additional field metadata query requires the following return fields names to be returned:
   - schema
   - table
-  - column
+  - field
   - source_data_type
   - is_nullable
   - character_maximum_length
   - numeric_precision
   - numeric_scale
-  - column_default
+  - field_default
   - is_unique
   - is_primary_key
   - primary_key_position
    */
-  def additionalColumnMetadataQuery: String
+  def additionalFieldMetadataQuery: String
 
   /*
-  Given metadata from source database, further metadata could be extracted based on the generation of the columns data
+  Given metadata from source database, further metadata could be extracted based on the generation of the fields data
   i.e. auto_increment means we can omit generating the values ourselves, so we add OMIT -> true into the metadata
    */
   def dataSourceGenerationMetadata(row: Row): Map[String, String]

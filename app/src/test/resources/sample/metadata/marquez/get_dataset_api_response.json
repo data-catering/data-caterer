@@ -41,7 +41,7 @@
   "lastLifecycleState": "",
   "description": null,
   "currentVersion": "5d81c700-d0ae-45dc-b3a9-e7db35f75e63",
-  "columnLineage": null,
+  "fieldLineage": null,
   "facets": {
     "documentation": {
       "_producer": "https://github.com/MarquezProject/marquez/blob/main/docker/metadata.json",

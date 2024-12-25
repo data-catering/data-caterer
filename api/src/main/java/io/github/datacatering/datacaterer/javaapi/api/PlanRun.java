@@ -2,17 +2,16 @@ package io.github.datacatering.datacaterer.javaapi.api;
 
 
 import io.github.datacatering.datacaterer.api.BasePlanRun;
-import io.github.datacatering.datacaterer.api.ColumnValidationBuilder;
 import io.github.datacatering.datacaterer.api.CombinationPreFilterBuilder;
 import io.github.datacatering.datacaterer.api.CountBuilder;
 import io.github.datacatering.datacaterer.api.DataCatererConfigurationBuilder;
 import io.github.datacatering.datacaterer.api.DataSourceValidationBuilder;
 import io.github.datacatering.datacaterer.api.FieldBuilder;
+import io.github.datacatering.datacaterer.api.FieldValidationBuilder;
 import io.github.datacatering.datacaterer.api.GeneratorBuilder;
 import io.github.datacatering.datacaterer.api.MetadataSourceBuilder;
 import io.github.datacatering.datacaterer.api.PlanBuilder;
 import io.github.datacatering.datacaterer.api.PreFilterBuilder;
-import io.github.datacatering.datacaterer.api.SchemaBuilder;
 import io.github.datacatering.datacaterer.api.StepBuilder;
 import io.github.datacatering.datacaterer.api.TaskBuilder;
 import io.github.datacatering.datacaterer.api.TaskSummaryBuilder;
@@ -99,15 +98,6 @@ public abstract class PlanRun {
     }
 
     /**
-     * Creates a SchemaBuilder instance.
-     *
-     * @return A SchemaBuilder instance.
-     */
-    public SchemaBuilder schema() {
-        return new SchemaBuilder();
-    }
-
-    /**
      * Creates a FieldBuilder instance.
      *
      * @return A FieldBuilder instance.
@@ -172,13 +162,13 @@ public abstract class PlanRun {
     }
 
     /**
-     * Creates a ColumnValidationBuilder instance for the specified column.
+     * Creates a FieldValidationBuilder instance for the specified field.
      *
-     * @param column The name of the column.
-     * @return A ColumnValidationBuilder instance for the specified column.
+     * @param field The name of the field.
+     * @return A FieldValidationBuilder instance for the specified field.
      */
-    public ColumnValidationBuilder columnPreFilter(String column) {
-        return new ValidationBuilder().col(column);
+    public FieldValidationBuilder fieldPreFilter(String field) {
+        return new ValidationBuilder().field(field);
     }
 
     /**
@@ -209,39 +199,39 @@ public abstract class PlanRun {
     }
 
     /**
-     * Creates a ForeignKeyRelation instance with the provided data source, step, and column.
+     * Creates a ForeignKeyRelation instance with the provided data source, step, and field.
      *
      * @param dataSource The name of the data source.
      * @param step       The step associated with the ForeignKeyRelation.
-     * @param column     The column for the ForeignKeyRelation.
+     * @param field      The field for the ForeignKeyRelation.
      * @return A ForeignKeyRelation instance.
      */
-    public ForeignKeyRelation foreignField(String dataSource, String step, String column) {
-        return new ForeignKeyRelation(dataSource, step, column);
+    public ForeignKeyRelation foreignField(String dataSource, String step, String field) {
+        return new ForeignKeyRelation(dataSource, step, field);
     }
 
     /**
-     * Creates a ForeignKeyRelation instance with the provided data source, step, and columns.
+     * Creates a ForeignKeyRelation instance with the provided data source, step, and fields.
      *
      * @param dataSource The name of the data source.
      * @param step       The step associated with the ForeignKeyRelation.
-     * @param columns    The list of columns for the ForeignKeyRelation.
+     * @param fields     The list of fields for the ForeignKeyRelation.
      * @return A ForeignKeyRelation instance.
      */
-    public ForeignKeyRelation foreignField(String dataSource, String step, List<String> columns) {
-        return new ForeignKeyRelation(dataSource, step, toScalaList(columns));
+    public ForeignKeyRelation foreignField(String dataSource, String step, List<String> fields) {
+        return new ForeignKeyRelation(dataSource, step, toScalaList(fields));
     }
 
     /**
-     * Creates a ForeignKeyRelation instance with the provided ConnectionTaskBuilder, step, and columns.
+     * Creates a ForeignKeyRelation instance with the provided ConnectionTaskBuilder, step, and fields.
      *
      * @param connectionTaskBuilder The ConnectionTaskBuilder instance representing the task.
      * @param step                  The step associated with the ForeignKeyRelation.
-     * @param columns               The list of columns for the ForeignKeyRelation.
+     * @param fields                The list of fields for the ForeignKeyRelation.
      * @return A ForeignKeyRelation instance.
      */
-    public ForeignKeyRelation foreignField(ConnectionTaskBuilder<?> connectionTaskBuilder, String step, List<String> columns) {
-        return new ForeignKeyRelation(connectionTaskBuilder.connectionConfigWithTaskBuilder().dataSourceName(), step, toScalaList(columns));
+    public ForeignKeyRelation foreignField(ConnectionTaskBuilder<?> connectionTaskBuilder, String step, List<String> fields) {
+        return new ForeignKeyRelation(connectionTaskBuilder.connectionConfigWithTaskBuilder().dataSourceName(), step, toScalaList(fields));
     }
 
     /**

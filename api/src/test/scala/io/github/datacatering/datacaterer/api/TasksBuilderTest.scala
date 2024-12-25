@@ -1,6 +1,6 @@
 package io.github.datacatering.datacaterer.api
 
-import io.github.datacatering.datacaterer.api.model.{ArrayType, Count, DateType, Field, Generator, IntegerType, StringType}
+import io.github.datacatering.datacaterer.api.model.{ArrayType, Count, DateType, Field, IntegerType, StringType}
 import org.junit.runner.RunWith
 import org.scalatest.funsuite.AnyFunSuite
 import org.scalatestplus.junit.JUnitRunner
@@ -25,7 +25,7 @@ class TasksBuilderTest extends AnyFunSuite {
       .name("my step")
       .`type`("csv")
       .enabled(false)
-      .schema(SchemaBuilder())
+      .fields()
       .count(CountBuilder())
       .option("dbtable" -> "account.history")
       .options(Map("stringtype" -> "undefined"))
@@ -34,7 +34,7 @@ class TasksBuilderTest extends AnyFunSuite {
     assertResult("my step")(result.name)
     assertResult("csv")(result.`type`)
     assert(!result.enabled)
-    assert(result.schema.fields.isEmpty)
+    assert(result.fields.isEmpty)
     assertResult(Count())(result.count)
     assert(result.options == Map(
       "dbtable" -> "account.history",
@@ -46,95 +46,77 @@ class TasksBuilderTest extends AnyFunSuite {
     val result = CountBuilder().records(20).count
 
     assert(result.records.contains(20))
-    assert(result.perColumn.isEmpty)
-    assert(result.generator.isEmpty)
+    assert(result.perField.isEmpty)
+    assert(result.options.isEmpty)
   }
 
-  test("Can create per column count") {
+  test("Can create per field count") {
     val result = CountBuilder()
-      .perColumn(PerColumnCountBuilder()
+      .perField(PerFieldCountBuilder()
         .records(20, "account_id")
       )
       .count
 
     assert(result.records.contains(1000))
-    assert(result.perColumn.isDefined)
-    assert(result.perColumn.get.count.contains(20))
-    assertResult(List("account_id"))(result.perColumn.get.columnNames)
-    assert(result.perColumn.get.generator.isEmpty)
-    assert(result.generator.isEmpty)
+    assert(result.perField.isDefined)
+    assert(result.perField.get.count.contains(20))
+    assertResult(List("account_id"))(result.perField.get.fieldNames)
+    assert(result.perField.get.options.isEmpty)
+    assert(result.options.isEmpty)
   }
 
-  test("Can create records per column from count builder") {
+  test("Can create records per field from count builder") {
     val result = CountBuilder()
-      .recordsPerColumn(20, "account_id")
+      .recordsPerField(20, "account_id")
       .count
 
     assert(result.records.contains(1000))
-    assert(result.perColumn.isDefined)
-    assert(result.perColumn.get.count.contains(20))
-    assertResult(List("account_id"))(result.perColumn.get.columnNames)
-    assert(result.perColumn.get.generator.isEmpty)
-    assert(result.generator.isEmpty)
+    assert(result.perField.isDefined)
+    assert(result.perField.get.count.contains(20))
+    assertResult(List("account_id"))(result.perField.get.fieldNames)
+    assert(result.perField.get.options.isEmpty)
+    assert(result.options.isEmpty)
   }
 
-  test("Can create generated records per column from count builder") {
+  test("Can create generated records per field from count builder") {
     val result = CountBuilder()
-      .recordsPerColumnGenerator(GeneratorBuilder(), "account_id")
+      .recordsPerFieldGenerator(GeneratorBuilder(), "account_id")
       .count
 
     assert(result.records.contains(1000))
-    assert(result.perColumn.isDefined)
-    assert(result.perColumn.get.count.contains(10))
-    assertResult(List("account_id"))(result.perColumn.get.columnNames)
-    assert(result.perColumn.get.generator.isDefined)
-    assert(result.generator.isEmpty)
+    assert(result.perField.isDefined)
+    assert(result.perField.get.count.contains(10))
+    assertResult(List("account_id"))(result.perField.get.fieldNames)
+    assert(result.perField.get.options.isEmpty)
+    assert(result.options.isEmpty)
   }
 
-  test("Can create generated records per column with total records from count builder") {
+  test("Can create generated records per field with total records from count builder") {
     val result = CountBuilder()
-      .recordsPerColumnGenerator(100, GeneratorBuilder(), "account_id")
+      .recordsPerFieldGenerator(100, GeneratorBuilder(), "account_id")
       .count
 
     assert(result.records.contains(100))
-    assert(result.perColumn.isDefined)
-    assert(result.perColumn.get.count.contains(10))
-    assertResult(List("account_id"))(result.perColumn.get.columnNames)
-    assert(result.perColumn.get.generator.isDefined)
-    assert(result.generator.isEmpty)
+    assert(result.perField.isDefined)
+    assert(result.perField.get.count.contains(10))
+    assertResult(List("account_id"))(result.perField.get.fieldNames)
+    assert(result.perField.get.options.isEmpty)
+    assert(result.options.isEmpty)
   }
 
-  test("Can create per column count with generator") {
+  test("Can create per field count with generator") {
     val result = CountBuilder()
-      .perColumn(PerColumnCountBuilder()
-        .generator(
-          GeneratorBuilder().min(5),
-          "account_id"
-        )
+      .perField(PerFieldCountBuilder()
+        .generator(GeneratorBuilder().min(5), "account_id")
       ).count
 
     assert(result.records.contains(1000))
-    assert(result.perColumn.isDefined)
-    assert(result.perColumn.get.count.contains(10))
-    assertResult(List("account_id"))(result.perColumn.get.columnNames)
-    assert(result.perColumn.get.generator.isDefined)
-    assertResult("random")(result.perColumn.get.generator.get.`type`)
-    assertResult("5")(result.perColumn.get.generator.get.options("min"))
-    assert(result.generator.isEmpty)
-  }
-
-  test("Can create schema with add fields") {
-    val result = SchemaBuilder()
-      .addField("account_id")
-      .addField("year", IntegerType)
-      .addFields(FieldBuilder().name("name"))
-      .schema
-
-    assert(result.fields.isDefined)
-    assertResult(3)(result.fields.get.size)
-    assert(result.fields.get.contains(Field("account_id", Some("string"))))
-    assert(result.fields.get.contains(Field("year", Some("integer"))))
-    assert(result.fields.get.contains(Field("name", Some("string"))))
+    assert(result.perField.isDefined)
+    assert(result.perField.get.count.contains(10))
+    assertResult(List("account_id"))(result.perField.get.fieldNames)
+    assert(result.perField.get.options.nonEmpty)
+    assertResult("5")(result.perField.get.options("min"))
+    assert(result.options.isEmpty)
   }
 
   test("Can create field") {
@@ -142,14 +124,13 @@ class TasksBuilderTest extends AnyFunSuite {
       .name("account_id")
       .`type`(StringType)
       .nullable(false)
-      .generator(GeneratorBuilder())
+      .options(Map("hello" -> "world"))
       .field
 
     assertResult("account_id")(result.name)
     assert(result.`type`.contains("string"))
     assert(!result.nullable)
-    assert(result.generator.isDefined)
-    assert(result.generator.contains(Generator()))
+    assertResult(Map("hello" -> "world"))(result.options)
   }
 
   test("Can create field generated from sql expression") {
@@ -160,9 +141,8 @@ class TasksBuilderTest extends AnyFunSuite {
 
     assertResult("account_id")(result.name)
     assert(result.`type`.contains("string"))
-    assert(result.generator.isDefined)
-    assertResult("sql")(result.generator.get.`type`)
-    assertResult("SUBSTRING(account, 1, 5)")(result.generator.get.options("sql"))
+    assert(result.options.nonEmpty)
+    assertResult("SUBSTRING(account, 1, 5)")(result.options("sql"))
   }
 
   test("Can create field generated from one of list of doubles") {
@@ -170,8 +150,8 @@ class TasksBuilderTest extends AnyFunSuite {
 
     assertResult("account_id")(result.name)
     assert(result.`type`.contains("double"))
-    assert(result.generator.isDefined)
-    assertResult(List(123.1, 789.2))(result.generator.get.options("oneOf"))
+    assert(result.options.nonEmpty)
+    assertResult(List(123.1, 789.2))(result.options("oneOf"))
   }
 
   test("Can create field generated from one of list of strings") {
@@ -179,7 +159,7 @@ class TasksBuilderTest extends AnyFunSuite {
 
     assertResult("status")(result.name)
     assert(result.`type`.contains("string"))
-    assertResult(List("open", "closed"))(result.generator.get.options("oneOf"))
+    assertResult(List("open", "closed"))(result.options("oneOf"))
   }
 
   test("Can create field generated from one of list of long") {
@@ -187,7 +167,7 @@ class TasksBuilderTest extends AnyFunSuite {
 
     assertResult("amount")(result.name)
     assert(result.`type`.contains("long"))
-    assertResult(List(100L, 200L))(result.generator.get.options("oneOf"))
+    assertResult(List(100L, 200L))(result.options("oneOf"))
   }
 
   test("Can create field generated from one of list of int") {
@@ -195,7 +175,7 @@ class TasksBuilderTest extends AnyFunSuite {
 
     assertResult("amount")(result.name)
     assert(result.`type`.contains("integer"))
-    assertResult(List(100, 200))(result.generator.get.options("oneOf"))
+    assertResult(List(100, 200))(result.options("oneOf"))
   }
 
   test("Can create field generated from one of list of boolean") {
@@ -203,16 +183,14 @@ class TasksBuilderTest extends AnyFunSuite {
 
     assertResult("is_open")(result.name)
     assert(result.`type`.contains("boolean"))
-    assertResult(List(true, false))(result.generator.get.options("oneOf"))
+    assertResult(List(true, false))(result.options("oneOf"))
   }
 
   test("Can create field with nested schema") {
     val result = FieldBuilder()
       .name("txn_list")
       .`type`(new ArrayType(DateType))
-      .schema(SchemaBuilder().addFields(
-        FieldBuilder().name("date").`type`(DateType)
-      ))
+      .fields(FieldBuilder().name("date").`type`(DateType))
       .field
 
     assertResult("txn_list")(result.name)
@@ -255,8 +233,7 @@ class TasksBuilderTest extends AnyFunSuite {
     assertResult("account_id")(result.name)
     assert(result.`type`.contains("string"))
     assert(!result.nullable)
-    assertResult("regex")(result.generator.get.`type`)
-    val gen = result.generator.get.options
+    val gen = result.options
     assertResult("acc[0-9]{3}")(gen("regex"))
     assertResult("1")(gen("seed"))
     assertResult("2")(gen("min"))

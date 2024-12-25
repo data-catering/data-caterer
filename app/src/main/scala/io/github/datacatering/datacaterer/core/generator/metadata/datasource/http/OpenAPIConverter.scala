@@ -4,7 +4,7 @@ import io.github.datacatering.datacaterer.api.model.Constants.{ARRAY_MAXIMUM_LEN
 import io.github.datacatering.datacaterer.api.model.{ArrayType, BinaryType, DataType, DateType, DoubleType, FloatType, IntegerType, LongType, StringType, StructType, TimestampType}
 import io.github.datacatering.datacaterer.core.exception.UnsupportedOpenApiDataTypeException
 import io.github.datacatering.datacaterer.core.generator.metadata.datasource.database.FieldMetadata
-import io.github.datacatering.datacaterer.core.model.Constants.{HTTP_HEADER_COL_PREFIX, HTTP_PATH_PARAM_COL_PREFIX, HTTP_QUERY_PARAM_COL_PREFIX, REAL_TIME_BODY_COL, REAL_TIME_BODY_CONTENT_COL, REAL_TIME_CONTENT_TYPE_COL, REAL_TIME_METHOD_COL, REAL_TIME_URL_COL}
+import io.github.datacatering.datacaterer.core.model.Constants.{HTTP_HEADER_FIELD_PREFIX, HTTP_PATH_PARAM_FIELD_PREFIX, HTTP_QUERY_PARAM_FIELD_PREFIX, REAL_TIME_BODY_FIELD, REAL_TIME_BODY_CONTENT_FIELD, REAL_TIME_CONTENT_TYPE_FIELD, REAL_TIME_METHOD_FIELD, REAL_TIME_URL_FIELD}
 import io.swagger.v3.oas.models.PathItem.HttpMethod
 import io.swagger.v3.oas.models.media.Schema
 import io.swagger.v3.oas.models.parameters.Parameter
@@ -20,7 +20,7 @@ class OpenAPIConverter(openAPI: OpenAPI = new OpenAPI()) {
 
   private val LOGGER = Logger.getLogger(getClass.getName)
 
-  def toColumnMetadata(path: String, method: HttpMethod, operation: Operation, readOptions: Map[String, String]): List[FieldMetadata] = {
+  def toFieldMetadata(path: String, method: HttpMethod, operation: Operation, readOptions: Map[String, String]): List[FieldMetadata] = {
     val requestBodyMetadata = getRequestBodyMetadata(operation)
     val params = if (operation.getParameters != null) operation.getParameters.asScala.toList else List()
     val headers = getHeaders(params)
@@ -34,8 +34,8 @@ class OpenAPIConverter(openAPI: OpenAPI = new OpenAPI()) {
     val urlCol = getUrl(variableReplacedUrl + path, pathParams, queryParams)
     val methodCol = getMethod(method)
 
-    val allColumns = urlCol ++ methodCol ++ requestBodyMetadata ++ headers ++ pathParams ++ queryParams
-    allColumns.map(c => c.copy(dataSourceReadOptions = readOptions))
+    val allFields = urlCol ++ methodCol ++ requestBodyMetadata ++ headers ++ pathParams ++ queryParams
+    allFields.map(c => c.copy(dataSourceReadOptions = readOptions))
   }
 
   def getRequestBodyMetadata(operation: Operation): List[FieldMetadata] = {
@@ -43,31 +43,31 @@ class OpenAPIConverter(openAPI: OpenAPI = new OpenAPI()) {
       val requestContent = operation.getRequestBody.getContent.asScala.head
       val requestContentType = requestContent._1
       val schema = requestContent._2.getSchema
-      val columnsMetadata = getFieldMetadata(schema)
+      val fieldsMetadata = getFieldMetadata(schema)
       val sqlGenerator = requestContentType.toLowerCase match {
         case "application/x-www-form-urlencoded" =>
-          val colNameToValue = columnsMetadata.map(c => s"CONCAT('${c.field}=', CAST(`${c.field}` AS STRING))").mkString(",")
+          val colNameToValue = fieldsMetadata.map(c => s"CONCAT('${c.field}=', CAST(`${c.field}` AS STRING))").mkString(",")
           s"ARRAY_JOIN(ARRAY($colNameToValue), '&')"
         case "application/json" =>
-          s"TO_JSON($REAL_TIME_BODY_CONTENT_COL)"
+          s"TO_JSON($REAL_TIME_BODY_CONTENT_FIELD)"
         case x =>
           LOGGER.warn(s"Unsupported request body content type, defaulting to 'application/json', content-type=$x")
-          s"TO_JSON($REAL_TIME_BODY_CONTENT_COL)"
+          s"TO_JSON($REAL_TIME_BODY_CONTENT_FIELD)"
       }
-      val bodyContentDataType = if (columnsMetadata.size > 1) {
-        val bodyContentColsDataType = columnsMetadata.map(c => s"${c.field}: ${c.metadata(FIELD_DATA_TYPE)}").mkString(",")
-        s"struct<$bodyContentColsDataType>"
-      } else if (columnsMetadata.size == 1) {
-        columnsMetadata.head.metadata(FIELD_DATA_TYPE)
+      val bodyContentDataType = if (fieldsMetadata.size > 1) {
+        val bodyContentFieldsDataType = fieldsMetadata.map(c => s"${c.field}: ${c.metadata(FIELD_DATA_TYPE)}").mkString(",")
+        s"struct<$bodyContentFieldsDataType>"
+      } else if (fieldsMetadata.size == 1) {
+        fieldsMetadata.head.metadata(FIELD_DATA_TYPE)
       } else {
         StringType.toString
       }
 
       List(
-        FieldMetadata(REAL_TIME_BODY_COL, Map(), Map(FIELD_DATA_TYPE -> StringType.toString, SQL_GENERATOR -> sqlGenerator)),
-        FieldMetadata(REAL_TIME_BODY_CONTENT_COL, Map(), Map(FIELD_DATA_TYPE -> bodyContentDataType), columnsMetadata),
-        FieldMetadata(REAL_TIME_CONTENT_TYPE_COL, Map(), Map(STATIC -> requestContentType, FIELD_DATA_TYPE -> StringType.toString))
-      ) ++ columnsMetadata
+        FieldMetadata(REAL_TIME_BODY_FIELD, Map(), Map(FIELD_DATA_TYPE -> StringType.toString, SQL_GENERATOR -> sqlGenerator)),
+        FieldMetadata(REAL_TIME_BODY_CONTENT_FIELD, Map(), Map(FIELD_DATA_TYPE -> bodyContentDataType), fieldsMetadata),
+        FieldMetadata(REAL_TIME_CONTENT_TYPE_FIELD, Map(), Map(STATIC -> requestContentType, FIELD_DATA_TYPE -> StringType.toString))
+      ) ++ fieldsMetadata
     } else List()
   }
 
@@ -76,7 +76,7 @@ class OpenAPIConverter(openAPI: OpenAPI = new OpenAPI()) {
     val queryParams = params
       .filter(p => p.getIn != null && p.getIn == HTTP_QUERY_PARAMETER)
       .map(p => {
-        val colName = s"$HTTP_QUERY_PARAM_COL_PREFIX${p.getName}"
+        val colName = s"$HTTP_QUERY_PARAM_FIELD_PREFIX${p.getName}"
         val sqlGenerator = p.getSchema.getType match {
           case "array" =>
             val style = if (p.getStyle == null) StyleEnum.FORM else p.getStyle
@@ -111,7 +111,7 @@ class OpenAPIConverter(openAPI: OpenAPI = new OpenAPI()) {
           IS_NULLABLE -> "false", //path param cannot be nullable
           ENABLED_NULL -> "false" //path param cannot be nullable
         )
-        FieldMetadata(s"$HTTP_PATH_PARAM_COL_PREFIX${p.getName}", Map(), baseMetadata)
+        FieldMetadata(s"$HTTP_PATH_PARAM_FIELD_PREFIX${p.getName}", Map(), baseMetadata)
       })
   }
 
@@ -122,16 +122,16 @@ class OpenAPIConverter(openAPI: OpenAPI = new OpenAPI()) {
     } else {
       headerParams
         .map(p => {
-          val headerValueMetadata = getSchemaMetadata(p.getSchema) ++ Map(HTTP_HEADER_COL_PREFIX -> p.getName)
+          val headerValueMetadata = getSchemaMetadata(p.getSchema) ++ Map(HTTP_HEADER_FIELD_PREFIX -> p.getName)
           val isNullableMap = if (p.getRequired) {
             Map(IS_NULLABLE -> "false")
           } else {
             Map(IS_NULLABLE -> "true", ENABLED_NULL -> "true")
           }
-          val isContentLengthMap = if (p.getName == "Content-Length") Map(SQL_GENERATOR -> s"LENGTH($REAL_TIME_BODY_COL)") else Map()
+          val isContentLengthMap = if (p.getName == "Content-Length") Map(SQL_GENERATOR -> s"LENGTH($REAL_TIME_BODY_FIELD)") else Map()
           val cleanColName = p.getName.replaceAll("-", "_")
           FieldMetadata(
-            s"$HTTP_HEADER_COL_PREFIX$cleanColName",
+            s"$HTTP_HEADER_FIELD_PREFIX$cleanColName",
             Map(),
             headerValueMetadata ++ isNullableMap ++ isContentLengthMap
           )
@@ -140,18 +140,18 @@ class OpenAPIConverter(openAPI: OpenAPI = new OpenAPI()) {
   }
 
   def getMethod(method: HttpMethod): List[FieldMetadata] = {
-    List(FieldMetadata(REAL_TIME_METHOD_COL, Map(), Map(STATIC -> method.name(), FIELD_DATA_TYPE -> StringType.toString)))
+    List(FieldMetadata(REAL_TIME_METHOD_FIELD, Map(), Map(STATIC -> method.name(), FIELD_DATA_TYPE -> StringType.toString)))
   }
 
   def getUrl(baseUrl: String, pathParams: List[FieldMetadata], queryParams: List[FieldMetadata]): List[FieldMetadata] = {
     val sqlGenerator = urlSqlGenerator(baseUrl, pathParams, queryParams)
-    List(FieldMetadata(REAL_TIME_URL_COL, Map(), Map(SQL_GENERATOR -> sqlGenerator, FIELD_DATA_TYPE -> StringType.toString)))
+    List(FieldMetadata(REAL_TIME_URL_FIELD, Map(), Map(SQL_GENERATOR -> sqlGenerator, FIELD_DATA_TYPE -> StringType.toString)))
   }
 
   def urlSqlGenerator(baseUrl: String, pathParams: List[FieldMetadata], queryParams: List[FieldMetadata]): String = {
     val urlWithPathParamReplace = pathParams.foldLeft(s"'$baseUrl'")((url, pathParam) => {
       val colName = pathParam.field
-      val colNameWithoutPrefix = colName.replaceFirst(HTTP_PATH_PARAM_COL_PREFIX, "")
+      val colNameWithoutPrefix = colName.replaceFirst(HTTP_PATH_PARAM_FIELD_PREFIX, "")
       val replaceValue = pathParam.metadata.getOrElse(POST_SQL_EXPRESSION, s"`$colName`")
       s"REPLACE($url, '{$colNameWithoutPrefix}', URL_ENCODE($replaceValue))"
     })

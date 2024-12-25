@@ -2,13 +2,10 @@ package io.github.datacatering.datacaterer.core.generator.metadata.datasource.op
 
 import io.github.datacatering.datacaterer.api.ValidationBuilder
 import io.github.datacatering.datacaterer.api.model.Constants._
-import io.github.datacatering.datacaterer.api.model.{ArrayType, DataType, DateType, DoubleType, FloatType, IntegerType, LongType, StringType, StructType, TimestampType}
 import io.github.datacatering.datacaterer.core.exception.{InvalidDataContractFileFormatException, MissingDataContractFilePathException}
-import io.github.datacatering.datacaterer.core.generator.metadata.datasource.database.FieldMetadata
-import io.github.datacatering.datacaterer.core.generator.metadata.datasource.opendatacontractstandard.model.{OpenDataContractStandard, OpenDataContractStandardColumn, OpenDataContractStandardDataset, OpenDataContractStandardV3}
+import io.github.datacatering.datacaterer.core.generator.metadata.datasource.opendatacontractstandard.model.{OpenDataContractStandard, OpenDataContractStandardV3}
 import io.github.datacatering.datacaterer.core.generator.metadata.datasource.{DataSourceMetadata, SubDataSourceMetadata}
 import io.github.datacatering.datacaterer.core.util.ObjectMapperUtil
-import org.apache.log4j.Logger
 import org.apache.spark.sql.SparkSession
 
 import java.io.File
@@ -47,7 +44,7 @@ case class OpenDataContractStandardDataSourceMetadata(
                 value.schema.getOrElse(Array()).map(schema => OpenDataContractStandardV3Mapper.toSubDataSourceMetadata(value, schema, connectionConfig))
             }
           case Success(value) =>
-//            val optSchemaName = connectionConfig.get(DATA_CONTRACT_SCHEMA)
+            //            val optSchemaName = connectionConfig.get(DATA_CONTRACT_SCHEMA)
             //TODO filter for schema if schema name is defined, otherwise return back all schemas
             value.dataset.map(dataset => OpenDataContractStandardV2Mapper.toSubDataSourceMetadata(value, dataset, connectionConfig))
         }

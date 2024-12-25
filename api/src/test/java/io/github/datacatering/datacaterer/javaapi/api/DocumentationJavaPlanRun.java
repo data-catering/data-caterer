@@ -50,7 +50,7 @@
 //                .count(
 //                        count()
 //                                .records(100)
-//                                .recordsPerColumnGenerator(generator().min(1).max(2), "account_id", "name")
+//                                .recordsPerFieldGenerator(generator().min(1).max(2), "account_id", "name")
 //                );
 //
 //        var foreignKeySetup = plan()

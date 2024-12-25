@@ -16,9 +16,14 @@ tasks:
 
 sinkOptions:
   foreignKeys:
-    - - "solace.jms_account.account_id"
-      - - "json.file_account.account_id"
-      - []
+    - source:
+        dataSource: "solace"
+        step: "jms_account"
+        fields: ["account_id"]
+      generate:
+        - dataSource: "json"
+          step: "file_account"
+          fields: ["account_id"]
 
 validations:
   - "account_checks"

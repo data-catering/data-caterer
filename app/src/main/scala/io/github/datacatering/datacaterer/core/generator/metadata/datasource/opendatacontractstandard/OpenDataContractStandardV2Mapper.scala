@@ -12,7 +12,7 @@ object OpenDataContractStandardV2Mapper {
 
   private val LOGGER = Logger.getLogger(getClass.getName)
 
-  implicit val columnMetadataEncoder: Encoder[FieldMetadata] = Encoders.kryo[FieldMetadata]
+  implicit val fieldMetadataEncoder: Encoder[FieldMetadata] = Encoders.kryo[FieldMetadata]
 
   def toSubDataSourceMetadata(
                                value: OpenDataContractStandard,
@@ -20,15 +20,15 @@ object OpenDataContractStandardV2Mapper {
                                connectionConfig: Map[String, String]
                              )(implicit sparkSession: SparkSession): SubDataSourceMetadata = {
     val readOptions = getDataSourceOptions(value, dataset, connectionConfig)
-    val columnMetadata = dataset.columns.map(cols => {
-      val mappedColumns = cols.map(column => {
-        val dataType = getDataType(dataset, column)
-        val metadata = getBaseColumnMetadata(column, dataType)
-        FieldMetadata(column.column, readOptions, metadata)
+    val fieldMetadata = dataset.columns.map(cols => {
+      val mappedFields = cols.map(field => {
+        val dataType = getDataType(dataset, field)
+        val metadata = getBaseFieldMetadata(field, dataType)
+        FieldMetadata(field.column, readOptions, metadata)
       }).toList
-      sparkSession.createDataset(mappedColumns)
+      sparkSession.createDataset(mappedFields)
     })
-    SubDataSourceMetadata(readOptions, columnMetadata)
+    SubDataSourceMetadata(readOptions, fieldMetadata)
   }
 
   private def getDataSourceOptions(
@@ -70,20 +70,20 @@ object OpenDataContractStandardV2Mapper {
     baseMap ++ connectionConfig
   }
 
-  private def getBaseColumnMetadata(column: OpenDataContractStandardColumn, dataType: DataType): Map[String, String] = {
+  private def getBaseFieldMetadata(field: OpenDataContractStandardColumn, dataType: DataType): Map[String, String] = {
     Map(
       FIELD_DATA_TYPE -> dataType.toString(),
-      IS_NULLABLE -> column.isNullable.getOrElse(false).toString,
-      ENABLED_NULL -> column.isNullable.getOrElse(false).toString,
-      IS_PRIMARY_KEY -> column.isPrimaryKey.getOrElse(false).toString,
-      PRIMARY_KEY_POSITION -> column.primaryKeyPosition.getOrElse("-1").toString,
-      CLUSTERING_POSITION -> column.clusterKeyPosition.getOrElse("-1").toString,
-      IS_UNIQUE -> column.isUnique.getOrElse(false).toString,
+      IS_NULLABLE -> field.isNullable.getOrElse(false).toString,
+      ENABLED_NULL -> field.isNullable.getOrElse(false).toString,
+      IS_PRIMARY_KEY -> field.isPrimaryKey.getOrElse(false).toString,
+      PRIMARY_KEY_POSITION -> field.primaryKeyPosition.getOrElse("-1").toString,
+      CLUSTERING_POSITION -> field.clusterKeyPosition.getOrElse("-1").toString,
+      IS_UNIQUE -> field.isUnique.getOrElse(false).toString,
     )
   }
 
-  private def getDataType(dataset: OpenDataContractStandardDataset, column: OpenDataContractStandardColumn): DataType = {
-    column.logicalType.toLowerCase match {
+  private def getDataType(dataset: OpenDataContractStandardDataset, field: OpenDataContractStandardColumn): DataType = {
+    field.logicalType.toLowerCase match {
       case "string" => StringType
       case "integer" => IntegerType
       case "double" => DoubleType
@@ -94,7 +94,7 @@ object OpenDataContractStandardV2Mapper {
       case "array" => new ArrayType(StringType) //TODO: wait for how inner data type of array will be defined
       case "object" => new StructType(List()) //TODO: wait for how nested data structures will be made
       case x =>
-        LOGGER.warn(s"Unable to find corresponding known data type for column in ODCS file, defaulting to string, dataset=${dataset.table} column=$column, data-type=$x")
+        LOGGER.warn(s"Unable to find corresponding known data type for field in ODCS file, defaulting to string, dataset=${dataset.table} field=$field, data-type=$x")
         StringType
     }
   }

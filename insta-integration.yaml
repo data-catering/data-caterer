@@ -23,6 +23,6 @@ run:
               - expr: ISNOTNULL(account_number)
               - aggType: count
                 aggExpr: count == 5000
-              - groupByCols: [account_number]
+              - groupByFields: [account_number]
                 aggType: count
                 aggExpr: count == 5

@@ -2,7 +2,7 @@ package io.github.datacatering.datacaterer.core.plan
 
 import io.github.datacatering.datacaterer.api.PlanRun
 import io.github.datacatering.datacaterer.api.model.Constants.{OPEN_METADATA_AUTH_TYPE_OPEN_METADATA, OPEN_METADATA_JWT_TOKEN, OPEN_METADATA_TABLE_FQN, PARTITIONS, ROWS_PER_SECOND, SAVE_MODE, VALIDATION_IDENTIFIER}
-import io.github.datacatering.datacaterer.api.model.{ArrayType, DateType, DoubleType, HeaderType, IntegerType, TimestampType}
+import io.github.datacatering.datacaterer.api.model.{ArrayType, DateType, DoubleType, HeaderType, IntegerType, MapType, TimestampType}
 import io.github.datacatering.datacaterer.core.model.Constants.METADATA_FILTER_OUT_SCHEMA
 import io.github.datacatering.datacaterer.core.util.{ObjectMapperUtil, SparkSuite}
 import org.asynchttpclient.DefaultAsyncHttpClientConfig
@@ -27,21 +27,22 @@ class PlanProcessorTest extends SparkSuite {
     {
       val accountStatus = List("open", "closed", "pending", "suspended")
       val jsonTask = json("account_info", s"$scalaBaseFolder/json", Map(SAVE_MODE -> "overwrite"))
-        .schema(
+        .fields(
           field.name("account_id").regex("ACC[0-9]{8}"),
           field.name("year").`type`(IntegerType).sql("YEAR(date)"),
           field.name("balance").`type`(DoubleType).min(10).max(1000).round(2),
           field.name("date").`type`(DateType).min(Date.valueOf("2022-01-01")),
           field.name("status").oneOf(accountStatus: _*),
+          field.name("rand_map").`type`(MapType),
           field.name("update_history")
             .`type`(ArrayType)
-            .schema(
+            .fields(
               field.name("updated_time").`type`(TimestampType).min(Timestamp.valueOf("2022-01-01 00:00:00")),
               field.name("prev_status").oneOf(accountStatus: _*),
               field.name("new_status").oneOf(accountStatus: _*)
             ),
           field.name("customer_details")
-            .schema(
+            .fields(
               field.name("name").sql("_join_txn_name"),
               field.name("age").`type`(IntegerType).min(18).max(90),
               field.name("city").expression("#{Address.city}")
@@ -51,7 +52,7 @@ class PlanProcessorTest extends SparkSuite {
         .count(count.records(100))
 
       val csvTxns = csv("transactions", s"$scalaBaseFolder/csv", Map(SAVE_MODE -> "overwrite", "header" -> "true"))
-        .schema(
+        .fields(
           field.name("account_id"),
           field.name("txn_id"),
           field.name("name"),
@@ -63,7 +64,7 @@ class PlanProcessorTest extends SparkSuite {
         .count(
           count
             .records(100)
-            .recordsPerColumnGenerator(generator.min(1).max(2), "account_id", "name")
+            .recordsPerFieldGenerator(generator.min(1).max(2), "account_id", "name")
         )
         .validationWait(waitCondition.pause(1))
         .validations(
@@ -119,13 +120,13 @@ class PlanProcessorTest extends SparkSuite {
   }
 
   ignore("Can run Postgres plan run") {
-    PlanProcessor.determineAndExecutePlan(Some(new TestOpenAPI))
+    PlanProcessor.determineAndExecutePlan(Some(new TestHttp))
   }
 
   class TestPostgres extends PlanRun {
     val accountTask = postgres("customer_postgres", "jdbc:postgresql://localhost:5432/customer")
       .table("account", "accounts")
-      .schema(
+      .fields(
         field.name("account_number").regex("[0-9]{10}").unique(true),
         field.name("customer_id_int").`type`(IntegerType).min(1).max(1000),
         field.name("created_by").expression("#{Name.name}"),
@@ -136,25 +137,25 @@ class PlanProcessorTest extends SparkSuite {
       .count(count.records(100))
 
     val jsonTask = json("my_json", "/tmp/data/json", Map("saveMode" -> "overwrite"))
-      .schema(
+      .fields(
         field.name("account_id").regex("ACC[0-9]{8}"),
         field.name("name").expression("#{Name.name}"),
         field.name("amount").`type`(DoubleType).max(10),
       )
-      .count(count.recordsPerColumn(2, "account_id", "name"))
+      .count(count.recordsPerField(2, "account_id", "name"))
       .validations(
         validation.groupBy("account_id", "name").max("amount").lessThan(100),
         validation.unique("account_id", "name"),
       )
     val csvTask = json("my_csv", "/tmp/data/csv", Map("saveMode" -> "overwrite"))
-      .schema(
+      .fields(
         field.name("account_number").regex("[0-9]{8}"),
         field.name("name").expression("#{Name.name}"),
         field.name("amount").`type`(DoubleType).max(10),
       )
       .validations(
-        validation.col("account_number").isNotNull.description("account_number is a primary key"),
-        validation.col("name").matches("[A-Z][a-z]+ [A-Z][a-z]+").errorThreshold(0.3).description("Some names follow a different pattern"),
+        validation.field("account_number").isNull(true).description("account_number is a primary key"),
+        validation.field("name").matches("[A-Z][a-z]+ [A-Z][a-z]+").errorThreshold(0.3).description("Some names follow a different pattern"),
       )
 
     val conf = configuration
@@ -167,11 +168,11 @@ class PlanProcessorTest extends SparkSuite {
   class TestCsvPostgres extends PlanRun {
     val csvTask = csv("my_csv", "/tmp/data/csv", Map("saveMode" -> "overwrite", "header" -> "true"))
       .numPartitions(1)
-      .schema(metadataSource.marquez("http://localhost:5001", "food_delivery", "public.delivery_7_days"))
+      .fields(metadataSource.marquez("http://localhost:5001", "food_delivery", "public.delivery_7_days"))
       .count(count.records(10))
 
     val postgresTask = postgres("my_postgres", "jdbc:postgresql://localhost:5432/food_delivery", "postgres", "password")
-      .schema(metadataSource.marquez("http://localhost:5001", "food_delivery"))
+      .fields(metadataSource.marquez("http://localhost:5001", "food_delivery"))
       .count(count.records(10))
 
     val foreignCols = List("order_id", "order_placed_on", "order_dispatched_on", "order_delivered_on", "customer_email",
@@ -191,12 +192,12 @@ class PlanProcessorTest extends SparkSuite {
 
   class TestOpenMetadata extends PlanRun {
     val jsonTask = json("my_json", "/tmp/data/json", Map("saveMode" -> "overwrite"))
-      .schema(metadataSource.openMetadata("http://localhost:8585/api", OPEN_METADATA_AUTH_TYPE_OPEN_METADATA,
+      .fields(metadataSource.openMetadata("http://localhost:8585/api", OPEN_METADATA_AUTH_TYPE_OPEN_METADATA,
         Map(
           OPEN_METADATA_JWT_TOKEN -> "abc123",
           OPEN_METADATA_TABLE_FQN -> "sample_data.ecommerce_db.shopify.dim_address"
         )))
-      .schema(field.name("customer").schema(field.name("sex").oneOf("M", "F")))
+      .fields(field.name("customer").fields(field.name("sex").oneOf("M", "F")))
       .count(count.records(10))
 
     val conf = configuration.enableGeneratePlanAndTasks(true)
@@ -208,16 +209,16 @@ class PlanProcessorTest extends SparkSuite {
 
   class TestOpenAPI extends PlanRun {
     val httpTask = http("my_http", options = Map(ROWS_PER_SECOND -> "5"))
-      .schema(metadataSource.openApi("app/src/test/resources/sample/http/openapi/petstore.json"))
+      .fields(metadataSource.openApi("app/src/test/resources/sample/http/openapi/petstore.json"))
       .count(count.records(10))
 
     val httpGetTask = http("get_http", options = Map(VALIDATION_IDENTIFIER -> "GET/pets/{id}"))
       .validations(
-        validation.col("request.method").isEqual("GET"),
-        validation.col("request.method").isEqualCol("response.statusText"),
-        validation.col("response.statusCode").isEqual(200),
-        validation.col("response.headers.Content-Length").greaterThan(0),
-        validation.col("response.headers.Content-Type").isEqual("application/json"),
+        validation.field("request.method").isEqual("GET"),
+        validation.field("request.method").isEqualField("response.statusText"),
+        validation.field("response.statusCode").isEqual(200),
+        validation.field("response.headers.Content-Length").greaterThan(0),
+        validation.field("response.headers.Content-Type").isEqual("application/json"),
         validation.selectExpr("PERCENTILE(response.timeTakenMs, 0.2) AS pct20").expr("pct20 < 10"),
       )
 
@@ -238,7 +239,7 @@ class PlanProcessorTest extends SparkSuite {
   class TestSolace extends PlanRun {
     val solaceTask = solace("my_solace", "smf://localhost:55554")
       .destination("/JNDI/T/rest_test_topic")
-      .schema(
+      .fields(
         field.name("value").sql("TO_JSON(content)"),
         field.name("headers") //set message properties via headers field
           .`type`(HeaderType.getType)
@@ -248,7 +249,7 @@ class PlanProcessorTest extends SparkSuite {
               |  NAMED_STRUCT('key', 'name', 'value', TO_BINARY(content.name, 'utf-8'))
               |)""".stripMargin
           ),
-        field.name("content").schema(
+        field.name("content").fields(
           field.name("account_id"),
           field.name("name").expression("#{Name.name}"),
           field.name("age").`type`(IntegerType),
@@ -261,8 +262,8 @@ class PlanProcessorTest extends SparkSuite {
 
   class TestHttp extends PlanRun {
     val httpTask = http("my_http")
-      .schema(metadataSource.openApi("/app/src/test/resources/sample/http/openapi/petstore.json"))
-      .schema(field.name("bodyContent").schema(field.name("id").regex("ID[0-9]{8}")))
+      .fields(metadataSource.openApi("app/src/test/resources/sample/http/openapi/petstore.json"))
+      .fields(field.name("bodyContent").fields(field.name("id").regex("ID[0-9]{8}")))
       .count(count.records(20))
 
     val myPlan = plan.addForeignKeyRelationship(
@@ -272,13 +273,15 @@ class PlanProcessorTest extends SparkSuite {
     )
 
     val conf = configuration.enableGeneratePlanAndTasks(true)
+      .recordTrackingForValidationFolderPath("/tmp/record-tracking-validation")
+      .generatedReportsFolderPath("/tmp/report")
 
     execute(myPlan, conf, httpTask)
   }
 
   class TestJson extends PlanRun {
     val jsonTask = json("my_json", "/tmp/data/json", Map("saveMode" -> "overwrite"))
-      .schema(
+      .fields(
         field.name("account_id").regex("ACC[0-9]{8}"),
         field.name("year").`type`(IntegerType).sql("YEAR(date)"),
         field.name("balance").`type`(DoubleType).min(10).max(1000),
@@ -287,12 +290,12 @@ class PlanProcessorTest extends SparkSuite {
         field.name("update_history")
           .`type`(ArrayType)
           .arrayMinLength(1)
-          .schema(
+          .fields(
             field.name("updated_time").`type`(TimestampType).min(Timestamp.valueOf("2022-01-01 00:00:00")),
             field.name("status").oneOf("open", "closed")
           ),
         field.name("customer_details")
-          .schema(
+          .fields(
             field.name("name").expression("#{Name.name}"),
             field.name("age").`type`(IntegerType).min(18).max(90),
             field.name("city").expression("#{Address.city}")
@@ -304,8 +307,8 @@ class PlanProcessorTest extends SparkSuite {
 
   class TestValidationAndInnerSchemaFromMetadataSource extends PlanRun {
     val csvTask = json("my_big_json", "/tmp/data/big_json", Map("saveMode" -> "overwrite"))
-      .schema(
-        field.name("content").schema(metadataSource.openMetadata("http://localhost:8585/api", OPEN_METADATA_AUTH_TYPE_OPEN_METADATA,
+      .fields(
+        field.name("content").fields(metadataSource.openMetadata("http://localhost:8585/api", OPEN_METADATA_AUTH_TYPE_OPEN_METADATA,
           Map(
             OPEN_METADATA_JWT_TOKEN -> "eyJraWQiOiJHYjM4OWEtOWY3Ni1nZGpzLWE5MmotMDI0MmJrOTQzNTYiLCJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJvcGVuLW1ldGFkYXRhLm9yZyIsInN1YiI6ImluZ2VzdGlvbi1ib3QiLCJlbWFpbCI6ImluZ2VzdGlvbi1ib3RAb3Blbm1ldGFkYXRhLm9yZyIsImlzQm90Ijp0cnVlLCJ0b2tlblR5cGUiOiJCT1QiLCJpYXQiOjE2OTcxNzc0MzgsImV4cCI6bnVsbH0.jnO65SJZG9GQuVlJvpyKrrBZejPpjV71crJEvWOMPyeozZkoEyYy-kcb8UkVenidDcoAdie4Zhl4saNyaLudiAO2MKhSU1Rf3yT2M3BQBf37kQ3Ma4pjrx-lXVk2SmCaHsgLFETksSHZTwgPrtx5L3d2FOCfF92dANI_tldTg5Jog51tjHyYWYV4y4_eU4AfC7gXjIhvU35vTJmzUWH7BUkDGfcwHnIVa0AOqLzwZUQT1S717yNoenj2CUTBNS4fxWlATWBQIMG9JaBmQAAYNWOFPKnVWfWGv7Ya1OEW5wtb7A69hyPAT1lS-_FIxOOMkGbdg2u3sFuu9rD1d2JMdg",
             OPEN_METADATA_TABLE_FQN -> "sample_data.ecommerce_db.shopify.dim_address"
@@ -317,17 +320,17 @@ class PlanProcessorTest extends SparkSuite {
 
     val jsonTask = json("my_json", "/tmp/data/json")
       .validations(
-        validation.col("customer_details.name").matches("[A-Z][a-z]+ [A-Z][a-z]+").errorThreshold(0.1).description("Names generally follow the same pattern"),
-        validation.col("date").isNotNull.errorThreshold(10),
-        validation.col("balance").greaterThan(500),
+        validation.field("customer_details.name").matches("[A-Z][a-z]+ [A-Z][a-z]+").errorThreshold(0.1).description("Names generally follow the same pattern"),
+        validation.field("date").isNull(true).errorThreshold(10),
+        validation.field("balance").greaterThan(500),
         validation.expr("YEAR(date) == year"),
-        validation.col("status").in("open", "closed", "pending").errorThreshold(0.2).description("Could be new status introduced"),
-        validation.col("customer_details.age").greaterThan(18),
+        validation.field("status").in("open", "closed", "pending").errorThreshold(0.2).description("Could be new status introduced"),
+        validation.field("customer_details.age").greaterThan(18),
         validation.expr("FORALL(update_history, x -> x.updated_time > TIMESTAMP('2022-01-01 00:00:00'))"),
         validation.unique("account_id"),
         validation.groupBy().count().isEqual(1000),
         validation.groupBy("account_id").max("balance").lessThan(900),
-        validation.upstreamData(csvTask).withValidation(validation.col("amount").isEqualCol("balance")),
+        validation.upstreamData(csvTask).validations(validation.field("amount").isEqualField("balance")),
       )
       .enableDataGeneration(false)
 
@@ -343,7 +346,7 @@ class PlanProcessorTest extends SparkSuite {
 
   class TestValidation extends PlanRun {
     val firstJsonTask = json("my_first_json", "/tmp/data/first_json", Map("saveMode" -> "overwrite"))
-      .schema(
+      .fields(
         field.name("account_id").regex("ACC[0-9]{8}"),
         field.name("year").`type`(IntegerType).sql("YEAR(date)"),
         field.name("balance").`type`(DoubleType).min(10).max(1000),
@@ -351,13 +354,13 @@ class PlanProcessorTest extends SparkSuite {
         field.name("status").oneOf("open", "closed"),
         field.name("update_history")
           .`type`(ArrayType)
-          .schema(
+          .fields(
             field.name("updated_time").`type`(TimestampType).min(Timestamp.valueOf("2022-01-01 00:00:00")),
             field.name("prev_status").oneOf("open", "closed"),
             field.name("new_status").oneOf("open", "closed")
           ),
         field.name("customer_details")
-          .schema(
+          .fields(
             field.name("name").expression("#{Name.name}"),
             field.name("age").`type`(IntegerType).min(18).max(90),
             field.name("city").expression("#{Address.city}")
@@ -366,7 +369,7 @@ class PlanProcessorTest extends SparkSuite {
       .count(count.records(10))
 
     val thirdJsonTask = json("my_thrid_json", "/tmp/data/third_json", Map("saveMode" -> "overwrite"))
-      .schema(
+      .fields(
         field.name("account_id"),
         field.name("amount").`type`(IntegerType).min(1).max(100),
         field.name("name").expression("#{Name.name}"),
@@ -374,36 +377,32 @@ class PlanProcessorTest extends SparkSuite {
       .count(count.records(10))
 
     val secondJsonTask = json("my_json", "/tmp/data/second_json", Map("saveMode" -> "overwrite"))
-      .schema(
+      .fields(
         field.name("account_id"),
         field.name("amount").`type`(IntegerType).min(1).max(100),
         field.name("name").expression("#{Name.name}"),
       )
-      .count(count.records(10).recordsPerColumn(3, "account_id"))
+      .count(count.records(10).recordsPerField(3, "account_id"))
       .validations(
-        validation.col("account_id").isNotNull,
+        validation.field("account_id").isNull(true),
         validation.groupBy("account_id").count().isEqual(1),
-        validation.columnNames.countEqual(3),
-        validation.columnNames.countBetween(1, 2),
-        validation.columnNames.matchOrder("account_id", "amount", "name"),
-        validation.columnNames.matchSet("account_id", "my_name"),
-        validation.upstreamData(firstJsonTask).joinColumns("account_id")
-          .withValidation(validation.col("my_first_json_customer_details.name").isEqualCol("name")),
-        validation.upstreamData(firstJsonTask).joinColumns("account_id")
-          .withValidation(validation.col("amount").isNotEqualCol("my_first_json_balance")),
-        validation.upstreamData(firstJsonTask).joinExpr("account_id == my_first_json_account_id")
-          .withValidation(validation.groupBy("account_id", "my_first_json_balance").sum("amount").betweenCol("my_first_json_balance * 0.8", "my_first_json_balance * 1.2")),
-        validation.upstreamData(firstJsonTask).joinColumns("account_id")
-          .withValidation(validation.groupBy("account_id", "my_first_json_balance").sum("amount").betweenCol("my_first_json_balance * 0.8", "my_first_json_balance * 1.2")),
-        validation.upstreamData(firstJsonTask).joinColumns("account_id").joinType("anti").withValidation(validation.count().isEqual(0)),
-        validation.upstreamData(firstJsonTask).joinColumns("account_id").withValidation(validation.count().isEqual(30)),
-        validation.upstreamData(firstJsonTask)
-          .joinColumns("account_id")
-          .withValidation(
+        validation.fieldNames.countEqual(3),
+        validation.fieldNames.countBetween(1, 2),
+        validation.fieldNames.matchOrder("account_id", "amount", "name"),
+        validation.fieldNames.matchSet("account_id", "my_name"),
+        validation.upstreamData(firstJsonTask).joinFields("account_id")
+          .validations(
+            validation.field("my_first_json_customer_details.name").isEqualField("name"),
+            validation.field("amount").isEqualField("my_first_json_balance", true),
+            validation.groupBy("account_id", "my_first_json_balance").sum("amount").betweenFields("my_first_json_balance * 0.8", "my_first_json_balance * 1.2"),
+            validation.count().isEqual(30),
             validation.upstreamData(thirdJsonTask)
-              .joinColumns("account_id")
-              .withValidation(validation.count().isEqual(30))
-          )
+              .joinFields("account_id")
+              .validations(validation.count().isEqual(30))
+          ),
+        validation.upstreamData(firstJsonTask).joinExpr("account_id == my_first_json_account_id")
+          .validations(validation.groupBy("account_id", "my_first_json_balance").sum("amount").betweenFields("my_first_json_balance * 0.8", "my_first_json_balance * 1.2")),
+        validation.upstreamData(firstJsonTask).joinFields("account_id").joinType("anti").validations(validation.count().isEqual(0)),
       )
 
     val config = configuration
@@ -421,7 +420,7 @@ class PlanProcessorTest extends SparkSuite {
 
   class TestGreatExpectations extends PlanRun {
     val myJson = json("my_json", "/tmp/data/ge_json")
-      .schema(
+      .fields(
         field.name("vendor_id"),
         field.name("pickup_datetime").`type`(TimestampType),
         field.name("dropoff_datetime").`type`(TimestampType),
@@ -460,7 +459,7 @@ class PlanProcessorTest extends SparkSuite {
       "root", "root",
       Map(METADATA_FILTER_OUT_SCHEMA -> "datahub")
     )
-      .schema(field.name("account_number").regex("[0-9]{10}"))
+      .fields(field.name("account_number").regex("[0-9]{10}"))
       .count(count.records(10))
 
     val config = configuration
@@ -489,14 +488,14 @@ class PlanProcessorTest extends SparkSuite {
     //      .schema(basicSchema: _*)
     //
     val icebergTask = iceberg("my_iceberg", "/tmp/data/iceberg", "account.accounts", options = Map("saveMode" -> "overwrite"))
-      .schema(basicSchema: _*)
+      .fields(basicSchema: _*)
 
     execute(icebergTask)
   }
 
   class TestUniqueFields extends PlanRun {
     val jsonTask = json("my_first_json", "/tmp/data/unique_json", Map("saveMode" -> "overwrite"))
-      .schema(
+      .fields(
         field.name("account_id").regex("ACC[0-9]{8}").unique(true)
       )
     execute(jsonTask)
@@ -505,7 +504,7 @@ class PlanProcessorTest extends SparkSuite {
   class TestDeleteViaForeignKey extends PlanRun {
 
     val accountTask = json("customer_json", "/tmp/data/generate-account-json", Map(PARTITIONS -> "1", SAVE_MODE -> "overwrite"))
-      .schema(
+      .fields(
         field.name("account_number").regex("[0-9]{10}"),
         field.name("year").`type`(IntegerType).min(2020).max(2024),
         field.name("name").expression("#{Name.name}"),
@@ -513,7 +512,7 @@ class PlanProcessorTest extends SparkSuite {
       .count(count.records(10))
 
     val accountEvents = json("customer_event_json", "/tmp/data/generate-event-json", Map(PARTITIONS -> "1", SAVE_MODE -> "overwrite"))
-      .schema(
+      .fields(
         field.name("account_number").omit(true),
         field.name("account_id").sql("CONCAT('ACC', account_number)"),
         field.name("year").`type`(IntegerType),
@@ -551,8 +550,8 @@ class PlanProcessorTest extends SparkSuite {
 
   class TestSchemaFromODCS extends PlanRun {
     val accounts = csv("customer_csv", "/tmp/data/odcs-csv", Map("header" -> "true"))
-      .schema(metadataSource.openDataContractStandard("app/src/test/resources/sample/metadata/odcs/full-example.odcs.yaml"))
-      .schema(
+      .fields(metadataSource.openDataContractStandard("app/src/test/resources/sample/metadata/odcs/full-example.odcs.yaml"))
+      .fields(
         field.name("rcvr_id").regex("RC[0-9]{8}"),
         field.name("rcvr_cntry_code").oneOf("AU", "US", "TW")
       )
@@ -565,8 +564,8 @@ class PlanProcessorTest extends SparkSuite {
 
   class TestSchemaFromDataContractCli extends PlanRun {
     val accounts = csv("customer_csv", "/tmp/data/datacontract-cli-csv", Map("header" -> "true"))
-      .schema(metadataSource.dataContractCli("app/src/test/resources/sample/metadata/datacontractcli/datacontract.yaml"))
-      .schema(
+      .fields(metadataSource.dataContractCli("app/src/test/resources/sample/metadata/datacontractcli/datacontract.yaml"))
+      .fields(
         field.name("rcvr_id").regex("RC[0-9]{8}"),
         field.name("rcvr_cntry_code").oneOf("AU", "US", "TW")
       )
@@ -577,7 +576,18 @@ class PlanProcessorTest extends SparkSuite {
     execute(conf, accounts)
   }
 
-  test("Timing of http calls") {
+  class TestSchemaFromConfluentSchemaRegistry extends PlanRun {
+    val accounts = kafka("customer_kafka", "localhost:9092")
+      .topic("accounts")
+      .fields(metadataSource.confluentSchemaRegistry("http://localhost:8081", 1))
+      .count(count.records(3))
+
+    val conf = configuration.enableGeneratePlanAndTasks(true).generatedPlanAndTaskFolderPath("/tmp/data-caterer-gen")
+
+    execute(conf, accounts)
+  }
+
+  ignore("Timing of http calls") {
     val config = new DefaultAsyncHttpClientConfig.Builder()
       .setRequestTimeout(5000).build()
     val client = asyncHttpClient(config)

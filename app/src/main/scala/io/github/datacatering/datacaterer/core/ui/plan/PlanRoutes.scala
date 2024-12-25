@@ -1,6 +1,9 @@
 package io.github.datacatering.datacaterer.core.ui.plan
 
-import io.github.datacatering.datacaterer.core.ui.model.{JsonSupport, PlanRunRequest, SaveConnectionsRequest}
+import com.fasterxml.jackson.databind.ObjectMapper
+import com.github.pjfanning.pekkohttpjackson.JacksonSupport
+import io.github.datacatering.datacaterer.core.ui.model.{PlanRunRequest, SaveConnectionsRequest}
+import io.github.datacatering.datacaterer.core.util.ObjectMapperUtil
 import org.apache.log4j.Logger
 import org.apache.pekko.actor.typed.scaladsl.AskPattern.{Askable, schedulerFromActorSystem}
 import org.apache.pekko.actor.typed.{ActorRef, ActorSystem}
@@ -8,15 +11,16 @@ import org.apache.pekko.http.scaladsl.model.{HttpResponse, StatusCodes}
 import org.apache.pekko.http.scaladsl.server.{Directives, ExceptionHandler, Route}
 import org.apache.pekko.util.Timeout
 
-import scala.concurrent.duration.DurationInt
-import scala.concurrent.{ExecutionContext, ExecutionContextExecutor}
+import java.util.concurrent.TimeUnit
+import scala.concurrent.duration.{Duration, DurationInt}
+import scala.concurrent.{Await, ExecutionContext, ExecutionContextExecutor}
 import scala.util.{Failure, Success}
 
 class PlanRoutes(
                   planRepository: ActorRef[PlanRepository.PlanCommand],
                   planResponseHandler: ActorRef[PlanResponseHandler.Response],
                   connectionRepository: ActorRef[ConnectionRepository.ConnectionCommand]
-                )(implicit system: ActorSystem[_]) extends Directives with JsonSupport {
+                )(implicit system: ActorSystem[_]) extends Directives with JacksonSupport {
 
   private val LOGGER = Logger.getLogger(getClass.getName)
 
@@ -24,6 +28,7 @@ class PlanRoutes(
   // the ask is failed with a TimeoutException
   implicit val timeout: Timeout = 3.seconds
   implicit val ec: ExecutionContextExecutor = ExecutionContext.global
+  implicit val objectMapper: ObjectMapper = ObjectMapperUtil.jsonObjectMapper
 
   implicit def myExceptionHandler: ExceptionHandler =
     ExceptionHandler {
@@ -85,7 +90,7 @@ class PlanRoutes(
             }
           }
         },
-        path("status" / """[a-z0-9-]+""".r) { id =>
+        path("status" / """[A-Za-z0-9-_]+""".r) { id =>
           val planStatus = planRepository.ask(x => PlanRepository.GetPlanRunStatus(id, x))
           rejectEmptyResponse {
             complete(planStatus)
@@ -107,7 +112,7 @@ class PlanRoutes(
             complete(connections.connections.map(_.name).mkString(", "))
           }
         },
-        path("""[a-z0-9-]+""".r) { connectionName =>
+        path("""[A-Za-z0-9-_]+""".r) { connectionName =>
           concat(
             get {
               val connection = connectionRepository.ask(a => ConnectionRepository.GetConnection(connectionName, a))
@@ -139,7 +144,7 @@ class PlanRoutes(
             complete("Plan saved")
           }
         },
-        path("""[a-z0-9-]+""".r) { planName =>
+        path("""[A-Za-z0-9-_]+""".r) { planName =>
           concat(
             get {
               val plan = planRepository.ask(PlanRepository.GetPlan(planName, _))
@@ -163,16 +168,22 @@ class PlanRoutes(
     },
     pathPrefix("report" / """^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$""".r / Remaining) { (runId, resource) =>
       get {
-        getFromFile(s"/tmp/data-caterer/report/$runId/$resource")
+        if (resource.length < 50 && (resource.endsWith(".html") || resource.endsWith(".json") || resource.endsWith(".svg") || resource.endsWith(".css"))) {
+          val reportPath = planRepository.ask(PlanRepository.GetPlanRunReportPath(runId, _))
+          rejectEmptyResponse {
+            val path = Await.result(reportPath, Duration.create(5, TimeUnit.SECONDS))
+            getFromFile(s"$path/$resource")
+          }
+        } else {
+          complete("Cannot get resource")
+        }
       }
     },
     path("shutdown") {
       system.terminate()
       system.whenTerminated.onComplete {
-        case Failure(exception) =>
-          System.exit(1)
-        case Success(value) =>
-          System.exit(0)
+        case Failure(_) => System.exit(1)
+        case Success(_) => System.exit(0)
       }
       complete("Data Caterer shutdown completed")
     }

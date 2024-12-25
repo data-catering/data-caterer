@@ -83,7 +83,7 @@ dependencies {
     }
 
     // vulnerabilities in Spark
-    basicImpl("com.google.protobuf:protobuf-java:3.25.5")
+//    basicImpl("com.google.protobuf:protobuf-java:3.25.5") fails with https://github.com/protostuff/protostuff/issues/367
     basicImpl("io.netty:netty-codec-http:4.1.110.Final")
     basicImpl("io.netty:netty-codec-http2:4.1.110.Final")
     basicImpl("io.netty:netty-tcnative-boringssl-static:2.0.65.Final:windows-x86_64")
@@ -161,12 +161,14 @@ dependencies {
     //TODO implementation("jakarta.jms:jakarta.jms-api:3.1.0") jms 3.x
     basicImpl("javax.jms:javax.jms-api:2.0.1")
     basicImpl("com.solacesystems:sol-jms:10.21.0")
-    // metadata
+    // open metadata
     basicImpl("org.open-metadata:openmetadata-java-client:1.1.7") {  //1.2.0 has component reliant on java 17
         exclude(group = "org.antlr")
         exclude(module = "logback-core")
         exclude(module = "logback-classic")
     }
+    // protobuf
+    basicImpl("io.protostuff:protostuff-parser:3.1.40")
 
     // data generation helpers
     basicImpl("net.datafaker:datafaker:1.9.0")
@@ -176,10 +178,10 @@ dependencies {
     basicImpl("com.slack.api:slack-api-client:1.39.3")
 
     // UI/HTTP server
-    basicImpl("org.apache.pekko:pekko-http_$scalaVersion:1.0.1")
-    basicImpl("org.apache.pekko:pekko-stream_$scalaVersion:1.0.2")
-    basicImpl("org.apache.pekko:pekko-actor-typed_$scalaVersion:1.0.2")
-    basicImpl("org.apache.pekko:pekko-http-spray-json_$scalaVersion:1.0.1")
+    basicImpl("org.apache.pekko:pekko-http_$scalaVersion:1.0.0")
+    basicImpl("org.apache.pekko:pekko-stream_$scalaVersion:1.0.1")
+    basicImpl("org.apache.pekko:pekko-actor-typed_$scalaVersion:1.0.1")
+    basicImpl("com.github.pjfanning:pekko-http-jackson_$scalaVersion:2.2.0")
 
     // needed to work on Windows
     basicImpl("com.globalmentor:hadoop-bare-naked-local-fs:0.1.0")
@@ -200,6 +202,7 @@ dependencies {
         exclude(group = "org.scala-lang")
     }
     basicImpl("com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.15.3")
+    basicImpl("com.fasterxml.jackson.datatype:jackson-datatype-joda:2.15.3")
     //NoClassDefFoundError: shaded/parquet/com/fasterxml/jackson/databind/ObjectMapper
     basicImpl("org.apache.parquet:parquet-jackson:1.13.1")  //new versions contain transitive deps that use java 21, shadowJar fails
     basicImpl("org.scala-lang.modules:scala-xml_$scalaVersion:2.2.0") {

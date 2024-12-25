@@ -8,43 +8,32 @@ steps:
       partitionBy: "year"
     count:
       records: 100000
-      perColumn:
+      perField:
         count: 2
-        columnNames:
+        fieldNames:
           - "account_id"
           - "name"
-    schema:
-      fields:
-        - name: "account_id"
-          type: "string"
-          generator:
-            type: "regex"
-            options:
-              regex: "ACC1[0-9]{9}"
-        - name: "name"
-          type: "string"
-          generator:
-            type: "random"
-            options:
-              expression: "#{Name.name}"
-        - name: "year"
-          type: "int"
-          generator:
-            type: "random"
-            options:
-              minValue: 2021
-              maxValue: 2022
-        - name: "amount"
-          type: "double"
-          generator:
-            type: "random"
-            options:
-              minValue: 10.0
-              maxValue: 100.0
-        - name: "txn_date"
-          type: "date"
-          generator:
-            type: "random"
-            options:
-              minValue: "2021-01-01"
-              maxValue: "2021-12-31"
+    fields:
+      - name: "account_id"
+        type: "string"
+        options:
+          regex: "ACC1[0-9]{9}"
+      - name: "name"
+        type: "string"
+        options:
+          expression: "#{Name.name}"
+      - name: "year"
+        type: "int"
+        options:
+          minValue: 2021
+          maxValue: 2022
+      - name: "amount"
+        type: "double"
+        options:
+          minValue: 10.0
+          maxValue: 100.0
+      - name: "txn_date"
+        type: "date"
+        options:
+          minValue: "2021-01-01"
+          maxValue: "2021-12-31"

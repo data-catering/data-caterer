@@ -1,8 +1,8 @@
 package io.github.datacatering.datacaterer.core.generator.metadata.datasource.greatexpectations
 
 import io.github.datacatering.datacaterer.api.ValidationBuilder
-import io.github.datacatering.datacaterer.api.model.Constants.{AGGREGATION_AVG, AGGREGATION_COUNT, AGGREGATION_MAX, AGGREGATION_MIN, AGGREGATION_STDDEV, AGGREGATION_SUM, VALIDATION_COLUMN_NAME_COUNT_BETWEEN, VALIDATION_COLUMN_NAME_COUNT_EQUAL, VALIDATION_COLUMN_NAME_MATCH_ORDER, VALIDATION_COLUMN_NAME_MATCH_SET}
-import io.github.datacatering.datacaterer.api.model.{ColumnNamesValidation, ExpressionValidation, GroupByValidation}
+import io.github.datacatering.datacaterer.api.model.Constants.{AGGREGATION_AVG, AGGREGATION_COUNT, AGGREGATION_MAX, AGGREGATION_MIN, AGGREGATION_STDDEV, AGGREGATION_SUM, VALIDATION_FIELD_NAME_COUNT_BETWEEN, VALIDATION_FIELD_NAME_COUNT_EQUAL, VALIDATION_FIELD_NAME_MATCH_ORDER, VALIDATION_FIELD_NAME_MATCH_SET}
+import io.github.datacatering.datacaterer.api.model.{ExpressionValidation, FieldNamesValidation, GroupByValidation}
 import io.github.datacatering.datacaterer.core.generator.metadata.datasource.greatexpectations.model.GreatExpectationsExpectationType._
 import io.github.datacatering.datacaterer.core.generator.metadata.datasource.greatexpectations.model.GreatExpectationsParam._
 import io.github.datacatering.datacaterer.core.generator.metadata.datasource.greatexpectations.model.{GreatExpectationsExpectation, GreatExpectationsTestSuite}
@@ -27,10 +27,10 @@ class GreatExpectationsDataValidationsTest extends SparkSuite {
     val result = GreatExpectationsDataValidations.getDataValidations("src/test/resources/sample/validation/great-expectations/taxi-expectations.json")
 
     assertResult(11)(result.size)
-    val columnNameMatch = result.filter(_.validation.description.contains(EXPECT_TABLE_COLUMNS_TO_MATCH_ORDERED_LIST))
-    assertResult(1)(columnNameMatch.size)
-    assert(columnNameMatch.head.validation.isInstanceOf[ColumnNamesValidation])
-    assert(columnNameMatch.head.validation.asInstanceOf[ColumnNamesValidation].names sameElements Array("vendor_id", "pickup_datetime",
+    val fieldNameMatch = result.filter(_.validation.description.contains(EXPECT_TABLE_COLUMNS_TO_MATCH_ORDERED_LIST))
+    assertResult(1)(fieldNameMatch.size)
+    assert(fieldNameMatch.head.validation.isInstanceOf[FieldNamesValidation])
+    assert(fieldNameMatch.head.validation.asInstanceOf[FieldNamesValidation].names sameElements Array("vendor_id", "pickup_datetime",
       "dropoff_datetime", "passenger_count", "trip_distance", "rate_code_id", "store_and_fwd_flag", "pickup_location_id",
       "dropoff_location_id", "payment_type", "fare_amount", "extra", "mta_tax", "tip_amount", "tolls_amount",
       "improvement_surcharge", "total_amount", "congestion_surcharge"))
@@ -40,7 +40,7 @@ class GreatExpectationsDataValidationsTest extends SparkSuite {
     implicit val encoder = Encoders.kryo[TaxiRecord]
     val validations = GreatExpectationsDataValidations.getDataValidations("src/test/resources/sample/validation/great-expectations/taxi-expectations.json")
 
-    val results = validations.map(validBuilder => {
+    val results = validations.flatMap(validBuilder => {
       getValidationType(validBuilder.validation, "/tmp/record-tracking").validate(df, df.count())
     })
 
@@ -81,7 +81,7 @@ class GreatExpectationsDataValidationsTest extends SparkSuite {
     val result = checkExpectation(
       EXPECT_COLUMN_DISTINCT_VALUES_TO_EQUAL_SET,
       Map(COLUMN -> "vendor_id", VALUE_SET -> List("abc123", "xyz789")),
-      "FORALL(ARRAY('abc123','xyz789'), x -> ARRAY_CONTAINS(vendor_id_distinct, x))"
+      "ARRAY_SIZE(ARRAY_EXCEPT(ARRAY('abc123','xyz789'), vendor_id_distinct)) == 0"
     )
     assertResult("COLLECT_SET(`vendor_id`) AS vendor_id_distinct")(result.head.validation.asInstanceOf[ExpressionValidation].selectExpr.head)
   }
@@ -90,7 +90,7 @@ class GreatExpectationsDataValidationsTest extends SparkSuite {
     checkAggExpectation(
       EXPECT_COLUMN_MAX_TO_BE_BETWEEN,
       Map(COLUMN -> "passenger_count", MIN_VALUE -> 10, MAX_VALUE -> 20),
-      "max(passenger_count) BETWEEN 10 AND 20", AGGREGATION_MAX, "passenger_count", Seq()
+      "max(`passenger_count`) BETWEEN 10 AND 20", AGGREGATION_MAX, "`passenger_count`", Seq()
     )
   }
 
@@ -98,7 +98,7 @@ class GreatExpectationsDataValidationsTest extends SparkSuite {
     checkAggExpectation(
       EXPECT_COLUMN_MEAN_TO_BE_BETWEEN,
       Map(COLUMN -> "passenger_count", MIN_VALUE -> 10, MAX_VALUE -> 20),
-      "avg(passenger_count) BETWEEN 10 AND 20", AGGREGATION_AVG, "passenger_count", Seq()
+      "avg(`passenger_count`) BETWEEN 10 AND 20", AGGREGATION_AVG, "`passenger_count`", Seq()
     )
   }
 
@@ -115,7 +115,7 @@ class GreatExpectationsDataValidationsTest extends SparkSuite {
     checkAggExpectation(
       EXPECT_COLUMN_MIN_TO_BE_BETWEEN,
       Map(COLUMN -> "passenger_count", MIN_VALUE -> 10, MAX_VALUE -> 20),
-      "min(passenger_count) BETWEEN 10 AND 20", AGGREGATION_MIN, "passenger_count", Seq()
+      "min(`passenger_count`) BETWEEN 10 AND 20", AGGREGATION_MIN, "`passenger_count`", Seq()
     )
   }
 
@@ -123,7 +123,7 @@ class GreatExpectationsDataValidationsTest extends SparkSuite {
     checkAggExpectation(
       EXPECT_COLUMN_STDEV_TO_BE_BETWEEN,
       Map(COLUMN -> "passenger_count", MIN_VALUE -> 10, MAX_VALUE -> 20),
-      "stddev(passenger_count) BETWEEN 10 AND 20", AGGREGATION_STDDEV, "passenger_count", Seq()
+      "stddev(`passenger_count`) BETWEEN 10 AND 20", AGGREGATION_STDDEV, "`passenger_count`", Seq()
     )
   }
 
@@ -131,7 +131,7 @@ class GreatExpectationsDataValidationsTest extends SparkSuite {
     checkAggExpectation(
       EXPECT_COLUMN_SUM_TO_BE_BETWEEN,
       Map(COLUMN -> "passenger_count", MIN_VALUE -> 10, MAX_VALUE -> 20),
-      "sum(passenger_count) BETWEEN 10 AND 20", AGGREGATION_SUM, "passenger_count", Seq()
+      "sum(`passenger_count`) BETWEEN 10 AND 20", AGGREGATION_SUM, "`passenger_count`", Seq()
     )
   }
 
@@ -147,7 +147,7 @@ class GreatExpectationsDataValidationsTest extends SparkSuite {
     checkExpectation(
       EXPECT_COLUMN_VALUE_LENGTHS_TO_EQUAL,
       Map(COLUMN -> "payment_type", VALUE -> 5),
-      "LENGTH(payment_type) == 5"
+      "LENGTH(`payment_type`) == 5"
     )
   }
 
@@ -179,7 +179,7 @@ class GreatExpectationsDataValidationsTest extends SparkSuite {
     checkExpectation(
       EXPECT_COLUMN_VALUES_TO_BE_IN_TYPE_LIST,
       Map(COLUMN -> "payment_type", TYPE_LIST -> List("string")),
-      "TYPEOF(payment_type) IN ('string')"
+      "TYPEOF(`payment_type`) IN ('string')"
     )
   }
 
@@ -188,7 +188,7 @@ class GreatExpectationsDataValidationsTest extends SparkSuite {
       EXPECT_COLUMN_VALUES_TO_BE_DECREASING,
       Map(COLUMN -> "fare_amount"),
       "is_fare_amount_decreasing",
-      "fare_amount <= LAG(fare_amount) OVER (ORDER BY MONOTONICALLY_INCREASING_ID()) AS is_fare_amount_decreasing"
+      "`fare_amount` <= LAG(`fare_amount`) OVER (ORDER BY MONOTONICALLY_INCREASING_ID()) AS is_fare_amount_decreasing"
     )
   }
 
@@ -197,7 +197,7 @@ class GreatExpectationsDataValidationsTest extends SparkSuite {
       EXPECT_COLUMN_VALUES_TO_BE_DECREASING,
       Map(COLUMN -> "fare_amount", STRICTLY -> "true"),
       "is_fare_amount_decreasing",
-      "fare_amount < LAG(fare_amount) OVER (ORDER BY MONOTONICALLY_INCREASING_ID()) AS is_fare_amount_decreasing"
+      "`fare_amount` < LAG(`fare_amount`) OVER (ORDER BY MONOTONICALLY_INCREASING_ID()) AS is_fare_amount_decreasing"
     )
   }
 
@@ -206,7 +206,7 @@ class GreatExpectationsDataValidationsTest extends SparkSuite {
       EXPECT_COLUMN_VALUES_TO_BE_INCREASING,
       Map(COLUMN -> "fare_amount"),
       "is_fare_amount_increasing",
-      "fare_amount >= LAG(fare_amount) OVER (ORDER BY MONOTONICALLY_INCREASING_ID()) AS is_fare_amount_increasing"
+      "`fare_amount` >= LAG(`fare_amount`) OVER (ORDER BY MONOTONICALLY_INCREASING_ID()) AS is_fare_amount_increasing"
     )
   }
 
@@ -215,7 +215,7 @@ class GreatExpectationsDataValidationsTest extends SparkSuite {
       EXPECT_COLUMN_VALUES_TO_BE_INCREASING,
       Map(COLUMN -> "fare_amount", STRICTLY -> "true"),
       "is_fare_amount_increasing",
-      "fare_amount > LAG(fare_amount) OVER (ORDER BY MONOTONICALLY_INCREASING_ID()) AS is_fare_amount_increasing"
+      "`fare_amount` > LAG(`fare_amount`) OVER (ORDER BY MONOTONICALLY_INCREASING_ID()) AS is_fare_amount_increasing"
     )
   }
 
@@ -223,7 +223,7 @@ class GreatExpectationsDataValidationsTest extends SparkSuite {
     checkExpectation(
       EXPECT_COLUMN_VALUES_TO_BE_JSON_PARSEABLE,
       Map(COLUMN -> "pickup_location_id"),
-      "TO_JSON(STRUCT(pickup_location_id)) IS NOT NULL"
+      "GET_JSON_OBJECT(`pickup_location_id`, '$') IS NOT NULL"
     )
   }
 
@@ -255,7 +255,7 @@ class GreatExpectationsDataValidationsTest extends SparkSuite {
     checkExpectation(
       EXPECT_COLUMN_VALUES_TO_MATCH_JSON_SCHEMA,
       Map(COLUMN -> "pickup_location_id", JSON_SCHEMA -> "a INT, b DOUBLE"),
-      "FROM_JSON(pickup_location_id, 'a INT, b DOUBLE') IS NOT NULL"
+      "FROM_JSON(`pickup_location_id`, 'a INT, b DOUBLE') IS NOT NULL"
     )
   }
 
@@ -311,7 +311,7 @@ class GreatExpectationsDataValidationsTest extends SparkSuite {
     checkExpectation(
       EXPECT_COLUMN_VALUES_TO_MATCH_REGEX_LIST,
       Map(COLUMN -> "pickup_location_id", REGEX_LIST -> List(".*Spark", "Spark.*")),
-      "REGEXP(`pickup_location_id`, '.*Spark') OR REGEXP(`pickup_location_id`, 'Spark.*')"
+      "(REGEXP(`pickup_location_id`, '.*Spark') OR REGEXP(`pickup_location_id`, 'Spark.*'))"
     )
   }
 
@@ -319,7 +319,7 @@ class GreatExpectationsDataValidationsTest extends SparkSuite {
     checkExpectation(
       EXPECT_COLUMN_VALUES_TO_MATCH_REGEX_LIST,
       Map(COLUMN -> "pickup_location_id", REGEX_LIST -> List(".*Spark", "Spark.*"), MATCH_ON -> "all"),
-      "REGEXP(`pickup_location_id`, '.*Spark') AND REGEXP(`pickup_location_id`, 'Spark.*')"
+      "(REGEXP(`pickup_location_id`, '.*Spark') AND REGEXP(`pickup_location_id`, 'Spark.*'))"
     )
   }
 
@@ -425,7 +425,7 @@ class GreatExpectationsDataValidationsTest extends SparkSuite {
     val result = checkExpectation(
       EXPECT_COLUMN_QUANTILE_VALUES_TO_BE_BETWEEN,
       Map(COLUMN -> "passenger_count", QUANTILE_RANGES -> Map(QUANTILES -> List(0.1, 0.4), VALUE_RANGES -> List(List(10, 12), List(20, 30)))),
-      "passenger_count_percentile_0 BETWEEN 10 AND 12 AND passenger_count_percentile_1 BETWEEN 20 AND 30"
+      "passenger_count_percentile_0 BETWEEN 10.0 AND 12.0 AND passenger_count_percentile_1 BETWEEN 20.0 AND 30.0"
     )
     assertResult("PERCENTILE(`passenger_count`, 0.1) AS passenger_count_percentile_0")(result.head.validation.asInstanceOf[ExpressionValidation].selectExpr.head)
     assertResult("PERCENTILE(`passenger_count`, 0.4) AS passenger_count_percentile_1")(result.head.validation.asInstanceOf[ExpressionValidation].selectExpr.last)
@@ -451,8 +451,8 @@ class GreatExpectationsDataValidationsTest extends SparkSuite {
     checkExpectation(
       EXPECT_MULTICOLUMN_SUM_TO_EQUAL,
       Map(COLUMN_LIST -> List("fare_amount", "tip_amount"), SUM_TOTAL -> 100),
-      "_column_sum == 100",
-      "`fare_amount` + `tip_amount` AS _column_sum"
+      "_field_sum == 100",
+      "`fare_amount` + `tip_amount` AS _field_sum"
     )
   }
 
@@ -468,8 +468,8 @@ class GreatExpectationsDataValidationsTest extends SparkSuite {
     checkExpectation(
       EXPECT_SELECT_COLUMN_VALUES_TO_BE_UNIQUE_WITHIN_RECORD,
       Map(COLUMN_LIST -> List("payment_type", "vendor_id")),
-      "SIZE(_unique_multi_column) == 2",
-      "COLLECT_SET(CONCAT(`payment_type`,`vendor_id`)) AS _unique_multi_column"
+      "SIZE(_unique_multi_field) == 2",
+      "COLLECT_SET(CONCAT(`payment_type`,`vendor_id`)) AS _unique_multi_field"
     )
   }
 
@@ -479,9 +479,9 @@ class GreatExpectationsDataValidationsTest extends SparkSuite {
     val result = GreatExpectationsDataValidations.createValidationsFromGreatExpectationsTestSuite(greatExpectationsTestSuite)
 
     assertResult(1)(result.size)
-    assert(result.head.validation.isInstanceOf[ColumnNamesValidation])
-    assertResult(VALIDATION_COLUMN_NAME_MATCH_SET)(result.head.validation.asInstanceOf[ColumnNamesValidation].columnNameType)
-    assert(result.head.validation.asInstanceOf[ColumnNamesValidation].names sameElements Array("payment_type"))
+    assert(result.head.validation.isInstanceOf[FieldNamesValidation])
+    assertResult(VALIDATION_FIELD_NAME_MATCH_SET)(result.head.validation.asInstanceOf[FieldNamesValidation].fieldNameType)
+    assert(result.head.validation.asInstanceOf[FieldNamesValidation].names sameElements Array("payment_type"))
   }
 
   test("Can convert EXPECT_TABLE_COLUMN_COUNT_TO_BE_BETWEEN Great Expectations test to validation") {
@@ -490,10 +490,10 @@ class GreatExpectationsDataValidationsTest extends SparkSuite {
     val result = GreatExpectationsDataValidations.createValidationsFromGreatExpectationsTestSuite(greatExpectationsTestSuite)
 
     assertResult(1)(result.size)
-    assert(result.head.validation.isInstanceOf[ColumnNamesValidation])
-    assertResult(VALIDATION_COLUMN_NAME_COUNT_BETWEEN)(result.head.validation.asInstanceOf[ColumnNamesValidation].columnNameType)
-    assertResult(5)(result.head.validation.asInstanceOf[ColumnNamesValidation].minCount)
-    assertResult(6)(result.head.validation.asInstanceOf[ColumnNamesValidation].maxCount)
+    assert(result.head.validation.isInstanceOf[FieldNamesValidation])
+    assertResult(VALIDATION_FIELD_NAME_COUNT_BETWEEN)(result.head.validation.asInstanceOf[FieldNamesValidation].fieldNameType)
+    assertResult(5)(result.head.validation.asInstanceOf[FieldNamesValidation].min)
+    assertResult(6)(result.head.validation.asInstanceOf[FieldNamesValidation].max)
   }
 
   test("Can convert EXPECT_TABLE_COLUMN_COUNT_TO_EQUAL Great Expectations test to validation") {
@@ -502,9 +502,9 @@ class GreatExpectationsDataValidationsTest extends SparkSuite {
     val result = GreatExpectationsDataValidations.createValidationsFromGreatExpectationsTestSuite(greatExpectationsTestSuite)
 
     assertResult(1)(result.size)
-    assert(result.head.validation.isInstanceOf[ColumnNamesValidation])
-    assertResult(VALIDATION_COLUMN_NAME_COUNT_EQUAL)(result.head.validation.asInstanceOf[ColumnNamesValidation].columnNameType)
-    assertResult(5)(result.head.validation.asInstanceOf[ColumnNamesValidation].count)
+    assert(result.head.validation.isInstanceOf[FieldNamesValidation])
+    assertResult(VALIDATION_FIELD_NAME_COUNT_EQUAL)(result.head.validation.asInstanceOf[FieldNamesValidation].fieldNameType)
+    assertResult(5)(result.head.validation.asInstanceOf[FieldNamesValidation].count)
   }
 
   test("Can convert EXPECT_TABLE_COLUMNS_TO_MATCH_ORDERED_LIST Great Expectations test to validation") {
@@ -513,9 +513,9 @@ class GreatExpectationsDataValidationsTest extends SparkSuite {
     val result = GreatExpectationsDataValidations.createValidationsFromGreatExpectationsTestSuite(greatExpectationsTestSuite)
 
     assertResult(1)(result.size)
-    assert(result.head.validation.isInstanceOf[ColumnNamesValidation])
-    assertResult(VALIDATION_COLUMN_NAME_MATCH_ORDER)(result.head.validation.asInstanceOf[ColumnNamesValidation].columnNameType)
-    assert(result.head.validation.asInstanceOf[ColumnNamesValidation].names sameElements Array("payment_type", "vendor_id"))
+    assert(result.head.validation.isInstanceOf[FieldNamesValidation])
+    assertResult(VALIDATION_FIELD_NAME_MATCH_ORDER)(result.head.validation.asInstanceOf[FieldNamesValidation].fieldNameType)
+    assert(result.head.validation.asInstanceOf[FieldNamesValidation].names sameElements Array("payment_type", "vendor_id"))
   }
 
   test("Can convert EXPECT_TABLE_COLUMNS_TO_MATCH_SET Great Expectations test to validation") {
@@ -524,9 +524,9 @@ class GreatExpectationsDataValidationsTest extends SparkSuite {
     val result = GreatExpectationsDataValidations.createValidationsFromGreatExpectationsTestSuite(greatExpectationsTestSuite)
 
     assertResult(1)(result.size)
-    assert(result.head.validation.isInstanceOf[ColumnNamesValidation])
-    assertResult(VALIDATION_COLUMN_NAME_MATCH_SET)(result.head.validation.asInstanceOf[ColumnNamesValidation].columnNameType)
-    assert(result.head.validation.asInstanceOf[ColumnNamesValidation].names sameElements Array("payment_type", "passenger_count"))
+    assert(result.head.validation.isInstanceOf[FieldNamesValidation])
+    assertResult(VALIDATION_FIELD_NAME_MATCH_SET)(result.head.validation.asInstanceOf[FieldNamesValidation].fieldNameType)
+    assert(result.head.validation.asInstanceOf[FieldNamesValidation].names sameElements Array("payment_type", "passenger_count"))
   }
 
   test("Can convert EXPECT_TABLE_ROW_COUNT_TO_BE_BETWEEN Great Expectations test to validation") {
@@ -573,8 +573,8 @@ class GreatExpectationsDataValidationsTest extends SparkSuite {
     val grpValidation = result.head.validation.asInstanceOf[GroupByValidation]
     assertResult(expectedExpr)(grpValidation.aggExpr)
     assertResult(expectedAggType)(grpValidation.aggType)
-    assertResult(expectedAggCol)(grpValidation.aggCol)
-    assertResult(expectedGroupByCols)(grpValidation.groupByCols)
+    assertResult(expectedAggCol)(grpValidation.aggField)
+    assertResult(expectedGroupByCols)(grpValidation.groupByFields)
   }
 }
 

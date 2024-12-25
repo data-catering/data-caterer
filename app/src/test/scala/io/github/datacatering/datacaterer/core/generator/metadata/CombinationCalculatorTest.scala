@@ -1,6 +1,6 @@
 package io.github.datacatering.datacaterer.core.generator.metadata
 
-import io.github.datacatering.datacaterer.api.model.{Field, Generator, Schema}
+import io.github.datacatering.datacaterer.api.model.Field
 import net.datafaker.Faker
 import org.junit.runner.RunWith
 import org.scalatest.funsuite.AnyFunSuite
@@ -10,17 +10,16 @@ import org.scalatestplus.junit.JUnitRunner
 class CombinationCalculatorTest extends AnyFunSuite {
 
   ignore("Can calculate number of combinations given a schema with faker expressions and one of data generators") {
-    val schema = Schema(Some(List(
-      Field("account_id", Some("string"), Some(Generator())),
-      Field("name", Some("string"), Some(Generator("random", Map("expression" -> "#{Name.name}")))),
-      Field("status", Some("string"), Some(Generator("oneOf", Map("oneOf" -> List("open", "closed"))))),
-    )))
+    val schema = List(
+      Field("account_id", Some("string")),
+      Field("name", Some("string"), Map("expression" -> "#{Name.name}")),
+      Field("status", Some("string"), Map("oneOf" -> List("open", "closed"))),
+    )
     val faker = new Faker()
 
     val result = CombinationCalculator.totalCombinationsForSchema(schema, faker)
 
-    assert(result.isDefined)
-    assertResult(BigInt(103908640))(result.get)
+    assertResult(BigInt(103908640))(result)
   }
 
 }

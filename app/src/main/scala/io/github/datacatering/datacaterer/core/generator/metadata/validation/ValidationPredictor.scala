@@ -37,8 +37,8 @@ object ValidationPredictor {
     validations.foreach(validation => {
       val validationLogInfo = validation.validation match {
         case ExpressionValidation(expr, selectExpr) => s"validation-type=expression, expr=$expr"
-        case GroupByValidation(groupByCols, aggCol, aggType, expr) => s"validation-type=$VALIDATION_GROUP_BY, " +
-          s"group-by-cols=${groupByCols.mkString(",")}, aggregate-col=$aggCol, aggregate-type=$aggType, expr=$expr"
+        case GroupByValidation(groupByFields, aggField, aggType, expr, validation) => s"validation-type=$VALIDATION_GROUP_BY, " +
+          s"group-by-fields=${groupByFields.mkString(",")}, aggregate-field=$aggField, aggregate-type=$aggType, expr=$expr"
         case _ => "message=Unknown validation type"
       }
       LOGGER.info(s"Generated validation, $baseLogInfo, $validationLogInfo")

@@ -1,7 +1,7 @@
 package io.github.datacatering.datacaterer.core.generator.result
 
 import io.github.datacatering.datacaterer.api.model.Constants.HISTOGRAM
-import io.github.datacatering.datacaterer.api.model.{FlagsConfig, Generator, Plan, Step, Validation, ValidationConfig}
+import io.github.datacatering.datacaterer.api.model.{FlagsConfig, Plan, Step, Validation, ValidationConfig}
 import io.github.datacatering.datacaterer.core.listener.{SparkRecordListener, SparkTaskRecordSummary}
 import io.github.datacatering.datacaterer.core.model.Constants.{REPORT_DATA_SOURCES_HTML, REPORT_FIELDS_HTML, REPORT_HOME_HTML, REPORT_VALIDATIONS_HTML}
 import io.github.datacatering.datacaterer.core.model.{DataSourceResult, DataSourceResultSummary, StepResultSummary, TaskResultSummary, ValidationConfigResult}
@@ -321,12 +321,12 @@ class ResultHtmlWriter {
   }
 
   def fieldMetadata(step: Step, dataSourceResults: List[DataSourceResult]): Node = {
-    val originalFields = step.schema.fields.getOrElse(List())
+    val originalFields = step.fields
     val generatedFields = dataSourceResults.head.sinkResult.generatedMetadata
     val metadataMatch = originalFields.map(field => {
       val optGenField = generatedFields.find(f => f.name == field.name)
-      val genMetadata = optGenField.map(_.generator.getOrElse(Generator()).options).getOrElse(Map())
-      val originalMetadata = field.generator.getOrElse(Generator()).options
+      val genMetadata = optGenField.map(_.options).getOrElse(Map())
+      val originalMetadata = field.options
       val metadataCompare = (originalMetadata.keys ++ genMetadata.keys).filter(_ != HISTOGRAM).toList.distinct
         .map(key => {
           List(key, originalMetadata.getOrElse(key, "").toString, genMetadata.getOrElse(key, "").toString)
@@ -345,13 +345,11 @@ class ResultHtmlWriter {
             <th>Name</th>
             <th>Type</th>
             <th>Nullable</th>
-            <th>Generator Type</th>
             <th>Generated Records Metadata Comparison</th>
           </tr>
         </thead>
         <tbody>
           {originalFields.map(field => {
-          val generator = field.generator.getOrElse(Generator())
           <tr>
             <td>
               {field.name}
@@ -361,9 +359,6 @@ class ResultHtmlWriter {
             </td>
             <td>
               {checkMark(field.nullable)}
-            </td>
-            <td>
-              {generator.`type`}
             </td>
             <td>
               {keyValueTable(metadataMatch(field.name), Some(List("Metadata Field", "Original Value", "Generated Value")), true)}
@@ -876,7 +871,7 @@ class ResultHtmlWriter {
       |
       |.outer-container {
       |    display: flex;
-      |    flex-direction: column;
+      |    flex-direction: field;
       |    height: 100vh;
       |}
       |

@@ -1,7 +1,6 @@
 package io.github.datacatering.datacaterer.api
 
-import io.github.datacatering.datacaterer.api.model.Constants.FOREIGN_KEY_DELIMITER
-import io.github.datacatering.datacaterer.api.model.ForeignKeyRelation
+import io.github.datacatering.datacaterer.api.model.{ForeignKey, ForeignKeyRelation}
 import org.junit.runner.RunWith
 import org.scalatest.funsuite.AnyFunSuite
 import org.scalatestplus.junit.JUnitRunner
@@ -23,10 +22,10 @@ class SinkOptionsBuilderTest extends AnyFunSuite {
     assert(result.seed.contains("10"))
     assert(result.locale.contains("id"))
     assertResult(2)(result.foreignKeys.size)
-    assert(result.foreignKeys.contains((s"my_postgres${FOREIGN_KEY_DELIMITER}account${FOREIGN_KEY_DELIMITER}account_id",
-      List(s"my_json${FOREIGN_KEY_DELIMITER}account${FOREIGN_KEY_DELIMITER}account_id"), List())))
-    assert(result.foreignKeys.contains((s"my_postgres${FOREIGN_KEY_DELIMITER}account${FOREIGN_KEY_DELIMITER}customer_number",
-      List(s"my_json${FOREIGN_KEY_DELIMITER}account${FOREIGN_KEY_DELIMITER}customer_number", s"my_parquet${FOREIGN_KEY_DELIMITER}transaction${FOREIGN_KEY_DELIMITER}cust_num"), List())))
+    assert(result.foreignKeys.contains(ForeignKey(ForeignKeyRelation(s"my_postgres", "account", List("account_id")),
+      List(ForeignKeyRelation("my_json", "account", List("account_id"))), List())))
+    assert(result.foreignKeys.contains(ForeignKey(ForeignKeyRelation("my_postgres", "account", List("customer_number")),
+      List(ForeignKeyRelation("my_json", "account", List("customer_number")), ForeignKeyRelation("my_parquet", "transaction", List("cust_num"))), List())))
   }
 
 }

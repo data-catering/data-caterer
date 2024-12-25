@@ -1,7 +1,6 @@
 package io.github.datacatering.datacaterer.api
 
-import io.github.datacatering.datacaterer.api.model.Constants.{ALL_COMBINATIONS, FOREIGN_KEY_DELIMITER}
-import io.github.datacatering.datacaterer.api.connection.FileBuilder
+import io.github.datacatering.datacaterer.api.model.Constants.ALL_COMBINATIONS
 import io.github.datacatering.datacaterer.api.model.{DataCatererConfiguration, ExpressionValidation, ForeignKeyRelation, PauseWaitCondition}
 import org.junit.runner.RunWith
 import org.scalatest.funsuite.AnyFunSuite
@@ -34,7 +33,7 @@ class PlanBuilderTest extends AnyFunSuite {
       val t = tasks.addTask(
         "my task",
         dataSourceName,
-        step.schema(schema.addFields(field.name("account_id")))
+        step.fields(field.name("account_id"))
       )
 
       val p = plan.name("my plan")
@@ -75,7 +74,7 @@ class PlanBuilderTest extends AnyFunSuite {
 
     assertResult(1)(result._tasks.size)
     assertResult("my task")(result._tasks.head.name)
-    assertResult("account_id")(result._tasks.head.steps.head.schema.fields.get.head.name)
+    assertResult("account_id")(result._tasks.head.steps.head.fields.head.name)
 
     assertResult("my plan")(result._plan.name)
     assertResult(1)(result._plan.tasks.size)
@@ -85,15 +84,15 @@ class PlanBuilderTest extends AnyFunSuite {
     assert(result._plan.sinkOptions.get.seed.contains("1"))
     assert(result._plan.sinkOptions.get.locale.contains("en"))
     val fk = result._plan.sinkOptions.get.foreignKeys
-    assert(fk.exists(f => f._1.equalsIgnoreCase(s"account_json${FOREIGN_KEY_DELIMITER}default_step${FOREIGN_KEY_DELIMITER}account_id")))
+    assert(fk.exists(f => f.source == ForeignKeyRelation("account_json", "default_step", List("account_id"))))
     assert(
-      fk.find(f => f._1.equalsIgnoreCase(s"account_json${FOREIGN_KEY_DELIMITER}default_step${FOREIGN_KEY_DELIMITER}account_id")).get._2 ==
-        List(s"txn_db${FOREIGN_KEY_DELIMITER}txn_step${FOREIGN_KEY_DELIMITER}account_number")
+      fk.find(f => f.source == ForeignKeyRelation(s"account_json", "default_step", List("account_id"))).get.generate ==
+        List(ForeignKeyRelation("txn_db", "txn_step", List("account_number")))
     )
-    assert(fk.exists(f => f._1.equalsIgnoreCase(s"account_json${FOREIGN_KEY_DELIMITER}default_step${FOREIGN_KEY_DELIMITER}customer_number")))
+    assert(fk.exists(f => f.source == ForeignKeyRelation(s"account_json", "default_step", List("customer_number"))))
     assert(
-      fk.find(f => f._1.equalsIgnoreCase(s"account_json${FOREIGN_KEY_DELIMITER}default_step${FOREIGN_KEY_DELIMITER}customer_number")).get._2 ==
-        List(s"acc_db${FOREIGN_KEY_DELIMITER}acc_step${FOREIGN_KEY_DELIMITER}customer_number")
+      fk.find(f => f.source == ForeignKeyRelation(s"account_json", "default_step", List("customer_number"))).get.generate ==
+        List(ForeignKeyRelation("acc_db", "acc_step", List("customer_number")))
     )
 
     assert(result._configuration.flagsConfig.enableCount)
@@ -138,9 +137,9 @@ class PlanBuilderTest extends AnyFunSuite {
 
   test("Can define foreign key via connection task builder") {
     val jsonTask = ConnectionConfigWithTaskBuilder().file("my_json", "json")
-      .schema(FieldBuilder().name("account_id"))
+      .fields(FieldBuilder().name("account_id"))
     val csvTask = ConnectionConfigWithTaskBuilder().file("my_csv", "csv")
-      .schema(FieldBuilder().name("account_id"))
+      .fields(FieldBuilder().name("account_id"))
     val result = PlanBuilder().addForeignKeyRelationship(
       jsonTask, List("account_id"),
       List(csvTask -> List("account_id"))
@@ -150,8 +149,8 @@ class PlanBuilderTest extends AnyFunSuite {
     val fk = result.sinkOptions.get.foreignKeys
     assert(fk.nonEmpty)
     assertResult(1)(fk.size)
-    assert(fk.exists(f => f._1.startsWith("my_json") && f._1.endsWith("account_id") &&
-      f._2.size == 1 && f._2.head.startsWith("my_csv") && f._2.head.endsWith("account_id")
+    assert(fk.exists(f => f.source.dataSource == "my_json" && f.source.fields == List("account_id") &&
+      f.generate.size == 1 && f.generate.head.dataSource == "my_csv" && f.generate.head.fields == List("account_id")
     ))
 
     val result2 = PlanBuilder().addForeignKeyRelationship(
@@ -165,7 +164,7 @@ class PlanBuilderTest extends AnyFunSuite {
     assertResult(1)(fk2.size)
   }
 
-  test("Throw runtime exception when foreign key column is not defined in data sources") {
+  test("Throw runtime exception when foreign key field is not defined in data sources") {
     val jsonTask = ConnectionConfigWithTaskBuilder().file("my_json", "json")
     val csvTask = ConnectionConfigWithTaskBuilder().file("my_csv", "csv")
 
@@ -175,9 +174,9 @@ class PlanBuilderTest extends AnyFunSuite {
     ).plan)
   }
 
-  test("Throw runtime exception when foreign key column is not defined in data sources with other columns") {
-    val jsonTask = ConnectionConfigWithTaskBuilder().file("my_json", "json").schema(FieldBuilder().name("account_number"))
-    val csvTask = ConnectionConfigWithTaskBuilder().file("my_csv", "csv").schema(FieldBuilder().name("account_type"))
+  test("Throw runtime exception when foreign key field is not defined in data sources with other fields") {
+    val jsonTask = ConnectionConfigWithTaskBuilder().file("my_json", "json").fields(FieldBuilder().name("account_number"))
+    val csvTask = ConnectionConfigWithTaskBuilder().file("my_csv", "csv").fields(FieldBuilder().name("account_type"))
 
     assertThrows[RuntimeException](PlanBuilder().addForeignKeyRelationship(
       jsonTask, List("account_id"),
@@ -186,8 +185,8 @@ class PlanBuilderTest extends AnyFunSuite {
   }
 
   test("Don't throw runtime exception when data source schema is defined from metadata source") {
-    val jsonTask = ConnectionConfigWithTaskBuilder().file("my_json", "json").schema(MetadataSourceBuilder().openApi("localhost:8080"))
-    val csvTask = ConnectionConfigWithTaskBuilder().file("my_csv", "csv").schema(MetadataSourceBuilder().openApi("localhost:8080"))
+    val jsonTask = ConnectionConfigWithTaskBuilder().file("my_json", "json").fields(MetadataSourceBuilder().openApi("localhost:8080"))
+    val csvTask = ConnectionConfigWithTaskBuilder().file("my_csv", "csv").fields(MetadataSourceBuilder().openApi("localhost:8080"))
     val result = PlanBuilder().addForeignKeyRelationship(
       jsonTask, List("account_id"),
       List(csvTask -> List("account_id"))
@@ -199,9 +198,9 @@ class PlanBuilderTest extends AnyFunSuite {
     assertResult(1)(fk.size)
   }
 
-  test("Don't throw runtime exception when delete foreign key column, defined by SQL, is not defined in data sources") {
-    val jsonTask = ConnectionConfigWithTaskBuilder().file("my_json", "json").schema(FieldBuilder().name("account_id"))
-    val csvTask = ConnectionConfigWithTaskBuilder().file("my_csv", "csv").schema(FieldBuilder().name("account_number"))
+  test("Don't throw runtime exception when delete foreign key field, defined by SQL, is not defined in data sources") {
+    val jsonTask = ConnectionConfigWithTaskBuilder().file("my_json", "json").fields(FieldBuilder().name("account_id"))
+    val csvTask = ConnectionConfigWithTaskBuilder().file("my_csv", "csv").fields(FieldBuilder().name("account_number"))
     val result = PlanBuilder().addForeignKeyRelationship(
       jsonTask, List("account_id"),
       List(),
@@ -212,8 +211,8 @@ class PlanBuilderTest extends AnyFunSuite {
     val fk = result.sinkOptions.get.foreignKeys
     assert(fk.nonEmpty)
     assertResult(1)(fk.size)
-    assert(fk.head._2.isEmpty)
-    assertResult(1)(fk.head._3.size)
+    assert(fk.head.generate.isEmpty)
+    assertResult(1)(fk.head.delete.size)
   }
 
   test("Can create a step that will generate records for all combinations") {

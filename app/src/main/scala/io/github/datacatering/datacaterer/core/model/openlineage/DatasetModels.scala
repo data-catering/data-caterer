@@ -25,7 +25,7 @@ case class OpenLineageDataset(
                                tags: Set[String],
                                lastModifiedAt: Timestamp,
                                description: Option[String],
-                               columnLineage: List[Any],
+                               fieldLineage: List[Any],
                                facets: Map[String, Any],
                                currentVersion: UUID
                              )

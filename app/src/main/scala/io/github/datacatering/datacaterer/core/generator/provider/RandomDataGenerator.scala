@@ -1,6 +1,6 @@
 package io.github.datacatering.datacaterer.core.generator.provider
 
-import io.github.datacatering.datacaterer.api.model.Constants.{ARRAY_MAXIMUM_LENGTH, ARRAY_MINIMUM_LENGTH, DEFAULT_VALUE, DISTINCT_COUNT, DISTRIBUTION, DISTRIBUTION_EXPONENTIAL, DISTRIBUTION_NORMAL, DISTRIBUTION_RATE_PARAMETER, EXPRESSION, IS_UNIQUE, MAXIMUM, MAXIMUM_LENGTH, MEAN, MINIMUM, MINIMUM_LENGTH, NUMERIC_PRECISION, NUMERIC_SCALE, ROUND, ROW_COUNT, STANDARD_DEVIATION}
+import io.github.datacatering.datacaterer.api.model.Constants._
 import io.github.datacatering.datacaterer.core.exception.UnsupportedDataGeneratorType
 import io.github.datacatering.datacaterer.core.model.Constants._
 import io.github.datacatering.datacaterer.core.util.GeneratorUtil
@@ -34,9 +34,14 @@ object RandomDataGenerator {
       case BinaryType => new RandomBinaryDataGenerator(structField, faker)
       case ByteType => new RandomByteDataGenerator(structField, faker)
       case ArrayType(dt, _) => new RandomArrayDataGenerator(structField, dt, faker)
+      case MapType(kt, vt, _) => new RandomMapDataGenerator(structField, kt, vt, faker)
       case StructType(_) => new RandomStructTypeDataGenerator(structField, faker)
       case x => throw UnsupportedDataGeneratorType(s"Unsupported type for random data generation: name=${structField.name}, type=${x.typeName}")
     }
+  }
+
+  def getGeneratorForDataType(dataType: DataType, faker: Faker = new Faker()): DataGenerator[_] = {
+    getGeneratorForStructField(StructField("", dataType))
   }
 
   class RandomStringDataGenerator(val structField: StructField, val faker: Faker = new Faker()) extends NullableDataGenerator[String] {
@@ -239,7 +244,8 @@ object RandomDataGenerator {
   class RandomBinaryDataGenerator(val structField: StructField, val faker: Faker = new Faker()) extends NullableDataGenerator[Array[Byte]] {
     private lazy val minLength = tryGetValue(structField.metadata, MINIMUM_LENGTH, 1)
     private lazy val maxLength = tryGetValue(structField.metadata, MAXIMUM_LENGTH, 20)
-    assert(minLength <= maxLength, s"minLength has to be less than or equal to maxLength, field-name=${structField.name}, minLength=$minLength, maxLength=$maxLength")
+    assert(minLength <= maxLength, s"minLength has to be less than or equal to maxLength, " +
+      s"field-name=${structField.name}, minLength=$minLength, maxLength=$maxLength")
 
     override val edgeCases: List[Array[Byte]] = List(Array(), "\n".getBytes, "\r".getBytes, "\t".getBytes,
       " ".getBytes, "\\u0000".getBytes, "\\ufff".getBytes, Array(Byte.MinValue), Array(Byte.MaxValue))
@@ -269,6 +275,10 @@ object RandomDataGenerator {
   class RandomArrayDataGenerator[T](val structField: StructField, val dataType: DataType, val faker: Faker = new Faker()) extends ArrayDataGenerator[T] {
     override lazy val arrayMinSize: Int = tryGetValue(structField.metadata, ARRAY_MINIMUM_LENGTH, 0)
     override lazy val arrayMaxSize: Int = tryGetValue(structField.metadata, ARRAY_MAXIMUM_LENGTH, 5)
+    assert(arrayMinSize >= 0, s"arrayMinSize has to be greater than or equal to 0, " +
+      s"field-name=${structField.name}, arrayMinSize=$arrayMinSize")
+    assert(arrayMinSize <= arrayMaxSize, s"arrayMinSize has to be less than or equal to arrayMaxSize, " +
+      s"field-name=${structField.name}, arrayMinSize=$arrayMinSize, arrayMaxSize=$arrayMaxSize")
 
     override def elementGenerator: DataGenerator[T] = {
       dataType match {
@@ -288,6 +298,34 @@ object RandomDataGenerator {
           getGeneratorForStructField(structField.copy(dataType = dataType)).generateSqlExpressionWrapper
       }
       s"TRANSFORM(ARRAY_REPEAT(1, CAST($sqlRandom * ${arrayMaxSize - arrayMinSize} + $arrayMinSize AS INT)), i -> $nestedSqlExpressions)"
+    }
+  }
+
+  class RandomMapDataGenerator[T, K](
+                                      val structField: StructField,
+                                      val keyDataType: DataType,
+                                      val valueDataType: DataType,
+                                      val faker: Faker = new Faker()
+                                    ) extends MapDataGenerator[T, K] {
+    override lazy val mapMinSize: Int = tryGetValue(structField.metadata, MAP_MINIMUM_SIZE, 0)
+    override lazy val mapMaxSize: Int = tryGetValue(structField.metadata, MAP_MAXIMUM_SIZE, 5)
+    assert(mapMinSize >= 0, s"mapMinSize has to be greater than or equal to 0, " +
+      s"field-name=${structField.name}, mapMinSize=$mapMinSize")
+    assert(mapMinSize <= mapMaxSize, s"mapMinSize has to be less than or equal to mapMaxSize, " +
+      s"field-name=${structField.name}, mapMinSize=$mapMinSize, mapMaxSize=$mapMaxSize")
+
+    override def keyGenerator: DataGenerator[T] = getGeneratorForDataType(keyDataType).asInstanceOf[DataGenerator[T]]
+
+    override def valueGenerator: DataGenerator[K] = getGeneratorForDataType(valueDataType).asInstanceOf[DataGenerator[K]]
+
+    //generate two arrays, key array and value array, then use map_from_arrays(col(keyArr), col(valueArr))
+    //how to make it empty map when size is 0
+    override def generateSqlExpression: String = {
+      val keyDataGenerator = getGeneratorForDataType(keyDataType)
+      val valueDataGenerator = getGeneratorForDataType(valueDataType)
+      val keySql = keyDataGenerator.generateSqlExpressionWrapper
+      val valueSql = valueDataGenerator.generateSqlExpressionWrapper
+      s"STR_TO_MAP(CONCAT_WS(',', TRANSFORM(ARRAY_REPEAT(1, CAST($sqlRandom * ${mapMaxSize - mapMinSize} + $mapMinSize AS INT)), i -> CONCAT($keySql, '->', $valueSql))), '->', ',')"
     }
   }
 
@@ -370,9 +408,9 @@ object RandomDataGenerator {
 
     val baseFormula = if (isIncrementalNumber(defaultValue, distinctCount, count, isUnique)) {
       if (metadata.contains(MAXIMUM)) {
-        s"$max + $INDEX_INC_COL + 1" //index col starts at 0
+        s"$max + $INDEX_INC_FIELD + 1" //index col starts at 0
       } else {
-        s"$INDEX_INC_COL + 1"
+        s"$INDEX_INC_FIELD + 1"
       }
     } else if (metadata.contains(STANDARD_DEVIATION) && metadata.contains(MEAN)) {
       val randNormal = sqlRand.replace("RAND", "RANDN")
@@ -391,7 +429,7 @@ object RandomDataGenerator {
       s"ROUND($baseFormula, $roundValue)"
     } else baseFormula
 
-    if (!rounded.contains(INDEX_INC_COL) && (typeName == "INT" || typeName == "SHORT" || typeName == "LONG")) {
+    if (!rounded.contains(INDEX_INC_FIELD) && (typeName == "INT" || typeName == "SHORT" || typeName == "LONG")) {
       s"CAST(ROUND($rounded, 0) AS $typeName)"
     } else {
       s"CAST($rounded AS $typeName)"

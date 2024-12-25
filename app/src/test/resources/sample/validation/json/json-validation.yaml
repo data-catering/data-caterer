@@ -1,5 +1,5 @@
 ---
-name: "account_checks"
+name: "json_checks"
 description: "Check account related fields have gone through system correctly"
 dataSources:
   json:

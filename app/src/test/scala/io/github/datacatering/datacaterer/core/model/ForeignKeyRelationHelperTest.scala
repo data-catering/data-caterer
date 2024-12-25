@@ -14,15 +14,15 @@ class ForeignKeyRelationHelperTest extends AnyFunSuite {
 
     assertResult("my_postgres")(result.dataSource)
     assertResult("public.categories")(result.step)
-    assertResult(List("id"))(result.columns)
+    assertResult(List("id"))(result.fields)
   }
 
-  test("Can parse foreign key relation from string with multiple columns") {
+  test("Can parse foreign key relation from string with multiple fields") {
     val result = ForeignKeyRelationHelper.fromString(s"my_postgres${FOREIGN_KEY_DELIMITER}public.categories${FOREIGN_KEY_DELIMITER}id,amount,description")
 
     assertResult("my_postgres")(result.dataSource)
     assertResult("public.categories")(result.step)
-    assertResult(List("id", "amount", "description"))(result.columns)
+    assertResult(List("id", "amount", "description"))(result.fields)
   }
 
   test("Can parse foreign key relation from plan YAML file") {
@@ -30,7 +30,7 @@ class ForeignKeyRelationHelperTest extends AnyFunSuite {
 
     assertResult("my_postgres")(result.dataSource)
     assertResult("account_postgres")(result.step)
-    assertResult(List("id", "amount", "description"))(result.columns)
+    assertResult(List("id", "amount", "description"))(result.fields)
   }
 
   test("Throw exception when unable to parse foreign key relation") {

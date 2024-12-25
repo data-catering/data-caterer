@@ -8,7 +8,7 @@
 //                .table("my.table")
 //                .schema(field().name("account_id"))
 //                .count(count()
-//                        .recordsPerColumn(10, "account_id", "name")
+//                        .recordsPerField(10, "account_id", "name")
 //                        .generator(generator().min(10).max(100))
 //                );
 //

@@ -4,19 +4,25 @@ import com.google.common.util.concurrent.RateLimiter
 import io.github.datacatering.datacaterer.api.model.Constants.{DELTA, DELTA_LAKE_SPARK_CONF, DRIVER, FORMAT, ICEBERG, ICEBERG_SPARK_CONF, JDBC, OMIT, PARTITIONS, PARTITION_BY, POSTGRES_DRIVER, RATE, ROWS_PER_SECOND, SAVE_MODE, TABLE}
 import io.github.datacatering.datacaterer.api.model.{FlagsConfig, FoldersConfig, MetadataConfig, Step}
 import io.github.datacatering.datacaterer.core.exception.{FailedSaveDataDataFrameV2Exception, FailedSaveDataException}
-import io.github.datacatering.datacaterer.core.model.Constants.{BATCH, DEFAULT_ROWS_PER_SECOND, FAILED, FINISHED, PER_COLUMN_INDEX_COL, STARTED}
+import io.github.datacatering.datacaterer.core.model.Constants.{BATCH, DEFAULT_ROWS_PER_SECOND, FAILED, FINISHED, PER_FIELD_INDEX_FIELD, STARTED}
 import io.github.datacatering.datacaterer.core.model.{RealTimeSinkResult, SinkResult}
-import io.github.datacatering.datacaterer.core.sink.http.model.HttpResult
 import io.github.datacatering.datacaterer.core.util.ConfigUtil
 import io.github.datacatering.datacaterer.core.util.GeneratorUtil.determineSaveTiming
 import io.github.datacatering.datacaterer.core.util.MetadataUtil.getFieldMetadata
 import io.github.datacatering.datacaterer.core.util.ValidationUtil.cleanValidationIdentifier
 import org.apache.log4j.Logger
+import org.apache.pekko.actor.ActorSystem
+import org.apache.pekko.stream.Materializer
+import org.apache.pekko.stream.scaladsl.Source
 import org.apache.spark.sql.catalyst.analysis.TableAlreadyExistsException
 import org.apache.spark.sql.functions.col
 import org.apache.spark.sql.{CreateTableWriter, DataFrame, DataFrameWriter, DataFrameWriterV2, Dataset, Encoder, Encoders, Row, SaveMode, SparkSession}
 
 import java.time.LocalDateTime
+import scala.collection.mutable
+import scala.concurrent.Await
+import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.duration.DurationInt
 import scala.util.{Failure, Success, Try}
 
 class SinkFactory(
@@ -118,34 +124,35 @@ class SinkFactory(
                                step: Step, count: String, startTime: LocalDateTime): SinkResult = {
     val rowsPerSecond = step.options.getOrElse(ROWS_PER_SECOND, connectionConfig.getOrElse(ROWS_PER_SECOND, DEFAULT_ROWS_PER_SECOND))
     LOGGER.info(s"Rows per second for generating data, rows-per-second=$rowsPerSecond")
-    saveRealTimeGuava(dataSourceName, df, format, connectionConfig, step, rowsPerSecond, count, startTime)
+    saveRealTimePekko(dataSourceName, df, format, connectionConfig, step, rowsPerSecond, count, startTime)
   }
 
-  private def saveRealTimeGuava(dataSourceName: String, df: DataFrame, format: String, connectionConfig: Map[String, String],
+  private def saveRealTimePekko(dataSourceName: String, df: DataFrame, format: String, connectionConfig: Map[String, String],
                                 step: Step, rowsPerSecond: String, count: String, startTime: LocalDateTime): SinkResult = {
     implicit val tryEncoder: Encoder[Try[RealTimeSinkResult]] = Encoders.kryo[Try[RealTimeSinkResult]]
+    val as = ActorSystem()
+    implicit val materializer: Materializer = Materializer(as)
+
     val permitsPerSecond = Math.max(rowsPerSecond.toInt, 1)
+    val dataToPush = df.collect().toList
+    val sinkProcessor = SinkProcessor.getConnection(format, connectionConfig, step)
+    val pushResults = new mutable.MutableList[Try[RealTimeSinkResult]]()
+    val sourceResult = Source(dataToPush)
+      .throttle(permitsPerSecond, 1.second)
+      .runForeach(row => pushResults += Try(sinkProcessor.pushRowToSink(row)))
 
-    //TODO should return back the response so it could be saved for potential validations (i.e. validate HTTP request and response)
-    //if the real time data source is used as a data source for validations, save the df as parquet that can be used as the validation data source
-    //folder path needs to be something that can be used in validation logic
-    //or do we just always save the real time data as parquet and clean up (based on flag with default true) at the end of the job?
-    val pushResults = df.repartition(1).mapPartitions((partition: Iterator[Row]) => {
-      val rateLimiter = RateLimiter.create(permitsPerSecond)
-      val rows = partition.toList
-      val sinkProcessor = SinkProcessor.getConnection(format, connectionConfig, step)
-
-      val pushResult = rows.map(row => {
-        rateLimiter.acquire()
-        Try(sinkProcessor.pushRowToSink(row))
-      })
-      sinkProcessor.close
-      pushResult.toIterator
+    sourceResult.onComplete {
+      case Success(_) =>
+        LOGGER.debug("Successfully ran real time stream")
+        sinkProcessor.close
+      case Failure(exception) => throw exception
+    }
+    val res = sourceResult.map(_ => {
+      val CheckExceptionAndSuccess(optException, isSuccess) = checkExceptionAndSuccess(dataSourceName, format, step, count, sparkSession.createDataset(pushResults))
+      val someExp = if (optException.count() > 0) optException.head else None
+      mapToSinkResult(dataSourceName, df, SaveMode.Append, connectionConfig, count, format, isSuccess, startTime, someExp)
     })
-    pushResults.cache()
-    val CheckExceptionAndSuccess(optException, isSuccess) = checkExceptionAndSuccess(dataSourceName, format, step, count, pushResults)
-    val someExp = if (optException.count() > 0) optException.head else None
-    mapToSinkResult(dataSourceName, df, SaveMode.Append, connectionConfig, count, format, isSuccess, startTime, someExp)
+    Await.result(res, 100.seconds)
   }
 
   case class CheckExceptionAndSuccess(optException: Dataset[Option[Throwable]], isSuccess: Boolean)
@@ -178,9 +185,33 @@ class SinkFactory(
     CheckExceptionAndSuccess(optException, isSuccess)
   }
 
+  @deprecated("Does not keep stable rate")
+  private def saveRealTimeGuava(dataSourceName: String, df: DataFrame, format: String, connectionConfig: Map[String, String],
+                                step: Step, rowsPerSecond: String, count: String, startTime: LocalDateTime): SinkResult = {
+    implicit val tryEncoder: Encoder[Try[RealTimeSinkResult]] = Encoders.kryo[Try[RealTimeSinkResult]]
+    val permitsPerSecond = Math.max(rowsPerSecond.toInt, 1)
+
+    val pushResults = df.repartition(1).mapPartitions((partition: Iterator[Row]) => {
+      val rateLimiter = RateLimiter.create(permitsPerSecond)
+      val rows = partition.toList
+      val sinkProcessor = SinkProcessor.getConnection(format, connectionConfig, step)
+
+      val pushResult = rows.map(row => {
+        rateLimiter.acquire()
+        Try(sinkProcessor.pushRowToSink(row))
+      })
+      sinkProcessor.close
+      pushResult.toIterator
+    })
+    pushResults.cache()
+    val CheckExceptionAndSuccess(optException, isSuccess) = checkExceptionAndSuccess(dataSourceName, format, step, count, pushResults)
+    val someExp = if (optException.count() > 0) optException.head else None
+    mapToSinkResult(dataSourceName, df, SaveMode.Append, connectionConfig, count, format, isSuccess, startTime, someExp)
+  }
+
   @deprecated("Unstable for JMS connections")
   private def saveRealTimeSpark(df: DataFrame, format: String, connectionConfig: Map[String, String], step: Step, rowsPerSecond: String): Unit = {
-    val dfWithIndex = df.selectExpr("*", s"monotonically_increasing_id() AS $PER_COLUMN_INDEX_COL")
+    val dfWithIndex = df.selectExpr("*", s"monotonically_increasing_id() AS $PER_FIELD_INDEX_FIELD")
     val rowCount = dfWithIndex.count().toInt
     val readStream = sparkSession.readStream
       .format(RATE).option(ROWS_PER_SECOND, rowsPerSecond)
@@ -189,8 +220,8 @@ class SinkFactory(
     val writeStream = readStream.writeStream
       .foreachBatch((batch: Dataset[Row], id: Long) => {
         LOGGER.info(s"batch num=$id, count=${batch.count()}")
-        batch.join(dfWithIndex, batch("value") === dfWithIndex(PER_COLUMN_INDEX_COL))
-          .drop(PER_COLUMN_INDEX_COL).repartition(3).rdd
+        batch.join(dfWithIndex, batch("value") === dfWithIndex(PER_FIELD_INDEX_FIELD))
+          .drop(PER_FIELD_INDEX_FIELD).repartition(3).rdd
           .foreachPartition(partition => {
             val part = partition.toList
             val sinkProcessor = SinkProcessor.getConnection(format, connectionConfig, step)
@@ -273,7 +304,7 @@ class SinkFactory(
     }
   }
 
-  private def removeOmitFields(df: DataFrame) = {
+  private def removeOmitFields(df: DataFrame): DataFrame = {
     val dfOmitFields = df.schema.fields
       .filter(field => field.metadata.contains(OMIT) && field.metadata.getString(OMIT).equalsIgnoreCase("true"))
       .map(_.name)

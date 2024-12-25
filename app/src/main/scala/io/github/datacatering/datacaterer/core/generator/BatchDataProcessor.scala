@@ -7,7 +7,7 @@ import io.github.datacatering.datacaterer.core.generator.track.RecordTrackingPro
 import io.github.datacatering.datacaterer.core.model.DataSourceResult
 import io.github.datacatering.datacaterer.core.sink.SinkFactory
 import io.github.datacatering.datacaterer.core.util.GeneratorUtil.getDataSourceName
-import io.github.datacatering.datacaterer.core.util.PlanImplicits.PerColumnCountOps
+import io.github.datacatering.datacaterer.core.util.PlanImplicits.PerFieldCountOps
 import io.github.datacatering.datacaterer.core.util.RecordCountUtil.calculateNumBatches
 import io.github.datacatering.datacaterer.core.util.{ForeignKeyUtil, UniqueFieldsUtil}
 import net.datafaker.Faker
@@ -51,7 +51,7 @@ class BatchDataProcessor(connectionConfigsByName: Map[String, Map[String, String
         if (!df.storageLevel.useMemory) df.cache()
         var dfRecordCount = if (flagsConfig.enableCount) df.count() else stepRecords.numRecordsPerBatch
         var retries = 0
-        val targetNumRecords = stepRecords.numRecordsPerBatch * s.count.perColumn.map(_.averageCountPerColumn).getOrElse(1L)
+        val targetNumRecords = stepRecords.numRecordsPerBatch * s.count.perField.map(_.averageCountPerField).getOrElse(1L)
         LOGGER.debug(s"Step record count for batch, batch=$batch, step-name=${s.name}, " +
           s"target-num-records=$targetNumRecords, actual-num-records=$dfRecordCount")
 
@@ -69,7 +69,7 @@ class BatchDataProcessor(connectionConfigsByName: Map[String, Map[String, String
         }
 
         //if random amount of records, don't try to regenerate more records
-        if (s.count.generator.isEmpty && s.count.perColumn.forall(_.generator.isEmpty)) {
+        if (s.count.options.isEmpty && s.count.perField.forall(_.options.isEmpty)) {
           while (targetNumRecords != dfRecordCount && retries < maxRetries) {
             retries += 1
             generateAdditionalRecords()

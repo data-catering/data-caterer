@@ -1,9 +1,9 @@
 package io.github.datacatering.datacaterer.core.util
 
-import io.github.datacatering.datacaterer.api.model.Constants.{DEFAULT_FIELD_NULLABLE, FOREIGN_KEY_DELIMITER, FOREIGN_KEY_DELIMITER_REGEX, FOREIGN_KEY_PLAN_FILE_DELIMITER, FOREIGN_KEY_PLAN_FILE_DELIMITER_REGEX, IS_PRIMARY_KEY, IS_UNIQUE, MAXIMUM, MINIMUM, ONE_OF_GENERATOR, PRIMARY_KEY_POSITION, RANDOM_GENERATOR, REGEX_GENERATOR, STATIC}
-import io.github.datacatering.datacaterer.api.model.{Count, Field, ForeignKeyRelation, Generator, PerColumnCount, Schema, SinkOptions, Step, Task}
-import io.github.datacatering.datacaterer.core.exception.{InvalidFieldConfigurationException, InvalidForeignKeyFormatException, NoSchemaDefinedException}
-import io.github.datacatering.datacaterer.core.model.Constants.{COUNT_BASIC, COUNT_COLUMNS, COUNT_GENERATED, COUNT_GENERATED_PER_COLUMN, COUNT_NUM_RECORDS, COUNT_PER_COLUMN, COUNT_TYPE}
+import io.github.datacatering.datacaterer.api.model.Constants.{DEFAULT_FIELD_NULLABLE, FOREIGN_KEY_DELIMITER, FOREIGN_KEY_DELIMITER_REGEX, FOREIGN_KEY_PLAN_FILE_DELIMITER_REGEX, IS_PRIMARY_KEY, IS_UNIQUE, MAXIMUM, MINIMUM, PRIMARY_KEY_POSITION, STATIC}
+import io.github.datacatering.datacaterer.api.model.{Count, Field, ForeignKeyRelation, PerFieldCount, SinkOptions, Step, Task}
+import io.github.datacatering.datacaterer.core.exception.{InvalidFieldConfigurationException, InvalidForeignKeyFormatException}
+import io.github.datacatering.datacaterer.core.model.Constants.{COUNT_BASIC, COUNT_FIELDS, COUNT_GENERATED, COUNT_GENERATED_PER_FIELD, COUNT_NUM_RECORDS, COUNT_PER_FIELD, COUNT_TYPE}
 import io.github.datacatering.datacaterer.core.model.ForeignKeyWithGenerateAndDelete
 import org.apache.log4j.Logger
 import org.apache.spark.sql.types.{ArrayType, DataType, Metadata, MetadataBuilder, StructField, StructType}
@@ -25,10 +25,15 @@ object ForeignKeyRelationHelper {
     }
   }
 
-  def updateForeignKeyName(stepNameMapping: Map[String, String], foreignKey: String): String = {
-    val fkDataSourceStep = foreignKey.split(FOREIGN_KEY_DELIMITER_REGEX).take(2).mkString(FOREIGN_KEY_DELIMITER)
+  def updateForeignKeyName(stepNameMapping: Map[String, String], foreignKey: ForeignKeyRelation): ForeignKeyRelation = {
+    val fkDataSourceStep = foreignKey.toString.split(FOREIGN_KEY_DELIMITER_REGEX).take(2).mkString(FOREIGN_KEY_DELIMITER)
     stepNameMapping.get(fkDataSourceStep)
-      .map(newName => foreignKey.replace(fkDataSourceStep, newName))
+      .map(newName => {
+        val sptNewName = newName.split(FOREIGN_KEY_DELIMITER_REGEX)
+        val newDataSourceName = sptNewName.head
+        val newStepName = sptNewName.last
+        foreignKey.copy(dataSource = newDataSourceName, step = newStepName)
+      })
       .getOrElse(foreignKey)
   }
 }
@@ -36,9 +41,8 @@ object ForeignKeyRelationHelper {
 object SchemaHelper {
   private val LOGGER = Logger.getLogger(getClass.getName)
 
-  def fromStructType(structType: StructType): Schema = {
-    val fields = structType.fields.map(FieldHelper.fromStructField).toList
-    Schema(Some(fields))
+  def fromStructType(structType: StructType): List[Field] = {
+    structType.fields.map(FieldHelper.fromStructField).toList
   }
 
   /**
@@ -49,49 +53,50 @@ object SchemaHelper {
    *                options defined in schema1
    * @return Merged schema
    */
-  def mergeSchemaInfo(schema1: Schema, schema2: Schema, hasMultipleSubDataSources: Boolean = false): Schema = {
-    (schema1.fields, schema2.fields) match {
-      case (Some(fields1), Some(fields2)) if fields1.nonEmpty && fields2.isEmpty => schema1
-      case (Some(fields1), Some(fields2)) if fields1.isEmpty && fields2.nonEmpty => schema2
-      case (Some(fields1), Some(fields2)) =>
-        val mergedFields = fields1.map(field => {
-          val filterInSchema2 = fields2.filter(f2 => f2.name == field.name)
-          val optFieldToMerge = if (filterInSchema2.nonEmpty) {
-            if (filterInSchema2.size > 1) {
-              LOGGER.warn(s"Multiple field definitions found. Only taking the first definition, field-name=${field.name}")
-            }
-            Some(filterInSchema2.head)
-          } else {
-            None
+  def mergeSchemaInfo(schema1: List[Field], schema2: List[Field], hasMultipleSubDataSources: Boolean = false): List[Field] = {
+    if (schema1.nonEmpty && schema2.isEmpty) {
+      schema1
+    } else if (schema1.isEmpty && schema2.nonEmpty) {
+      schema2
+    } else if (schema1.nonEmpty && schema2.nonEmpty) {
+      val mergedFields = schema1.map(field => {
+        val filterInSchema2 = schema2.filter(f2 => f2.name == field.name)
+        val optFieldToMerge = if (filterInSchema2.nonEmpty) {
+          if (filterInSchema2.size > 1) {
+            LOGGER.warn(s"Multiple field definitions found. Only taking the first definition, field-name=${field.name}")
           }
-          optFieldToMerge.map(f2 => {
-            val fieldSchema = (field.schema, f2.schema) match {
-              case (Some(fSchema), Some(f2Schema)) => Some(mergeSchemaInfo(fSchema, f2Schema))
-              case (Some(fSchema), None) => Some(fSchema)
-              case (None, Some(_)) =>
-                LOGGER.warn(s"Schema from metadata source or from data source has no nested schema for field but has nested schema defined by user. " +
-                  s"Ignoring user defined nested schema, field-name=${field.name}")
-                None
-              case _ => None
-            }
-            val fieldType = mergeFieldType(field, f2)
-            val fieldGenerator = mergeGenerator(field, f2)
-            val fieldNullable = mergeNullable(field, f2)
-            val fieldStatic = mergeStaticValue(field, f2)
-            Field(field.name, fieldType, fieldGenerator, fieldNullable, fieldStatic, fieldSchema)
-          }).getOrElse(field)
-        })
-
-        val fieldsInSchema2NotInSchema1 = if (hasMultipleSubDataSources) {
-          LOGGER.debug(s"Multiple sub data sources created, not adding fields that are manually defined")
-          List()
+          Some(filterInSchema2.head)
         } else {
-          fields2.filter(f2 => !fields1.exists(f1 => f1.name == f2.name))
+          None
         }
-        Schema(Some(mergedFields ++ fieldsInSchema2NotInSchema1))
-      case (Some(_), None) => schema1
-      case (None, Some(_)) => schema2
-      case _ => throw NoSchemaDefinedException()
+        optFieldToMerge.map(f2 => {
+          val fieldSchema = if (field.fields.nonEmpty && f2.fields.nonEmpty) {
+            mergeSchemaInfo(field.fields, f2.fields)
+          } else if (field.fields.nonEmpty && f2.fields.isEmpty) {
+            field.fields
+          } else if (field.fields.isEmpty && f2.fields.nonEmpty) {
+            f2.fields
+          } else {
+            List()
+          }
+
+          val fieldType = mergeFieldType(field, f2)
+          val fieldGenerator = mergeGenerator(field, f2)
+          val fieldNullable = mergeNullable(field, f2)
+          val fieldStatic = mergeStaticValue(field, f2)
+          Field(field.name, fieldType, fieldGenerator, fieldNullable, fieldStatic, fieldSchema)
+        }).getOrElse(field)
+      })
+
+      val fieldsInSchema2NotInSchema1 = if (hasMultipleSubDataSources) {
+        LOGGER.debug(s"Multiple sub data sources created, not adding fields that are manually defined")
+        List()
+      } else {
+        schema2.filter(f2 => !schema1.exists(f1 => f1.name == f2.name))
+      }
+      mergedFields ++ fieldsInSchema2NotInSchema1
+    } else {
+      List()
     }
   }
 
@@ -120,15 +125,7 @@ object SchemaHelper {
   }
 
   private def mergeGenerator(field: Field, f2: Field) = {
-    (field.generator, f2.generator) match {
-      case (Some(fGen), Some(f2Gen)) =>
-        val genType = if (fGen.`type`.equalsIgnoreCase(f2Gen.`type`)) fGen.`type` else f2Gen.`type`
-        val options = fGen.options ++ f2Gen.options
-        Some(Generator(genType, options))
-      case (Some(_), None) => field.generator
-      case (None, Some(_)) => f2.generator
-      case _ => None
-    }
+    field.options ++ f2.options
   }
 
   private def mergeFieldType(field: Field, f2: Field) = {
@@ -152,23 +149,15 @@ object FieldHelper {
 
   def fromStructField(structField: StructField): Field = {
     val metadataOptions = MetadataUtil.metadataToMap(structField.metadata)
-    val generatorType = if (structField.metadata.contains(ONE_OF_GENERATOR)) {
-      ONE_OF_GENERATOR
-    } else if (structField.metadata.contains(REGEX_GENERATOR)) {
-      REGEX_GENERATOR
-    } else {
-      RANDOM_GENERATOR
-    }
-    val generator = Generator(generatorType, metadataOptions)
     val optStatic = if (structField.metadata.contains(STATIC)) Some(structField.metadata.getString(STATIC)) else None
-    val optSchema = if (structField.dataType.typeName == "struct") {
-      Some(SchemaHelper.fromStructType(structField.dataType.asInstanceOf[StructType]))
+    val fields = if (structField.dataType.typeName == "struct") {
+      SchemaHelper.fromStructType(structField.dataType.asInstanceOf[StructType])
     } else if (structField.dataType.typeName == "array" && structField.dataType.asInstanceOf[ArrayType].elementType.typeName == "struct") {
-      Some(SchemaHelper.fromStructType(structField.dataType.asInstanceOf[ArrayType].elementType.asInstanceOf[StructType]))
+      SchemaHelper.fromStructType(structField.dataType.asInstanceOf[ArrayType].elementType.asInstanceOf[StructType])
     } else {
-      None
+      List()
     }
-    Field(structField.name, Some(structField.dataType.sql.toLowerCase), Some(generator), structField.nullable, optStatic, optSchema)
+    Field(structField.name, Some(structField.dataType.sql.toLowerCase), metadataOptions, structField.nullable, optStatic, fields)
   }
 }
 
@@ -179,32 +168,28 @@ object PlanImplicits {
   }
 
   implicit class SinkOptionsOps(sinkOptions: SinkOptions) {
-    def gatherForeignKeyRelations(key: String): ForeignKeyWithGenerateAndDelete = {
-      val source = ForeignKeyRelationHelper.fromString(key)
-      val generationFk = sinkOptions.foreignKeys.filter(f => f._1.equalsIgnoreCase(key)).flatMap(_._2)
-      val deleteFk = sinkOptions.foreignKeys.filter(f => f._1.equalsIgnoreCase(key)).flatMap(_._3)
-      val generationForeignKeys = generationFk.map(ForeignKeyRelationHelper.fromString)
-      val deleteForeignKeys = deleteFk.map(ForeignKeyRelationHelper.fromString)
-      ForeignKeyWithGenerateAndDelete(source, generationForeignKeys, deleteForeignKeys)
+    def gatherForeignKeyRelations(source: ForeignKeyRelation): ForeignKeyWithGenerateAndDelete = {
+      val generationFk = sinkOptions.foreignKeys.filter(f => f.source.equals(source)).flatMap(_.generate)
+      val deleteFk = sinkOptions.foreignKeys.filter(f => f.source.equals(source)).flatMap(_.delete)
+      ForeignKeyWithGenerateAndDelete(source, generationFk, deleteFk)
     }
 
     def foreignKeyStringWithDataSourceAndStep(fk: String): String = fk.split(FOREIGN_KEY_DELIMITER_REGEX).take(2).mkString(FOREIGN_KEY_DELIMITER)
 
-    def foreignKeysWithoutColumnNames: List[(String, List[String])] = {
+    def foreignKeysWithoutFieldNames: List[(String, List[String])] = {
       sinkOptions.foreignKeys.map(foreignKey => {
-        val sourceFk = foreignKeyStringWithDataSourceAndStep(foreignKey._1)
-        val generationFk = foreignKey._2.map(foreignKeyStringWithDataSourceAndStep)
-        val deleteFk = foreignKey._3.map(foreignKeyStringWithDataSourceAndStep)
+        val sourceFk = foreignKeyStringWithDataSourceAndStep(foreignKey.source.toString)
+        val generationFk = foreignKey.generate.map(g => foreignKeyStringWithDataSourceAndStep(g.toString))
+        val deleteFk = foreignKey.delete.map(d => foreignKeyStringWithDataSourceAndStep(d.toString))
         (sourceFk, generationFk ++ deleteFk)
       })
     }
 
     def getAllForeignKeyRelations: List[(ForeignKeyRelation, String)] = {
       sinkOptions.foreignKeys.flatMap(fk => {
-        val sourceFk = ForeignKeyRelationHelper.fromString(fk._1)
-        val generationForeignKeys = fk._2.map(f => (ForeignKeyRelationHelper.fromString(f), "generation"))
-        val deleteForeignKeys = fk._3.map(f => (ForeignKeyRelationHelper.fromString(f), "delete"))
-        List((sourceFk, "source")) ++ generationForeignKeys ++ deleteForeignKeys
+        val generationForeignKeys = fk.generate.map(_ -> "generation")
+        val deleteForeignKeys = fk.delete.map(_ -> "delete")
+        List((fk.source, "source")) ++ generationForeignKeys ++ deleteForeignKeys
       })
     }
   }
@@ -219,54 +204,47 @@ object PlanImplicits {
 
   implicit class StepOps(step: Step) {
     def toStepDetailString: String = {
-      s"name=${step.name}, type=${step.`type`}, options=${step.options}, step-num-records=(${step.count.numRecordsString._1}), schema-summary=(${step.schema.toString})"
+      s"name=${step.name}, type=${step.`type`}, options=${step.options}, step-num-records=(${step.count.numRecordsString._1}), schema-summary=(${step.fields.toString})"
     }
 
     def gatherPrimaryKeys: List[String] = {
-      if (step.schema.fields.isDefined) {
-        val fields = step.schema.fields.get
-        fields.filter(field => {
-          if (field.generator.isDefined) {
-            val metadata = field.generator.get.options
+      step.fields.filter(field => {
+          if (field.options.nonEmpty) {
+            val metadata = field.options
             metadata.contains(IS_PRIMARY_KEY) && metadata(IS_PRIMARY_KEY).toString.toBoolean
           } else false
         })
-          .map(field => (field.name, field.generator.get.options.getOrElse(PRIMARY_KEY_POSITION, "1").toString.toInt))
-          .sortBy(_._2)
-          .map(_._1)
-      } else List()
+        .map(field => (field.name, field.options.getOrElse(PRIMARY_KEY_POSITION, "1").toString.toInt))
+        .sortBy(_._2)
+        .map(_._1)
     }
 
     def gatherUniqueFields: List[String] = {
-      step.schema.fields.map(fields => {
-        fields.filter(field => {
-          field.generator
-            .flatMap(gen => gen.options.get(IS_UNIQUE).map(_.toString.toBoolean))
-            .getOrElse(false)
-        }).map(_.name)
-      }).getOrElse(List())
+      step.fields.filter(field => {
+        field.options.get(IS_UNIQUE).exists(_.toString.toBoolean)
+      }).map(_.name)
     }
   }
 
   implicit class CountOps(count: Count) {
     def numRecordsString: (String, List[List[String]]) = {
-      if (count.records.isDefined && count.perColumn.isDefined && count.perColumn.get.count.isDefined && count.perColumn.get.generator.isEmpty) {
-        val records = (count.records.get * count.perColumn.get.count.get).toString
-        val columns = count.perColumn.get.columnNames.mkString(",")
-        val str = s"per-column-count: columns=$columns, num-records=$records"
+      if (count.records.isDefined && count.perField.isDefined && count.perField.get.count.isDefined && count.perField.get.options.isEmpty) {
+        val records = (count.records.get * count.perField.get.count.get).toString
+        val fields = count.perField.get.fieldNames.mkString(",")
+        val str = s"per-field-count: fields=$fields, num-records=$records"
         val list = List(
-          List(COUNT_TYPE, COUNT_PER_COLUMN),
-          List(COUNT_COLUMNS, columns),
+          List(COUNT_TYPE, COUNT_PER_FIELD),
+          List(COUNT_FIELDS, fields),
           List(COUNT_NUM_RECORDS, records)
         )
         (str, list)
-      } else if (count.perColumn.isDefined && count.perColumn.get.generator.isDefined) {
-        val records = (count.records.get * count.perColumn.get.count.get).toString
-        val columns = count.perColumn.get.columnNames.mkString(",")
-        val str = s"per-column-count: columns=$columns, num-records-via-generator=$records"
+      } else if (count.perField.isDefined && count.perField.get.options.nonEmpty) {
+        val records = (count.records.get * count.perField.get.count.get).toString
+        val fields = count.perField.get.fieldNames.mkString(",")
+        val str = s"per-field-count: fields=$fields, num-records-via-generator=$records"
         val list = List(
-          List(COUNT_TYPE, COUNT_GENERATED_PER_COLUMN),
-          List(COUNT_COLUMNS, columns),
+          List(COUNT_TYPE, COUNT_GENERATED_PER_FIELD),
+          List(COUNT_FIELDS, fields),
           List(COUNT_NUM_RECORDS, records)
         )
         (str, list)
@@ -278,8 +256,8 @@ object PlanImplicits {
           List(COUNT_NUM_RECORDS, records)
         )
         (str, list)
-      } else if (count.generator.isDefined) {
-        val records = count.generator.toString
+      } else if (count.options.nonEmpty) {
+        val records = count.options.toString
         val str = s"generated-count: num-records=$records"
         val list = List(
           List(COUNT_TYPE, COUNT_GENERATED),
@@ -293,45 +271,32 @@ object PlanImplicits {
     }
 
     def numRecords: Long = {
-      (count.records, count.generator, count.perColumn, count.perColumn.flatMap(_.generator)) match {
-        case (Some(t), None, Some(perCol), Some(_)) =>
-          perCol.averageCountPerColumn * t
-        case (Some(t), None, Some(perCol), None) =>
+      (count.records, count.options.isEmpty, count.perField, count.perField.map(_.options).getOrElse(Map()).isEmpty) match {
+        case (Some(t), true, Some(perCol), false) =>
+          perCol.averageCountPerField * t
+        case (Some(t), true, Some(perCol), true) =>
           perCol.count.get * t
-        case (Some(t), Some(gen), None, None) =>
-          gen.averageCount * t
-        case (None, Some(gen), None, None) =>
-          gen.averageCount
-        case (Some(t), None, None, None) =>
+        case (Some(t), false, None, true) =>
+          averageCount(count.options) * t
+        case (None, false, None, true) =>
+          averageCount(count.options)
+        case (Some(t), true, None, true) =>
           t
         case _ => 1000L
       }
     }
   }
 
-  implicit class PerColumnCountOps(perColumnCount: PerColumnCount) {
-    def averageCountPerColumn: Long = {
-      perColumnCount.generator.map(_.averageCount).getOrElse(perColumnCount.count.map(identity).getOrElse(1L))
+  implicit class PerFieldCountOps(perFieldCount: PerFieldCount) {
+    def averageCountPerField: Long = {
+      perFieldCount.count.getOrElse(averageCount(perFieldCount.options))
     }
 
-    def maxCountPerColumn: Long = {
-      perColumnCount.count.map(x => x)
+    def maxCountPerField: Long = {
+      perFieldCount.count.map(x => x)
         .getOrElse(
-          perColumnCount.generator.flatMap(g =>
-            g.options.get(MAXIMUM).map(_.toString.toLong)
-          ).getOrElse(0)
+          perFieldCount.options.get(MAXIMUM).map(_.toString.toLong).getOrElse(0)
         )
-    }
-  }
-
-  implicit class SchemaOps(schema: Schema) {
-    def toStructType: StructType = {
-      if (schema.fields.isDefined) {
-        val structFields = schema.fields.get.map(_.toStructField)
-        StructType(structFields)
-      } else {
-        StructType(Seq())
-      }
     }
   }
 
@@ -340,8 +305,8 @@ object PlanImplicits {
       if (field.static.isDefined) {
         val metadata = new MetadataBuilder().withMetadata(getMetadata).putString(STATIC, field.static.get).build()
         StructField(field.name, DataType.fromDDL(field.`type`.get), field.nullable, metadata)
-      } else if (field.schema.isDefined) {
-        val innerStructFields = field.schema.get.toStructType
+      } else if (field.fields.nonEmpty) {
+        val innerStructFields = StructType(field.fields.map(_.toStructField))
         StructField(
           field.name,
           if (field.`type`.isDefined && field.`type`.get.toLowerCase.startsWith("array")) ArrayType(innerStructFields, field.nullable) else innerStructFields,
@@ -356,21 +321,19 @@ object PlanImplicits {
     }
 
     private def getMetadata: Metadata = {
-      if (field.generator.isDefined) {
-        Metadata.fromJson(ObjectMapperUtil.jsonObjectMapper.writeValueAsString(field.generator.get.options))
+      if (field.options.nonEmpty) {
+        Metadata.fromJson(ObjectMapperUtil.jsonObjectMapper.writeValueAsString(field.options))
       } else {
         Metadata.empty
       }
     }
   }
 
-  implicit class GeneratorOps(generator: Generator) {
-    def averageCount: Long = {
-      if (generator.`type`.equalsIgnoreCase(RANDOM_GENERATOR)) {
-        val min = generator.options.get(MINIMUM).map(_.toString.toLong).getOrElse(1L)
-        val max = generator.options.get(MAXIMUM).map(_.toString.toLong).getOrElse(10L)
-        (max + min + 1) / 2
-      } else 1L
-    }
+  private def averageCount(generator: Map[String, Any]): Long = {
+    if (generator.contains(MINIMUM) || generator.contains(MAXIMUM)) {
+      val min = generator.get(MINIMUM).map(_.toString.toLong).getOrElse(1L)
+      val max = generator.get(MAXIMUM).map(_.toString.toLong).getOrElse(10L)
+      (max + min + 1) / 2
+    } else 1L
   }
 }

@@ -19,7 +19,7 @@ export function incFields() {
 async function createGenerationFields(dataSourceFields, manualSchema) {
     let allCollapsedAccordionButton = $(document).find(".accordion-button.collapsed");
     allCollapsedAccordionButton.click();
-    for (const field of dataSourceFields.optFields) {
+    for (const field of dataSourceFields) {
         numFields += 1;
         let newField = await createNewField(numFields, "generation");
         $(manualSchema).find(".accordion").first().append(newField);
@@ -38,11 +38,11 @@ async function createGenerationFields(dataSourceFields, manualSchema) {
             }
         }
         // there are nested fields
-        if (field.nested && field.nested.optFields) {
+        if (field.fields && field.fields.length > 0) {
             let newFieldBox = $(newField).find(".card");
             // let newFieldBox = createManualContainer(numFields, "generation", "struct-schema");
             // $(newField).find(".accordion-body").append(newFieldBox);
-            await createGenerationFields(field.nested, newFieldBox);
+            await createGenerationFields(field.fields, newFieldBox);
         }
     }
     let collapseShow = $(document).find(".accordion-button.collapse.show");
@@ -52,9 +52,9 @@ async function createGenerationFields(dataSourceFields, manualSchema) {
 
 export async function createGenerationElements(dataSource, newDataSource, numDataSources) {
     let dataSourceGenContainer = $(newDataSource).find("#data-source-generation-config-container");
-    // check if there is auto schema defined
+    // TODO check if there is auto schema defined
     // check if there is auto schema from metadata source defined
-    if (dataSource.fields && dataSource.fields.optMetadataSource) {
+    if (dataSource.options["metadataSourceName"]) {
         $(dataSourceGenContainer).find("[id^=auto-from-metadata-source-generation-checkbox]").prop("checked", true);
         let autoFromMetadataSchema = await createAutoFromMetadataSourceContainer(numDataSources);
         $(dataSourceGenContainer).find(".manual").after(autoFromMetadataSchema);
@@ -62,7 +62,7 @@ export async function createGenerationElements(dataSource, newDataSource, numDat
         await createAutoFromMetadata(autoFromMetadataSchema, dataSource);
     }
     // check if there is manual schema defined
-    if (dataSource.fields && dataSource.fields.optFields && dataSource.fields.optFields.length > 0) {
+    if (dataSource.fields && dataSource.fields.length > 0) {
         let manualSchema = createManualContainer(numFields, "generation");
         dataSourceGenContainer[0].insertBefore(manualSchema, dataSourceGenContainer[0].lastElementChild);
         $(dataSourceGenContainer).find("[id^=manual-generation-checkbox]").prop("checked", true);
@@ -134,4 +134,36 @@ export function getGeneration(dataSource, currentDataSource) {
         dataGenerationInfo["optFields"] = Object.values(dataFieldsWithAttributes);
     }
     currentDataSource["fields"] = dataGenerationInfo;
+}
+
+export function getGenerationYaml(dataSource, currentTask) {
+    // check which checkboxes are enabled: auto, auto with external, manual
+    let isAutoChecked = $(dataSource).find("[id^=auto-generation-checkbox]").is(":checked");
+    let isAutoFromMetadataChecked = $(dataSource).find("[id^=auto-from-metadata-source-generation-checkbox]").is(":checked");
+    let isManualChecked = $(dataSource).find("[id^=manual-generation-checkbox]").is(":checked");
+    currentTask["options"] = {};
+
+    if (isAutoChecked) {
+        // need to enable data generation within data source options
+        currentTask["options"]["enableDataGeneration"] = "true";
+    }
+
+    if (isAutoFromMetadataChecked) {
+        let dataSourceGenerationContainer = $(dataSource).find("[id^=data-source-generation-config-container]")[0];
+        let dataSourceAutoSchemaContainer = $(dataSourceGenerationContainer).find("[class~=data-source-auto-from-metadata-container]")[0];
+        let metadataConnectionName = $(dataSourceAutoSchemaContainer).find("select[class~=metadata-connection-name]").val();
+        $(dataSourceAutoSchemaContainer).find("input[class~=metadata-source-property]").toArray()
+            .forEach(opt => {
+                if (opt.value !== "") {
+                    currentTask["options"][opt.getAttribute("aria-label")] = opt.value;
+                }
+            });
+        currentTask["options"]["metadataSourceName"] = metadataConnectionName;
+    }
+    // get top level manual fields
+    if (isManualChecked) {
+        let dataSourceSchemaContainer = $(dataSource).find("[id^=data-source-schema-container]")[0];
+        let dataFieldsWithAttributes = getGenerationSchema(dataSourceSchemaContainer);
+        currentTask["fields"] = Object.values(dataFieldsWithAttributes);
+    }
 }

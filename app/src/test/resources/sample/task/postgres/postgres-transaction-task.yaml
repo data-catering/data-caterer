@@ -4,19 +4,14 @@ steps:
     type: "postgres"
     count:
       records: 10000
-      perColumn:
-        columnNames:
+      perField:
+        fieldNames:
           - "account_number"
         count: 100
     options:
       dbtable: "account.transactions"
-    schema:
-      fields:
-        - name: "account_number"
-          type: "string"
-          generator:
-            type: "random"
-        - name: "amount"
-          type: "double"
-          generator:
-            type: "random"
+    fields:
+      - name: "account_number"
+        type: "string"
+      - name: "amount"
+        type: "double"

@@ -6,93 +6,61 @@ steps:
       records: 1000
     options:
       path: "src/test/resources/sample/data/generated/json/account-gen"
-    schema:
-      fields:
-        - name: "account_id"
-          type: "string"
-          generator:
-            type: "random"
-        - name: "year"
-          type: "int"
-          generator:
-            type: "random"
+    fields:
+      - name: "account_id"
+        type: "string"
+      - name: "year"
+        type: "int"
+        options:
+          minValue: 2021
+          maxValue: 2022
+      - name: "is_early_customer"
+        type: "boolean"
+        options:
+          sql: "CASE WHEN year == 2021 THEN true ELSE false END"
+      - name: "amount"
+        type: "double"
+        options:
+          minValue: 10.0
+          maxValue: 100.0
+      - name: "is_large_amount"
+        type: "boolean"
+        options:
+          sql: >-
+            CASE WHEN amount > 50 THEN
+              true
+            ELSE
+              false
+            END
+      - name: "updated_time"
+        type: "timestamp"
+        options:
+          sql: "details.updated_by.time"
+      - name: "first_txn_date"
+        type: "date"
+        options:
+          sql: "element_at(sort_array(transactions.txn_date), 1)"
+      - name: "details"
+        type: "struct"
+        fields:
+          - name: "name"
+          - name: "txn_date"
+            type: "date"
             options:
-              minValue: 2021
-              maxValue: 2022
-        - name: "is_early_customer"
-          type: "boolean"
-          generator:
-            type: "sql"
-            options:
-              sql: "CASE WHEN year == 2021 THEN true ELSE false END"
-        - name: "amount"
-          type: "double"
-          generator:
-            type: "random"
-            options:
-              minValue: 10.0
-              maxValue: 100.0
-        - name: "is_large_amount"
-          type: "boolean"
-          generator:
-            type: "sql"
-            options:
-              sql: >-
-                CASE WHEN amount > 50 THEN
-                  true
-                ELSE
-                  false
-                END
-        - name: "updated_time"
-          type: "timestamp"
-          generator:
-            type: "sql"
-            options:
-              sql: "details.updated_by.time"
-        - name: "first_txn_date"
-          type: "date"
-          generator:
-            type: "sql"
-            options:
-              sql: "element_at(sort_array(transactions.txn_date), 1)"
-        - name: "details"
-          type: "struct"
-          schema:
+              minValue: "2021-01-01"
+              maxValue: "2021-12-31"
+          - name: "updated_by"
+            type: "struct"
             fields:
-              - name: "name"
-                generator:
-                  type: "random"
-              - name: "txn_date"
-                type: "date"
-                generator:
-                  type: "random"
-                  options:
-                    minValue: "2021-01-01"
-                    maxValue: "2021-12-31"
-              - name: "updated_by"
-                type: "struct"
-                schema:
-                  fields:
-                    - name: "user"
-                      generator:
-                        type: "random"
-                    - name: "time"
-                      type: "timestamp"
-                      generator:
-                        type: "random"
-        - name: "transactions"
-          type: "array"
-          schema:
-            fields:
-              - name: "txn_date"
-                type: "date"
-                generator:
-                  type: "random"
-              - name: "amount"
-                type: "double"
-                generator:
-                  type: "random"
-              - name: "tags"
-                type: "array<string>"
-                generator:
-                  type: "random"
+              - name: "user"
+              - name: "time"
+                type: "timestamp"
+      - name: "transactions"
+        type: "array"
+        fields:
+          - name: "txn_date"
+            type: "date"
+          - name: "amount"
+            type: "double"
+          - name: "tags"
+            type: "array<string>"

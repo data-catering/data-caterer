@@ -34,21 +34,16 @@ class TaskHelperTest extends AnyFunSuite {
     assertResult("task_name")(result._1.name)
     assertResult(1)(result._1.steps.size)
     assertResult("json")(result._1.steps.head.`type`)
-    assert(result._1.steps.head.schema.fields.isDefined)
-    val resFields = result._1.steps.head.schema.fields.get
+    val resFields = result._1.steps.head.fields
     assert(resFields.size == 4)
     assert(resFields.exists(_.name == "name"))
     assert(resFields.exists(_.name == "age"))
     assert(resFields.exists(_.name == "category"))
     assert(resFields.exists(_.name == "customers"))
-    assert(resFields.find(_.name == "name").get.generator.isDefined)
-    assert(resFields.find(_.name == "age").get.generator.isDefined)
-    assert(resFields.find(_.name == "category").get.generator.isDefined)
-    assert(resFields.find(_.name == "name").get.generator.get.options.exists(x => x._1 == "key" && x._2.toString == "value"))
-    assert(resFields.find(_.name == "age").get.generator.get.options.exists(x => x._1 == "key1" && x._2.toString == "value1"))
-    assert(resFields.find(_.name == "category").get.generator.get.`type` == ONE_OF_GENERATOR)
-    assert(resFields.find(_.name == "category").get.generator.get.options.contains(ONE_OF_GENERATOR))
-    assert(resFields.find(_.name == "category").get.generator.get.options.get(ONE_OF_GENERATOR).contains("person,dog"))
+    assert(resFields.find(_.name == "name").get.options.exists(x => x._1 == "key" && x._2.toString == "value"))
+    assert(resFields.find(_.name == "age").get.options.exists(x => x._1 == "key1" && x._2.toString == "value1"))
+    assert(resFields.find(_.name == "category").get.options.contains(ONE_OF_GENERATOR))
+    assert(resFields.find(_.name == "category").get.options.get(ONE_OF_GENERATOR).contains("person,dog"))
     assert(result._2.isEmpty)
   }
 
@@ -58,32 +53,26 @@ class TaskHelperTest extends AnyFunSuite {
 
     val result = TaskHelper.fromMetadata(Some(userDefinedPlan), "my_json", "json", List(DataSourceDetail(dataSourceMetadata, Map(), structType, List())))
 
-    val resFields = result._1.steps.head.schema.fields.get
-    assert(resFields.find(_.name == "name").get.generator.get.`type` == ONE_OF_GENERATOR)
-    assert(resFields.find(_.name == "name").get.generator.get.options(ONE_OF_GENERATOR).isInstanceOf[mutable.WrappedArray[_]])
-    assert(resFields.find(_.name == "name").get.generator.get.options(ONE_OF_GENERATOR).asInstanceOf[mutable.WrappedArray[_]] sameElements Array("peter", "john"))
-    assert(resFields.find(_.name == "name").get.generator.get.options.exists(x => x._1 == "key" && x._2.toString == "value"))
-    assert(resFields.find(_.name == "age").get.generator.get.options.exists(x => x._1 == "key1" && x._2.toString == "value1"))
-    assert(resFields.find(_.name == "age").get.generator.get.options.exists(x => x._1 == MINIMUM && x._2 == "18"))
-    assert(resFields.find(_.name == "category").get.generator.get.`type` == ONE_OF_GENERATOR)
-    assert(resFields.find(_.name == "category").get.generator.get.options.contains(ONE_OF_GENERATOR))
-    assert(resFields.find(_.name == "category").get.generator.get.options.get(ONE_OF_GENERATOR).contains("person,dog"))
-    assert(resFields.find(_.name == "customers").get.schema.isDefined)
-    assert(resFields.find(_.name == "customers").get.schema.get.fields.isDefined)
-    assert(resFields.find(_.name == "customers").get.schema.get.fields.get.exists(_.name == "sex"))
-    assert(resFields.find(_.name == "customers").get.schema.get.fields.get.find(_.name == "sex").get.generator.isDefined)
-    assert(resFields.find(_.name == "customers").get.schema.get.fields.get.find(_.name == "sex").get.generator.get.`type` == ONE_OF_GENERATOR)
-    assert(resFields.find(_.name == "customers").get.schema.get.fields.get.find(_.name == "sex").get.generator.get.options(ONE_OF_GENERATOR).isInstanceOf[mutable.WrappedArray[_]])
-    assert(resFields.find(_.name == "customers").get.schema.get.fields.get.find(_.name == "sex").get.generator.get.options(ONE_OF_GENERATOR).asInstanceOf[mutable.WrappedArray[_]] sameElements Array("M", "F"))
+    val resFields = result._1.steps.head.fields
+    assert(resFields.find(_.name == "name").get.options(ONE_OF_GENERATOR).isInstanceOf[mutable.WrappedArray[_]])
+    assert(resFields.find(_.name == "name").get.options(ONE_OF_GENERATOR).asInstanceOf[mutable.WrappedArray[_]] sameElements Array("peter", "john"))
+    assert(resFields.find(_.name == "name").get.options.exists(x => x._1 == "key" && x._2.toString == "value"))
+    assert(resFields.find(_.name == "age").get.options.exists(x => x._1 == "key1" && x._2.toString == "value1"))
+    assert(resFields.find(_.name == "age").get.options.exists(x => x._1 == MINIMUM && x._2 == "18"))
+    assert(resFields.find(_.name == "category").get.options.contains(ONE_OF_GENERATOR))
+    assert(resFields.find(_.name == "category").get.options.get(ONE_OF_GENERATOR).contains("person,dog"))
+    assert(resFields.find(_.name == "customers").get.fields.exists(_.name == "sex"))
+    assert(resFields.find(_.name == "customers").get.fields.find(_.name == "sex").get.options(ONE_OF_GENERATOR).isInstanceOf[mutable.WrappedArray[_]])
+    assert(resFields.find(_.name == "customers").get.fields.find(_.name == "sex").get.options(ONE_OF_GENERATOR).asInstanceOf[mutable.WrappedArray[_]] sameElements Array("M", "F"))
   }
 
   class JsonPlanRun extends PlanRun {
     val jsonTask = json("my_json", "/tmp/data/json")
-      .schema(metadataSource.openMetadataWithToken("http://localhost:8585/api", "my_token"))
-      .schema(
+      .fields(metadataSource.openMetadataWithToken("http://localhost:8585/api", "my_token"))
+      .fields(
         field.name("name").oneOf("peter", "john"),
         field.name("age").min(18),
-        field.name("customers").schema(field.name("sex").oneOf("M", "F"))
+        field.name("customers").fields(field.name("sex").oneOf("M", "F"))
       )
 
     execute(jsonTask)

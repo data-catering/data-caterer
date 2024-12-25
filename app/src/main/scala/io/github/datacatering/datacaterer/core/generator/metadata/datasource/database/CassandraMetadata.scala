@@ -1,6 +1,6 @@
 package io.github.datacatering.datacaterer.core.generator.metadata.datasource.database
 
-import io.github.datacatering.datacaterer.api.model.Constants.{CASSANDRA, CASSANDRA_KEYSPACE, CASSANDRA_TABLE, CLUSTERING_POSITION, IS_NULLABLE, IS_PRIMARY_KEY, PRIMARY_KEY_POSITION, SOURCE_COLUMN_DATA_TYPE}
+import io.github.datacatering.datacaterer.api.model.Constants.{CASSANDRA, CASSANDRA_KEYSPACE, CASSANDRA_TABLE, CLUSTERING_POSITION, IS_NULLABLE, IS_PRIMARY_KEY, PRIMARY_KEY_POSITION, SOURCE_FIELD_DATA_TYPE}
 import io.github.datacatering.datacaterer.core.model.ForeignKeyRelationship
 import org.apache.spark.sql.expressions.Window
 import org.apache.spark.sql.functions.{asc, col, desc, row_number}
@@ -21,20 +21,20 @@ case class CassandraMetadata(name: String, connectionConfig: Map[String, String]
     Map(CASSANDRA_KEYSPACE -> schema, CASSANDRA_TABLE -> table)
   }
 
-  override def getAdditionalColumnMetadata(implicit sparkSession: SparkSession): Dataset[FieldMetadata] = {
-    val cassandraColumnMetadata = sparkSession
+  override def getAdditionalFieldMetadata(implicit sparkSession: SparkSession): Dataset[FieldMetadata] = {
+    val cassandraFieldMetadata = sparkSession
       .read
       .format(CASSANDRA)
       .options(connectionConfig)
-      .options(Map(CASSANDRA_KEYSPACE -> "system_schema", CASSANDRA_TABLE -> "columns"))
+      .options(Map(CASSANDRA_KEYSPACE -> "system_schema", CASSANDRA_TABLE -> "fields"))
       .load()
-      .selectExpr("keyspace_name AS schema", "table_name AS table", "'BASE TABLE' AS table_type", "column_name AS column",
+      .selectExpr("keyspace_name AS schema", "table_name AS table", "'BASE TABLE' AS table_type", "field_name AS field",
         "type AS source_data_type", "clustering_order", "kind AS primary_key_type", "position AS primary_key_position")
-    val filteredMetadata = createFilterQuery.map(cassandraColumnMetadata.filter).getOrElse(cassandraColumnMetadata)
+    val filteredMetadata = createFilterQuery.map(cassandraFieldMetadata.filter).getOrElse(cassandraFieldMetadata)
 
     val metadataWithPrimaryKeyPosition = filteredMetadata
       .filter("primary_key_type != 'regular'")
-      .select(col("schema"), col("table"), col("column"), col("primary_key_type"),
+      .select(col("schema"), col("table"), col("field"), col("primary_key_type"),
         col("source_data_type"), col("clustering_order"),
         row_number()
           .over(
@@ -50,7 +50,7 @@ case class CassandraMetadata(name: String, connectionConfig: Map[String, String]
         val clusteringOrder = r.getAs[String]("clustering_order")
 
         val metadata = Map(
-          SOURCE_COLUMN_DATA_TYPE -> r.getAs[String]("source_data_type"),
+          SOURCE_FIELD_DATA_TYPE -> r.getAs[String]("source_data_type"),
           IS_PRIMARY_KEY -> isPrimaryKey,
           PRIMARY_KEY_POSITION -> r.getAs[String]("primary_key_position"),
           IS_NULLABLE -> isNullable,
@@ -58,7 +58,7 @@ case class CassandraMetadata(name: String, connectionConfig: Map[String, String]
         val metadataWithClusterOrder = if (clusteringOrder != "none") metadata ++ Map(CLUSTERING_POSITION -> clusteringOrder) else metadata
 
         val dataSourceReadOptions = Map(CASSANDRA_KEYSPACE -> r.getAs[String]("schema"), CASSANDRA_TABLE -> r.getAs[String]("table"))
-        FieldMetadata(r.getAs[String]("column"), dataSourceReadOptions, metadataWithClusterOrder)
+        FieldMetadata(r.getAs[String]("field"), dataSourceReadOptions, metadataWithClusterOrder)
       })
   }
 

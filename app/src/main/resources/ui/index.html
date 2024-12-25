@@ -85,7 +85,7 @@
                 <div id="foreign-keys-body" class="accordion-collapse collapse" aria-labelledby="foreign-keys-header">
                     <div id="foreign-keys-details-body" class="accordion-body">
                         <div>
-                            Define relationships between columns across any task to ensure values remain consistent.
+                            Define relationships between fields across any task to ensure values remain consistent.
                             <button type="button" class="btn btn-info" id="relationship-example-button" data-bs-toggle="modal" data-bs-target="#relationshipExampleModal">Example</button>
                         </div>
                     </div>
@@ -126,11 +126,11 @@
                     <div class="modal-body">
                         <div>
                             For example, you have a <code>'create-accounts'</code> task which will create records with
-                            column <code>'account_id'</code> in a CSV file. Another task called
-                            <code>'create-transactions'</code> will also have the column <code>'account_id'</code>
+                            field <code>'account_id'</code> in a CSV file. Another task called
+                            <code>'create-transactions'</code> will also have the field <code>'account_id'</code>
                             but in a JSON file. <br>
-                            <b>Source:</b> Task: "create-accounts", Columns: "account_id"<br>
-                            <b>Links to:</b> Task: "create-transactions", Columns: "account_id"
+                            <b>Source:</b> Task: "create-accounts", Fields: "account_id"<br>
+                            <b>Links to:</b> Task: "create-transactions", Fields: "account_id"
                         </div>
                         <div class="form-check form-switch m-2">
                             <input class="form-check-input" type="checkbox" role="switch" id="showRelationshipExample" checked>
@@ -190,27 +190,27 @@
                 </div>
             </div>
         </div>
-        <div class="modal fade" id="perColumnExampleModal" tabindex="-1" aria-labelledby="perColumnExampleModalLabel" aria-hidden="true">
+        <div class="modal fade" id="perFieldExampleModal" tabindex="-1" aria-labelledby="perFieldExampleModalLabel" aria-hidden="true">
             <div class="modal-dialog modal-lg">
                 <div class="modal-content">
                     <div class="modal-header">
-                        <h1 class="modal-title fs-5" id="perColumnExampleModalLabel">Per Unique Column Values Example</h1>
+                        <h1 class="modal-title fs-5" id="perFieldExampleModalLabel">Per Unique Field Values Example</h1>
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
                     <div class="modal-body">
                         <div>
-                            For example, we generate transactions with the columns <code>'account_id,name,date,amount'</code>.
+                            For example, we generate transactions with the fields <code>'account_id,name,date,amount'</code>.
                             We can generate multiple transactions per unique <code>'account_id,name'</code>.<br>
                             Below, we set <strong>3 records per unique <code>'account_id,name'</code> values</strong>.
                         </div>
                         <div class="form-check form-switch m-2">
-                            <input class="form-check-input" type="checkbox" role="switch" id="showPerColumnExample" checked>
-                            <label class="form-check-label" for="showPerColumnExample"><strong>With per unique column values</strong></label>
+                            <input class="form-check-input" type="checkbox" role="switch" id="showPerFieldExample" checked>
+                            <label class="form-check-label" for="showPerFieldExample"><strong>With per unique field values</strong></label>
                         </div>
-                        <div class="row m-2" id="with-per-unique-column-values-example-row">
+                        <div class="row m-2" id="with-per-unique-field-values-example-row">
                             <div class="col">
                                 <h5>Transactions</h5>
-                                <table id="with-per-unique-column-values-example-transactions" data-toggle="table">
+                                <table id="with-per-unique-field-values-example-transactions" data-toggle="table">
                                     <thead>
                                     <tr>
                                         <th>account_id</th>
@@ -226,13 +226,13 @@
                                         <td>2023-01-01</td>
                                         <td>12.34</td>
                                     </tr>
-                                    <tr class="per-column-toggle-row">
+                                    <tr class="per-field-toggle-row">
                                         <td class="example-1-enabled">ACC123</td>
                                         <td class="example-1-enabled">Peter</td>
                                         <td>2023-01-04</td>
                                         <td>67.89</td>
                                     </tr>
-                                    <tr class="per-column-toggle-row">
+                                    <tr class="per-field-toggle-row">
                                         <td class="example-1-enabled">ACC123</td>
                                         <td class="example-1-enabled">Peter</td>
                                         <td>2023-01-15</td>
@@ -244,13 +244,13 @@
                                         <td>2023-02-01</td>
                                         <td>105.45</td>
                                     </tr>
-                                    <tr class="per-column-toggle-row">
+                                    <tr class="per-field-toggle-row">
                                         <td class="example-2-enabled">ACC789</td>
                                         <td class="example-2-enabled">John</td>
                                         <td>2023-02-12</td>
                                         <td>59.14</td>
                                     </tr>
-                                    <tr class="per-column-toggle-row">
+                                    <tr class="per-field-toggle-row">
                                         <td class="example-2-enabled">ACC789</td>
                                         <td class="example-2-enabled">John</td>
                                         <td>2023-02-25</td>
