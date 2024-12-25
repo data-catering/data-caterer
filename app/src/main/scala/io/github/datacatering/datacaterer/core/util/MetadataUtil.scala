@@ -30,7 +30,7 @@ object MetadataUtil {
   private val OBJECT_MAPPER = ObjectMapperUtil.jsonObjectMapper
   private val mapStringToAnyClass = Map[String, Any]()
   private val TEMP_CACHED_TABLE_NAME = "__temp_table"
-  implicit private val columnMetadataEncoder: Encoder[FieldMetadata] = Encoders.kryo[FieldMetadata]
+  implicit private val fieldMetadataEncoder: Encoder[FieldMetadata] = Encoders.kryo[FieldMetadata]
 
   def metadataToMap(metadata: Metadata): Map[String, Any] = {
     OBJECT_MAPPER.readValue(metadata.json, mapStringToAnyClass.getClass)
@@ -43,25 +43,25 @@ object MetadataUtil {
   def mapToStructFields(
                          sourceData: DataFrame,
                          dataSourceReadOptions: Map[String, String],
-                         columnDataProfilingMetadata: List[DataProfilingMetadata]
+                         fieldDataProfilingMetadata: List[DataProfilingMetadata]
                        )(implicit sparkSession: SparkSession): Array[StructField] = {
-    mapToStructFields(sourceData, dataSourceReadOptions, columnDataProfilingMetadata, sparkSession.emptyDataset[FieldMetadata])
+    mapToStructFields(sourceData, dataSourceReadOptions, fieldDataProfilingMetadata, sparkSession.emptyDataset[FieldMetadata])
   }
 
   def mapToStructFields(sourceData: DataFrame, dataSourceReadOptions: Map[String, String],
-                        columnDataProfilingMetadata: List[DataProfilingMetadata],
-                        additionalColumnMetadata: Dataset[FieldMetadata])(implicit sparkSession: SparkSession): Array[StructField] = {
-    if (!additionalColumnMetadata.storageLevel.useMemory) additionalColumnMetadata.cache()
-    val dataSourceAdditionalColumnMetadata = additionalColumnMetadata.filter(_.dataSourceReadOptions.equals(dataSourceReadOptions))
-    val primaryKeys = dataSourceAdditionalColumnMetadata.filter(_.metadata.get(IS_PRIMARY_KEY).exists(_.toBoolean))
+                        fieldDataProfilingMetadata: List[DataProfilingMetadata],
+                        additionalFieldMetadata: Dataset[FieldMetadata])(implicit sparkSession: SparkSession): Array[StructField] = {
+    if (!additionalFieldMetadata.storageLevel.useMemory) additionalFieldMetadata.cache()
+    val dataSourceAdditionalFieldMetadata = additionalFieldMetadata.filter(_.dataSourceReadOptions.equals(dataSourceReadOptions))
+    val primaryKeys = dataSourceAdditionalFieldMetadata.filter(_.metadata.get(IS_PRIMARY_KEY).exists(_.toBoolean))
     val primaryKeyCount = primaryKeys.count()
 
     val fieldsWithMetadata = sourceData.schema.fields.map(field => {
       val baseMetadata = new MetadataBuilder().withMetadata(field.metadata)
-      columnDataProfilingMetadata.find(_.columnName == field.name).foreach(c => baseMetadata.withMetadata(mapToMetadata(c.metadata)))
+      fieldDataProfilingMetadata.find(_.fieldName == field.name).foreach(c => baseMetadata.withMetadata(mapToMetadata(c.metadata)))
 
       var nullable = field.nullable
-      val optFieldAdditionalMetadata = dataSourceAdditionalColumnMetadata.filter(_.field == field.name)
+      val optFieldAdditionalMetadata = dataSourceAdditionalFieldMetadata.filter(_.field == field.name)
       if (!optFieldAdditionalMetadata.isEmpty) {
         val fieldAdditionalMetadata = optFieldAdditionalMetadata.first()
         fieldAdditionalMetadata.metadata.foreach(m => {
@@ -83,8 +83,8 @@ object MetadataUtil {
     fieldsWithMetadata
   }
 
-  def mapToStructFields(additionalColumnMetadata: Dataset[FieldMetadata], dataSourceReadOptions: Map[String, String]): Array[StructField] = {
-    val colsMetadata = additionalColumnMetadata.collect()
+  def mapToStructFields(additionalFieldMetadata: Dataset[FieldMetadata], dataSourceReadOptions: Map[String, String]): Array[StructField] = {
+    val colsMetadata = additionalFieldMetadata.collect()
     val matchedColMetadata = colsMetadata.filter(_.dataSourceReadOptions.getOrElse(METADATA_IDENTIFIER, "").equals(dataSourceReadOptions(METADATA_IDENTIFIER)))
     getStructFields(matchedColMetadata)
   }
@@ -109,64 +109,64 @@ object MetadataUtil {
                                      metadataConfig: MetadataConfig
                                    )(implicit sparkSession: SparkSession): List[DataProfilingMetadata] = {
     val dataSourceFormat = dataSourceReadOptions.getOrElse(FORMAT, "csv")
-    computeColumnStatistics(sourceData, dataSourceReadOptions, dataSourceMetadata.name, dataSourceMetadata.format)
-    val columnLevelStatistics = sparkSession.sharedState.cacheManager.lookupCachedData(sourceData).get.cachedRepresentation.stats
-    val rowCount = columnLevelStatistics.rowCount.getOrElse(BigInt(0))
+    computeFieldStatistics(sourceData, dataSourceReadOptions, dataSourceMetadata.name, dataSourceMetadata.format)
+    val fieldLevelStatistics = sparkSession.sharedState.cacheManager.lookupCachedData(sourceData).get.cachedRepresentation.stats
+    val rowCount = fieldLevelStatistics.rowCount.getOrElse(BigInt(0))
     LOGGER.debug(s"Computed metadata statistics for data source, name=${dataSourceMetadata.name}, format=$dataSourceFormat, " +
-      s"details=${ConfigUtil.cleanseOptions(dataSourceReadOptions)}, rows-analysed=$rowCount, size-in-bytes=${columnLevelStatistics.sizeInBytes}, " +
-      s"num-columns-analysed=${columnLevelStatistics.attributeStats.size}")
+      s"details=${ConfigUtil.cleanseOptions(dataSourceReadOptions)}, rows-analysed=$rowCount, size-in-bytes=${fieldLevelStatistics.sizeInBytes}, " +
+      s"num-fields-analysed=${fieldLevelStatistics.attributeStats.size}")
 
-    columnLevelStatistics.attributeStats.map(x => {
-      val columnName = x._1.name
-      val statisticsMap = columnStatToMap(x._2.toCatalogColumnStat(columnName, x._1.dataType)) ++ Map(ROW_COUNT -> rowCount.toString)
-      val optOneOfColumn = determineIfOneOfColumn(sourceData, columnName, statisticsMap, metadataConfig)
-      val optionalMetadataMap = optOneOfColumn.map(oneOf => Map(ONE_OF_GENERATOR -> oneOf)).getOrElse(Map())
+    fieldLevelStatistics.attributeStats.map(x => {
+      val fieldName = x._1.name
+      val statisticsMap = columnStatToMap(x._2.toCatalogColumnStat(fieldName, x._1.dataType)) ++ Map(ROW_COUNT -> rowCount.toString)
+      val optOneOfField = determineIfOneOfField(sourceData, fieldName, statisticsMap, metadataConfig)
+      val optionalMetadataMap = optOneOfField.map(oneOf => Map(ONE_OF_GENERATOR -> oneOf)).getOrElse(Map())
       val statWithOptionalMetadata = statisticsMap ++ optionalMetadataMap
 
-      LOGGER.debug(s"Column summary statistics, name=${dataSourceMetadata.name}, format=$dataSourceFormat, column-name=$columnName, " +
-        s"statistics=${statWithOptionalMetadata - s"$columnName.$HISTOGRAM"}")
-      DataProfilingMetadata(columnName, statWithOptionalMetadata)
+      LOGGER.debug(s"Field summary statistics, name=${dataSourceMetadata.name}, format=$dataSourceFormat, field-name=$fieldName, " +
+        s"statistics=${statWithOptionalMetadata - s"$fieldName.$HISTOGRAM"}")
+      DataProfilingMetadata(fieldName, statWithOptionalMetadata)
     }).toList
   }
 
-  private def computeColumnStatistics(
+  private def computeFieldStatistics(
                                        sourceData: DataFrame,
                                        dataSourceReadOptions: Map[String, String],
                                        dataSourceName: String,
                                        dataSourceFormat: String
                                      )(implicit sparkSession: SparkSession): Unit = {
-    //have to create temp view then analyze the column stats which can be found in the cached data
+    //have to create temp view then analyze the field stats which can be found in the cached data
     sourceData.createOrReplaceTempView(TEMP_CACHED_TABLE_NAME)
     if (!sparkSession.catalog.isCached(TEMP_CACHED_TABLE_NAME)) sparkSession.catalog.cacheTable(TEMP_CACHED_TABLE_NAME)
     val cleansedOptions = ConfigUtil.cleanseOptions(dataSourceReadOptions)
-    val optColumnsToAnalyze = Some(sourceData.schema.fields.filter(f => analyzeSupportsType(f.dataType)).map(_.name).toSeq)
-    val tryAnalyzeData = Try(AnalyzeColumnCommand(TableIdentifier(TEMP_CACHED_TABLE_NAME), optColumnsToAnalyze, false).run(sparkSession))
+    val optFieldsToAnalyze = Some(sourceData.schema.fields.filter(f => analyzeSupportsType(f.dataType)).map(_.name).toSeq)
+    val tryAnalyzeData = Try(AnalyzeColumnCommand(TableIdentifier(TEMP_CACHED_TABLE_NAME), optFieldsToAnalyze, false).run(sparkSession))
     tryAnalyzeData match {
       case Failure(exception) =>
-        LOGGER.error(s"Failed to analyze all columns in data source, name=$dataSourceName, format=$dataSourceFormat, " +
+        LOGGER.error(s"Failed to analyze all fields in data source, name=$dataSourceName, format=$dataSourceFormat, " +
           s"options=$cleansedOptions, error-message=${exception.getMessage}")
       case Success(_) =>
-        LOGGER.debug(s"Successfully analyzed all columns in data source, name=$dataSourceName, " +
+        LOGGER.debug(s"Successfully analyzed all fields in data source, name=$dataSourceName, " +
           s"format=$dataSourceFormat, options=$cleansedOptions")
     }
   }
 
-  def determineIfOneOfColumn(
+  def determineIfOneOfField(
                               sourceData: DataFrame,
-                              columnName: String,
+                              fieldName: String,
                               statisticsMap: Map[String, String],
                               metadataConfig: MetadataConfig
                             ): Option[Array[String]] = {
-    val columnDataType = sourceData.schema.fields.find(_.name == columnName).map(_.dataType)
+    val fieldDataType = sourceData.schema.fields.find(_.name == fieldName).map(_.dataType)
     val count = statisticsMap(ROW_COUNT).toLong
-    (columnDataType, count) match {
+    (fieldDataType, count) match {
       case (Some(DateType), _) => None
       case (_, 0) => None
       case (Some(_), c) if c >= metadataConfig.oneOfMinCount =>
         val distinctCount = statisticsMap(DISTINCT_COUNT).toDouble
         if (distinctCount / count <= metadataConfig.oneOfDistinctCountVsCountThreshold) {
-          LOGGER.debug(s"Identified column as a 'oneOf' column as distinct count / total count is below threshold, threshold=${metadataConfig.oneOfDistinctCountVsCountThreshold}")
-          Some(sourceData.select(columnName).distinct().collect().map(_.mkString))
+          LOGGER.debug(s"Identified field as a 'oneOf' field as distinct count / total count is below threshold, threshold=${metadataConfig.oneOfDistinctCountVsCountThreshold}")
+          Some(sourceData.select(fieldName).distinct().collect().map(_.mkString))
         } else {
           None
         }
@@ -269,10 +269,10 @@ object MetadataUtil {
   }
 
   /**
-   * Rename Spark column statistics to be aligned with Data Caterer statistic names. Remove 'version'
+   * Rename Spark field statistics to be aligned with Data Caterer statistic names. Remove 'version'
    *
-   * @param catalogColumnStat Spark column statistics
-   * @return Map of statistics for column
+   * @param catalogColumnStat Spark field statistics
+   * @return Map of statistics for field
    */
   private def columnStatToMap(catalogColumnStat: CatalogColumnStat): Map[String, String] = {
     catalogColumnStat.toMap("col")
@@ -289,4 +289,4 @@ object MetadataUtil {
 }
 
 
-case class DataProfilingMetadata(columnName: String, metadata: Map[String, Any], nestedProfiling: List[DataProfilingMetadata] = List())
+case class DataProfilingMetadata(fieldName: String, metadata: Map[String, Any], nestedProfiling: List[DataProfilingMetadata] = List())

@@ -134,7 +134,7 @@ table, tr, td, th {
 
 .outer-container {
     display: flex;
-    flex-direction: column;
+    flex-direction: field;
     height: 100vh;
 }
 

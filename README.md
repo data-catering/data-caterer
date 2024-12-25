@@ -137,14 +137,14 @@ postgres("customer_postgres", "jdbc:postgresql://localhost:5432/customer")  //na
 
 ```scala
 postgres("customer_postgres", "jdbc:postgresql://localhost:5432/customer")
-  .schema(field.name("account_id").regex("ACC[0-9]{10}").unique(true))
+  .fields(field.name("account_id").regex("ACC[0-9]{10}").unique(true))
 ```
 
 ##### [I then want to test my job ingests all the data after generating](https://github.com/data-catering/data-caterer-example/blob/b0f03fb26f185ec8613241205b998aef1d5f5a01/src/main/scala/io/github/datacatering/plan/ValidationPlanRun.scala)
 
 ```scala
 val postgresTask = postgres("customer_postgres", "jdbc:postgresql://localhost:5432/customer")
-  .schema(field.name("account_id").regex("ACC[0-9]{10}").unique(true))
+  .fields(field.name("account_id").regex("ACC[0-9]{10}").unique(true))
 
 val parquetValidation = parquet("output_parquet", "/data/parquet/customer")
   .validation(validation.count.isEqual(1000))
@@ -154,12 +154,12 @@ val parquetValidation = parquet("output_parquet", "/data/parquet/customer")
 
 ```scala
 val postgresTask = postgres("customer_postgres", "jdbc:postgresql://localhost:5432/customer")
-  .schema(field.name("account_id").regex("ACC[0-9]{10}").unique(true))
+  .fields(field.name("account_id").regex("ACC[0-9]{10}").unique(true))
 
 val parquetValidation = parquet("output_parquet", "/data/parquet/customer")
   .validation(
      validation.upstreamData(postgresTask)
-       .joinColumns("account_id")
+       .joinFields("account_id")
        .withValidation(validation.count().isEqual(1000))
   )
 ```
@@ -168,12 +168,12 @@ val parquetValidation = parquet("output_parquet", "/data/parquet/customer")
 
 ```scala
 val postgresTask = postgres("customer_postgres", "jdbc:postgresql://localhost:5432/customer")
-  .schema(field.name("account_id").regex("ACC[0-9]{10}").unique(true))
+  .fields(field.name("account_id").regex("ACC[0-9]{10}").unique(true))
 
 val parquetValidation = parquet("output_parquet", "/data/parquet/customer")
   .validation(
      validation.upstreamData(postgresTask)
-       .joinColumns("account_id")
+       .joinFields("account_id")
        .withValidation(validation.count().isEqual(1000))
   )
   .validationWait(waitCondition.file("/data/parquet/customer"))
@@ -186,18 +186,18 @@ val parquetValidation = parquet("output_parquet", "/data/parquet/customer")
 ```scala
 kafka("my_kafka", "localhost:29092")
   .topic("account-topic")
-  .schema(...)
+  .fields(...)
 ```
 
 ##### [But I want the same `account_id` to show in Postgres and Kafka](https://github.com/data-catering/data-caterer-example/blob/b0f03fb26f185ec8613241205b998aef1d5f5a01/src/main/scala/io/github/datacatering/plan/AdvancedBatchEventPlanRun.scala)
 
 ```scala
 val postgresTask = postgres("customer_postgres", "jdbc:postgresql://localhost:5432/customer")
-  .schema(field.name("account_id").regex("ACC[0-9]{10}"))
+  .fields(field.name("account_id").regex("ACC[0-9]{10}"))
 
 val kafkaTask = kafka("my_kafka", "localhost:29092")
   .topic("account-topic")
-  .schema(...)
+  .fields(...)
 
 plan.addForeignKeyRelationship(
    postgresTask, List("account_id"),
@@ -212,7 +212,7 @@ plan.addForeignKeyRelationship(
 ```scala
 postgres("customer_postgres", "jdbc:postgresql://localhost:5432/customer")
   .table("account", "transactions")
-  .count(count.recordsPerColumn(5, "account_id"))
+  .count(count.recordsPerField(5, "account_id"))
 ```
 
 ##### [Randomly generate 1 to 5 transactions per `account_id`](https://github.com/data-catering/data-caterer-example/blob/b0f03fb26f185ec8613241205b998aef1d5f5a01/src/main/scala/io/github/datacatering/plan/MultipleRecordsPerColPlan.scala)
@@ -220,7 +220,7 @@ postgres("customer_postgres", "jdbc:postgresql://localhost:5432/customer")
 ```scala
 postgres("customer_postgres", "jdbc:postgresql://localhost:5432/customer")
   .table("account", "transactions")
-  .count(count.recordsPerColumnGenerator(generator.min(1).max(5), "account_id"))
+  .count(count.recordsPerFieldGenerator(generator.min(1).max(5), "account_id"))
 ```
 
 ##### [I want to delete the generated data](https://github.com/data-catering/data-caterer-example/blob/b0f03fb26f185ec8613241205b998aef1d5f5a01/src/main/scala/io/github/datacatering/plan/AdvancedDeletePlanRun.scala)
@@ -228,7 +228,7 @@ postgres("customer_postgres", "jdbc:postgresql://localhost:5432/customer")
 ```scala
 val postgresTask = postgres("customer_postgres", "jdbc:postgresql://localhost:5432/customer")
   .table("account", "transactions")
-  .count(count.recordsPerColumnGenerator(generator.min(0).max(5), "account_id"))
+  .count(count.recordsPerFieldGenerator(generator.min(0).max(5), "account_id"))
 
 val conf = configuration
   .enableDeleteGeneratedRecords(true)
@@ -240,7 +240,7 @@ val conf = configuration
 ```scala
 val postgresTask = postgres("customer_postgres", "jdbc:postgresql://localhost:5432/customer")
   .table("account", "transactions")
-  .count(count.recordsPerColumnGenerator(generator.min(0).max(5), "account_id"))
+  .count(count.recordsPerFieldGenerator(generator.min(0).max(5), "account_id"))
 
 val cassandraTxns = cassandra("ingested_data", "localhost:9042")
   .table("account", "transactions")
@@ -260,7 +260,7 @@ val conf = configuration
 
 ```scala
 val postgresTask = postgres("customer_postgres", "jdbc:postgresql://localhost:5432/customer")
-  .count(count.recordsPerColumnGenerator(generator.min(0).max(5), "account_id"))
+  .count(count.recordsPerFieldGenerator(generator.min(0).max(5), "account_id"))
 
 val cassandraTxns = cassandra("ingested_data", "localhost:9042")
   .table("account", "transactions")
@@ -282,14 +282,14 @@ val conf = configuration
 
 ```scala
 parquet("customer_parquet", "/data/parquet/customer")
-  .schema(metadataSource.openDataContractStandard("/data/odcs/full-example.odcs.yaml"))
+  .fields(metadataSource.openDataContractStandard("/data/odcs/full-example.odcs.yaml"))
 ```
 
 ##### [I have an OpenAPI/Swagger doc](https://github.com/data-catering/data-caterer-example/blob/b0f03fb26f185ec8613241205b998aef1d5f5a01/src/main/scala/io/github/datacatering/plan/AdvancedHttpPlanRun.scala)
 
 ```scala
 http("my_http")
-  .schema(metadataSource.openApi("/data/http/petstore.json"))
+  .fields(metadataSource.openApi("/data/http/petstore.json"))
 ```
 
 #### Validate data using validations from metadata source

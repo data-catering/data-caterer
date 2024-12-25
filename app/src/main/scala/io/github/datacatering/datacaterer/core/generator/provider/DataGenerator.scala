@@ -132,7 +132,7 @@ trait ArrayDataGenerator[T] extends NullableDataGenerator[List[T]] {
   def elementGenerator: DataGenerator[T]
 
   override def generate: List[T] = {
-    val listSize = random.nextInt * (arrayMaxSize - arrayMinSize) + arrayMinSize
+    val listSize = (random.nextDouble() * (arrayMaxSize - arrayMinSize) + arrayMinSize).toInt
     (1 to listSize)
       .map(_ => elementGenerator.generate)
       .toList
@@ -149,7 +149,7 @@ trait MapDataGenerator[T, K] extends NullableDataGenerator[Map[T, K]] {
   def valueGenerator: DataGenerator[K]
 
   override def generate: Map[T, K] = {
-    val mapSize = random.nextInt() * (mapMaxSize - mapMinSize) + mapMinSize
+    val mapSize = (random.nextDouble() * (mapMaxSize - mapMinSize) + mapMinSize).toInt
     (1 to mapSize)
       .map(_ => keyGenerator.generate -> valueGenerator.generate)
       .toMap

@@ -1,17 +1,17 @@
 package io.github.datacatering.datacaterer.core.ui.plan
 
 import io.github.datacatering.datacaterer.core.ui.config.UiConfiguration.INSTALL_DIRECTORY
-import io.github.datacatering.datacaterer.core.ui.model.{Connection, GetConnectionsResponse, JsonSupport, SaveConnectionsRequest}
+import io.github.datacatering.datacaterer.core.ui.model.{Connection, GetConnectionsResponse, SaveConnectionsRequest}
 import org.apache.log4j.Logger
 import org.apache.pekko.actor.typed.scaladsl.Behaviors
 import org.apache.pekko.actor.typed.{ActorRef, Behavior, SupervisorStrategy}
 
 import java.nio.file.{Files, Path, StandardOpenOption}
 import scala.collection.JavaConverters.asScalaIteratorConverter
-import scala.util.Try
+import scala.util.{Failure, Success, Try}
 
 
-object ConnectionRepository extends JsonSupport {
+object ConnectionRepository {
 
   private val LOGGER = Logger.getLogger(getClass.getName)
 
@@ -61,8 +61,11 @@ object ConnectionRepository extends JsonSupport {
   def getConnection(name: String, masking: Boolean = true): Connection = {
     LOGGER.debug(s"Getting connection details, connection-name=$name")
     val connectionFile = Path.of(s"$connectionSaveFolder/$name.csv")
-    val connection = Connection.fromString(Files.readString(connectionFile), name, masking)
-    connection.copy(options = connection.options)
+    val tryConnection = Try(Connection.fromString(Files.readString(connectionFile), name, masking))
+    tryConnection match {
+      case Success(connection) => connection.copy(options = connection.options)
+      case Failure(exception) => throw exception
+    }
   }
 
   private def getAllConnections(optConnectionGroupType: Option[String], masking: Boolean = true): GetConnectionsResponse = {

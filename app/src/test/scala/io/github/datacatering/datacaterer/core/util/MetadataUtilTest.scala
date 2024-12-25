@@ -37,12 +37,12 @@ class MetadataUtilTest extends SparkSuite {
       DataProfilingMetadata("name", Map("distinctCount" -> "2", "count" -> "100", ONE_OF_GENERATOR -> Some(Array("peter", "john")))),
       DataProfilingMetadata("open_date", Map()),
     )
-    val columnMetadata = sparkSession.createDataset(Seq(
+    val fieldMetadata = sparkSession.createDataset(Seq(
       FieldMetadata("account_id", readOptions, Map("sourceDataType" -> "varchar")),
       FieldMetadata("open_date", readOptions, Map("isNullable" -> "false")),
     ))
 
-    val result = MetadataUtil.mapToStructFields(df, readOptions, dataProfilingMetadata, columnMetadata)
+    val result = MetadataUtil.mapToStructFields(df, readOptions, dataProfilingMetadata, fieldMetadata)
 
     assertResult(5)(result.length)
     result.find(_.name == "account_id")
@@ -78,16 +78,16 @@ class MetadataUtilTest extends SparkSuite {
     val result = MetadataUtil.getFieldDataProfilingMetadata(df, Map(), dataSourceMetadata, MetadataConfig(100, 100, 0.5, 1))
 
     assertResult(5)(result.size)
-    val accountIdField = result.find(_.columnName == "account_id").get
+    val accountIdField = result.find(_.fieldName == "account_id").get
     assertResult(Map("count" -> "4", "distinctCount" -> "4", "maxLen" -> "6", "avgLen" -> "6", "nullCount" -> "0"))(accountIdField.metadata)
-    val nameField = result.find(_.columnName == "name").get
+    val nameField = result.find(_.fieldName == "name").get
     val nameMeta = Map("count" -> "4", "distinctCount" -> "2", "maxLen" -> "5", "avgLen" -> "5", "nullCount" -> "0", ONE_OF_GENERATOR -> Array("peter", "john"))
     nameMeta.foreach(m => assertResult(m._2)(nameField.metadata(m._1)))
-    val dateField = result.find(_.columnName == "open_date").get
+    val dateField = result.find(_.fieldName == "open_date").get
     assertResult(Map("count" -> "4", "distinctCount" -> "4", "min" -> "2023-01-01", "max" -> "2023-02-04", "maxLen" -> "4", "avgLen" -> "4", "nullCount" -> "0"))(dateField.metadata)
-    val amountField = result.find(_.columnName == "age").get
+    val amountField = result.find(_.fieldName == "age").get
     assertResult(Map("count" -> "4", "distinctCount" -> "4", "min" -> "10", "max" -> "49", "maxLen" -> "4", "avgLen" -> "4", "nullCount" -> "0"))(amountField.metadata)
-    val debitCreditField = result.find(_.columnName == "debitCredit").get
+    val debitCreditField = result.find(_.fieldName == "debitCredit").get
     val debitCreditMeta = Map("count" -> "4", "distinctCount" -> "2", "maxLen" -> "1", "avgLen" -> "1", "nullCount" -> "0", ONE_OF_GENERATOR -> Array("D", "C"))
     debitCreditMeta.foreach(m => assertResult(m._2)(debitCreditField.metadata(m._1)))
   }

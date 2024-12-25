@@ -10,7 +10,7 @@
       "updatedBy": "admin",
       "href": "http://localhost:8585/api/v1/tables/464fe2d0-eb37-4351-b939-3358170c941a",
       "tableType": "Regular",
-      "columns": [
+      "fields": [
         {
           "name": "address_id",
           "dataType": "NUMERIC",
@@ -25,7 +25,7 @@
           "name": "shop_id",
           "dataType": "NUMERIC",
           "dataTypeDisplay": "numeric",
-          "description": "The ID of the store. This column is a foreign key reference to the shop_id column in the dim_shop table.",
+          "description": "The ID of the store. This field is a foreign key reference to the shop_id field in the dim_shop table.",
           "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_address.shop_id",
           "tags": [],
           "ordinalPosition": 2,
@@ -102,7 +102,7 @@
           "dataType": "VARCHAR",
           "dataLength": 512,
           "dataTypeDisplay": "varchar",
-          "description": "The name of the region, such as a province or state, where the customer is located. For example, Ontario or New York. This column is the same as CustomerAddress.province in the Admin API.",
+          "description": "The name of the region, such as a province or state, where the customer is located. For example, Ontario or New York. This field is the same as CustomerAddress.province in the Admin API.",
           "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_address.region",
           "tags": [],
           "ordinalPosition": 9,
@@ -145,7 +145,7 @@
       "tableConstraints": [
         {
           "constraintType": "PRIMARY_KEY",
-          "columns": [
+          "fields": [
             "address_id",
             "shop_id"
           ]
@@ -198,7 +198,7 @@
       "joins": {
         "startDate": "2023-09-13",
         "dayCount": 30,
-        "columnJoins": [],
+        "fieldJoins": [],
         "directTableJoins": []
       },
       "testSuite": {
@@ -210,41 +210,41 @@
           {
             "id": "26ea4fb8-1a13-42eb-a4b6-37ace2c4dd05",
             "type": "testCase",
-            "name": "column_value_max_to_be_between",
-            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_address.shop_id.column_value_max_to_be_between",
-            "description": "test the value of a column is between x and y",
+            "name": "field_value_max_to_be_between",
+            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_address.shop_id.field_value_max_to_be_between",
+            "description": "test the value of a field is between x and y",
             "deleted": false
           },
           {
             "id": "a30d4175-2681-4427-87ee-6a5a139e3d31",
             "type": "testCase",
-            "name": "column_values_to_be_between",
-            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_address.zip.column_values_to_be_between",
-            "description": "test the number of column in table is between x and y",
+            "name": "field_values_to_be_between",
+            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_address.zip.field_values_to_be_between",
+            "description": "test the number of field in table is between x and y",
             "deleted": false
           },
           {
             "id": "d3024ad8-3bc7-4875-8369-1e2085dfab77",
             "type": "testCase",
-            "name": "column_values_to_match_regex",
-            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_address.last_name.column_values_to_match_regex",
-            "description": "test value of a column match regex",
+            "name": "field_values_to_match_regex",
+            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_address.last_name.field_values_to_match_regex",
+            "description": "test value of a field match regex",
             "deleted": false
           },
           {
             "id": "e7a485ee-af8a-4f22-b114-014e6bb74531",
             "type": "testCase",
-            "name": "table_column_count_between",
-            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_address.table_column_count_between",
-            "description": "test the number of column in table is between x and y",
+            "name": "table_field_count_between",
+            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_address.table_field_count_between",
+            "description": "test the number of field in table is between x and y",
             "deleted": false
           },
           {
             "id": "dea9535c-2f8b-4a69-8a79-990d672af4f5",
             "type": "testCase",
-            "name": "table_column_count_equals",
-            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_address.table_column_count_equals",
-            "description": "test the number of column in table",
+            "name": "table_field_count_equals",
+            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_address.table_field_count_equals",
+            "description": "test the number of field in table",
             "deleted": false
           }
         ],
@@ -277,27 +277,27 @@
         },
         "testCaseResultSummary": [
           {
-            "testCaseName": "sample_data.ecommerce_db.shopify.dim_address.table_column_count_equals",
+            "testCaseName": "sample_data.ecommerce_db.shopify.dim_address.table_field_count_equals",
             "status": "Success",
             "timestamp": 1696313644465
           },
           {
-            "testCaseName": "sample_data.ecommerce_db.shopify.dim_address.table_column_count_between",
+            "testCaseName": "sample_data.ecommerce_db.shopify.dim_address.table_field_count_between",
             "status": "Success",
             "timestamp": 1696400044815
           },
           {
-            "testCaseName": "sample_data.ecommerce_db.shopify.dim_address.shop_id.column_value_max_to_be_between",
+            "testCaseName": "sample_data.ecommerce_db.shopify.dim_address.shop_id.field_value_max_to_be_between",
             "status": "Aborted",
             "timestamp": 1696400045181
           },
           {
-            "testCaseName": "sample_data.ecommerce_db.shopify.dim_address.last_name.column_values_to_match_regex",
+            "testCaseName": "sample_data.ecommerce_db.shopify.dim_address.last_name.field_values_to_match_regex",
             "status": "Success",
             "timestamp": 1696400045622
           },
           {
-            "testCaseName": "sample_data.ecommerce_db.shopify.dim_address.zip.column_values_to_be_between",
+            "testCaseName": "sample_data.ecommerce_db.shopify.dim_address.zip.field_values_to_be_between",
             "status": "Success",
             "timestamp": 1696400045933
           }

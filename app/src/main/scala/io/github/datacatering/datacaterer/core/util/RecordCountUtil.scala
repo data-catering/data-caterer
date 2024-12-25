@@ -1,7 +1,7 @@
 package io.github.datacatering.datacaterer.core.util
 
 import io.github.datacatering.datacaterer.api.model.{GenerationConfig, Task}
-import io.github.datacatering.datacaterer.core.util.PlanImplicits.{CountOps, PerColumnCountOps}
+import io.github.datacatering.datacaterer.core.util.PlanImplicits.{CountOps, PerFieldCountOps}
 import org.apache.log4j.Logger
 
 object RecordCountUtil {
@@ -30,7 +30,7 @@ object RecordCountUtil {
             val numRecordsPerStep = generationConfig.numRecordsPerStep.asInstanceOf[Option[String]].get.toLong
             step.count.copy(records = Some(numRecordsPerStep)).numRecords
           } else step.count.numRecords
-          val averagePerCol = step.count.perColumn.map(_.averageCountPerColumn).getOrElse(1L)
+          val averagePerCol = step.count.perField.map(_.averageCountPerField).getOrElse(1L)
           (
             s"${task.name}_${step.name}",
             StepRecordCount(0L, (stepRecords / averagePerCol) / numBatches, stepRecords)

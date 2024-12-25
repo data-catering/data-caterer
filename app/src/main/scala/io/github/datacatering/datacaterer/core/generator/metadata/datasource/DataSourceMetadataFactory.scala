@@ -1,7 +1,7 @@
 package io.github.datacatering.datacaterer.core.generator.metadata.datasource
 
 import io.github.datacatering.datacaterer.api.model.Constants.METADATA_SOURCE_TYPE
-import io.github.datacatering.datacaterer.api.model.{DataCatererConfiguration, DataSourceValidation, Plan, Schema, Task, ValidationConfiguration}
+import io.github.datacatering.datacaterer.api.model.{DataCatererConfiguration, DataSourceValidation, Field, Plan, Task, ValidationConfiguration}
 import io.github.datacatering.datacaterer.api.{PlanRun, ValidationBuilder}
 import io.github.datacatering.datacaterer.core.generator.metadata.PlanGenerator.writeToFiles
 import io.github.datacatering.datacaterer.core.model.{ForeignKeyRelationship, ValidationConfigurationHelper}
@@ -92,9 +92,9 @@ class DataSourceMetadataFactory(dataCatererConfiguration: DataCatererConfigurati
   private def getExternalMetadataFromPlanRun(planRun: PlanRun): PlanRun = {
     val updatedTaskBuilders = planRun._connectionTaskBuilders.map(connectionTaskBuilder => {
       val stepWithUpdatedSchema = connectionTaskBuilder.step.map(stepBuilder => {
-        val stepSchemaFromMetadataSource = getMetadataSourceSchema(stepBuilder.step.schema)
+        val stepSchemaFromMetadataSource = getMetadataSourceSchema(stepBuilder.step.fields)
         //remove the metadata source config from generator options after
-        stepBuilder.step.copy(schema = stepSchemaFromMetadataSource)
+        stepBuilder.step.copy(fields = stepSchemaFromMetadataSource)
       })
       connectionTaskBuilder.apply(connectionTaskBuilder.connectionConfigWithTaskBuilder, connectionTaskBuilder.task.map(_.task), stepWithUpdatedSchema)
     })
@@ -102,40 +102,35 @@ class DataSourceMetadataFactory(dataCatererConfiguration: DataCatererConfigurati
     planRun
   }
 
-  private def getMetadataSourceSchema(userSchema: Schema): Schema = {
-    val updatedFields = userSchema.fields.map(fields => {
-      fields.map(f => {
-        if (f.schema.isDefined) {
-          val metadataForFieldSchema = Some(getMetadataSourceSchema(f.schema.get))
-          f.copy(schema = metadataForFieldSchema)
-        } else {
-          f.generator.map(gen => {
-            val isFieldDefinedFromMetadataSource = gen.options.contains(METADATA_SOURCE_TYPE)
-            if (isFieldDefinedFromMetadataSource) {
-              LOGGER.debug(s"Found field definition is based on metadata source, field-name=${f.name}")
-            }
-            val metadataSource = MetadataUtil.getMetadataFromConnectionConfig("schema_metadata" -> gen.options.map(e => e._1 -> e._2.toString))
-            val fieldMetadata = metadataSource.map(_.getMetadataForDataSource(flagsConfig, metadataConfig)).getOrElse(List())
-            val baseDataSourceDetail = if (fieldMetadata.size > 1) {
-              LOGGER.warn(s"Multiple schemas found for field level schema, will only use the first schema found from metadata source, " +
-                s"metadata-source-type=${gen.options(METADATA_SOURCE_TYPE)}, num-schemas=${fieldMetadata.size}, field-name=${f.name}")
-              Some(fieldMetadata.head)
-            } else if (fieldMetadata.size == 1) {
-              Some(fieldMetadata.head)
-            } else {
-              None
-            }
-            val updatedGeneratorOptions = ConfigUtil.cleanseOptions(gen.options.map(o => o._1 -> o._2.toString))
-            val updatedGenerator = f.generator.map(gen => gen.copy(options = updatedGeneratorOptions))
-            baseDataSourceDetail.map(d => {
-              val metadataSourceSchema = SchemaHelper.fromStructType(d.structType)
-              f.copy(schema = Some(metadataSourceSchema), generator = updatedGenerator)
-            }).getOrElse(f)
-          }).getOrElse(f)
+  private def getMetadataSourceSchema(userFields: List[Field]): List[Field] = {
+    val updatedFields = userFields.map(f => {
+      if (f.fields.nonEmpty) {
+        val metadataForFieldSchema = getMetadataSourceSchema(f.fields)
+        f.copy(fields = metadataForFieldSchema)
+      } else {
+        val isFieldDefinedFromMetadataSource = f.options.contains(METADATA_SOURCE_TYPE)
+        if (isFieldDefinedFromMetadataSource) {
+          LOGGER.debug(s"Found field definition is based on metadata source, field-name=${f.name}")
         }
-      })
+        val metadataSource = MetadataUtil.getMetadataFromConnectionConfig("schema_metadata" -> f.options.map(e => e._1 -> e._2.toString))
+        val fieldMetadata = metadataSource.map(_.getMetadataForDataSource(flagsConfig, metadataConfig)).getOrElse(List())
+        val baseDataSourceDetail = if (fieldMetadata.size > 1) {
+          LOGGER.warn(s"Multiple schemas found for field level schema, will only use the first schema found from metadata source, " +
+            s"metadata-source-type=${f.options(METADATA_SOURCE_TYPE)}, num-schemas=${fieldMetadata.size}, field-name=${f.name}")
+          Some(fieldMetadata.head)
+        } else if (fieldMetadata.size == 1) {
+          Some(fieldMetadata.head)
+        } else {
+          None
+        }
+        val updatedGeneratorOptions = ConfigUtil.cleanseOptions(f.options.map(o => o._1 -> o._2.toString))
+        baseDataSourceDetail.map(d => {
+          val metadataSourceSchema = SchemaHelper.fromStructType(d.structType)
+          f.copy(fields = metadataSourceSchema, options = updatedGeneratorOptions)
+        }).getOrElse(f)
+      }
     })
-    userSchema.copy(fields = updatedFields)
+    updatedFields
   }
 }
 

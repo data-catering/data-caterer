@@ -11,7 +11,7 @@ case class ParseFileException(filePath: String, parseToType: String, throwable: 
 )
 
 case class SaveFileException(filePath: String, throwable: Throwable) extends RuntimeException(
-  s"Failed to file to file system, file-path=$filePath",
+  s"Failed to save to file system, file-path=$filePath",
   throwable
 )
 
@@ -115,7 +115,7 @@ case class PlanRunClassNotFoundException(className: String) extends RuntimeExcep
 
 case class InvalidStepCountGeneratorConfigurationException(step: Step) extends RuntimeException(
   s"'total' or 'generator' needs to be defined in count for step, " +
-    s"step-name=${step.name}, schema=${step.schema}, count=${step.count}"
+    s"step-name=${step.name}, schema=${step.fields}, count=${step.count}"
 )
 
 case class InvalidFieldConfigurationException(field: Field) extends RuntimeException(
@@ -199,6 +199,10 @@ case class FailedConfluentSchemaRegistryHttpCallException(url: String, throwable
   throwable
 )
 
+case class FailedConfluentSchemaRegistryResponseException(url: String, statusCode: Int, statusText: String) extends RuntimeException(
+  s"Got non 200 response from HTTP call to Confluent Schema Registry, url=$url, status-code=$statusCode, status-text=$statusText"
+)
+
 case class InvalidConfluentSchemaRegistryResponseException(throwable: Throwable) extends RuntimeException(
   "Failed to parse response from Confluent Schema Registry",
   throwable
@@ -216,16 +220,20 @@ case class FailedJmsMessageCreateException(throwable: Throwable) extends Runtime
 case class FailedJmsMessageGetBodyException(throwable: Throwable) extends RuntimeException(throwable)
 
 //row
-case class InvalidColumnAsDataTypeException(columnName: String, throwable: Throwable) extends RuntimeException(
-  s"Failed to get column as data type, column-name=$columnName",
+case class InvalidFieldAsDataTypeException(fieldName: String, throwable: Throwable) extends RuntimeException(
+  s"Failed to get field as data type, field-name=$fieldName",
   throwable
 )
 
-case class MissingColumnException(columnName: String) extends RuntimeException(
-  s"Invalid schema definition due to missing column, column-name=$columnName"
+case class MissingFieldException(fieldName: String) extends RuntimeException(
+  s"Invalid schema definition due to missing field, field-name=$fieldName"
 )
 
 //protobuf
 case class UnsupportedProtobufType(protobufType: String) extends RuntimeException(
   s"Unsupported protobuf data type, protobuf-type=$protobufType"
+)
+
+case class InvalidNumberOfProtobufMessages(filePath: String) extends RuntimeException(
+  s"Only one message can be defined in .proto file for parsing, protobuf-file=$filePath"
 )

@@ -2,7 +2,7 @@ package io.github.datacatering.datacaterer.core.generator.metadata.datasource.ht
 
 import io.github.datacatering.datacaterer.api.model.Constants.{ENABLED_NULL, FIELD_DATA_TYPE, HTTP_PARAMETER_TYPE, HTTP_PATH_PARAMETER, HTTP_QUERY_PARAMETER, IS_NULLABLE, ONE_OF_GENERATOR, POST_SQL_EXPRESSION, SQL_GENERATOR, STATIC}
 import io.github.datacatering.datacaterer.core.generator.metadata.datasource.database.FieldMetadata
-import io.github.datacatering.datacaterer.core.model.Constants.{HTTP_HEADER_COL_PREFIX, HTTP_PATH_PARAM_COL_PREFIX, HTTP_QUERY_PARAM_COL_PREFIX, REAL_TIME_BODY_COL, REAL_TIME_BODY_CONTENT_COL, REAL_TIME_CONTENT_TYPE_COL, REAL_TIME_METHOD_COL, REAL_TIME_URL_COL}
+import io.github.datacatering.datacaterer.core.model.Constants.{HTTP_HEADER_FIELD_PREFIX, HTTP_PATH_PARAM_FIELD_PREFIX, HTTP_QUERY_PARAM_FIELD_PREFIX, REAL_TIME_BODY_FIELD, REAL_TIME_BODY_CONTENT_FIELD, REAL_TIME_CONTENT_TYPE_FIELD, REAL_TIME_METHOD_FIELD, REAL_TIME_URL_FIELD}
 import io.swagger.v3.oas.models.PathItem.HttpMethod
 import io.swagger.v3.oas.models.media.{Content, MediaType, Schema}
 import io.swagger.v3.oas.models.parameters.Parameter.StyleEnum
@@ -18,19 +18,19 @@ import scala.collection.JavaConverters.seqAsJavaListConverter
 @RunWith(classOf[JUnitRunner])
 class OpenAPIConverterTest extends AnyFunSuite {
 
-  test("Can convert GET request to column metadata") {
+  test("Can convert GET request to field metadata") {
     val openAPI = new OpenAPI().addServersItem(new Server().url("http://localhost:80"))
     val operation = new Operation()
     val openAPIConverter = new OpenAPIConverter(openAPI)
 
-    val result = openAPIConverter.toColumnMetadata("/", HttpMethod.GET, operation, Map())
+    val result = openAPIConverter.toFieldMetadata("/", HttpMethod.GET, operation, Map())
 
     assertResult(2)(result.size)
-    assertResult(Map(FIELD_DATA_TYPE -> "string", SQL_GENERATOR -> "CONCAT('http://localhost:80/', URL_ENCODE(ARRAY_JOIN(ARRAY(), '&')))"))(result.filter(_.field == REAL_TIME_URL_COL).head.metadata)
-    assertResult(Map(FIELD_DATA_TYPE -> "string", STATIC -> "GET"))(result.filter(_.field == REAL_TIME_METHOD_COL).head.metadata)
+    assertResult(Map(FIELD_DATA_TYPE -> "string", SQL_GENERATOR -> "CONCAT('http://localhost:80/', URL_ENCODE(ARRAY_JOIN(ARRAY(), '&')))"))(result.filter(_.field == REAL_TIME_URL_FIELD).head.metadata)
+    assertResult(Map(FIELD_DATA_TYPE -> "string", STATIC -> "GET"))(result.filter(_.field == REAL_TIME_METHOD_FIELD).head.metadata)
   }
 
-  test("Can convert flat structure to column metadata") {
+  test("Can convert flat structure to field metadata") {
     val openAPIConverter = new OpenAPIConverter(null)
     val schema = new Schema[String]()
     val stringSchema = new Schema[String]()
@@ -47,7 +47,7 @@ class OpenAPIConverterTest extends AnyFunSuite {
     assertResult("integer")(result.filter(_.field == "age").head.metadata(FIELD_DATA_TYPE))
   }
 
-  test("Can convert array to column metadata") {
+  test("Can convert array to field metadata") {
     val openAPIConverter = new OpenAPIConverter()
     val schema = getInnerArrayStruct
 
@@ -59,7 +59,7 @@ class OpenAPIConverterTest extends AnyFunSuite {
     assertResult("struct<name: string,tags: array<string>>")(result.head.nestedFields.head.metadata(FIELD_DATA_TYPE))
   }
 
-  test("Can convert component to column metadata") {
+  test("Can convert component to field metadata") {
     val schema = getInnerArrayStruct
     val openAPI = new OpenAPI()
     openAPI.setComponents(new Components().addSchemas("NewPet", schema))
@@ -101,19 +101,19 @@ class OpenAPIConverterTest extends AnyFunSuite {
     val result = new OpenAPIConverter().getHeaders(params)
 
     assertResult(2)(result.size)
-    val contentTypeRes = result.find(_.field == s"${HTTP_HEADER_COL_PREFIX}Content_Type")
-    val contentLengthRes = result.find(_.field == s"${HTTP_HEADER_COL_PREFIX}Content_Length")
+    val contentTypeRes = result.find(_.field == s"${HTTP_HEADER_FIELD_PREFIX}Content_Type")
+    val contentLengthRes = result.find(_.field == s"${HTTP_HEADER_FIELD_PREFIX}Content_Length")
     assert(contentTypeRes.isDefined)
     assert(contentLengthRes.isDefined)
     assert(contentTypeRes.get.nestedFields.isEmpty)
     assertResult("false")(contentTypeRes.get.metadata(IS_NULLABLE))
     assertResult("application/json,application/xml")(contentTypeRes.get.metadata(ONE_OF_GENERATOR))
-    assertResult("Content-Type")(contentTypeRes.get.metadata(HTTP_HEADER_COL_PREFIX))
+    assertResult("Content-Type")(contentTypeRes.get.metadata(HTTP_HEADER_FIELD_PREFIX))
     assertResult("string")(contentTypeRes.get.metadata(FIELD_DATA_TYPE))
     assert(contentLengthRes.get.nestedFields.isEmpty)
     assertResult("true")(contentLengthRes.get.metadata(IS_NULLABLE))
     assertResult("true")(contentLengthRes.get.metadata(ENABLED_NULL))
-    assertResult("Content-Length")(contentLengthRes.get.metadata(HTTP_HEADER_COL_PREFIX))
+    assertResult("Content-Length")(contentLengthRes.get.metadata(HTTP_HEADER_FIELD_PREFIX))
     assertResult("integer")(contentLengthRes.get.metadata(FIELD_DATA_TYPE))
   }
 
@@ -139,8 +139,8 @@ class OpenAPIConverterTest extends AnyFunSuite {
     val result = new OpenAPIConverter().getPathParams(List(new Parameter(), idPathParam))
 
     assertResult(1)(result.size)
-    assert(result.exists(_.field == s"${HTTP_PATH_PARAM_COL_PREFIX}id"))
-    val resIdPath = result.find(_.field == s"${HTTP_PATH_PARAM_COL_PREFIX}id").get
+    assert(result.exists(_.field == s"${HTTP_PATH_PARAM_FIELD_PREFIX}id"))
+    val resIdPath = result.find(_.field == s"${HTTP_PATH_PARAM_FIELD_PREFIX}id").get
     assertResult(4)(resIdPath.metadata.size)
     assertResult("false")(resIdPath.metadata(IS_NULLABLE))
     assertResult("false")(resIdPath.metadata(ENABLED_NULL))
@@ -187,10 +187,10 @@ class OpenAPIConverterTest extends AnyFunSuite {
 
     val result = new OpenAPIConverter().getQueryParams(List(new Parameter(), stringParam, baseQueryParam, formQueryParam, spaceQueryParam, pipeQueryParam))
     def expectedSqlGenerator(name: String, delim: String): String = {
-      s"CASE WHEN ARRAY_SIZE($HTTP_QUERY_PARAM_COL_PREFIX$name) > 0 THEN CONCAT('$name=', ARRAY_JOIN($HTTP_QUERY_PARAM_COL_PREFIX$name, '$delim')) ELSE null END"
+      s"CASE WHEN ARRAY_SIZE($HTTP_QUERY_PARAM_FIELD_PREFIX$name) > 0 THEN CONCAT('$name=', ARRAY_JOIN($HTTP_QUERY_PARAM_FIELD_PREFIX$name, '$delim')) ELSE null END"
     }
     def checkResult(name: String, delim: String): Unit = {
-      val optQueryRes = result.find(_.field == s"$HTTP_QUERY_PARAM_COL_PREFIX$name")
+      val optQueryRes = result.find(_.field == s"$HTTP_QUERY_PARAM_FIELD_PREFIX$name")
       assert(optQueryRes.isDefined)
       assertResult(5)(optQueryRes.get.metadata.size)
       assertResult(expectedSqlGenerator(name, delim))(optQueryRes.get.metadata(POST_SQL_EXPRESSION))
@@ -201,17 +201,17 @@ class OpenAPIConverterTest extends AnyFunSuite {
     }
 
     assertResult(5)(result.size)
-    assert(result.exists(_.field == s"${HTTP_QUERY_PARAM_COL_PREFIX}name"))
-    val resNameQuery = result.find(_.field == s"${HTTP_QUERY_PARAM_COL_PREFIX}name").get
+    assert(result.exists(_.field == s"${HTTP_QUERY_PARAM_FIELD_PREFIX}name"))
+    val resNameQuery = result.find(_.field == s"${HTTP_QUERY_PARAM_FIELD_PREFIX}name").get
     assertResult(5)(resNameQuery.metadata.size)
-    assertResult(s"CONCAT('name=', ${HTTP_QUERY_PARAM_COL_PREFIX}name)")(resNameQuery.metadata(POST_SQL_EXPRESSION))
+    assertResult(s"CONCAT('name=', ${HTTP_QUERY_PARAM_FIELD_PREFIX}name)")(resNameQuery.metadata(POST_SQL_EXPRESSION))
     assertResult("false")(resNameQuery.metadata(IS_NULLABLE))
     assertResult("false")(resNameQuery.metadata(ENABLED_NULL))
     assertResult(HTTP_QUERY_PARAMETER)(resNameQuery.metadata(HTTP_PARAMETER_TYPE))
     assertResult("string")(resNameQuery.metadata(FIELD_DATA_TYPE))
 
-    assert(result.exists(_.field == s"${HTTP_QUERY_PARAM_COL_PREFIX}tags"))
-    val resTagsQuery = result.find(_.field == s"${HTTP_QUERY_PARAM_COL_PREFIX}tags").get
+    assert(result.exists(_.field == s"${HTTP_QUERY_PARAM_FIELD_PREFIX}tags"))
+    val resTagsQuery = result.find(_.field == s"${HTTP_QUERY_PARAM_FIELD_PREFIX}tags").get
     assertResult(5)(resTagsQuery.metadata.size)
     assertResult(expectedSqlGenerator("tags", s"&tags="))(resTagsQuery.metadata(POST_SQL_EXPRESSION))
     assertResult("false")(resTagsQuery.metadata(IS_NULLABLE))
@@ -223,7 +223,7 @@ class OpenAPIConverterTest extends AnyFunSuite {
     checkResult("pipe", "|")
   }
 
-  test("Can convert operation into request body column metadata") {
+  test("Can convert operation into request body field metadata") {
     val schema = new Schema[String]()
     schema.setType("string")
     schema.setName("name")
@@ -239,17 +239,17 @@ class OpenAPIConverterTest extends AnyFunSuite {
     val result = new OpenAPIConverter().getRequestBodyMetadata(operation)
 
     assertResult(4)(result.size)
-    assert(result.exists(_.field == REAL_TIME_BODY_COL))
-    assert(result.exists(_.field == REAL_TIME_BODY_CONTENT_COL))
-    assert(result.exists(_.field == REAL_TIME_CONTENT_TYPE_COL))
+    assert(result.exists(_.field == REAL_TIME_BODY_FIELD))
+    assert(result.exists(_.field == REAL_TIME_BODY_CONTENT_FIELD))
+    assert(result.exists(_.field == REAL_TIME_CONTENT_TYPE_FIELD))
     assert(result.exists(_.field == "name"))
-    assertResult(s"TO_JSON($REAL_TIME_BODY_CONTENT_COL)")(result.find(_.field == REAL_TIME_BODY_COL).get.metadata(SQL_GENERATOR))
-    assertResult("string")(result.find(_.field == REAL_TIME_BODY_CONTENT_COL).get.metadata(FIELD_DATA_TYPE))
-    assertResult(1)(result.find(_.field == REAL_TIME_BODY_CONTENT_COL).get.nestedFields.size)
-    assertResult("application/json")(result.find(_.field == REAL_TIME_CONTENT_TYPE_COL).get.metadata(STATIC))
+    assertResult(s"TO_JSON($REAL_TIME_BODY_CONTENT_FIELD)")(result.find(_.field == REAL_TIME_BODY_FIELD).get.metadata(SQL_GENERATOR))
+    assertResult("string")(result.find(_.field == REAL_TIME_BODY_CONTENT_FIELD).get.metadata(FIELD_DATA_TYPE))
+    assertResult(1)(result.find(_.field == REAL_TIME_BODY_CONTENT_FIELD).get.nestedFields.size)
+    assertResult("application/json")(result.find(_.field == REAL_TIME_CONTENT_TYPE_FIELD).get.metadata(STATIC))
   }
 
-  test("Can convert operation into request body column metadata with url encoded body") {
+  test("Can convert operation into request body field metadata with url encoded body") {
     val schema = new Schema[String]()
     schema.setType("string")
     schema.setName("name")
@@ -265,12 +265,12 @@ class OpenAPIConverterTest extends AnyFunSuite {
     val result = new OpenAPIConverter().getRequestBodyMetadata(operation)
 
     assertResult(4)(result.size)
-    assert(result.exists(_.field == REAL_TIME_BODY_COL))
-    assert(result.exists(_.field == REAL_TIME_BODY_CONTENT_COL))
-    assert(result.exists(_.field == REAL_TIME_CONTENT_TYPE_COL))
+    assert(result.exists(_.field == REAL_TIME_BODY_FIELD))
+    assert(result.exists(_.field == REAL_TIME_BODY_CONTENT_FIELD))
+    assert(result.exists(_.field == REAL_TIME_CONTENT_TYPE_FIELD))
     assert(result.exists(_.field == "name"))
-    assertResult("ARRAY_JOIN(ARRAY(CONCAT('name=', CAST(`name` AS STRING))), '&')")(result.find(_.field == REAL_TIME_BODY_COL).get.metadata(SQL_GENERATOR))
-    assertResult("application/x-www-form-urlencoded")(result.find(_.field == REAL_TIME_CONTENT_TYPE_COL).get.metadata(STATIC))
+    assertResult("ARRAY_JOIN(ARRAY(CONCAT('name=', CAST(`name` AS STRING))), '&')")(result.find(_.field == REAL_TIME_BODY_FIELD).get.metadata(SQL_GENERATOR))
+    assertResult("application/x-www-form-urlencoded")(result.find(_.field == REAL_TIME_CONTENT_TYPE_FIELD).get.metadata(STATIC))
   }
 
   private def getInnerArrayStruct: Schema[_] = {

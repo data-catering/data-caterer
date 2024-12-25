@@ -1,7 +1,7 @@
 package io.github.datacatering.datacaterer.core.generator.metadata
 
 import io.github.datacatering.datacaterer.api.model.Constants.{CASSANDRA_KEYSPACE, CASSANDRA_TABLE, JDBC_TABLE, JMS_DESTINATION_NAME, METADATA_IDENTIFIER, PATH}
-import io.github.datacatering.datacaterer.core.model.Constants.{REAL_TIME_ENDPOINT, REAL_TIME_METHOD_COL}
+import io.github.datacatering.datacaterer.core.model.Constants.{REAL_TIME_ENDPOINT, REAL_TIME_METHOD_FIELD}
 
 object StepNameProvider {
 
@@ -10,8 +10,8 @@ object StepNameProvider {
       Some(fromCassandra(options(CASSANDRA_KEYSPACE), options(CASSANDRA_TABLE)))
     } else if (options.contains(JDBC_TABLE)) {
       Some(fromJdbc(options(JDBC_TABLE)))
-    } else if (options.contains(REAL_TIME_METHOD_COL) && options.contains(REAL_TIME_ENDPOINT)) {
-      Some(fromHttp(options(REAL_TIME_METHOD_COL), options(REAL_TIME_ENDPOINT)))
+    } else if (options.contains(REAL_TIME_METHOD_FIELD) && options.contains(REAL_TIME_ENDPOINT)) {
+      Some(fromHttp(options(REAL_TIME_METHOD_FIELD), options(REAL_TIME_ENDPOINT)))
     } else if (options.contains(PATH)) {
       Some(options(PATH))
     } else if (options.contains(JMS_DESTINATION_NAME)) {

@@ -2,7 +2,7 @@ package io.github.datacatering.datacaterer.core.util
 
 import io.github.datacatering.datacaterer.api.PlanRun
 import io.github.datacatering.datacaterer.api.model.Constants.OMIT
-import io.github.datacatering.datacaterer.api.model.Plan
+import io.github.datacatering.datacaterer.api.model.{ForeignKey, Plan}
 import io.github.datacatering.datacaterer.core.exception.MissingDataSourceFromForeignKeyException
 import io.github.datacatering.datacaterer.core.model.{ForeignKeyRelationship, ForeignKeyWithGenerateAndDelete}
 import io.github.datacatering.datacaterer.core.util.ForeignKeyRelationHelper.updateForeignKeyName
@@ -21,7 +21,7 @@ object ForeignKeyUtil {
   private val LOGGER = Logger.getLogger(getClass.getName)
 
   /**
-   * Apply same values from source data frame columns to target foreign key columns
+   * Apply same values from source data frame fields to target foreign key fields
    *
    * @param plan                     where foreign key definitions are defined
    * @param generatedDataForeachTask map of <dataSourceName>.<stepName> => generated data as dataframe
@@ -31,7 +31,7 @@ object ForeignKeyUtil {
     val enabledSources = plan.tasks.filter(_.enabled).map(_.dataSourceName)
     val sinkOptions = plan.sinkOptions.get
     val foreignKeyRelations = sinkOptions.foreignKeys
-      .map(fk => sinkOptions.gatherForeignKeyRelations(fk._1))
+      .map(fk => sinkOptions.gatherForeignKeyRelations(fk.source))
     val enabledForeignKeys = foreignKeyRelations
       .filter(fkr => isValidForeignKeyRelation(generatedDataForeachTask, enabledSources, fkr))
     var taskDfs = generatedDataForeachTask
@@ -48,9 +48,9 @@ object ForeignKeyUtil {
         val targetDfName = target.dataFrameName
         LOGGER.debug(s"Getting target dataframe, source=$targetDfName")
         val targetDf = taskDfs(targetDfName)
-        if (target.columns.forall(targetDf.columns.contains)) {
+        if (target.fields.forall(targetDf.columns.contains)) {
           LOGGER.info(s"Applying foreign key values to target data source, source-data=${foreignKeyDetails.source.dataSource}, target-data=${target.dataSource}")
-          val dfWithForeignKeys = applyForeignKeysToTargetDf(sourceDf, targetDf, foreignKeyDetails.source.columns, target.columns)
+          val dfWithForeignKeys = applyForeignKeysToTargetDf(sourceDf, targetDf, foreignKeyDetails.source.fields, target.fields)
           if (!dfWithForeignKeys.storageLevel.useMemory) dfWithForeignKeys.cache()
           (targetDfName, dfWithForeignKeys)
         } else {
@@ -76,7 +76,7 @@ object ForeignKeyUtil {
     val isSubForeignKeySourceEnabled = subForeignKeySources.forall(enabledSources.contains)
     val disabledSubSources = subForeignKeySources.filter(s => !enabledSources.contains(s))
     val mainDfFields = generatedDataForeachTask(fkr.source.dataFrameName).schema.fields
-    val columnExistsMain = fkr.source.columns.forall(c => hasDfContainColumn(c, mainDfFields))
+    val fieldExistsMain = fkr.source.fields.forall(c => hasDfContainField(c, mainDfFields))
 
     if (!isMainForeignKeySourceEnabled) {
       LOGGER.warn(s"Foreign key data source is not enabled. Data source needs to be enabled for foreign key relationship " +
@@ -85,19 +85,19 @@ object ForeignKeyUtil {
     if (!isSubForeignKeySourceEnabled) {
       LOGGER.warn(s"Sub data sources within foreign key relationship are not enabled, disabled-task=${disabledSubSources.mkString(",")}")
     }
-    if (!columnExistsMain) {
-      LOGGER.warn(s"Main column for foreign key references is not created, data-source-name=${fkr.source.dataSource}, column=${fkr.source.columns}")
+    if (!fieldExistsMain) {
+      LOGGER.warn(s"Main field for foreign key references is not created, data-source-name=${fkr.source.dataSource}, field=${fkr.source.fields}")
     }
-    isMainForeignKeySourceEnabled && isSubForeignKeySourceEnabled && columnExistsMain
+    isMainForeignKeySourceEnabled && isSubForeignKeySourceEnabled && fieldExistsMain
   }
 
-  def hasDfContainColumn(column: String, fields: Array[StructField]): Boolean = {
-    if (column.contains(".")) {
-      val spt = column.split("\\.")
+  def hasDfContainField(field: String, fields: Array[StructField]): Boolean = {
+    if (field.contains(".")) {
+      val spt = field.split("\\.")
       fields.find(_.name == spt.head)
         .exists(field => checkNestedFields(spt, field.dataType))
     } else {
-      fields.exists(_.name == column)
+      fields.exists(_.name == field)
     }
   }
 
@@ -106,17 +106,17 @@ object ForeignKeyUtil {
     val tailColName = spt.tail
     dataType match {
       case StructType(nestedFields) =>
-        hasDfContainColumn(tailColName.mkString("."), nestedFields)
+        hasDfContainField(tailColName.mkString("."), nestedFields)
       case ArrayType(elementType, _) =>
         checkNestedFields(spt, elementType)
       case _ => false
     }
   }
 
-  private def applyForeignKeysToTargetDf(sourceDf: DataFrame, targetDf: DataFrame, sourceColumns: List[String], targetColumns: List[String]): DataFrame = {
+  private def applyForeignKeysToTargetDf(sourceDf: DataFrame, targetDf: DataFrame, sourceFields: List[String], targetFields: List[String]): DataFrame = {
     if (!sourceDf.storageLevel.useMemory) sourceDf.cache() //TODO do we checkpoint instead of cache? checkpoint based on total number of records?
     if (!targetDf.storageLevel.useMemory) targetDf.cache()
-    val sourceColRename = sourceColumns.map(c => {
+    val sourceColRename = sourceFields.map(c => {
       if (c.contains(".")) {
         val lastCol = c.split("\\.").last
         (lastCol, s"_src_$lastCol")
@@ -125,15 +125,15 @@ object ForeignKeyUtil {
       }
     }).toMap
     val distinctSourceKeys = zipWithIndex(
-      sourceDf.selectExpr(sourceColumns: _*).distinct()
+      sourceDf.selectExpr(sourceFields: _*).distinct()
         .withColumnsRenamed(sourceColRename)
     )
-    val distinctTargetKeys = zipWithIndex(targetDf.selectExpr(targetColumns: _*).distinct())
+    val distinctTargetKeys = zipWithIndex(targetDf.selectExpr(targetFields: _*).distinct())
 
-    LOGGER.debug(s"Attempting to join source DF keys with target DF, source=${sourceColumns.mkString(",")}, target=${targetColumns.mkString(",")}")
+    LOGGER.debug(s"Attempting to join source DF keys with target DF, source=${sourceFields.mkString(",")}, target=${targetFields.mkString(",")}")
     val joinDf = distinctSourceKeys.join(distinctTargetKeys, Seq("_join_foreign_key"))
       .drop("_join_foreign_key")
-    val targetColRename = targetColumns.zip(sourceColumns).map(c => {
+    val targetColRename = targetFields.zip(sourceFields).map(c => {
       if (c._2.contains(".")) {
         val lastCol = c._2.split("\\.").last
         (c._1, col(s"_src_$lastCol"))
@@ -141,59 +141,59 @@ object ForeignKeyUtil {
         (c._1, col(s"_src_${c._2}"))
       }
     }).toMap
-    val res = targetDf.join(joinDf, targetColumns)
+    val res = targetDf.join(joinDf, targetFields)
       .withColumns(targetColRename)
       .drop(sourceColRename.values.toList: _*)
 
-    LOGGER.debug(s"Applied source DF keys with target DF, source=${sourceColumns.mkString(",")}, target=${targetColumns.mkString(",")}")
+    LOGGER.debug(s"Applied source DF keys with target DF, source=${sourceFields.mkString(",")}, target=${targetFields.mkString(",")}")
     if (!res.storageLevel.useMemory) res.cache()
     //need to add back original metadata as it will use the metadata from the sourceDf and override the targetDf metadata
-    val dfMetadata = combineMetadata(sourceDf, sourceColumns, targetDf, targetColumns, res)
-    applySqlExpressions(dfMetadata, targetColumns, false)
+    val dfMetadata = combineMetadata(sourceDf, sourceFields, targetDf, targetFields, res)
+    applySqlExpressions(dfMetadata, targetFields, false)
   }
 
   //TODO: Need some way to understand potential relationships between fields of different data sources (i.e. correlations, word2vec) https://spark.apache.org/docs/latest/ml-features
 
   /**
    * Can have logic like this:
-   * 1. Using column metadata, find columns in other data sources that have similar metadata based on data profiling
-   * 2. Assign a score to how similar two columns are across data sources
+   * 1. Using field metadata, find fields in other data sources that have similar metadata based on data profiling
+   * 2. Assign a score to how similar two fields are across data sources
    * 3. Get those pairs that are greater than a threshold score
    * 4. Group all foreign keys together
    * 4.1. Unsure how to determine what is the primary source of the foreign key (the one that has the most references to it?)
    *
    * @param dataSourceForeignKeys Foreign key relationships for each data source
-   * @return Map of data source columns to respective foreign key columns (which may be in other data sources)
+   * @return Map of data source fields to respective foreign key fields (which may be in other data sources)
    */
   def getAllForeignKeyRelationships(
                                      dataSourceForeignKeys: List[Dataset[ForeignKeyRelationship]],
                                      optPlanRun: Option[PlanRun],
                                      stepNameMapping: Map[String, String]
-                                   ): List[(String, List[String], List[String])] = {
+                                   ): List[ForeignKey] = {
     //given all the foreign key relations in each data source, detect if there are any links between data sources, then pass that into plan
     //the step name may be updated if it has come from a metadata source, need to update foreign key definitions as well with new step name
 
     val generatedForeignKeys = dataSourceForeignKeys.flatMap(_.collect())
       .groupBy(_.key)
-      .map(x => (x._1.toString, x._2.map(_.foreignKey.toString), List()))
+      .map(x => ForeignKey(x._1, x._2.map(_.foreignKey), List()))
       .toList
     val userForeignKeys = optPlanRun.flatMap(planRun => planRun._plan.sinkOptions.map(_.foreignKeys))
       .getOrElse(List())
       .map(userFk => {
-        val fkMapped = updateForeignKeyName(stepNameMapping, userFk._1)
-        val subFkNamesMapped = userFk._2.map(subFk => updateForeignKeyName(stepNameMapping, subFk))
-        (fkMapped, subFkNamesMapped, List())
+        val fkMapped = updateForeignKeyName(stepNameMapping, userFk.source)
+        val subFkNamesMapped = userFk.generate.map(subFk => updateForeignKeyName(stepNameMapping, subFk))
+        ForeignKey(fkMapped, subFkNamesMapped, List())
       })
 
     val mergedForeignKeys = generatedForeignKeys.map(genFk => {
-      userForeignKeys.find(userFk => userFk._1 == genFk._1)
+      userForeignKeys.find(userFk => userFk.source == genFk.source)
         .map(matchUserFk => {
           //generated foreign key takes precedence due to constraints from underlying data source need to be adhered
-          (matchUserFk._1, matchUserFk._2 ++ genFk._2, List())
+          ForeignKey(matchUserFk.source, matchUserFk.generate ++ genFk.generate, List())
         })
         .getOrElse(genFk)
     })
-    val allForeignKeys = mergedForeignKeys ++ userForeignKeys.filter(userFk => !generatedForeignKeys.exists(_._1 == userFk._1))
+    val allForeignKeys = mergedForeignKeys ++ userForeignKeys.filter(userFk => !generatedForeignKeys.exists(_.source == userFk.source))
     allForeignKeys
   }
 
@@ -273,16 +273,16 @@ object ForeignKeyUtil {
     newMetadata.foldLeft(df)((metaDf, meta) => metaDf.withMetadata(meta._1, meta._2))
   }
 
-  private def getMetadata(column: String, fields: Array[StructField]): Metadata = {
-    val optMetadata = if (column.contains(".")) {
-      val spt = column.split("\\.")
+  private def getMetadata(field: String, fields: Array[StructField]): Metadata = {
+    val optMetadata = if (field.contains(".")) {
+      val spt = field.split("\\.")
       val optField = fields.find(_.name == spt.head)
       optField.map(field => checkNestedForMetadata(spt, field.dataType))
     } else {
-      fields.find(_.name == column).map(_.metadata)
+      fields.find(_.name == field).map(_.metadata)
     }
     if (optMetadata.isEmpty) {
-      LOGGER.warn(s"Unable to find metadata for column, defaulting to empty metadata, column-name=$column")
+      LOGGER.warn(s"Unable to find metadata for field, defaulting to empty metadata, field-name=$field")
       Metadata.empty
     } else optMetadata.get
   }

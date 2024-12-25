@@ -2,7 +2,7 @@ package io.github.datacatering.datacaterer.core.model
 
 import io.github.datacatering.datacaterer.api.model.Constants.{AGGREGATION_AVG, AGGREGATION_COUNT, AGGREGATION_MAX, AGGREGATION_MIN, AGGREGATION_STDDEV, AGGREGATION_SUM, SPECIFIC_DATA_SOURCE_OPTIONS}
 import io.github.datacatering.datacaterer.api.model.{ExpressionValidation, Validation, ValidationConfiguration}
-import io.github.datacatering.datacaterer.api.{ColumnValidationBuilder, ValidationBuilder}
+import io.github.datacatering.datacaterer.api.{FieldValidationBuilder, ValidationBuilder}
 import io.github.datacatering.datacaterer.core.exception.UnsupportedDataValidationAggregateFunctionException
 import io.github.datacatering.datacaterer.core.util.ConfigUtil.cleanseOptions
 import io.github.datacatering.datacaterer.core.util.ResultWriterUtil.getSuccessSymbol
@@ -127,7 +127,7 @@ trait ExternalDataValidation {
     hasAllParams
   }
 
-  def getAggregatedValidation(functionName: String, optFieldName: Option[String]): ColumnValidationBuilder = {
+  def getAggregatedValidation(functionName: String, optFieldName: Option[String]): FieldValidationBuilder = {
     val baseValidation = ValidationBuilder().groupBy()
     functionName.toLowerCase match {
       case AGGREGATION_MAX => baseValidation.max(optFieldName.get)

@@ -178,10 +178,10 @@ dependencies {
     basicImpl("com.slack.api:slack-api-client:1.39.3")
 
     // UI/HTTP server
-    basicImpl("org.apache.pekko:pekko-http_$scalaVersion:1.0.1")
-    basicImpl("org.apache.pekko:pekko-stream_$scalaVersion:1.0.2")
-    basicImpl("org.apache.pekko:pekko-actor-typed_$scalaVersion:1.0.2")
-    basicImpl("org.apache.pekko:pekko-http-spray-json_$scalaVersion:1.0.1")
+    basicImpl("org.apache.pekko:pekko-http_$scalaVersion:1.0.0")
+    basicImpl("org.apache.pekko:pekko-stream_$scalaVersion:1.0.1")
+    basicImpl("org.apache.pekko:pekko-actor-typed_$scalaVersion:1.0.1")
+    basicImpl("com.github.pjfanning:pekko-http-jackson_$scalaVersion:2.2.0")
 
     // needed to work on Windows
     basicImpl("com.globalmentor:hadoop-bare-naked-local-fs:0.1.0")
@@ -202,6 +202,7 @@ dependencies {
         exclude(group = "org.scala-lang")
     }
     basicImpl("com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.15.3")
+    basicImpl("com.fasterxml.jackson.datatype:jackson-datatype-joda:2.15.3")
     //NoClassDefFoundError: shaded/parquet/com/fasterxml/jackson/databind/ObjectMapper
     basicImpl("org.apache.parquet:parquet-jackson:1.13.1")  //new versions contain transitive deps that use java 21, shadowJar fails
     basicImpl("org.scala-lang.modules:scala-xml_$scalaVersion:2.2.0") {

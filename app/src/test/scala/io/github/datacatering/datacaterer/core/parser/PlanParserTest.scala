@@ -1,5 +1,6 @@
 package io.github.datacatering.datacaterer.core.parser
 
+import io.github.datacatering.datacaterer.api.model.ForeignKeyRelation
 import io.github.datacatering.datacaterer.core.util.SparkSuite
 import org.junit.runner.RunWith
 import org.scalatestplus.junit.JUnitRunner
@@ -16,8 +17,8 @@ class PlanParserTest extends SparkSuite {
     assertResult(1)(result.validations.size)
     assert(result.sinkOptions.isDefined)
     assertResult(1)(result.sinkOptions.get.foreignKeys.size)
-    assertResult("solace.jms_account.account_id")(result.sinkOptions.get.foreignKeys.head._1)
-    assertResult(List("json.file_account.account_id"))(result.sinkOptions.get.foreignKeys.head._2)
+    assertResult(ForeignKeyRelation("solace", "jms_account", List("account_id")))(result.sinkOptions.get.foreignKeys.head.source)
+    assertResult(List(ForeignKeyRelation("json", "file_account", List("account_id"))))(result.sinkOptions.get.foreignKeys.head.generate)
   }
 
   test("Can parse task in YAML file") {
@@ -31,9 +32,9 @@ class PlanParserTest extends SparkSuite {
 
     assert(result.sinkOptions.isDefined)
     assertResult(1)(result.sinkOptions.get.foreignKeys.size)
-    assertResult("json.file_account.account_id")(result.sinkOptions.get.foreignKeys.head._1)
-    assertResult(1)(result.sinkOptions.get.foreignKeys.head._2.size)
-    assertResult("csv.transactions.account_id")(result.sinkOptions.get.foreignKeys.head._2.head)
+    assertResult(ForeignKeyRelation("json", "file_account", List("account_id")))(result.sinkOptions.get.foreignKeys.head.source)
+    assertResult(1)(result.sinkOptions.get.foreignKeys.head.generate.size)
+    assertResult(ForeignKeyRelation("csv", "transaction", List("account_id")))(result.sinkOptions.get.foreignKeys.head.generate.head)
   }
 
 }

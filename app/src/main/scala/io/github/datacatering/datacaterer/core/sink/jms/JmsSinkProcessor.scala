@@ -3,13 +3,12 @@ package io.github.datacatering.datacaterer.core.sink.jms
 import io.github.datacatering.datacaterer.api.model.Constants.{DEFAULT_REAL_TIME_HEADERS_DATA_TYPE, JMS_CONNECTION_FACTORY, JMS_DESTINATION_NAME, JMS_INITIAL_CONTEXT_FACTORY, JMS_VPN_NAME, PASSWORD, URL, USERNAME}
 import io.github.datacatering.datacaterer.api.model.Step
 import io.github.datacatering.datacaterer.core.exception.{FailedJmsMessageCreateException, FailedJmsMessageGetBodyException, FailedJmsMessageSendException}
-import io.github.datacatering.datacaterer.core.model.Constants.{REAL_TIME_BODY_COL, REAL_TIME_HEADERS_COL, REAL_TIME_PARTITION_COL}
+import io.github.datacatering.datacaterer.core.model.Constants.{REAL_TIME_BODY_FIELD, REAL_TIME_HEADERS_FIELD, REAL_TIME_PARTITION_FIELD}
 import io.github.datacatering.datacaterer.core.model.RealTimeSinkResult
-import io.github.datacatering.datacaterer.core.sink.http.model.{HttpRequest, HttpResult}
 import io.github.datacatering.datacaterer.core.sink.{RealTimeSinkProcessor, SinkProcessor}
 import io.github.datacatering.datacaterer.core.util.RowUtil.getRowValue
 import org.apache.log4j.Logger
-import org.apache.spark.sql.{Row, SparkSession}
+import org.apache.spark.sql.Row
 import org.apache.spark.sql.types.{IntegerType, StringType}
 
 import java.nio.charset.StandardCharsets
@@ -29,9 +28,9 @@ object JmsSinkProcessor extends RealTimeSinkProcessor[(MessageProducer, Session,
 
 
   override val expectedSchema: Map[String, String] = Map(
-    REAL_TIME_BODY_COL -> StringType.typeName,
-    REAL_TIME_PARTITION_COL -> IntegerType.typeName,
-    REAL_TIME_HEADERS_COL -> DEFAULT_REAL_TIME_HEADERS_DATA_TYPE
+    REAL_TIME_BODY_FIELD -> StringType.typeName,
+    REAL_TIME_PARTITION_FIELD -> IntegerType.typeName,
+    REAL_TIME_HEADERS_FIELD -> DEFAULT_REAL_TIME_HEADERS_DATA_TYPE
   )
 
   override def pushRowToSink(row: Row): RealTimeSinkResult = {
@@ -57,7 +56,7 @@ object JmsSinkProcessor extends RealTimeSinkProcessor[(MessageProducer, Session,
   private def tryCreateMessage(body: String, messageProducer: MessageProducer, session: Session, connection: Connection): TextMessage = {
     Try(session.createTextMessage(body)) match {
       case Failure(exception) =>
-        LOGGER.error(s"Failed to create JMS text message from $REAL_TIME_BODY_COL column, " +
+        LOGGER.error(s"Failed to create JMS text message from $REAL_TIME_BODY_FIELD field, " +
           s"step-name=${step.name}, step-type=${step.`type`}", exception)
         returnConnectionToPool((messageProducer, session, connection))
         throw FailedJmsMessageCreateException(exception)
@@ -66,18 +65,18 @@ object JmsSinkProcessor extends RealTimeSinkProcessor[(MessageProducer, Session,
   }
 
   private def tryGetBody(row: Row): String = {
-    Try(row.getAs[String](REAL_TIME_BODY_COL)) match {
+    Try(row.getAs[String](REAL_TIME_BODY_FIELD)) match {
       case Failure(exception) =>
-        LOGGER.error(s"Required column name not defined in schema, required-column=$REAL_TIME_BODY_COL")
+        LOGGER.error(s"Required field name not defined in schema, required-field=$REAL_TIME_BODY_FIELD")
         throw FailedJmsMessageGetBodyException(exception)
       case Success(value) => value
     }
   }
 
   private def setAdditionalMessageProperties(row: Row, message: TextMessage): Unit = {
-    val jmsPriority = getRowValue(row, REAL_TIME_PARTITION_COL, 4)
+    val jmsPriority = getRowValue(row, REAL_TIME_PARTITION_FIELD, 4)
     message.setJMSPriority(jmsPriority)
-    val properties = getRowValue[mutable.WrappedArray[Row]](row, REAL_TIME_HEADERS_COL, mutable.WrappedArray.empty[Row])
+    val properties = getRowValue[mutable.WrappedArray[Row]](row, REAL_TIME_HEADERS_FIELD, mutable.WrappedArray.empty[Row])
       .map(row => {
         row.getAs[String]("key") -> row.getAs[Array[Byte]]("value")
       })

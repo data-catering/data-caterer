@@ -6,34 +6,23 @@ steps:
       records: 1000000
     options:
       dbtable: "account.accounts"
-    schema:
-      fields:
-        - name: "account_number"
-          type: "string"
-          generator:
-            type: "regex"
-            options:
-              isPrimaryKey: "true"
-              regex: "ACC1[0-9]{5,10}"
-        - name: "account_status"
-          type: "string"
-          generator:
-            type: "oneOf"
-            options:
-              oneOf:
-                - "open"
-                - "closed"
-        - name: "open_date"
-          type: "date"
-          generator:
-            type: "random"
-        - name: "created_by"
-          type: "string"
-          generator:
-            type: "random"
-        - name: "customer_id_int"
-          type: "int"
-          generator:
-            type: "random"
-            options:
-              isUnique: true
+    fields:
+      - name: "account_number"
+        type: "string"
+        options:
+          isPrimaryKey: "true"
+          regex: "ACC1[0-9]{5,10}"
+      - name: "account_status"
+        type: "string"
+        options:
+          oneOf:
+            - "open"
+            - "closed"
+      - name: "open_date"
+        type: "date"
+      - name: "created_by"
+        type: "string"
+      - name: "customer_id_int"
+        type: "int"
+        options:
+          isUnique: true

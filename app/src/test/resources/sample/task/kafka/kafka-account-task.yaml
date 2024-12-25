@@ -6,73 +6,57 @@ steps:
       records: "10"
     options:
       topic: "account-topic"
-    schema:
-      fields:
-        - name: "key"
-          type: "string"
-          generator:
-            type: "sql"
+    fields:
+      - name: "key"
+        type: "string"
+        options:
+          sql: "content.account_id"
+      - name: "value"
+        type: "string"
+        options:
+          sql: "to_json(content)"
+      - name: "headers"
+        type: "array<struct<key: string, value: binary>>"
+        options:
+          sql: >-
+            array(
+              named_struct('key', 'account-id', 'value', to_binary(content.account_id, 'utf-8')),
+              named_struct('key', 'updated', 'value', to_binary(content.details.updated_by.time, 'utf-8'))
+            )
+      #        - name: "partition"
+      #          type: "int"
+      #          options:
+      #            sql: "1"
+      - name: "content"
+        fields:
+          - name: "account_id"
+          - name: "year"
+            type: "int"
             options:
-              sql: "content.account_id"
-        - name: "value"
-          type: "string"
-          generator:
-            type: "sql"
+              min: "2021"
+              max: "2022"
+          - name: "amount"
+            type: "double"
             options:
-              sql: "to_json(content)"
-        - name: "headers"
-          type: "array<struct<key: string, value: binary>>"
-          generator:
-            type: "sql"
-            options:
-              sql: >-
-                array(
-                  named_struct('key', 'account-id', 'value', to_binary(content.account_id, 'utf-8')),
-                  named_struct('key', 'updated', 'value', to_binary(content.details.updated_by.time, 'utf-8'))
-                )
-        #        - name: "partition"
-        #          type: "int"
-        #          generator:
-        #            type: "sql"
-        #            options:
-        #              sql: "1"
-        - name: "content"
-          schema:
+              min: "10.0"
+              max: "100.0"
+          - name: "details"
             fields:
-              - name: "account_id"
-              - name: "year"
-                type: "int"
-                generator:
-                  options:
-                    min: "2021"
-                    max: "2022"
+              - name: "name"
+              - name: "txn_date"
+                type: "date"
+                options:
+                  min: "2021-01-01"
+                  max: "2021-12-31"
+              - name: "updated_by"
+                fields:
+                  - name: "user"
+                  - name: "time"
+                    type: "timestamp"
+          - name: "transactions"
+            type: "array"
+            fields:
+              - name: "txn_date"
+                type: "date"
               - name: "amount"
                 type: "double"
-                generator:
-                  options:
-                    min: "10.0"
-                    max: "100.0"
-              - name: "details"
-                schema:
-                  fields:
-                    - name: "name"
-                    - name: "txn_date"
-                      type: "date"
-                      generator:
-                        options:
-                          min: "2021-01-01"
-                          max: "2021-12-31"
-                    - name: "updated_by"
-                      schema:
-                        fields:
-                          - name: "user"
-                          - name: "time"
-                            type: "timestamp"
-              - name: "transactions"
-                type: "array"
-                schema:
-                  fields:
-                    - name: "txn_date"
-                      type: "date"
-                    - name: "amount"
-                      type: "double"

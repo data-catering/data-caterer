@@ -29,7 +29,7 @@ class JmsMetadataTest extends SparkSuite {
         |     {"name": "favorite_numbers", "type": {"items": "int", "type": "array"}}
         | ]
         |}""".stripMargin
-    //    val protobufData = sparkSession.emptyDataset[ColumnMetadata]
+    //    val protobufData = sparkSession.emptyDataset[FieldMetadata]
     //      .selectExpr("from_protobuf('', ') AS event")
     //    protobufData.printSchema()
     val avroData = sparkSession.createDataFrame(Seq.fill(10)(1L).map(Holder))
@@ -51,15 +51,8 @@ class JmsMetadataTest extends SparkSuite {
   }
 
   test("can read all structs from proto descriptor file") {
-    val protoFile = new File("app/src/test/resources/sample/files/protobuf/example.desc").getAbsolutePath
+    val protoFile = new File("src/test/resources/sample/files/protobuf/example.desc").getAbsolutePath
     val structs = ProtobufUtil.toStructType(protoFile)
     structs
   }
-
-  test("can read all structs from proto file") {
-    val protoFile = new File("app/src/test/resources/sample/files/protobuf/example.proto")
-    val schema = ProtobufParser.getSchemaFromProtoFile(Paths.get(protoFile.toURI), "Proto3AllTypes")
-    schema
-  }
-
 }

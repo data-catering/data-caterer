@@ -2,11 +2,11 @@ package io.github.datacatering.datacaterer.api
 
 import com.fasterxml.jackson.databind.annotation.JsonSerialize
 import com.softwaremill.quicklens.ModifyPimp
-import io.github.datacatering.datacaterer.api.ValidationHelper.cleanColumnName
+import io.github.datacatering.datacaterer.api.ValidationHelper.cleanFieldName
 import io.github.datacatering.datacaterer.api.connection.{ConnectionTaskBuilder, FileBuilder}
 import io.github.datacatering.datacaterer.api.model.ConditionType.ConditionType
-import io.github.datacatering.datacaterer.api.model.Constants.{AGGREGATION_AVG, AGGREGATION_COUNT, AGGREGATION_MAX, AGGREGATION_MIN, AGGREGATION_STDDEV, AGGREGATION_SUM, DEFAULT_VALIDATION_JOIN_TYPE, DEFAULT_VALIDATION_WEBHOOK_HTTP_DATA_SOURCE_NAME, VALIDATION_COLUMN_NAME_COUNT_BETWEEN, VALIDATION_COLUMN_NAME_COUNT_EQUAL, VALIDATION_COLUMN_NAME_MATCH_ORDER, VALIDATION_COLUMN_NAME_MATCH_SET, VALIDATION_PREFIX_JOIN_EXPRESSION, VALIDATION_UNIQUE}
-import io.github.datacatering.datacaterer.api.model.{ColumnNamesValidation, ConditionType, DataExistsWaitCondition, DataSourceValidation, ExpressionValidation, FileExistsWaitCondition, GroupByValidation, PauseWaitCondition, UpstreamDataSourceValidation, Validation, ValidationConfiguration, WaitCondition, WebhookWaitCondition}
+import io.github.datacatering.datacaterer.api.model.Constants.{AGGREGATION_AVG, AGGREGATION_COUNT, AGGREGATION_MAX, AGGREGATION_MIN, AGGREGATION_STDDEV, AGGREGATION_SUM, DEFAULT_VALIDATION_JOIN_TYPE, DEFAULT_VALIDATION_WEBHOOK_HTTP_DATA_SOURCE_NAME, VALIDATION_FIELD_NAME_COUNT_BETWEEN, VALIDATION_FIELD_NAME_COUNT_EQUAL, VALIDATION_FIELD_NAME_MATCH_ORDER, VALIDATION_FIELD_NAME_MATCH_SET, VALIDATION_PREFIX_JOIN_EXPRESSION, VALIDATION_UNIQUE}
+import io.github.datacatering.datacaterer.api.model.{ConditionType, DataExistsWaitCondition, DataSourceValidation, ExpressionValidation, FieldNamesValidation, FileExistsWaitCondition, GroupByValidation, PauseWaitCondition, UpstreamDataSourceValidation, Validation, ValidationConfiguration, WaitCondition, WebhookWaitCondition}
 import io.github.datacatering.datacaterer.api.parser.ValidationBuilderSerializer
 
 import java.sql.{Date, Timestamp}
@@ -118,7 +118,7 @@ case class ValidationBuilder(validation: Validation = ExpressionValidation(), op
 
   /**
    * SQL expression used to check if data is adhering to specified condition. Return result from SQL expression is
-   * required to be boolean. Can use any columns in the validation logic.
+   * required to be boolean. Can use any fields in the validation logic.
    *
    * For example,
    * {{{validation.expr("CASE WHEN status == 'open' THEN balance > 0 ELSE balance == 0 END")}}}
@@ -129,8 +129,8 @@ case class ValidationBuilder(validation: Validation = ExpressionValidation(), op
    */
   def expr(expr: String): ValidationBuilder = {
     validation match {
-      case GroupByValidation(grpCols, aggCol, aggType, _) =>
-        val grpWithExpr = GroupByValidation(grpCols, aggCol, aggType, expr)
+      case GroupByValidation(grpFields, aggField, aggType, _, _) =>
+        val grpWithExpr = GroupByValidation(grpFields, aggField, aggType, expr)
         copyWithDescAndThreshold(grpWithExpr)
       case expressionValidation: ExpressionValidation =>
         val withExpr = expressionValidation.modify(_.expr).setTo(expr)
@@ -140,7 +140,7 @@ case class ValidationBuilder(validation: Validation = ExpressionValidation(), op
   }
 
   /**
-   * SQL expression used to apply to columns before running validations.
+   * SQL expression used to apply to fields before running validations.
    *
    * For example,
    * {{{validation.selectExpr("PERCENTILE(amount, 0.5) AS median_amount", "*")}}}
@@ -159,42 +159,42 @@ case class ValidationBuilder(validation: Validation = ExpressionValidation(), op
   }
 
   /**
-   * Define a column validation that can cover validations for any type of data.
+   * Define a field validation that can cover validations for any type of data.
    *
-   * @param column Name of the column to run validation against
-   * @return ColumnValidationBuilder
+   * @param field Name of the field to run validation against
+   * @return FieldValidationBuilder
    */
-  def col(column: String): ColumnValidationBuilder = {
-    ColumnValidationBuilder(this, cleanColumnName(column))
+  def field(field: String): FieldValidationBuilder = {
+    FieldValidationBuilder(this, cleanFieldName(field))
   }
 
   /**
-   * Define columns to group by, so that validation can be run on grouped by dataset
+   * Define fields to group by, so that validation can be run on grouped by dataset
    *
-   * @param columns Name of the column to run validation against
-   * @return ColumnValidationBuilder
+   * @param fields Name of the field to run validation against
+   * @return FieldValidationBuilder
    */
-  @varargs def groupBy(columns: String*): GroupByValidationBuilder = {
-    GroupByValidationBuilder(this, columns)
+  @varargs def groupBy(fields: String*): GroupByValidationBuilder = {
+    GroupByValidationBuilder(this, fields)
   }
 
   /**
    * Check row count of dataset
    *
-   * @return ColumnValidationBuilder to apply validation on row count
+   * @return FieldValidationBuilder to apply validation on row count
    */
-  def count(): ColumnValidationBuilder = {
+  def count(): FieldValidationBuilder = {
     GroupByValidationBuilder().count()
   }
 
   /**
-   * Check if column(s) values are unique
+   * Check if field(s) values are unique
    *
-   * @param columns One or more columns whose values will be checked for uniqueness
+   * @param fields One or more fields whose values will be checked for uniqueness
    * @return ValidationBuilder
    */
-  @varargs def unique(columns: String*): ValidationBuilder = {
-    this.modify(_.validation).setTo(GroupByValidation(columns, VALIDATION_UNIQUE, AGGREGATION_COUNT))
+  @varargs def unique(fields: String*): ValidationBuilder = {
+    this.modify(_.validation).setTo(GroupByValidation(fields, VALIDATION_UNIQUE, AGGREGATION_COUNT))
       .expr("count == 1")
   }
 
@@ -205,16 +205,16 @@ case class ValidationBuilder(validation: Validation = ExpressionValidation(), op
    * @return UpstreamDataSourceValidationBuilder
    */
   def upstreamData(connectionTaskBuilder: ConnectionTaskBuilder[_]): UpstreamDataSourceValidationBuilder = {
-    UpstreamDataSourceValidationBuilder(this, connectionTaskBuilder)
+    UpstreamDataSourceValidationBuilder(List(this), connectionTaskBuilder)
   }
 
   /**
-   * Define validation for column names of dataset.
+   * Define validation for field names of dataset.
    *
-   * @return ColumnNamesValidationBuilder
+   * @return FieldNamesValidationBuilder
    */
-  def columnNames: ColumnNamesValidationBuilder = {
-    ColumnNamesValidationBuilder()
+  def fieldNames: FieldNamesValidationBuilder = {
+    FieldNamesValidationBuilder()
   }
 
   def preFilter(combinationPreFilterBuilder: CombinationPreFilterBuilder): ValidationBuilder = {
@@ -233,372 +233,575 @@ case class ValidationBuilder(validation: Validation = ExpressionValidation(), op
   }
 }
 
-case class ColumnValidationBuilder(validationBuilder: ValidationBuilder = ValidationBuilder(), column: String = "") {
+case class FieldValidationBuilder(validationBuilder: ValidationBuilder = ValidationBuilder(), field: String = "") {
   def this() = this(ValidationBuilder(), "")
 
   /**
-   * Check if column values are equal to a certain value
+   * Check if field values are equal to a certain value
    *
-   * @param value Expected value for all column values
+   * @param value Expected value for all field values
+   * @param negate Check if not equal to when set to true
    * @return
    */
-  def isEqual(value: Any): ValidationBuilder = {
-    validationBuilder.expr(s"$column == ${colValueToString(value)}")
+  def isEqual(value: Any, negate: Boolean = false): ValidationBuilder = {
+    val sign = if (negate) "!=" else "=="
+    validationBuilder.expr(s"$field $sign ${fieldValueToString(value)}")
   }
 
   /**
-   * Check if column values are equal to another column for each record
+   * Check if field values are equal to another field for each record
    *
-   * @param value Other column name
+   * @param value Other field name
+   * @param negate Check if not equal to field when set to true
    * @return
    */
-  def isEqualCol(value: String): ValidationBuilder = {
-    validationBuilder.expr(s"$column == $value")
+  def isEqualField(value: String, negate: Boolean = false): ValidationBuilder = {
+    val sign = if (negate) "!=" else "=="
+    validationBuilder.expr(s"$field $sign $value")
   }
 
   /**
-   * Check if column values are not equal to a certain value
+   * Check if field values are null
    *
-   * @param value Value column should not equal to
+   * @param negate Check if not null when set to true
    * @return
    */
-  def isNotEqual(value: Any): ValidationBuilder = {
-    validationBuilder.expr(s"$column != ${colValueToString(value)}")
+  def isNull(negate: Boolean = false): ValidationBuilder = {
+    val nullExpr = if (negate) "ISNOTNULL" else "ISNULL"
+    validationBuilder.expr(s"$nullExpr($field)")
   }
 
   /**
-   * Check if column values are not equal to another column's value for each record
+   * Check if field values contain particular string (only for string type fields)
    *
-   * @param value Other column name not equal to
+   * @param value Expected string that field values contain
+   * @param negate Check if not contains when set to true
    * @return
    */
-  def isNotEqualCol(value: String): ValidationBuilder = {
-    validationBuilder.expr(s"$column != $value")
+  def contains(value: String, negate: Boolean = false): ValidationBuilder = {
+    val sign = if (negate) "!" else ""
+    validationBuilder.expr(s"${sign}CONTAINS($field, '$value')")
   }
 
   /**
-   * Check if column values are null
-   *
-   * @return
-   */
-  def isNull: ValidationBuilder = {
-    validationBuilder.expr(s"ISNULL($column)")
-  }
-
-  /**
-   * Check if column values are not null
-   *
-   * @return
-   */
-  def isNotNull: ValidationBuilder = {
-    validationBuilder.expr(s"ISNOTNULL($column)")
-  }
-
-  /**
-   * Check if column values contain particular string (only for string type columns)
-   *
-   * @param value Expected string that column values contain
-   * @return
-   */
-  def contains(value: String): ValidationBuilder = {
-    validationBuilder.expr(s"CONTAINS($column, '$value')")
-  }
-
-  /**
-   * Check if column values do not contain particular string (only for string type columns)
-   *
-   * @param value String value not expected to contain in column values
-   * @return
-   */
-  def notContains(value: String): ValidationBuilder = {
-    validationBuilder.expr(s"!CONTAINS($column, '$value')")
-  }
-
-  /**
-   * Check if column values are less than certain value
+   * Check if field values are less than certain value
    *
    * @param value Less than value
+   * @param strictly Check if less than or equal to when set to true
    * @return
    */
-  def lessThan(value: Any): ValidationBuilder = {
-    validationBuilder.expr(s"$column < ${colValueToString(value)}")
+  def lessThan(value: Any, strictly: Boolean = true): ValidationBuilder = {
+    val sign = if (strictly) "<" else "<="
+    validationBuilder.expr(s"$field $sign ${fieldValueToString(value)}")
   }
 
   /**
-   * Check if column values are less than another column's values for each record
+   * Check if field values are less than another field's values for each record
    *
-   * @param value Other column name
+   * @param value Other field name
+   * @param strictly Check if less than or equal to field when set to true
    * @return
    */
-  def lessThanCol(value: String): ValidationBuilder = {
-    validationBuilder.expr(s"$column < $value")
+  def lessThanField(value: String, strictly: Boolean = true): ValidationBuilder = {
+    val sign = if (strictly) "<" else "<="
+    validationBuilder.expr(s"$field $sign $value")
   }
 
   /**
-   * Check if column values are less than or equal to certain value
-   *
-   * @param value Less than or equal to value
-   * @return
-   */
-  def lessThanOrEqual(value: Any): ValidationBuilder = {
-    validationBuilder.expr(s"$column <= ${colValueToString(value)}")
-  }
-
-  /**
-   * Check if column values are less than or equal to another column's values for each record
-   *
-   * @param value Other column name
-   * @return
-   */
-  def lessThanOrEqualCol(value: String): ValidationBuilder = {
-    validationBuilder.expr(s"$column <= $value")
-  }
-
-  /**
-   * Check if column is greater than a certain value
+   * Check if field is greater than a certain value
    *
    * @param value Greater than value
+   * @param strictly Check if greater than or equal to when set to true
    * @return
    */
-  def greaterThan(value: Any): ValidationBuilder = {
-    validationBuilder.expr(s"$column > ${colValueToString(value)}")
+  def greaterThan(value: Any, strictly: Boolean = true): ValidationBuilder = {
+    val sign = if (strictly) ">" else ">="
+    validationBuilder.expr(s"$field $sign ${fieldValueToString(value)}")
   }
 
   /**
-   * Check if column is greater than another column's values for each record
+   * Check if field is greater than another field's values for each record
    *
-   * @param value Other column name
+   * @param value Other field name
+   * @param strictly Check if greater than or equal to field when set to true
    * @return
    */
-  def greaterThanCol(value: String): ValidationBuilder = {
-    validationBuilder.expr(s"$column > $value")
+  def greaterThanField(value: String, strictly: Boolean = true): ValidationBuilder = {
+    val sign = if (strictly) ">" else ">="
+    validationBuilder.expr(s"$field $sign $value")
   }
 
   /**
-   * Check if column is greater than or equal to a certain value
-   *
-   * @param value Greater than or equal to value
-   * @return
-   */
-  def greaterThanOrEqual(value: Any): ValidationBuilder = {
-    validationBuilder.expr(s"$column >= ${colValueToString(value)}")
-  }
-
-  /**
-   * Check if column is greater than or equal to another column's values for each record
-   *
-   * @param value Other column name
-   * @return
-   */
-  def greaterThanOrEqualCol(value: String): ValidationBuilder = {
-    validationBuilder.expr(s"$column >= $value")
-  }
-
-  /**
-   * Check if column values are between two values (inclusive)
+   * Check if field values are between two values (inclusive)
    *
    * @param minValue Minimum value (inclusive)
    * @param maxValue Maximum value (inclusive)
+   * @param negate Check if not between when set to true
    * @return
    */
-  def between(minValue: Any, maxValue: Any): ValidationBuilder = {
-    validationBuilder.expr(s"$column BETWEEN ${colValueToString(minValue)} AND ${colValueToString(maxValue)}")
+  def between(minValue: Any, maxValue: Any, negate: Boolean = false): ValidationBuilder = {
+    val prefix = if (negate) "NOT " else ""
+    validationBuilder.expr(s"$field ${prefix}BETWEEN ${fieldValueToString(minValue)} AND ${fieldValueToString(maxValue)}")
   }
 
   /**
-   * Check if column values are between values of other columns (inclusive)
+   * Check if field values are between values of other fields (inclusive)
    *
-   * @param minValue Other column name determining minimum value (inclusive)
-   * @param maxValue Other column name determining maximum value (inclusive)
+   * @param minValue Other field name determining minimum value (inclusive)
+   * @param maxValue Other field name determining maximum value (inclusive)
+   * @param negate Check if not between fields when set to true
    * @return
    */
-  def betweenCol(minValue: String, maxValue: String): ValidationBuilder = {
-    validationBuilder.expr(s"$column BETWEEN $minValue AND $maxValue")
+  def betweenFields(minValue: String, maxValue: String, negate: Boolean = false): ValidationBuilder = {
+    val prefix = if (negate) "NOT " else ""
+    validationBuilder.expr(s"$field ${prefix}BETWEEN $minValue AND $maxValue")
   }
 
   /**
-   * Check if column values are not between two values
-   *
-   * @param minValue Minimum value
-   * @param maxValue Maximum value
-   * @return
-   */
-  def notBetween(minValue: Any, maxValue: Any): ValidationBuilder = {
-    validationBuilder.expr(s"$column NOT BETWEEN ${colValueToString(minValue)} AND ${colValueToString(maxValue)}")
-  }
-
-  /**
-   * Check if column values are not between values of other columns
-   *
-   * @param minValue Other column name determining minimum value
-   * @param maxValue Other column name determining maximum value
-   * @return
-   */
-  def notBetweenCol(minValue: String, maxValue: String): ValidationBuilder = {
-    validationBuilder.expr(s"$column NOT BETWEEN $minValue AND $maxValue")
-  }
-
-  /**
-   * Check if column values are in given set of expected values
+   * Check if field values are in given set of expected values
    *
    * @param values Expected set of values
    * @return
    */
   @varargs def in(values: Any*): ValidationBuilder = {
-    validationBuilder.expr(s"$column IN (${values.map(colValueToString).mkString(",")})")
+    in(values.toList, false)
   }
 
   /**
-   * Check if column values are not in given set of values
+   * Check if field values are in given set of expected values
    *
-   * @param values Set of unwanted values
+   * @param values Expected set of values
+   * @param negate Check if not in set of values when set to true
    * @return
    */
-  @varargs def notIn(values: Any*): ValidationBuilder = {
-    validationBuilder.expr(s"NOT $column IN (${values.map(colValueToString).mkString(",")})")
+  def in(values: List[Any], negate: Boolean = false): ValidationBuilder = {
+    val prefix = if (negate) "NOT " else ""
+    validationBuilder.expr(s"$prefix$field IN (${values.map(fieldValueToString).mkString(",")})")
   }
 
   /**
-   * Check if column values match certain regex pattern (Java regular expression)
-   *
-   * @param regex Java regular expression
-   * @return
-   */
-  def matches(regex: String): ValidationBuilder = {
-    validationBuilder.expr(s"REGEXP($column, '$regex')")
-  }
-
-  /**
-   * Check if column values do not match certain regex (Java regular expression)
+   * Check if field values match certain regex pattern (Java regular expression)
    *
    * @param regex Java regular expression
+   * @param negate Check if not matches regex when set to true
    * @return
    */
-  def notMatches(regex: String): ValidationBuilder = {
-    validationBuilder.expr(s"!REGEXP($column, '$regex')")
+  def matches(regex: String, negate: Boolean = false): ValidationBuilder = {
+    val prefix = if (negate) "!" else ""
+    validationBuilder.expr(s"${prefix}REGEXP($field, '$regex')")
   }
 
   /**
-   * Check if column values start with certain string (only for string columns)
+   * Check if field values match certain regex patterns (Java regular expression)
+   *
+   * @param regexes Java regular expressions
+   * @param matchAll Check if matches all defined regex patterns if set to true, only match at least one regex pattern when set to false
+   * @param negate Check if not matches regex patterns when set to true
+   * @return
+   */
+  def matchesList(regexes: List[String], matchAll: Boolean = true, negate: Boolean = false): ValidationBuilder = {
+    val mkStringValue = if (matchAll) " AND " else " OR "
+    val prefix = if (negate) "NOT " else ""
+    val checkAllPatterns = regexes
+      .map(regex => s"REGEXP($field, '$regex')")
+      .mkString(mkStringValue)
+    validationBuilder.expr(s"$prefix($checkAllPatterns)")
+  }
+
+  /**
+   * Check if field values start with certain string (only for string fields)
    *
    * @param value Expected prefix for string values
+   * @param negate Check if not starts with when set to true
    * @return
    */
-  def startsWith(value: String): ValidationBuilder = {
-    validationBuilder.expr(s"STARTSWITH($column, '$value')")
+  def startsWith(value: String, negate: Boolean = false): ValidationBuilder = {
+    val prefix = if (negate) "!" else ""
+    validationBuilder.expr(s"${prefix}STARTSWITH($field, '$value')")
   }
 
   /**
-   * Check if column values do not start with certain string (only for string columns)
-   *
-   * @param value Prefix string value should not start with
-   * @return
-   */
-  def notStartsWith(value: String): ValidationBuilder = {
-    validationBuilder.expr(s"!STARTSWITH($column, '$value')")
-  }
-
-  /**
-   * Check if column values end with certain string (only for string columns)
+   * Check if field values end with certain string (only for string fields)
    *
    * @param value Expected suffix for string
+   * @param negate Check if not ends with when set to true
    * @return
    */
-  def endsWith(value: String): ValidationBuilder = {
-    validationBuilder.expr(s"ENDSWITH($column, '$value')")
+  def endsWith(value: String, negate: Boolean = false): ValidationBuilder = {
+    val prefix = if (negate) "!" else ""
+    validationBuilder.expr(s"${prefix}ENDSWITH($field, '$value')")
   }
 
   /**
-   * Check if column values do not end with certain string (only for string columns)
-   *
-   * @param value Suffix string value should not end with
-   * @return
-   */
-  def notEndsWith(value: String): ValidationBuilder = {
-    validationBuilder.expr(s"!ENDSWITH($column, '$value')")
-  }
-
-  /**
-   * Check if column size is equal to certain amount (only for array or map columns)
+   * Check if field size is equal to certain amount (only for array or map fields)
    *
    * @param size Expected size
+   * @param negate Check if not size when set to true
    * @return
    */
-  def size(size: Int): ValidationBuilder = {
-    validationBuilder.expr(s"SIZE($column) == $size")
+  def size(size: Int, negate: Boolean = false): ValidationBuilder = {
+    val sign = if (negate) "!=" else "=="
+    validationBuilder.expr(s"SIZE($field) $sign $size")
   }
 
   /**
-   * Check if column size is not equal to certain amount (only for array or map columns)
+   * Check if field size is less than certain amount (only for array or map fields)
    *
-   * @param size Array or map size should not equal
+   * @param size     Less than size
+   * @param strictly Set to true to check less than or equal to size
    * @return
    */
-  def notSize(size: Int): ValidationBuilder = {
-    validationBuilder.expr(s"SIZE($column) != $size")
+  def lessThanSize(size: Int, strictly: Boolean = true): ValidationBuilder = {
+    val sign = if (strictly) "<" else "<="
+    validationBuilder.expr(s"SIZE($field) $sign $size")
   }
 
   /**
-   * Check if column size is less than certain amount (only for array or map columns)
+   * Check if field size is greater than certain amount (only for array or map fields)
    *
-   * @param size Less than size
+   * @param size     Greater than size
+   * @param strictly Set to true to check greater than or equal to size
    * @return
    */
-  def lessThanSize(size: Int): ValidationBuilder = {
-    validationBuilder.expr(s"SIZE($column) < $size")
+  def greaterThanSize(size: Int, strictly: Boolean = true): ValidationBuilder = {
+    val sign = if (strictly) ">" else ">="
+    validationBuilder.expr(s"SIZE($field) $sign $size")
   }
 
   /**
-   * Check if column size is less than or equal to certain amount (only for array or map columns)
+   * Check if field values adhere to Luhn algorithm. Usually used for credit card or identification numbers.
    *
-   * @param size Less than or equal to size
+   * @param negate Check if not adheres to Luhn algorithm when set to true
    * @return
    */
-  def lessThanOrEqualSize(size: Int): ValidationBuilder = {
-    validationBuilder.expr(s"SIZE($column) <= $size")
+  def luhnCheck(negate: Boolean = false): ValidationBuilder = {
+    val prefix = if (negate) "!" else ""
+    validationBuilder.expr(s"${prefix}LUHN_CHECK($field)")
   }
 
   /**
-   * Check if column size is greater than certain amount (only for array or map columns)
-   *
-   * @param size Greater than size
-   * @return
-   */
-  def greaterThanSize(size: Int): ValidationBuilder = {
-    validationBuilder.expr(s"SIZE($column) > $size")
-  }
-
-  /**
-   * Check if column size is greater than or equal to certain amount (only for array or map columns)
-   *
-   * @param size Greater than or equal to size
-   * @return
-   */
-  def greaterThanOrEqualSize(size: Int): ValidationBuilder = {
-    validationBuilder.expr(s"SIZE($column) >= $size")
-  }
-
-  /**
-   * Check if column values adhere to Luhn algorithm. Usually used for credit card or identification numbers.
-   *
-   * @return
-   */
-  def luhnCheck: ValidationBuilder = {
-    validationBuilder.expr(s"LUHN_CHECK($column)")
-  }
-
-  /**
-   * Check if column values adhere to expected type
+   * Check if field values adhere to expected type
    *
    * @param `type` Expected data type
+   * @param negate Check if not has type when set to true
    * @return
    */
-  def hasType(`type`: String): ValidationBuilder = {
-    validationBuilder.expr(s"TYPEOF($column) == '${`type`}'")
+  def hasType(`type`: String, negate: Boolean = false): ValidationBuilder = {
+    val sign = if (negate) "!=" else "=="
+    validationBuilder.expr(s"TYPEOF($field) $sign '${`type`}'")
   }
 
   /**
-   * Check if SQL expression is true or not. Can include reference to any other columns in the dataset.
+   * Check if field values adhere to expected types
+   *
+   * @param types Expected data types
+   * @return
+   */
+  @varargs def hasTypes(types: String*): ValidationBuilder = {
+    hasTypes(types.toList)
+  }
+
+  /**
+   * Check if field values adhere to expected types
+   *
+   * @param types Expected data types
+   * @param negate Check if not has any data type when set to true
+   * @return
+   */
+  def hasTypes(types: List[String], negate: Boolean = false): ValidationBuilder = {
+    val prefix = if (negate) "NOT " else ""
+    validationBuilder.expr(s"TYPEOF($field) ${prefix}IN (${types.map(t => s"'$t'").mkString(",")})")
+  }
+
+  /**
+   * Check if distinct values of field exist in set
+   *
+   * @param set Expected set of distinct values
+   * @return
+   */
+  @varargs def distinctInSet(set: Any*): ValidationBuilder = {
+    distinctInSet(set.toList, false)
+  }
+
+  /**
+   * Check if distinct values of field exist in set
+   *
+   * @param set Expected set of distinct values
+   * @param negate Check if distinct values are not in set when set to true
+   * @return
+   */
+  def distinctInSet(set: List[Any], negate: Boolean = false): ValidationBuilder = {
+    val sign = if (negate) "!" else ""
+    val removeTicksField = field.replaceAll("`", "")
+    validationBuilder.selectExpr(s"COLLECT_SET($field) AS ${removeTicksField}_distinct")
+      .expr(s"${sign}FORALL(${removeTicksField}_distinct, x -> ARRAY_CONTAINS(ARRAY(${seqToString(set)}), x))")
+  }
+
+  /**
+   * Check if distinct values of field contains set
+   *
+   * @param set Expected contained set of distinct values
+   * @return
+   */
+  @varargs def distinctContainsSet(set: Any*): ValidationBuilder = {
+    distinctContainsSet(set.toList, false)
+  }
+
+  /**
+   * Check if distinct values of field contains set
+   *
+   * @param set Expected contained set of distinct values
+   * @param negate Check if distinct values does not contain set when set to true
+   * @return
+   */
+  def distinctContainsSet(set: List[Any], negate: Boolean = false): ValidationBuilder = {
+    val sign = if (negate) "!" else ""
+    validationBuilder.selectExpr(s"COLLECT_SET($field) AS ${removeTicksField}_distinct")
+      .expr(s"${sign}FORALL(ARRAY(${seqToString(set)}), x -> ARRAY_CONTAINS(${removeTicksField}_distinct, x))")
+  }
+
+  /**
+   * Check if distinct values of field equals set
+   *
+   * @param set Expected set of distinct values
+   * @return
+   */
+  @varargs def distinctEqual(set: Any*): ValidationBuilder = {
+    distinctEqual(set.toList, false)
+  }
+
+  /**
+   * Check if distinct values of field equals set
+   *
+   * @param set Expected set of distinct values
+   * @param negate Check if distinct values does not equal set when set to true
+   * @return
+   */
+  def distinctEqual(set: List[Any], negate: Boolean = false): ValidationBuilder = {
+    val sign = if (negate) "!=" else "=="
+    validationBuilder.selectExpr(s"COLLECT_SET($field) AS ${removeTicksField}_distinct")
+      .expr(s"ARRAY_SIZE(ARRAY_EXCEPT(ARRAY(${seqToString(set)}), ${removeTicksField}_distinct)) $sign 0")
+  }
+
+  /**
+   * Check if max field value is between two values
+   *
+   * @param min Minimum expected value for max
+   * @param max Maximum expected value for max
+   * @param negate Check if not between two values when set to true
+   * @return
+   */
+  def maxBetween(min: Any, max: Any, negate: Boolean = false): ValidationBuilder = {
+    validationBuilder.groupBy().max(field).between(min, max, negate)
+  }
+
+  /**
+   * Check if mean field value is between two values
+   *
+   * @param min Minimum expected value for mean
+   * @param max Maximum expected value for mean
+   * @param negate Check if not between two values when set to true
+   * @return
+   */
+  def meanBetween(min: Any, max: Any, negate: Boolean = false): ValidationBuilder = {
+    validationBuilder.groupBy().avg(field).between(min, max, negate)
+  }
+
+  /**
+   * Check if median field value is between two values
+   *
+   * @param min Minimum expected value for median
+   * @param max Maximum expected value for median
+   * @param negate Check if not between two values when set to true
+   * @return
+   */
+  def medianBetween(min: Any, max: Any, negate: Boolean = false): ValidationBuilder = {
+    val prefix = if (negate) "NOT " else ""
+    validationBuilder
+      .selectExpr(s"PERCENTILE($field, 0.5) AS ${removeTicksField}_median")
+      .expr(s"${removeTicksField}_median ${prefix}BETWEEN $min AND $max")
+  }
+
+  /**
+   * Check if min field value is between two values
+   *
+   * @param min Minimum expected value for min
+   * @param max Maximum expected value for min
+   * @param negate Check if not between two values when set to true
+   * @return
+   */
+  def minBetween(min: Any, max: Any, negate: Boolean = false): ValidationBuilder = {
+    validationBuilder.groupBy().min(field).between(min, max, negate)
+  }
+
+  /**
+   * Check if standard deviation field value is between two values
+   *
+   * @param min Minimum expected value for standard deviation
+   * @param max Maximum expected value for standard deviation
+   * @param negate Check if not between two values when set to true
+   * @return
+   */
+  def stdDevBetween(min: Any, max: Any, negate: Boolean = false): ValidationBuilder = {
+    validationBuilder.groupBy().stddev(field).between(min, max, negate)
+  }
+
+  /**
+   * Check if sum field values is between two values
+   *
+   * @param min Minimum expected value for sum
+   * @param max Maximum expected value for sum
+   * @param negate Check if not between two values when set to true
+   * @return
+   */
+  def sumBetween(min: Any, max: Any, negate: Boolean = false): ValidationBuilder = {
+    validationBuilder.groupBy().sum(field).between(min, max, negate)
+  }
+
+  /**
+   * Check if length of field values is between two values
+   *
+   * @param min Minimum expected value for length
+   * @param max Maximum expected value for length
+   * @param negate Check if not between two values when set to true
+   * @return
+   */
+  def lengthBetween(min: Int, max: Int, negate: Boolean = false): ValidationBuilder = {
+    val prefix = if (negate) "NOT " else ""
+    validationBuilder.expr(s"LENGTH($field) ${prefix}BETWEEN $min AND $max")
+  }
+
+  /**
+   * Check if length of field values is equal to value
+   *
+   * @param value Expected length
+   * @param negate Check if not length is not equal to value when set to true
+   * @return
+   */
+  def lengthEqual(value: Int, negate: Boolean = false): ValidationBuilder = {
+    val sign = if (negate) "!=" else "=="
+    validationBuilder.expr(s"LENGTH($field) $sign $value")
+  }
+
+  /**
+   * Check if field values are decreasing
+   *
+   * @param strictly Check values are strictly decreasing when set to true
+   * @return
+   */
+  def isDecreasing(strictly: Boolean = true): ValidationBuilder = {
+    val lessSign = if (strictly) "<" else "<="
+    validationBuilder
+      .selectExpr(s"$field $lessSign LAG($field) OVER (ORDER BY MONOTONICALLY_INCREASING_ID()) AS is_${removeTicksField}_decreasing")
+      .expr(s"is_${removeTicksField}_decreasing")
+  }
+
+  /**
+   * Check if field values are increasing
+   *
+   * @param strictly Check values are strictly increasing when set to true
+   * @return
+   */
+  def isIncreasing(strictly: Boolean = true): ValidationBuilder = {
+    val greaterThan = if (strictly) ">" else ">="
+    validationBuilder
+      .selectExpr(s"$field $greaterThan LAG($field) OVER (ORDER BY MONOTONICALLY_INCREASING_ID()) AS is_${removeTicksField}_increasing")
+      .expr(s"is_${removeTicksField}_increasing")
+  }
+
+  /**
+   * Check if field values can be parsed as JSON
+   *
+   * @param negate Check values cannot be parsed as JSON when set to true
+   * @return
+   */
+  def isJsonParsable(negate: Boolean = false): ValidationBuilder = {
+    val prefix = if (negate) "" else "NOT "
+    validationBuilder.expr(s"GET_JSON_OBJECT($field, '$$') IS ${prefix}NULL")
+  }
+
+  /**
+   * Check if field values adhere to JSON schema
+   *
+   * @param schema Defined JSON schema
+   * @param negate Check values do not adhere to JSON schema when set to true
+   * @return
+   */
+  def matchJsonSchema(schema: String, negate: Boolean = false): ValidationBuilder = {
+    val prefix = if (negate) "" else "NOT "
+    validationBuilder.expr(s"FROM_JSON($field, '$schema') IS ${prefix}NULL")
+  }
+
+  /**
+   * Check if field values match date time format
+   *
+   * @param format Defined date time format ([defined formats](https://spark.apache.org/docs/latest/sql-ref-datetime-pattern.html))
+   * @param negate Check values do not adhere to date time format when set to true
+   * @return
+   */
+  def matchDateTimeFormat(format: String, negate: Boolean = false): ValidationBuilder = {
+    val prefix = if (negate) "" else "NOT "
+    validationBuilder.expr(s"TRY_TO_TIMESTAMP($field, '$format') IS ${prefix}NULL")
+  }
+
+  /**
+   * Check if the most common field value exists in set of values
+   *
+   * @param values Expected set of values most common value to exist in
+   * @param negate Check most common does not exist in set of values when set to true
+   * @return
+   */
+  def mostCommonValueInSet(values: List[Any], negate: Boolean = false): ValidationBuilder = {
+    val prefix = if (negate) "!" else ""
+    validationBuilder
+      .selectExpr(s"MODE($field) AS ${removeTicksField}_mode")
+      .expr(s"${prefix}ARRAY_CONTAINS(ARRAY(${seqToString(values)}), ${removeTicksField}_mode)")
+  }
+
+  /**
+   * Check if the fields proportion of unique values is between two values
+   *
+   * @param min Minimum proportion of unique values
+   * @param max Maximum proportion of unique values
+   * @param negate Check if proportion of unique values is not between two values when set to true
+   * @return
+   */
+  def uniqueValuesProportionBetween(min: Double, max: Double, negate: Boolean = false): ValidationBuilder = {
+    val prefix = if (negate) "NOT " else ""
+    validationBuilder
+      .selectExpr(s"COUNT(DISTINCT $field) / COUNT(1) AS ${removeTicksField}_unique_proportion")
+      .expr(s"${removeTicksField}_unique_proportion ${prefix}BETWEEN $min AND $max")
+  }
+
+  /**
+   * Check if quantiles of field values is within range.
+   *
+   * For example,
+   * `Map(0.1 -> (1, 2))` -> 10th percentile should be between 1 and 2
+   *
+   * @param quantileRanges Map of quantile to expected range
+   * @param negate Check if quantile value is not between two values when set to true
+   * @return
+   */
+  def quantileValuesBetween(quantileRanges: Map[Double, (Double, Double)], negate: Boolean = false): ValidationBuilder = {
+    val prefix = if (negate) "NOT " else ""
+    val quantileExprs = quantileRanges.zipWithIndex.map(quantileEntry => {
+      val quantile = quantileEntry._1._1
+      val min = quantileEntry._1._2._1
+      val max = quantileEntry._1._2._2
+      val idx = quantileEntry._2
+      val percentileColName = s"${removeTicksField}_percentile_$idx"
+      val selectExpr = s"PERCENTILE($field, $quantile) AS $percentileColName"
+      val whereExpr = s"$percentileColName ${prefix}BETWEEN $min AND $max"
+      (selectExpr, whereExpr)
+    })
+    val selectExpr = quantileExprs.keys.toList
+    val whereExpr = quantileExprs.values.mkString(" AND ")
+    validationBuilder.selectExpr(selectExpr: _*).expr(whereExpr)
+  }
+
+  /**
+   * Check if SQL expression is true or not. Can include reference to any other fields in the dataset.
    *
    * @param expr SQL expression
    * @return
@@ -607,7 +810,7 @@ case class ColumnValidationBuilder(validationBuilder: ValidationBuilder = Valida
     validationBuilder.expr(expr)
   }
 
-  private def colValueToString(value: Any): String = {
+  private def fieldValueToString(value: Any): String = {
     value match {
       case _: String => s"'$value'"
       case _: Date => s"DATE('$value')"
@@ -615,32 +818,41 @@ case class ColumnValidationBuilder(validationBuilder: ValidationBuilder = Valida
       case _ => s"$value"
     }
   }
+
+  private def removeTicksField: String = field.replaceAll("`", "")
+
+  private def seqToString(seq: Seq[Any]): String = {
+    seq.head match {
+      case _: String => seq.mkString("'", "','", "'")
+      case _ => seq.mkString(",")
+    }
+  }
 }
 
 case class GroupByValidationBuilder(
                                      validationBuilder: ValidationBuilder = ValidationBuilder(),
-                                     groupByCols: Seq[String] = Seq()
+                                     groupByFields: Seq[String] = Seq()
                                    ) {
   def this() = this(ValidationBuilder(), Seq())
 
   /**
-   * Sum all values for column
+   * Sum all values for field
    *
-   * @param column Name of column to sum
+   * @param field Name of field to sum
    * @return
    */
-  def sum(column: String): ColumnValidationBuilder = {
-    setGroupValidation(column, AGGREGATION_SUM)
+  def sum(field: String): FieldValidationBuilder = {
+    setGroupValidation(field, AGGREGATION_SUM)
   }
 
   /**
-   * Count the number of records for a particular column
+   * Count the number of records for a particular field
    *
-   * @param column Name of column to count
+   * @param field Name of field to count
    * @return
    */
-  def count(column: String): ColumnValidationBuilder = {
-    setGroupValidation(column, AGGREGATION_COUNT)
+  def count(field: String): FieldValidationBuilder = {
+    setGroupValidation(field, AGGREGATION_COUNT)
   }
 
   /**
@@ -648,67 +860,67 @@ case class GroupByValidationBuilder(
    *
    * @return
    */
-  def count(): ColumnValidationBuilder = {
+  def count(): FieldValidationBuilder = {
     setGroupValidation("", AGGREGATION_COUNT)
   }
 
   /**
-   * Get the minimum value for a particular column
+   * Get the minimum value for a particular field
    *
-   * @param column Name of column
+   * @param field Name of field
    * @return
    */
-  def min(column: String): ColumnValidationBuilder = {
-    setGroupValidation(column, AGGREGATION_MIN)
+  def min(field: String): FieldValidationBuilder = {
+    setGroupValidation(field, AGGREGATION_MIN)
   }
 
   /**
-   * Get the maximum value for a particular column
+   * Get the maximum value for a particular field
    *
-   * @param column Name of column
+   * @param field Name of field
    * @return
    */
-  def max(column: String): ColumnValidationBuilder = {
-    setGroupValidation(column, AGGREGATION_MAX)
+  def max(field: String): FieldValidationBuilder = {
+    setGroupValidation(field, AGGREGATION_MAX)
   }
 
   /**
-   * Get the average/mean for a particular column
+   * Get the average/mean for a particular field
    *
-   * @param column Name of column
+   * @param field Name of field
    * @return
    */
-  def avg(column: String): ColumnValidationBuilder = {
-    setGroupValidation(column, AGGREGATION_AVG)
+  def avg(field: String): FieldValidationBuilder = {
+    setGroupValidation(field, AGGREGATION_AVG)
   }
 
   /**
-   * Get the standard deviation for a particular column
+   * Get the standard deviation for a particular field
    *
-   * @param column Name of column
+   * @param field Name of field
    * @return
    */
-  def stddev(column: String): ColumnValidationBuilder = {
-    setGroupValidation(column, AGGREGATION_STDDEV)
+  def stddev(field: String): FieldValidationBuilder = {
+    setGroupValidation(field, AGGREGATION_STDDEV)
   }
 
-  private def setGroupValidation(column: String, aggType: String): ColumnValidationBuilder = {
-    val groupByValidation = GroupByValidation(groupByCols, column, aggType)
+  private def setGroupValidation(field: String, aggType: String): FieldValidationBuilder = {
+    val groupByValidation = GroupByValidation(groupByFields, field, aggType)
     groupByValidation.errorThreshold = validationBuilder.validation.errorThreshold
     groupByValidation.description = validationBuilder.validation.description
-    val colName = if (column.isEmpty) aggType else s"$aggType($column)"
-    ColumnValidationBuilder(validationBuilder.modify(_.validation).setTo(groupByValidation), colName)
+    val fieldName = if (field.isEmpty) aggType else s"$aggType($field)"
+    FieldValidationBuilder(validationBuilder.modify(_.validation).setTo(groupByValidation), fieldName)
   }
 }
 
 case class UpstreamDataSourceValidationBuilder(
-                                                validationBuilder: ValidationBuilder = ValidationBuilder(),
+                                                validationBuilders: List[ValidationBuilder] = List(),
                                                 connectionTaskBuilder: ConnectionTaskBuilder[_] = FileBuilder(),
                                                 readOptions: Map[String, String] = Map(),
-                                                joinColumns: List[String] = List(),
+                                                joinFields: List[String] = List(),
                                                 joinType: String = DEFAULT_VALIDATION_JOIN_TYPE
                                               ) {
-  def this() = this(ValidationBuilder(), FileBuilder(), Map(), List(), DEFAULT_VALIDATION_JOIN_TYPE)
+  def this() = this(List(), FileBuilder(), Map(), List(), DEFAULT_VALIDATION_JOIN_TYPE)
 
   /**
    * Define any custom read options to control which dataset is the upstream dataset.
@@ -723,13 +935,13 @@ case class UpstreamDataSourceValidationBuilder(
   }
 
   /**
-   * Define set of column names to use for join with upstream dataset
+   * Define set of field names to use for join with upstream dataset
    *
-   * @param joinCols Column names used for join
+   * @param fields field names used for join
    * @return
    */
-  @varargs def joinColumns(joinCols: String*): UpstreamDataSourceValidationBuilder = {
-    this.modify(_.joinColumns).setTo(joinCols.toList)
+  @varargs def joinFields(fields: String*): UpstreamDataSourceValidationBuilder = {
+    this.modify(_.joinFields).setTo(fields.toList)
   }
 
   /**
@@ -740,7 +952,7 @@ case class UpstreamDataSourceValidationBuilder(
    * @return
    */
   def joinExpr(expr: String): UpstreamDataSourceValidationBuilder = {
-    this.modify(_.joinColumns).setTo(List(s"$VALIDATION_PREFIX_JOIN_EXPRESSION$expr"))
+    this.modify(_.joinFields).setTo(List(s"$VALIDATION_PREFIX_JOIN_EXPRESSION$expr"))
   }
 
   /**
@@ -761,57 +973,57 @@ case class UpstreamDataSourceValidationBuilder(
   }
 
   /**
-   * Define validation to be used on joined dataset
+   * Define validations to be used on joined dataset
    *
-   * @param validationBuilder Validation check on joined dataset
+   * @param validations Validations to check on joined dataset
    * @return
    */
-  def withValidation(validationBuilder: ValidationBuilder): ValidationBuilder = {
-    validationBuilder.modify(_.validation).setTo(UpstreamDataSourceValidation(validationBuilder, connectionTaskBuilder, readOptions, joinColumns, joinType))
+  @varargs def validations(validations: ValidationBuilder*): ValidationBuilder = {
+    ValidationBuilder().modify(_.validation).setTo(UpstreamDataSourceValidation(validations.toList, connectionTaskBuilder, readOptions, joinFields, joinType))
   }
 }
 
-case class ColumnNamesValidationBuilder(
-                                         validationBuilder: ValidationBuilder = ValidationBuilder()
-                                       ) {
+case class FieldNamesValidationBuilder(
+                                        validationBuilder: ValidationBuilder = ValidationBuilder()
+                                      ) {
   def this() = this(ValidationBuilder())
 
   /**
-   * Check number of column is equal to certain value
+   * Check number of field is equal to certain value
    *
-   * @param value Number of expected columns
+   * @param value Number of expected fields
    * @return ValidationBuilder
    */
   def countEqual(value: Int): ValidationBuilder =
-    validationBuilder.modify(_.validation).setTo(ColumnNamesValidation(VALIDATION_COLUMN_NAME_COUNT_EQUAL, value))
+    validationBuilder.modify(_.validation).setTo(FieldNamesValidation(VALIDATION_FIELD_NAME_COUNT_EQUAL, value))
 
   /**
-   * Check number of columns is between two values
+   * Check number of fields is between two values
    *
-   * @param min Minimum number of expected columns (inclusive)
-   * @param max Maximum number of expected columns (inclusive)
+   * @param min Minimum number of expected fields (inclusive)
+   * @param max Maximum number of expected fields (inclusive)
    * @return ValidationBuilder
    */
   def countBetween(min: Int, max: Int): ValidationBuilder =
-    validationBuilder.modify(_.validation).setTo(ColumnNamesValidation(VALIDATION_COLUMN_NAME_COUNT_BETWEEN, minCount = min, maxCount = max))
+    validationBuilder.modify(_.validation).setTo(FieldNamesValidation(VALIDATION_FIELD_NAME_COUNT_BETWEEN, min = min, max = max))
 
   /**
-   * Order of column names matches given order
+   * Order of field names matches given order
    *
-   * @param columnNameOrder Expected column name ordering
+   * @param fieldNameOrder Expected field name ordering
    * @return ValidationBuilder
    */
-  @varargs def matchOrder(columnNameOrder: String*): ValidationBuilder =
-    validationBuilder.modify(_.validation).setTo(ColumnNamesValidation(VALIDATION_COLUMN_NAME_MATCH_ORDER, names = columnNameOrder.toArray))
+  @varargs def matchOrder(fieldNameOrder: String*): ValidationBuilder =
+    validationBuilder.modify(_.validation).setTo(FieldNamesValidation(VALIDATION_FIELD_NAME_MATCH_ORDER, names = fieldNameOrder.toArray))
 
   /**
-   * Dataset column names contains set of column names
+   * Dataset field names contains set of field names
    *
-   * @param columnNames Column names expected to exist within dataset
+   * @param fieldNames field names expected to exist within dataset
    * @return ValidationBuilder
    */
-  @varargs def matchSet(columnNames: String*): ValidationBuilder =
-    validationBuilder.modify(_.validation).setTo(ColumnNamesValidation(VALIDATION_COLUMN_NAME_MATCH_SET, names = columnNames.toArray))
+  @varargs def matchSet(fieldNames: String*): ValidationBuilder =
+    validationBuilder.modify(_.validation).setTo(FieldNamesValidation(VALIDATION_FIELD_NAME_MATCH_SET, names = fieldNames.toArray))
 }
 
 case class WaitConditionBuilder(waitCondition: WaitCondition = PauseWaitCondition()) {
@@ -936,5 +1148,5 @@ case class CombinationPreFilterBuilder(
 }
 
 object ValidationHelper {
-  def cleanColumnName(column: String): String = column.split("\\.").map(c => s"`$c`").mkString(".")
+  def cleanFieldName(field: String): String = field.split("\\.").map(c => s"`$c`").mkString(".")
 }

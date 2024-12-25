@@ -1,6 +1,6 @@
 /*
 Foreign keys section based off tasks created.
-Ability to choose task name and columns. Define custom relationships.
+Ability to choose task name and fields. Define custom relationships.
 - One to one
 - One to many
 - Transformations
@@ -53,8 +53,8 @@ async function createForeignKeyLinksFromPlan(newForeignKey, foreignKey, linkType
         foreignKeyLinkSources.insertBefore(newForeignKeyLink, foreignKeyLinkSources.lastChild);
         let updatedForeignKeyTaskName = $(newForeignKeyLink).find(`select.foreign-key-${linkType}-link`).selectpicker("val", fkLink.taskName);
         dispatchEvent(updatedForeignKeyTaskName, "change");
-        let updatedForeignKeyColumns = $(newForeignKeyLink).find(`input.foreign-key-${linkType}-link`).val(fkLink.columns);
-        dispatchEvent(updatedForeignKeyColumns, "input");
+        let updatedForeignKeyFields = $(newForeignKeyLink).find(`input.foreign-key-${linkType}-link`).val(fkLink.fields);
+        dispatchEvent(updatedForeignKeyFields, "input");
         //also add in other options
         if (fkLink.options) {
             for (let [key, value] of Object.entries(fkLink.options)) {
@@ -79,8 +79,8 @@ export async function createForeignKeysFromPlan(respJson) {
             if (foreignKey.source) {
                 let updatedTaskName = $(newForeignKey).find("select.foreign-key-source").selectpicker("val", foreignKey.source.taskName);
                 dispatchEvent(updatedTaskName, "change");
-                let updatedColumns = $(newForeignKey).find("input.foreign-key-source").val(foreignKey.source.columns);
-                dispatchEvent(updatedColumns, "input");
+                let updatedFields = $(newForeignKey).find("input.foreign-key-source").val(foreignKey.source.fields);
+                dispatchEvent(updatedFields, "input");
                 //also add in other options
                 console.log(foreignKey.source.options);
                 if (foreignKey.source.options) {
@@ -104,12 +104,12 @@ export async function createForeignKeysFromPlan(respJson) {
     }
 }
 
-function getForeignKeyLinksToArray(foreignKeyContainer, className) {
+function getForeignKeyLinksToArray(taskToDataSource, foreignKeyContainer, className) {
     let mainContainer = $(foreignKeyContainer).find(className);
     let foreignKeyLinks = $(mainContainer).find(".foreign-key-input-container");
     let foreignKeyLinksArray = [];
     for (let foreignKeyLink of foreignKeyLinks) {
-        let foreignKeyLinkDetails = getForeignKeyDetail(foreignKeyLink);
+        let foreignKeyLinkDetails = getForeignKeyDetail(taskToDataSource, foreignKeyLink);
         if (Object.keys(foreignKeyLinkDetails).length !== 0) {
             foreignKeyLinksArray.push(foreignKeyLinkDetails);
         }
@@ -117,14 +117,14 @@ function getForeignKeyLinksToArray(foreignKeyContainer, className) {
     return foreignKeyLinksArray;
 }
 
-export function getForeignKeys() {
+export function getForeignKeys(taskToDataSource) {
     let foreignKeyContainers = Array.from(document.querySelectorAll(".foreign-key-container").values());
     return foreignKeyContainers.map(fkContainer => {
         let fkSource = $(fkContainer).find(".foreign-key-main-source");
-        let fkSourceDetails = getForeignKeyDetail(fkSource[0]);
-        let fkGenerationLinkArray = getForeignKeyLinksToArray(fkContainer, ".foreign-key-generation-link-sources");
-        let fkDeleteLinkArray = getForeignKeyLinksToArray(fkContainer, ".foreign-key-delete-link-sources");
-        return {source: fkSourceDetails, generationLinks: fkGenerationLinkArray, deleteLinks: fkDeleteLinkArray};
+        let fkSourceDetails = getForeignKeyDetail(taskToDataSource, fkSource[0]);
+        let fkGenerationLinkArray = getForeignKeyLinksToArray(taskToDataSource, fkContainer, ".foreign-key-generation-link-sources");
+        let fkDeleteLinkArray = getForeignKeyLinksToArray(taskToDataSource, fkContainer, ".foreign-key-delete-link-sources");
+        return {source: fkSourceDetails, generate: fkGenerationLinkArray, delete: fkDeleteLinkArray};
     });
 }
 
@@ -201,18 +201,18 @@ async function createForeignKeyInput(index, name) {
     foreignKeyContainer.setAttribute("class", "foreign-key-input-container m-1");
     let foreignKey = document.createElement("div");
     foreignKey.setAttribute("class", `row m-1 align-items-center ${name}-source`);
-    // input is task name -> column(s)
+    // input is task name -> field(s)
     let taskNameSelect = createSelect(`${name}-${index}`, "Task", `selectpicker form-control input-field ${name}`, "Select a task...");
     let taskNameCol = document.createElement("div");
     taskNameCol.setAttribute("class", "col");
     taskNameCol.append(taskNameSelect);
 
-    let columnNamesInput = createInput(`${name}-column-${index}`, "Columns", `form-control input-field is-invalid ${name}`, "text", "");
-    columnNamesInput.setAttribute("required", "");
-    createFieldValidationCheck(columnNamesInput);
-    let columnNameFloating = createFormFloating("Column(s)", columnNamesInput);
+    let fieldNamesInput = createInput(`${name}-field-${index}`, "Fields", `form-control input-field is-invalid ${name}`, "text", "");
+    fieldNamesInput.setAttribute("required", "");
+    createFieldValidationCheck(fieldNamesInput);
+    let fieldNameFloating = createFormFloating("Field(s)", fieldNamesInput);
 
-    foreignKey.append(taskNameCol, columnNameFloating);
+    foreignKey.append(taskNameCol, fieldNameFloating);
     //when task name is selected, offer input to define sub data source if not defined
     //(i.e. schema and table for Postgres task with no schema and table defined, only offer table if schema is defined in data source)
     //for a http data source, endpoint is not part of the data source
@@ -260,10 +260,14 @@ async function createForeignKeyInput(index, name) {
     return foreignKeyContainer;
 }
 
-function getForeignKeyDetail(element) {
+function getForeignKeyDetail(taskToDataSource, element) {
     let taskName = $(element).find("select[aria-label=Task]").val();
-    let columns = $(element).find("input[aria-label=Columns]").val();
-    let baseForeignKey = {taskName: taskName, columns: columns};
+    let fields = $(element).find("input[aria-label=Fields]").val();
+
+    let fieldsArray = fields.includes(",") ? fields.split(",") : Array(fields);
+    let dataSource = taskToDataSource[taskName];
+
+    let baseForeignKey = {dataSource: dataSource,step: taskName, fields: fieldsArray};
     let overrideConnectionOptions = getOverrideConnectionOptionsAsMap(element);
     if (Object.keys(overrideConnectionOptions).length > 0) {
         baseForeignKey["options"] = overrideConnectionOptions;

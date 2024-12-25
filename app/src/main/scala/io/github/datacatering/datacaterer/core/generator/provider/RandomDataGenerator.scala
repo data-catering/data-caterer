@@ -408,9 +408,9 @@ object RandomDataGenerator {
 
     val baseFormula = if (isIncrementalNumber(defaultValue, distinctCount, count, isUnique)) {
       if (metadata.contains(MAXIMUM)) {
-        s"$max + $INDEX_INC_COL + 1" //index col starts at 0
+        s"$max + $INDEX_INC_FIELD + 1" //index col starts at 0
       } else {
-        s"$INDEX_INC_COL + 1"
+        s"$INDEX_INC_FIELD + 1"
       }
     } else if (metadata.contains(STANDARD_DEVIATION) && metadata.contains(MEAN)) {
       val randNormal = sqlRand.replace("RAND", "RANDN")
@@ -429,7 +429,7 @@ object RandomDataGenerator {
       s"ROUND($baseFormula, $roundValue)"
     } else baseFormula
 
-    if (!rounded.contains(INDEX_INC_COL) && (typeName == "INT" || typeName == "SHORT" || typeName == "LONG")) {
+    if (!rounded.contains(INDEX_INC_FIELD) && (typeName == "INT" || typeName == "SHORT" || typeName == "LONG")) {
       s"CAST(ROUND($rounded, 0) AS $typeName)"
     } else {
       s"CAST($rounded AS $typeName)"

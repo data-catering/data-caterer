@@ -18,6 +18,7 @@
     <configuration name="GenerateFromManualFile" type="Application" factoryName="Application">
         <envs>
             <env name="ENABLE_GENERATE_PLAN_AND_TASKS" value="false" />
+            <env name="ENABLE_VALIDATION" value="true" />
             <env name="PLAN_FILE_PATH" value="/plan/account-create-plan.yaml" />
         </envs>
         <option name="MAIN_CLASS_NAME" value="io.github.datacatering.datacaterer.App" />

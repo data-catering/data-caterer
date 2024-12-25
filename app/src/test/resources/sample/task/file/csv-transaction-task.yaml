@@ -5,47 +5,34 @@ steps:
     options: { }
     count:
       records: 1000
-      perColumn:
-        columnNames:
+      perField:
+        fieldNames:
           - "account_id"
           - "name"
-        generator:
-          type: "random"
-          options:
-            max: 10
-            min: 1
-    schema:
-      fields:
-        - name: "account_id"
-          type: "string"
-          generator:
-            type: "regex"
-            options:
-              regex: "ACC1[0-9]{9}"
-        - name: "name"
-          type: "string"
-          generator:
-            type: "random"
-            options:
-              expression: "#{Name.name}"
-        - name: "year"
-          type: "int"
-          generator:
-            type: "random"
-            options:
-              min: 2021
-              max: 2022
-        - name: "amount"
-          type: "double"
-          generator:
-            type: "random"
-            options:
-              min: 10.0
-              max: 100.0
-        - name: "txn_date"
-          type: "date"
-          generator:
-            type: "random"
-            options:
-              min: "2021-01-01"
-              max: "2021-12-31"
+        options:
+          max: 10
+          min: 1
+    fields:
+      - name: "account_id"
+        type: "string"
+        options:
+          regex: "ACC1[0-9]{9}"
+      - name: "name"
+        type: "string"
+        options:
+          expression: "#{Name.name}"
+      - name: "year"
+        type: "int"
+        options:
+          min: 2021
+          max: 2022
+      - name: "amount"
+        type: "double"
+        options:
+          min: 10.0
+          max: 100.0
+      - name: "txn_date"
+        type: "date"
+        options:
+          min: "2021-01-01"
+          max: "2021-12-31"

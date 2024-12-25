@@ -24,8 +24,6 @@ trait PlanRun {
 
   def step: StepBuilder = StepBuilder()
 
-  def schema: SchemaBuilder = SchemaBuilder()
-
   def field: FieldBuilder = FieldBuilder()
 
   def generator: GeneratorBuilder = GeneratorBuilder()
@@ -40,20 +38,20 @@ trait PlanRun {
 
   def preFilterBuilder(validationBuilder: ValidationBuilder): CombinationPreFilterBuilder = PreFilterBuilder().filter(validationBuilder)
 
-  def columnPreFilter(column: String): ColumnValidationBuilder = ValidationBuilder().col(column)
+  def fieldPreFilter(field: String): FieldValidationBuilder = ValidationBuilder().field(field)
 
   def dataSourceValidation: DataSourceValidationBuilder = DataSourceValidationBuilder()
 
   def validationConfig: ValidationConfigurationBuilder = ValidationConfigurationBuilder()
 
-  def foreignField(dataSource: String, step: String, column: String): ForeignKeyRelation =
-    new ForeignKeyRelation(dataSource, step, column)
+  def foreignField(dataSource: String, step: String, field: String): ForeignKeyRelation =
+    new ForeignKeyRelation(dataSource, step, field)
 
-  def foreignField(dataSource: String, step: String, columns: List[String]): ForeignKeyRelation =
-    ForeignKeyRelation(dataSource, step, columns)
+  def foreignField(dataSource: String, step: String, fields: List[String]): ForeignKeyRelation =
+    ForeignKeyRelation(dataSource, step, fields)
 
-  def foreignField(connectionTask: ConnectionTaskBuilder[_], step: String, columns: List[String]): ForeignKeyRelation =
-    ForeignKeyRelation(connectionTask.connectionConfigWithTaskBuilder.dataSourceName, step, columns)
+  def foreignField(connectionTask: ConnectionTaskBuilder[_], step: String, fields: List[String]): ForeignKeyRelation =
+    ForeignKeyRelation(connectionTask.connectionConfigWithTaskBuilder.dataSourceName, step, fields)
 
   def metadataSource: MetadataSourceBuilder = MetadataSourceBuilder()
 
@@ -513,17 +511,17 @@ trait PlanRun {
 
   private def getValidations(allConnectionTasks: Seq[ConnectionTaskBuilder[_]]) = {
     val validationsByDataSource = allConnectionTasks.map(x => {
-      val dataSource = x.connectionConfigWithTaskBuilder.dataSourceName
-      val optValidation = x.step
-        .flatMap(_.optValidation)
-        .map(dsValid => {
-          DataSourceValidationBuilder()
-            .options(x.step.map(_.step.options).getOrElse(Map()) ++ x.connectionConfigWithTaskBuilder.options)
-            .wait(dsValid.dataSourceValidation.waitCondition)
-            .validations(dsValid.dataSourceValidation.validations: _*)
-        })
-      (dataSource, optValidation)
-    })
+        val dataSource = x.connectionConfigWithTaskBuilder.dataSourceName
+        val optValidation = x.step
+          .flatMap(_.optValidation)
+          .map(dsValid => {
+            DataSourceValidationBuilder()
+              .options(x.step.map(_.step.options).getOrElse(Map()) ++ x.connectionConfigWithTaskBuilder.options)
+              .wait(dsValid.dataSourceValidation.waitCondition)
+              .validations(dsValid.dataSourceValidation.validations: _*)
+          })
+        (dataSource, optValidation)
+      })
       .filter(_._2.isDefined)
       .map(ds => (ds._1, validationConfig.addDataSourceValidation(ds._1, ds._2.get)))
 

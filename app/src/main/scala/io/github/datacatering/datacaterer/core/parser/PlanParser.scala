@@ -1,7 +1,7 @@
 package io.github.datacatering.datacaterer.core.parser
 
 import io.github.datacatering.datacaterer.api.model.Constants.ONE_OF_GENERATOR
-import io.github.datacatering.datacaterer.api.model.{DataCatererConfiguration, DataSourceValidation, Plan, Schema, Task, UpstreamDataSourceValidation, ValidationConfiguration, YamlUpstreamDataSourceValidation, YamlValidationConfiguration}
+import io.github.datacatering.datacaterer.api.model.{DataCatererConfiguration, DataSourceValidation, Field, Plan, Task, UpstreamDataSourceValidation, ValidationConfiguration, YamlUpstreamDataSourceValidation, YamlValidationConfiguration}
 import io.github.datacatering.datacaterer.api.{ConnectionConfigWithTaskBuilder, ValidationBuilder}
 import io.github.datacatering.datacaterer.core.exception.DataValidationMissingUpstreamDataSourceException
 import io.github.datacatering.datacaterer.core.util.FileUtil.{getFileContentFromFileSystem, isCloudStoragePath}
@@ -57,21 +57,7 @@ object PlanParser {
         val mappedValidations = d._2.map(dataSourceValidations => {
           val parsedValidations = dataSourceValidations.validations.map {
             case yamlUpstream: YamlUpstreamDataSourceValidation =>
-              val upstreamConnectionConfig = connectionConfigsByName.get(yamlUpstream.upstreamDataSource)
-              upstreamConnectionConfig match {
-                case Some(value) =>
-                  val connectionConfigWithTaskBuilder = ConnectionConfigWithTaskBuilder(yamlUpstream.upstreamDataSource, value).noop()
-                  val baseValidation = UpstreamDataSourceValidation(
-                    ValidationBuilder(yamlUpstream.validation),
-                    connectionConfigWithTaskBuilder,
-                    yamlUpstream.upstreamReadOptions,
-                    yamlUpstream.joinColumns,
-                    yamlUpstream.joinType
-                  )
-                  ValidationBuilder(baseValidation)
-                case None =>
-                  throw DataValidationMissingUpstreamDataSourceException(yamlUpstream.upstreamDataSource)
-              }
+              getYamlUpstreamValidationAsValidationWithConnection(connectionConfigsByName, yamlUpstream)
             case v => ValidationBuilder(v)
           }
           DataSourceValidation(dataSourceValidations.options, dataSourceValidations.waitCondition, parsedValidations)
@@ -82,34 +68,52 @@ object PlanParser {
     })
   }
 
+  def getYamlUpstreamValidationAsValidationWithConnection(
+                                                           connectionConfigsByName: Map[String, Map[String, String]],
+                                                           yamlUpstream: YamlUpstreamDataSourceValidation
+                                                         ): ValidationBuilder = {
+    val upstreamConnectionConfig = connectionConfigsByName.get(yamlUpstream.upstreamDataSource)
+    upstreamConnectionConfig match {
+      case Some(value) =>
+        val connectionConfigWithTaskBuilder = ConnectionConfigWithTaskBuilder(yamlUpstream.upstreamDataSource, value).noop()
+        val baseValidation = UpstreamDataSourceValidation(
+          yamlUpstream.validation.map(v => ValidationBuilder(v)),
+          connectionConfigWithTaskBuilder,
+          yamlUpstream.upstreamReadOptions,
+          yamlUpstream.joinFields,
+          yamlUpstream.joinType
+        )
+        ValidationBuilder(baseValidation)
+      case None =>
+        throw DataValidationMissingUpstreamDataSourceException(yamlUpstream.upstreamDataSource)
+    }
+  }
+
   private def convertTaskNumbersToString(task: Task): Task = {
     val stringSteps = task.steps.map(step => {
-      val countPerColGenerator = step.count.perColumn.map(perColumnCount => {
-        val generator = perColumnCount.generator.map(gen => gen.copy(options = toStringValues(gen.options)))
-        perColumnCount.copy(generator = generator)
+      val countPerColGenerator = step.count.perField.map(perFieldCount => {
+        val stringOpts = toStringValues(perFieldCount.options)
+        perFieldCount.copy(options = stringOpts)
       })
-      val countGenerator = step.count.generator.map(gen => gen.copy(options = toStringValues(gen.options)))
-      val mappedSchema = schemaToString(step.schema)
+      val countStringOpts = toStringValues(step.count.options)
+      val mappedSchema = fieldsToString(step.fields)
       step.copy(
-        count = step.count.copy(perColumn = countPerColGenerator, generator = countGenerator),
-        schema = mappedSchema
+        count = step.count.copy(perField = countPerColGenerator, options = countStringOpts),
+        fields = mappedSchema
       )
     })
     task.copy(steps = stringSteps)
   }
 
-  private def schemaToString(schema: Schema): Schema = {
-    val mappedFields = schema.fields.map(fields => {
-      fields.map(field => {
-        if (field.generator.isDefined && field.generator.get.`type` != ONE_OF_GENERATOR) {
-          val fieldGenOpt = toStringValues(field.generator.get.options)
-          field.copy(generator = Some(field.generator.get.copy(options = fieldGenOpt)))
-        } else {
-          field.copy(schema = field.schema.map(schemaToString))
-        }
-      })
+  private def fieldsToString(fields: List[Field]): List[Field] = {
+    fields.map(field => {
+      if (field.options.contains(ONE_OF_GENERATOR)) {
+        val fieldGenOpt = toStringValues(field.options)
+        field.copy(options = fieldGenOpt)
+      } else {
+        field.copy(fields = fieldsToString(field.fields))
+      }
     })
-    schema.copy(fields = mappedFields)
   }
 
   private def toStringValues(options: Map[String, Any]): Map[String, Any] = {

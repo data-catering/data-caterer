@@ -17,7 +17,7 @@ import scala.util.{Failure, Success, Try}
 
 trait DataSourceMetadata {
 
-  implicit val columnMetadataEncoder: Encoder[FieldMetadata] = Encoders.kryo[FieldMetadata]
+  implicit val fieldMetadataEncoder: Encoder[FieldMetadata] = Encoders.kryo[FieldMetadata]
   implicit val foreignKeyRelationshipEncoder: Encoder[ForeignKeyRelationship] = Encoders.kryo[ForeignKeyRelationship]
 
   val name: String
@@ -25,7 +25,7 @@ trait DataSourceMetadata {
   val connectionConfig: Map[String, String]
   val hasSourceData: Boolean
 
-  def getAdditionalColumnMetadata(implicit sparkSession: SparkSession): Dataset[FieldMetadata] = {
+  def getAdditionalFieldMetadata(implicit sparkSession: SparkSession): Dataset[FieldMetadata] = {
     sparkSession.emptyDataset[FieldMetadata]
   }
 
@@ -46,8 +46,8 @@ trait DataSourceMetadata {
    * Extracts metadata for a given data source.
    *
    * This method is responsible for retrieving the metadata for a data source, including any sub-data sources and
-   * additional column metadata. It handles cases where there are errors in finding the sub-data sources or existing
-   * metadata, and provides a fallback to use the additional column metadata.
+   * additional field metadata. It handles cases where there are errors in finding the sub-data sources or existing
+   * metadata, and provides a fallback to use the additional field metadata.
    *
    * @param flagsConfig    flags to control whether metadata is extracted or not
    * @param metadataConfig configuration to control how metadata is extracted
@@ -61,7 +61,7 @@ trait DataSourceMetadata {
     val allDataSourceReadOptions = Try(getSubDataSourcesMetadata) match {
       case Failure(error) =>
         LOGGER.error(s"Unable to find any sub data sources or existing metadata, name=$name, " +
-          s"format=$format, error=${error.getMessage}")
+          s"format=$format, error=${error.getMessage}", error)
         Array[SubDataSourceMetadata]()
       case Success(value) =>
         LOGGER.info(s"Found sub data sources, name=$name, format=$format, " +
@@ -69,10 +69,10 @@ trait DataSourceMetadata {
         value
     }
 
-    val additionalColumnMetadata = getAdditionalColumnMetadata
+    val additionalFieldMetadata = getAdditionalFieldMetadata
     allDataSourceReadOptions.map(subDataSourceMeta => {
-      val columnMetadata = subDataSourceMeta.optFieldMetadata.getOrElse(additionalColumnMetadata)
-      getFieldLevelMetadata(columnMetadata, subDataSourceMeta.readOptions, flagsConfig, metadataConfig)
+      val fieldMetadata = subDataSourceMeta.optFieldMetadata.getOrElse(additionalFieldMetadata)
+      getFieldLevelMetadata(fieldMetadata, subDataSourceMeta.readOptions, flagsConfig, metadataConfig)
     }).toList
   }
 
@@ -82,14 +82,14 @@ trait DataSourceMetadata {
    * This method reads in a sample of records from the data source, calculates data profiling metadata for the fields,
    * and maps the fields to Spark StructFields. It also generates any validations for the data source.
    *
-   * @param additionalColumnMetadata additional column metadata for the data source
+   * @param additionalFieldMetadata additional field metadata for the data source
    * @param dataSourceReadOptions    the read options for the data source
    * @param flagsConfig              flags to control whether metadata is extracted or not
    * @param metadataConfig           configuration to control how metadata is extracted
    * @return a `DataSourceDetail` object containing the field-level metadata
    */
   private def getFieldLevelMetadata(
-                                     additionalColumnMetadata: Dataset[FieldMetadata],
+                                     additionalFieldMetadata: Dataset[FieldMetadata],
                                      dataSourceReadOptions: Map[String, String],
                                      flagsConfig: FlagsConfig,
                                      metadataConfig: MetadataConfig
@@ -99,7 +99,7 @@ trait DataSourceMetadata {
       DataSourceDetail(this, dataSourceReadOptions, StructType(Seq()))
     } else if (!hasSourceData) {
       LOGGER.debug(s"Metadata source does not contain source data for data analysis. Field level metadata will not be calculated, name=$name")
-      val structFields = MetadataUtil.mapToStructFields(additionalColumnMetadata, dataSourceReadOptions)
+      val structFields = MetadataUtil.mapToStructFields(additionalFieldMetadata, dataSourceReadOptions)
       val validations = getGeneratedValidations(dataSourceReadOptions, structFields, flagsConfig)
       DataSourceDetail(this, dataSourceReadOptions, StructType(structFields), validations)
     } else {
@@ -113,7 +113,7 @@ trait DataSourceMetadata {
         .sample(metadataConfig.numRecordsForAnalysis.toDouble / metadataConfig.numRecordsFromDataSource)
 
       val fieldsWithDataProfilingMetadata = MetadataUtil.getFieldDataProfilingMetadata(data, dataSourceReadOptions, this, metadataConfig)
-      val structFields = MetadataUtil.mapToStructFields(data, dataSourceReadOptions, fieldsWithDataProfilingMetadata, additionalColumnMetadata)
+      val structFields = MetadataUtil.mapToStructFields(data, dataSourceReadOptions, fieldsWithDataProfilingMetadata, additionalFieldMetadata)
       val validations = getGeneratedValidations(dataSourceReadOptions, structFields, flagsConfig)
       DataSourceDetail(this, dataSourceReadOptions, StructType(structFields), validations)
     }

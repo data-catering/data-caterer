@@ -1,7 +1,7 @@
 package io.github.datacatering.datacaterer.api
 
 import com.softwaremill.quicklens.ModifyPimp
-import io.github.datacatering.datacaterer.api.model.{ForeignKeyRelation, SinkOptions}
+import io.github.datacatering.datacaterer.api.model.{ForeignKey, ForeignKeyRelation, SinkOptions}
 
 import scala.annotation.varargs
 
@@ -28,9 +28,9 @@ case class SinkOptionsBuilder(sinkOptions: SinkOptions = SinkOptions()) {
   def locale(locale: String): SinkOptionsBuilder = this.modify(_.sinkOptions.locale).setTo(Some(locale))
 
   /**
-   * Define a foreign key relationship between columns across any data source for data generation.
-   * To define which column to use, it is defined by the following:<br>
-   * dataSourceName + stepName + columnName
+   * Define a foreign key relationship between fields across any data source for data generation.
+   * To define which field to use, it is defined by the following:<br>
+   * dataSourceName + stepName + fieldName
    *
    * @param foreignKey      Base foreign key
    * @param generationLinks Foreign key relations for data generation
@@ -38,13 +38,13 @@ case class SinkOptionsBuilder(sinkOptions: SinkOptions = SinkOptions()) {
    * @see <a href="https://data.catering/setup/foreign-key/">Docs</a> for details
    */
   @varargs def foreignKey(foreignKey: ForeignKeyRelation, generationLinks: ForeignKeyRelation*): SinkOptionsBuilder =
-    this.modify(_.sinkOptions.foreignKeys)(_ ++ List((foreignKey.toString, generationLinks.map(_.toString).toList, List())))
+    this.modify(_.sinkOptions.foreignKeys)(_ ++ List(ForeignKey(foreignKey, generationLinks.toList, List())))
 
   /**
-   * Define a foreign key relationship between columns across any data source for data generation and deletion.
+   * Define a foreign key relationship between fields across any data source for data generation and deletion.
    * Can be used for data generation and deletion.
-   * To define which column to use, it is defined by the following:<br>
-   * dataSourceName + stepName + columnName
+   * To define which field to use, it is defined by the following:<br>
+   * dataSourceName + stepName + fieldName
    *
    * @param foreignKey      Base foreign key
    * @param generationLinks Foreign key relations for data generation
@@ -53,12 +53,12 @@ case class SinkOptionsBuilder(sinkOptions: SinkOptions = SinkOptions()) {
    * @see <a href="https://data.catering/setup/foreign-key/">Docs</a> for details
    */
   def foreignKey(foreignKey: ForeignKeyRelation, generationLinks: List[ForeignKeyRelation], deleteLinks: List[ForeignKeyRelation]): SinkOptionsBuilder =
-    this.modify(_.sinkOptions.foreignKeys)(_ ++ List((foreignKey.toString, generationLinks.map(_.toString), deleteLinks.map(_.toString))))
+    this.modify(_.sinkOptions.foreignKeys)(_ ++ List(ForeignKey(foreignKey, generationLinks, deleteLinks)))
 
   /**
-   * Define a foreign key relationship between columns across any data source for data generation.
-   * To define which column to use, it is defined by the following:<br>
-   * dataSourceName + stepName + columnName
+   * Define a foreign key relationship between fields across any data source for data generation.
+   * To define which field to use, it is defined by the following:<br>
+   * dataSourceName + stepName + fieldName
    *
    * @param foreignKey      Base foreign key
    * @param generationLinks Foreign key relations for data generation

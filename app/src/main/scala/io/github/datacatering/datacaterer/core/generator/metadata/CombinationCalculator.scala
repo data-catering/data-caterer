@@ -1,8 +1,8 @@
 package io.github.datacatering.datacaterer.core.generator.metadata
 
 import io.github.datacatering.datacaterer.api.model.Constants.{EXPRESSION, ONE_OF_GENERATOR}
-import io.github.datacatering.datacaterer.api.model.Schema
-import io.github.datacatering.datacaterer.core.exception.{InvalidFakerExpressionException, UnsupportedFakerReturnTypeException}
+import io.github.datacatering.datacaterer.api.model.Field
+import io.github.datacatering.datacaterer.core.exception.InvalidFakerExpressionException
 import net.datafaker.Faker
 import org.apache.log4j.Logger
 
@@ -15,28 +15,25 @@ object CombinationCalculator {
   private val LOGGER = Logger.getLogger(getClass.getName)
   private val FAKER_EXPRESSION_REGEX = "#\\{(.+?)}".r
 
-  def totalCombinationsForSchema(schema: Schema, faker: Faker): Option[BigInt] = {
-    schema.fields.map(fields =>
-      fields.map(field => {
-        if (field.generator.isDefined) {
-          val generator = field.generator.get
-          if (generator.options.contains(EXPRESSION)) {
-            val expression = field.generator.get.options(EXPRESSION).toString
-            val totalCombinations = getNumberCombinationsForFakerExpression(expression, faker)
-            LOGGER.info(s"Total combinations for faker expression, expression=$expression, combinations=$totalCombinations")
-            totalCombinations
-          } else if (generator.`type` == ONE_OF_GENERATOR && generator.options.contains(ONE_OF_GENERATOR)) {
-            BigInt(generator.options(ONE_OF_GENERATOR).asInstanceOf[List[_]].size)
-          } else {
-            BigInt(1)
-          }
-        } else if (field.schema.isDefined) {
-          totalCombinationsForSchema(field.schema.get, faker).getOrElse(BigInt(1))
+  def totalCombinationsForSchema(fields: List[Field], faker: Faker): BigInt = {
+    fields.map(field => {
+      if (field.options.nonEmpty) {
+        if (field.options.contains(EXPRESSION)) {
+          val expression = field.options(EXPRESSION).toString
+          val totalCombinations = getNumberCombinationsForFakerExpression(expression, faker)
+          LOGGER.info(s"Total combinations for faker expression, expression=$expression, combinations=$totalCombinations")
+          totalCombinations
+        } else if (field.options.contains(ONE_OF_GENERATOR)) {
+          BigInt(field.options(ONE_OF_GENERATOR).asInstanceOf[List[_]].size)
         } else {
           BigInt(1)
         }
-      }).product
-    )
+      } else if (field.fields.nonEmpty) {
+        totalCombinationsForSchema(field.fields, faker)
+      } else {
+        BigInt(1)
+      }
+    }).product
   }
 
   private def getNumberCombinationsForFakerExpression(expression: String, faker: Faker): BigInt = {

@@ -2,7 +2,7 @@ package io.github.datacatering.datacaterer.core.util
 
 import io.github.datacatering.datacaterer.api.PlanRun
 import io.github.datacatering.datacaterer.api.model.Constants.FOREIGN_KEY_DELIMITER
-import io.github.datacatering.datacaterer.api.model.{ForeignKeyRelation, Plan, SinkOptions, TaskSummary}
+import io.github.datacatering.datacaterer.api.model.{ForeignKey, ForeignKeyRelation, Plan, SinkOptions, TaskSummary}
 import io.github.datacatering.datacaterer.core.model.ForeignKeyRelationship
 import org.apache.spark.sql.Encoders
 import org.apache.spark.sql.types.{ArrayType, StringType, StructField, StructType}
@@ -37,8 +37,8 @@ class ForeignKeyUtilTest extends SparkSuite {
 
   test("Can link foreign keys between data sets") {
     val sinkOptions = SinkOptions(None, None,
-      List((s"postgres${FOREIGN_KEY_DELIMITER}account${FOREIGN_KEY_DELIMITER}account_id",
-        List(s"postgres${FOREIGN_KEY_DELIMITER}transaction${FOREIGN_KEY_DELIMITER}account_id"), List()))
+      List(ForeignKey(ForeignKeyRelation("postgres", "account", List("account_id")),
+        List(ForeignKeyRelation("postgres", "transaction", List("account_id"))), List()))
     )
     val plan = Plan("foreign keys", "simple plan", List(), Some(sinkOptions))
     val accountsList = List(
@@ -64,10 +64,10 @@ class ForeignKeyUtilTest extends SparkSuite {
     })
   }
 
-  test("Can link foreign keys between data sets with multiple columns") {
+  test("Can link foreign keys between data sets with multiple fields") {
     val sinkOptions = SinkOptions(None, None,
-      List((s"postgres${FOREIGN_KEY_DELIMITER}account${FOREIGN_KEY_DELIMITER}account_id,name",
-        List(s"postgres${FOREIGN_KEY_DELIMITER}transaction${FOREIGN_KEY_DELIMITER}account_id,name"), List()))
+      List(ForeignKey(ForeignKeyRelation("postgres", "account", List("account_id", "name")),
+        List(ForeignKeyRelation("postgres", "transaction", List("account_id", "name"))), List()))
     )
     val plan = Plan("foreign keys", "simple plan", List(TaskSummary("my_task", "postgres")), Some(sinkOptions))
     val accountsList = List(
@@ -104,10 +104,10 @@ class ForeignKeyUtilTest extends SparkSuite {
     assert(acc1Count == 2 || acc2Count == 2 || acc3Count == 2)
   }
 
-  test("Can link foreign keys between data sets with multiple records per column") {
+  test("Can link foreign keys between data sets with multiple records per field") {
     val sinkOptions = SinkOptions(None, None,
-      List((s"postgres${FOREIGN_KEY_DELIMITER}account${FOREIGN_KEY_DELIMITER}account_id",
-        List(s"postgres${FOREIGN_KEY_DELIMITER}transaction${FOREIGN_KEY_DELIMITER}account_id"), List()))
+      List(ForeignKey(ForeignKeyRelation("postgres", "account", List("account_id")),
+        List(ForeignKeyRelation("postgres", "transaction", List("account_id"))), List()))
     )
     val plan = Plan("foreign keys", "simple plan", List(TaskSummary("my_task", "postgres")), Some(sinkOptions))
     val accountsList = List(
@@ -191,7 +191,7 @@ class ForeignKeyUtilTest extends SparkSuite {
     assertResult(expected2)(deleteOrder2)
   }
 
-  test("Can generate correct values when per column count is defined over multiple columns that are also defined as foreign keys") {
+  test("Can generate correct values when per field count is defined over multiple fields that are also defined as foreign keys") {
     val foreignKeys = List(
       s"postgres${FOREIGN_KEY_DELIMITER}accounts${FOREIGN_KEY_DELIMITER}account_id" ->
         List(s"postgres${FOREIGN_KEY_DELIMITER}balances${FOREIGN_KEY_DELIMITER}account_id", s"postgres${FOREIGN_KEY_DELIMITER}transactions${FOREIGN_KEY_DELIMITER}account_id")
@@ -204,7 +204,7 @@ class ForeignKeyUtilTest extends SparkSuite {
     )
   }
 
-  test("Can generate correct values when primary keys are defined over multiple columns that are also defined as foreign keys") {
+  test("Can generate correct values when primary keys are defined over multiple fields that are also defined as foreign keys") {
     val foreignKeys = List(
       s"postgres${FOREIGN_KEY_DELIMITER}accounts${FOREIGN_KEY_DELIMITER}account_id" ->
         List(s"postgres${FOREIGN_KEY_DELIMITER}balances${FOREIGN_KEY_DELIMITER}account_id", s"postgres${FOREIGN_KEY_DELIMITER}transactions${FOREIGN_KEY_DELIMITER}account_id")
@@ -231,23 +231,38 @@ class ForeignKeyUtilTest extends SparkSuite {
     val result = ForeignKeyUtil.getAllForeignKeyRelationships(generatedForeignKeys, optPlanRun, stepNameMapping)
 
     assertResult(3)(result.size)
-    assert(result.contains((s"my_csv${FOREIGN_KEY_DELIMITER}public.accounts${FOREIGN_KEY_DELIMITER}id",
-      List(s"my_postgres${FOREIGN_KEY_DELIMITER}public.accounts${FOREIGN_KEY_DELIMITER}account_id"), List())))
-    assert(result.contains((s"my_json${FOREIGN_KEY_DELIMITER}json_step${FOREIGN_KEY_DELIMITER}id",
-      List(s"my_postgres${FOREIGN_KEY_DELIMITER}public.orders${FOREIGN_KEY_DELIMITER}customer_id"), List())))
-    assert(result.contains((s"my_postgres${FOREIGN_KEY_DELIMITER}public.account${FOREIGN_KEY_DELIMITER}account_id",
-      List(s"my_postgres${FOREIGN_KEY_DELIMITER}public.orders${FOREIGN_KEY_DELIMITER}customer_id"), List())))
+    assert(result.contains(
+      ForeignKey(
+        ForeignKeyRelation("my_csv", "public.accounts", List("id")),
+        List(ForeignKeyRelation("my_postgres", "public.accounts", List("account_id"))),
+        List()
+      )
+    ))
+    assert(result.contains(
+      ForeignKey(
+        ForeignKeyRelation("my_json", "json_step", List("id")),
+        List(ForeignKeyRelation("my_postgres", "public.orders", List("customer_id"))),
+        List()
+      )
+    ))
+    assert(result.contains(
+      ForeignKey(
+        ForeignKeyRelation("my_postgres", "public.account", List("account_id")),
+        List(ForeignKeyRelation("my_postgres", "public.orders", List("customer_id"))),
+        List()
+      )
+    ))
   }
 
-  test("Can link foreign keys with nested column names") {
+  test("Can link foreign keys with nested field names") {
     val nestedStruct = StructType(Array(StructField("account_id", StringType)))
     val nestedInArray = ArrayType(nestedStruct)
     val fields = Array(StructField("my_json", nestedStruct), StructField("my_array", nestedInArray))
 
-    assert(ForeignKeyUtil.hasDfContainColumn("my_array.account_id", fields))
-    assert(ForeignKeyUtil.hasDfContainColumn("my_json.account_id", fields))
-    assert(!ForeignKeyUtil.hasDfContainColumn("my_json.name", fields))
-    assert(!ForeignKeyUtil.hasDfContainColumn("my_array.name", fields))
+    assert(ForeignKeyUtil.hasDfContainField("my_array.account_id", fields))
+    assert(ForeignKeyUtil.hasDfContainField("my_json.account_id", fields))
+    assert(!ForeignKeyUtil.hasDfContainField("my_json.name", fields))
+    assert(!ForeignKeyUtil.hasDfContainField("my_array.name", fields))
   }
 
   class ForeignKeyPlanRun extends PlanRun {

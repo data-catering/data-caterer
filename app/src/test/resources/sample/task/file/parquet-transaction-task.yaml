@@ -6,39 +6,29 @@ steps:
       path: "app/src/test/resources/sample/parquet/transactions"
     count:
       records: 1000
-      perColumn:
-        columnNames:
+      perField:
+        fieldNames:
           - "account_id"
-        generator:
-          options:
-            max: 10
-            min: 1
-    schema:
-      fields:
-        - name: "account_id"
-          type: "string"
-          generator:
-            type: "random"
-            options:
-              isPrimaryKey: "true"
-        - name: "year"
-          type: "int"
-          generator:
-            type: "random"
-            options:
-              minValue: 2021
-              maxValue: 2022
-        - name: "amount"
-          type: "double"
-          generator:
-            type: "random"
-            options:
-              minValue: 10.0
-              maxValue: 100.0
-        - name: "txn_date"
-          type: "date"
-          generator:
-            type: "random"
-            options:
-              minValue: "2021-01-01"
-              maxValue: "2021-12-31"
+        options:
+          max: 10
+          min: 1
+    fields:
+      - name: "account_id"
+        type: "string"
+        options:
+          isPrimaryKey: "true"
+      - name: "year"
+        type: "int"
+        options:
+          minValue: 2021
+          maxValue: 2022
+      - name: "amount"
+        type: "double"
+        options:
+          minValue: 10.0
+          maxValue: 100.0
+      - name: "txn_date"
+        type: "date"
+        options:
+          minValue: "2021-01-01"
+          maxValue: "2021-12-31"

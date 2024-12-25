@@ -25,7 +25,7 @@ Defined at plan level what validations are run post data generation
 Validations lie within separate files
 Validations have a wait condition. Wait for: webhook, pause, file exists, data exists
 Different types of validations:
-- simple column validations (amount < 100)
+- simple field validations (amount < 100)
 - aggregates (sum of amount per account is > 500)
 - ordering (transactions are ordered by date)
 - relationship (one account entry in history table per account in accounts table)
@@ -82,7 +82,7 @@ class ValidationProcessor(
           DataSourceValidationResult(dataSourceName, dataSourceValidation.options, List())
         } else {
           if (!df.storageLevel.useMemory) df.cache()
-          val results = dataSourceValidation.validations.map(validBuilder => tryValidate(df, validBuilder))
+          val results = dataSourceValidation.validations.flatMap(validBuilder => tryValidate(df, validBuilder))
           df.unpersist()
           LOGGER.debug(s"Finished data validations, name=${vc.name}," +
             s"data-source-name=$dataSourceName, details=${dataSourceValidation.options}, num-validations=${dataSourceValidation.validations.size}")
@@ -96,7 +96,7 @@ class ValidationProcessor(
     }
   }
 
-  def tryValidate(df: DataFrame, validBuilder: ValidationBuilder): ValidationResult = {
+  def tryValidate(df: DataFrame, validBuilder: ValidationBuilder): List[ValidationResult] = {
     val validationDescription = validBuilder.validation.toOptions.map(l => s"${l.head}=${l.last}").mkString(", ")
     val validation = getValidationType(validBuilder.validation, foldersConfig.recordTrackingForValidationFolderPath)
     val preFilterData = validation.filterData(df)
@@ -105,7 +105,7 @@ class ValidationProcessor(
     Try(validation.validate(preFilterData, count)) match {
       case Failure(exception) =>
         LOGGER.error(s"Failed to run data validation, $validationDescription", exception)
-        ValidationResult(validBuilder.validation, false, count, count, Some(sparkSession.createDataFrame(Seq(CustomErrorSample(exception.getLocalizedMessage)))))
+        List(ValidationResult(validBuilder.validation, false, count, count, Some(sparkSession.createDataFrame(Seq(CustomErrorSample(exception.getLocalizedMessage))))))
       case Success(value) =>
         LOGGER.debug(s"Successfully ran data validation, $validationDescription")
         value
@@ -181,7 +181,7 @@ class ValidationProcessor(
         failedValidations.foreach(validationRes => {
           val (validationType, validationCheck) = validationRes.validation match {
             case ExpressionValidation(expr, _) => ("expression", expr)
-            case GroupByValidation(_, _, _, expr) => ("groupByAggregate", expr)
+            case GroupByValidation(_, _, _, expr, _) => ("groupByAggregate", expr)
             //TODO get validationCheck from validationBuilder -> make this a recursive method to get validationCheck
             case UpstreamDataSourceValidation(_, upstreamDataSource, _, _, _) => ("upstreamDataSource", upstreamDataSource.connectionConfigWithTaskBuilder.dataSourceName)
             case _ => ("Unknown", "")

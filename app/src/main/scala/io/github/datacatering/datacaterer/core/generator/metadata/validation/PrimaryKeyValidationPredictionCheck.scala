@@ -16,6 +16,6 @@ class PrimaryKeyValidationPredictionCheck extends ValidationPredictionCheck {
   }
 
   override def check(field: StructField): List[ValidationBuilder] = {
-    List(ValidationBuilder().col(field.name).isNotNull)
+    List(ValidationBuilder().field(field.name).isNull(true))
   }
 }

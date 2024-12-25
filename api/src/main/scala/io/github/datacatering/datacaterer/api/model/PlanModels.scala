@@ -1,7 +1,7 @@
 package io.github.datacatering.datacaterer.api.model
 
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize
-import Constants.{DEFAULT_COUNT_RECORDS, DEFAULT_DATA_SOURCE_NAME, DEFAULT_FIELD_NAME, DEFAULT_FIELD_NULLABLE, DEFAULT_FIELD_TYPE, DEFAULT_GENERATOR_TYPE, DEFAULT_PER_COLUMN_COUNT_RECORDS, DEFAULT_STEP_ENABLED, DEFAULT_STEP_NAME, DEFAULT_STEP_TYPE, DEFAULT_TASK_NAME, DEFAULT_TASK_SUMMARY_ENABLE, FOREIGN_KEY_DELIMITER}
+import io.github.datacatering.datacaterer.api.model.Constants.{DEFAULT_COUNT_RECORDS, DEFAULT_DATA_SOURCE_NAME, DEFAULT_FIELD_NAME, DEFAULT_FIELD_NULLABLE, DEFAULT_FIELD_TYPE, DEFAULT_GENERATOR_TYPE, DEFAULT_PER_FIELD_COUNT_RECORDS, DEFAULT_STEP_ENABLED, DEFAULT_STEP_NAME, DEFAULT_STEP_TYPE, DEFAULT_TASK_NAME, DEFAULT_TASK_SUMMARY_ENABLE, FOREIGN_KEY_DELIMITER}
 
 import scala.language.implicitConversions
 
@@ -17,19 +17,25 @@ case class Plan(
 case class SinkOptions(
                         seed: Option[String] = None,
                         locale: Option[String] = None,
-                        foreignKeys: List[(String, List[String], List[String])] = List()
+                        foreignKeys: List[ForeignKey] = List()
                       )
 
 case class ForeignKeyRelation(
                                dataSource: String = DEFAULT_DATA_SOURCE_NAME,
                                step: String = DEFAULT_STEP_NAME,
-                               columns: List[String] = List()
+                               fields: List[String] = List()
                              ) {
 
-  def this(dataSource: String, step: String, column: String) = this(dataSource, step, List(column))
+  def this(dataSource: String, step: String, field: String) = this(dataSource, step, List(field))
 
-  override def toString: String = s"$dataSource$FOREIGN_KEY_DELIMITER$step$FOREIGN_KEY_DELIMITER${columns.mkString(",")}"
+  override def toString: String = s"$dataSource$FOREIGN_KEY_DELIMITER$step$FOREIGN_KEY_DELIMITER${fields.mkString(",")}"
 }
+
+case class ForeignKey(
+                       source: ForeignKeyRelation = ForeignKeyRelation(),
+                       generate: List[ForeignKeyRelation] = List(),
+                       delete: List[ForeignKeyRelation] = List(),
+                     )
 
 case class TaskSummary(
                         name: String,
@@ -47,36 +53,27 @@ case class Step(
                  `type`: String = DEFAULT_STEP_TYPE,
                  count: Count = Count(),
                  options: Map[String, String] = Map(),
-                 schema: Schema = Schema(),
+                 fields: List[Field] = List(),
                  enabled: Boolean = DEFAULT_STEP_ENABLED
                )
 
 case class Count(
                   @JsonDeserialize(contentAs = classOf[java.lang.Long]) records: Option[Long] = Some(DEFAULT_COUNT_RECORDS),
-                  perColumn: Option[PerColumnCount] = None,
-                  generator: Option[Generator] = None
+                  perField: Option[PerFieldCount] = None,
+                  options: Map[String, Any] = Map()
                 )
 
-case class PerColumnCount(
-                           columnNames: List[String] = List(),
-                           @JsonDeserialize(contentAs = classOf[java.lang.Long]) count: Option[Long] = Some(DEFAULT_PER_COLUMN_COUNT_RECORDS),
-                           generator: Option[Generator] = None
+case class PerFieldCount(
+                          fieldNames: List[String] = List(),
+                          @JsonDeserialize(contentAs = classOf[java.lang.Long]) count: Option[Long] = Some(DEFAULT_PER_FIELD_COUNT_RECORDS),
+                          options: Map[String, Any] = Map()
                          )
-
-case class Schema(
-                   fields: Option[List[Field]] = None
-                 )
 
 case class Field(
                   name: String = DEFAULT_FIELD_NAME,
                   `type`: Option[String] = Some(DEFAULT_FIELD_TYPE),
-                  generator: Option[Generator] = Some(Generator()),
+                  options: Map[String, Any] = Map(),
                   nullable: Boolean = DEFAULT_FIELD_NULLABLE,
                   static: Option[String] = None,
-                  schema: Option[Schema] = None
+                  fields: List[Field] = List()
                 )
-
-case class Generator(
-                      `type`: String = DEFAULT_GENERATOR_TYPE,
-                      options: Map[String, Any] = Map()
-                    )

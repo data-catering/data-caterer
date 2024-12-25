@@ -65,7 +65,10 @@ export function getConfiguration() {
             } else {
                 options.set(option.getAttribute("configuration"), option.value);
             }
-            mappedConfiguration.set(baseConfig, options);
+
+            if (baseConfig) {
+                mappedConfiguration.set(baseConfig, options);
+            }
         }
     });
     return mappedConfiguration;

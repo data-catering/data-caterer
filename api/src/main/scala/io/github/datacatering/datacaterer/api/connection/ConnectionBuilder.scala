@@ -1,8 +1,8 @@
 package io.github.datacatering.datacaterer.api.connection
 
 import io.github.datacatering.datacaterer.api.model.Constants.{ALL_COMBINATIONS, ENABLE_DATA_VALIDATION, FORMAT}
-import io.github.datacatering.datacaterer.api.{ConnectionConfigWithTaskBuilder, CountBuilder, FieldBuilder, GeneratorBuilder, MetadataSourceBuilder, SchemaBuilder, StepBuilder, TaskBuilder, TasksBuilder, ValidationBuilder, WaitConditionBuilder}
 import io.github.datacatering.datacaterer.api.model.{Step, Task}
+import io.github.datacatering.datacaterer.api.{ConnectionConfigWithTaskBuilder, CountBuilder, FieldBuilder, GeneratorBuilder, MetadataSourceBuilder, StepBuilder, TaskBuilder, TasksBuilder, ValidationBuilder, WaitConditionBuilder}
 
 import scala.annotation.varargs
 
@@ -30,17 +30,12 @@ trait ConnectionTaskBuilder[T] {
     this
   }
 
-  @varargs def schema(fields: FieldBuilder*): ConnectionTaskBuilder[T] = {
-    this.step = Some(getStep.schema(fields: _*))
+  @varargs def fields(fields: FieldBuilder*): ConnectionTaskBuilder[T] = {
+    this.step = Some(getStep.fields(fields: _*))
     this
   }
 
-  def schema(schemaBuilder: SchemaBuilder): ConnectionTaskBuilder[T] = {
-    this.step = Some(getStep.schema(schemaBuilder))
-    this
-  }
-
-  def schema(metadataSourceBuilder: MetadataSourceBuilder): ConnectionTaskBuilder[T] = {
+  def fields(metadataSourceBuilder: MetadataSourceBuilder): ConnectionTaskBuilder[T] = {
     this.connectionConfigWithTaskBuilder = this.connectionConfigWithTaskBuilder.metadataSource(metadataSourceBuilder)
     this.step = Some(getStep.options(metadataSourceBuilder.metadataSource.allOptions))
     this

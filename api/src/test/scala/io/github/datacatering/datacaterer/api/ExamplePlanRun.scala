@@ -12,11 +12,11 @@ class ExamplePlanRun extends PlanRun {
     addTask("account_json", "fs_json",
       step.name("account")
         .option(("path", "app/src/test/resources/sample/json/account"))
-        .schema(schema.addFields(
+        .fields(
           field.name("account_id"),
           field.name("year").`type`(IntegerType).min(2022),
           field.name("name").static("peter")
-        ))
+        )
     )
 
   execute(List(tasksBuilder), planBuilder)
@@ -34,7 +34,7 @@ class MinimalPlanWithManualTaskRun extends PlanRun {
   val tasksBuilder = tasks.addTask("my_task", "mininal_json",
     step
       .option(("path", "app/src/test/resources/sample/json/minimal"))
-      .schema(schema.addFields(field.name("account_id")))
+      .fields(field.name("account_id"))
   )
   execute(tasksBuilder)
 }
@@ -42,7 +42,7 @@ class MinimalPlanWithManualTaskRun extends PlanRun {
 
 class LargeCountRun extends PlanRun {
   val jsonTask = json("mininal_json", "app/src/test/resources/sample/json/large")
-    .schema(schema.addFields(
+    .fields(
       field.name("account_id"),
       field.name("year").`type`(IntegerType).min(2022),
       field.name("name").expression("#{Name.name}"),
@@ -51,15 +51,15 @@ class LargeCountRun extends PlanRun {
       field.name("status").oneOf("open", "closed"),
       field.name("txn_list")
         .`type`(ArrayType)
-        .schema(schema.addFields(
+        .fields(
           field.name("id"),
           field.name("date").`type`(DateType).min(Date.valueOf("2022-01-01")),
           field.name("amount").`type`(DoubleType)
-        ))
-    ))
+        )
+    )
     .count(count
       .records(10000)
-      .recordsPerColumn(100, "account_id")
+      .recordsPerField(100, "account_id")
     )
 
   val conf = configuration
@@ -90,12 +90,12 @@ class DocsPlanRun extends PlanRun {
         .count(
           count
             .records(1000)
-            .recordsPerColumnGenerator(
+            .recordsPerFieldGenerator(
               generator.min(1).max(2),
               "account_id"
             )
         )
-        .schema(schema.addField("account_id"))
+        .fields(field.name("account_id"))
     )
 }
 
@@ -110,7 +110,7 @@ class FullExamplePlanRun extends PlanRun {
       step
         .name("transaction")
         .jdbcTable("account.transaction")
-        .schema(schema.addFields(
+        .fields(
           accountIdField,
           field.name("txn_id").regex("txn_[0-9]{5}"),
           field.name("year").`type`(IntegerType).sql("YEAR(date)"),
@@ -118,16 +118,16 @@ class FullExamplePlanRun extends PlanRun {
           field.name("date").`type`(DateType).min(startDate),
           field.name("amount").`type`(DoubleType).max(10000),
           field.name("credit_debit").sql("CASE WHEN amount < 0 THEN 'C' ELSE 'D' END")
-        )),
+        ),
       step
         .name("account")
         .jdbcTable("account.account")
-        .schema(schema.addFields(
+        .fields(
           accountIdField,
           nameField,
           field.name("open_date").`type`(DateType).min(startDate),
           field.name("status").oneOf("open", "closed", "pending")
-        ))
+        )
     )
 
   val jsonTask = task.name("json_account_details")
@@ -135,17 +135,17 @@ class FullExamplePlanRun extends PlanRun {
       step
         .name("account_info")
         .path("/tmp/src/main/resources/sample/json")
-        .schema(schema.addFields(
+        .fields(
           accountIdField,
           nameField,
           field.name("txn_list")
             .`type`(ArrayType)
-            .schema(schema.addFields(
+            .fields(
               field.name("id"),
               field.name("date").`type`(DateType).min(startDate),
               field.name("amount").`type`(DoubleType),
-            ))
-        ))
+            )
+        )
     )
 
   val conf = configuration
@@ -169,7 +169,7 @@ class FullExamplePlanRun extends PlanRun {
 class ConnectionBasedApiPlanRun extends PlanRun {
 
   val csvGenerate = csv("my_csv", "app/src/test/resources/sample/connection-api/csv")
-    .schema(
+    .fields(
       field.name("account_id"),
       field.name("year").`type`(IntegerType).min(2022)
     )
@@ -177,14 +177,14 @@ class ConnectionBasedApiPlanRun extends PlanRun {
 
   val jsonGenerate = json("my_json", "app/src/test/resources/sample/connection-api/json")
     .partitionBy("age")
-    .schema(
+    .fields(
       field.name("name").expression("#{Name.name}"),
       field.name("age").`type`(IntegerType).min(18).max(20),
     )
     .count(count.records(100))
 
   val x = json("account_info", "/tmp/data-caterer/json")
-    .schema(
+    .fields(
       field.name("account_id"),
       field.name("year").`type`(IntegerType).min(2022),
       field.name("name").expression("#{Name.name}"),
@@ -193,11 +193,11 @@ class ConnectionBasedApiPlanRun extends PlanRun {
       field.name("status").oneOf("open", "closed"),
       field.name("txn_list")
         .`type`(ArrayType)
-        .schema(schema.addFields(
+        .fields(
           field.name("id"),
           field.name("date").`type`(DateType).min(Date.valueOf("2022-01-01")),
           field.name("amount").`type`(DoubleType),
-        ))
+        )
     )
     .count(count.records(100))
 
@@ -205,29 +205,29 @@ class ConnectionBasedApiPlanRun extends PlanRun {
     .task(
       step
         .jdbcTable("public.accounts")
-        .schema(
+        .fields(
           field.name("account_id"),
           field.name("name").expression("#{Name.name}"),
         ),
       step
         .jdbcTable("public.transactions")
-        .schema(
+        .fields(
           field.name("account_id"),
           field.name("amount").`type`(DoubleType).max(1000)
         )
-        .count(count.recordsPerColumn(10, "account_id"))
+        .count(count.recordsPerField(10, "account_id"))
     )
 
   val postgresAcc = postgres("my_postgres")
     .table("public.accounts")
-    .schema(
+    .fields(
       field.name("account_id")
     )
   var jsonTask = json("my_json", "/tmp/json")
-    .schema(
+    .fields(
       field.name("account_id"),
       field.name("customer_details")
-        .schema(
+        .fields(
           field.name("name").sql("_join_txn_name").`type`(DoubleType).enableEdgeCases(true).edgeCaseProbability(0.1)
         ),
       field.name("_join_txn_name").omit(true)
@@ -237,7 +237,7 @@ class ConnectionBasedApiPlanRun extends PlanRun {
     List(jsonTask -> List("account_id", ""))
   )
   val csvTask = csv("my_csv", "s3a://my-bucket/csv/accounts")
-    .schema(
+    .fields(
       field.name("account_id"),
   )
   val conf = configuration
@@ -259,7 +259,7 @@ class ConnectionBasedApiPlanRun extends PlanRun {
 
 class DocumentationPlanRun extends PlanRun {
   val jsonTask = json("account_info", "/opt/app/data/json")
-    .schema(
+    .fields(
       field.name("account_id").regex("ACC[0-9]{8}"),
       field.name("year").`type`(IntegerType).sql("YEAR(date)"),
       field.name("name").expression("#{Name.name}"),
@@ -268,23 +268,23 @@ class DocumentationPlanRun extends PlanRun {
       field.name("status").oneOf("open", "closed"),
       field.name("txn_list")
         .`type`(ArrayType)
-        .schema(schema.addFields(
+        .fields(
           field.name("id").sql("_join_txn_id"),
           field.name("date").`type`(DateType).min(Date.valueOf("2022-01-01")),
           field.name("amount").`type`(DoubleType)
-        )),
+        ),
       field.name("_join_txn_id").omit(true)
     )
     .count(count.records(100))
 
   val csvTxns = csv("transactions", "/opt/app/data/csv")
-    .schema(
+    .fields(
       field.name("account_id"),
       field.name("txn_id"),
       field.name("amount"),
       field.name("merchant").expression("#{Company.name}"),
     )
-    .count(count.recordsPerColumnGenerator(generator.min(1).max(5), "account_id"))
+    .count(count.recordsPerFieldGenerator(generator.min(1).max(5), "account_id"))
 
   val foreignKeySetup = plan
     .addForeignKeyRelationship(jsonTask, "account_id", List((csvTxns, "account_id")))

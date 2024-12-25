@@ -37,7 +37,7 @@ class DeleteRecordProcessor(connectionConfigsByName: Map[String, Map[String, Str
     if (plan.sinkOptions.isDefined && plan.sinkOptions.get.foreignKeys.nonEmpty) {
       val sinkOpts = plan.sinkOptions.get
       val allForeignKeys = sinkOpts.getAllForeignKeyRelations
-      val foreignKeysWithoutColNames = sinkOpts.foreignKeysWithoutColumnNames
+      val foreignKeysWithoutColNames = sinkOpts.foreignKeysWithoutFieldNames
       val foreignKeyDeleteOrder = ForeignKeyUtil.getDeleteOrder(foreignKeysWithoutColNames)
 
       foreignKeyDeleteOrder.foreach(foreignKeyName => {
@@ -124,7 +124,7 @@ class DeleteRecordProcessor(connectionConfigsByName: Map[String, Map[String, Str
         // need to apply SQL expressions if it is a 'delete' foreign key relationship
         val mappedDf = optFullForeignKey.filter(_._2.equalsIgnoreCase("delete"))
           .map(fk => {
-            val sqlExpr = fk._1.columns
+            val sqlExpr = fk._1.fields
             df.selectExpr(sqlExpr: _*)
           })
           .getOrElse(df)

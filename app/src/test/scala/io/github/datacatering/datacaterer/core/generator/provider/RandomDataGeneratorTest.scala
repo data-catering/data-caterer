@@ -2,7 +2,7 @@ package io.github.datacatering.datacaterer.core.generator.provider
 
 import io.github.datacatering.datacaterer.api.model.Constants.{ARRAY_MINIMUM_LENGTH, DISTINCT_COUNT, DISTRIBUTION, DISTRIBUTION_EXPONENTIAL, DISTRIBUTION_NORMAL, DISTRIBUTION_RATE_PARAMETER, ENABLED_EDGE_CASE, ENABLED_NULL, EXPRESSION, IS_UNIQUE, MAP_MAXIMUM_SIZE, MAP_MINIMUM_SIZE, MAXIMUM, MAXIMUM_LENGTH, MEAN, MINIMUM, MINIMUM_LENGTH, PROBABILITY_OF_EDGE_CASE, PROBABILITY_OF_NULL, ROUND, ROW_COUNT, STANDARD_DEVIATION}
 import io.github.datacatering.datacaterer.core.generator.provider.RandomDataGenerator._
-import io.github.datacatering.datacaterer.core.model.Constants.INDEX_INC_COL
+import io.github.datacatering.datacaterer.core.model.Constants.INDEX_INC_FIELD
 import org.apache.spark.sql.types._
 import org.junit.runner.RunWith
 import org.scalatest.funsuite.AnyFunSuite
@@ -348,7 +348,7 @@ class RandomDataGeneratorTest extends AnyFunSuite {
     val intGenerator = new RandomIntDataGenerator(StructField("random_int", IntegerType, false, metadata))
 
     assert(intGenerator.edgeCases.nonEmpty)
-    assertResult(s"CAST(100 + $INDEX_INC_COL + 1 AS INT)")(intGenerator.generateSqlExpression)
+    assertResult(s"CAST(100 + $INDEX_INC_FIELD + 1 AS INT)")(intGenerator.generateSqlExpression)
   }
 
   test("Can create random int generator with normal distribution") {

@@ -23,7 +23,7 @@ public class ExampleJavaPlanRun extends PlanRun {
     {
         String[] accountStatus = {"open", "closed", "pending", "suspended"};
         var jsonTask = json("account_info", baseFolder + "/json", Map.of(Constants.SAVE_MODE(), "overwrite"))
-                .schema(
+                .fields(
                         field().name("account_id").regex("ACC[0-9]{8}"),
                         field().name("year").type(IntegerType.instance()).sql("YEAR(date)"),
                         field().name("balance").type(DoubleType.instance()).min(10).max(1000),
@@ -31,13 +31,13 @@ public class ExampleJavaPlanRun extends PlanRun {
                         field().name("status").oneOf((Object[]) accountStatus),
                         field().name("update_history")
                                 .type(ArrayType.instance())
-                                .schema(
+                                .fields(
                                         field().name("updated_time").type(TimestampType.instance()).min(Timestamp.valueOf("2022-01-01 00:00:00")),
                                         field().name("prev_status").oneOf((Object[]) accountStatus),
                                         field().name("new_status").oneOf((Object[]) accountStatus)
                                 ),
                         field().name("customer_details")
-                                .schema(
+                                .fields(
                                         field().name("name").sql("_join_txn_name"),
                                         field().name("age").type(IntegerType.instance()).min(18).max(90),
                                         field().name("city").expression("#{Address.city}")
@@ -47,7 +47,7 @@ public class ExampleJavaPlanRun extends PlanRun {
                 .count(count().records(100));
 
         var csvTxns = csv("transactions", baseFolder + "/csv", Map.of(Constants.SAVE_MODE(), "overwrite", "header", "true"))
-                .schema(
+                .fields(
                         field().name("account_id"),
                         field().name("txn_id"),
                         field().name("name"),
@@ -56,7 +56,7 @@ public class ExampleJavaPlanRun extends PlanRun {
                 )
                 .count(
                         count()
-                                .recordsPerColumnGenerator(100, generator().min(1).max(2), "account_id", "name")
+                                .recordsPerFieldGenerator(100, generator().min(1).max(2), "account_id", "name")
                 )
                 .validationWait(waitCondition().pause(1))
                 .validations(

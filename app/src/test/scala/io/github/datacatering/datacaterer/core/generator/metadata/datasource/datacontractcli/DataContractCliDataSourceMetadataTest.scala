@@ -60,7 +60,7 @@ class DataContractCliDataSourceMetadataTest extends SparkSuite {
     result.map(_.readOptions(METADATA_IDENTIFIER)).toSet shouldBe Set("model1", "model2")
   }
 
-  test("Can convert data contract CLI file to column metadata") {
+  test("Can convert data contract CLI file to field metadata") {
     val metadata = DataContractCliDataSourceMetadata("test", "test", Map(DATA_CONTRACT_FILE -> "src/test/resources/sample/metadata/datacontractcli/datacontract.yaml"))
 
     val result = metadata.getSubDataSourcesMetadata(sparkSession)

@@ -62,8 +62,8 @@ fetch("http://localhost:9898/run/history", {
             for (const runUpdatesById of planHistoryByIdValues) {
                 let runUpdates = runUpdatesById.runs;
                 let latestRunUpdate = runUpdates[runUpdates.length - 1];
-                latestRunUpdate["createdTs"] = latestRunUpdate["createdTs"].replace("T", " ").replace(/\+.*/, "");
-                latestRunUpdate["updatedTs"] = latestRunUpdate["updatedTs"].replace("T", " ").replace(/\+.*/, "");
+                latestRunUpdate["createdTs"] = new Date(latestRunUpdate["createdTs"]).toISOString();
+                latestRunUpdate["updatedTs"] = new Date(latestRunUpdate["updatedTs"]).toISOString();
                 let reportHref = `http://localhost:9898/report/${latestRunUpdate["id"]}/index.html`;
                 latestRunUpdate["reportLink"] = latestRunUpdate["reportLink"] === "" ? "" : `<a href=${reportHref} target="_blank" rel="noopener noreferrer">Report</a>`;
                 let generationSummary = Array.from(latestRunUpdate["generationSummary"])

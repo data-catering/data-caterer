@@ -69,11 +69,11 @@ class RecordCountUtilTest extends AnyFunSuite {
     assertResult(100)(result._2.head._2.numRecordsPerBatch)
   }
 
-  test("Can calculate record count based on per column count, task records per batch should be the pre-records per column count") {
+  test("Can calculate record count based on per field count, task records per batch should be the pre-records per field count") {
     val task = Task("my_task", List(
       Step(
         "my_step",
-        count = new CountBuilder().records(100).recordsPerColumn(10, "account_id").count
+        count = new CountBuilder().records(100).recordsPerField(10, "account_id").count
       )))
     val result = RecordCountUtil.calculateNumBatches(List(task), generationConfig)
 
@@ -85,12 +85,12 @@ class RecordCountUtilTest extends AnyFunSuite {
     assertResult(10)(result._2.head._2.numRecordsPerBatch)
   }
 
-  test("Can calculate average record count based on per column generator count, task records per batch should be the pre-records per column count") {
+  test("Can calculate average record count based on per field generator count, task records per batch should be the pre-records per field count") {
     val task = Task("my_task", List(
       Step(
         "my_step",
         count = new CountBuilder()
-          .recordsPerColumnGenerator(
+          .recordsPerFieldGenerator(
             100,
             new GeneratorBuilder().min(5).max(15),
             "account_id"
@@ -123,12 +123,12 @@ class RecordCountUtilTest extends AnyFunSuite {
     assertResult(10)(result._2.head._2.numRecordsPerBatch)
   }
 
-  test("Can override record count per step from config but still preserve per column count") {
+  test("Can override record count per step from config but still preserve per field count") {
     val generationConfig = GenerationConfig(100, Some(10))
     val task = Task("my_task", List(
       Step(
         "my_step",
-        count = new CountBuilder().records(10000).recordsPerColumn(5, "account_id").count
+        count = new CountBuilder().records(10000).recordsPerField(5, "account_id").count
     )))
     val result = RecordCountUtil.calculateNumBatches(List(task), generationConfig)
 

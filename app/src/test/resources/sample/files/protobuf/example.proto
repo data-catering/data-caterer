@@ -2,12 +2,8 @@ syntax = "proto3";
 
 package com.github.pflooky;
 
-message OtherExample {
-  string other = 1;
-}
+import "my-import.proto";
 
-// Contains a representative sample of all types, using the groupings defined
-// here: https://protobuf.dev/programming-guides/field_presence/#presence-in-proto3-apis
 message Proto3AllTypes {
   enum NestedEnum {
     NOTHING = 0;
@@ -16,6 +12,9 @@ message Proto3AllTypes {
   }
   message NestedMessage {
     string nst_msg = 1;
+  }
+  message OtherExample {
+    string other = 1;
   }
 
   int64 int = 1;
@@ -36,4 +35,5 @@ message Proto3AllTypes {
   }
   map<string, string> map = 13;
   NestedMessage nst_msg_val = 14;
+  ImportExample import_example = 15;
 }

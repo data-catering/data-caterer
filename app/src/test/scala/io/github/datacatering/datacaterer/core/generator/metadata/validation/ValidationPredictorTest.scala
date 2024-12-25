@@ -24,11 +24,10 @@ class ValidationPredictorTest extends AnyFunSuite {
     result.filter(_.isInstanceOf[ExpressionValidation]).forall(v => expectedExprValidations.contains(v.asInstanceOf[ExpressionValidation].expr))
     result.filter(_.isInstanceOf[GroupByValidation]).foreach(v => {
       val grp = v.asInstanceOf[GroupByValidation]
-      assertResult(Seq("id"))(grp.groupByCols)
-      assertResult("unique")(grp.aggCol)
+      assertResult(Seq("id"))(grp.groupByFields)
+      assertResult("unique")(grp.aggField)
       assertResult("count")(grp.aggType)
       assertResult("count == 1")(grp.aggExpr)
     })
   }
-
 }

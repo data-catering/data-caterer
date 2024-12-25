@@ -13,7 +13,7 @@ object ConfigurationMapper {
   def configurationMapping(
                             configurationRequest: ConfigurationRequest,
                             installDirectory: String,
-                            connections: List[ConnectionTaskBuilder[_]]
+                            connections: List[ConnectionTaskBuilder[_]] = List()
                           ): DataCatererConfigurationBuilder = {
     val isConnectionContainsMetadataSource = connections.exists(conn => conn.connectionConfigWithTaskBuilder.options.contains(METADATA_SOURCE_TYPE))
     val configUpdatedFromConnections = if (isConnectionContainsMetadataSource) {

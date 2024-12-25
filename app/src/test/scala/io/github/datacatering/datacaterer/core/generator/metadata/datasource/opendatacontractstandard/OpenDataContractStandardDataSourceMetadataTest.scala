@@ -9,7 +9,7 @@ import org.scalatestplus.junit.JUnitRunner
 @RunWith(classOf[JUnitRunner])
 class OpenDataContractStandardDataSourceMetadataTest extends SparkSuite {
 
-  test("Can convert ODCS file to column metadata") {
+  test("Can convert ODCS file to field metadata") {
     val connectionConfig = Map(DATA_CONTRACT_FILE -> "src/test/resources/sample/metadata/odcs/full-example.odcs.yaml")
     val odcsMetadata = OpenDataContractStandardDataSourceMetadata("odcs", "parquet", connectionConfig)
     val result = odcsMetadata.getSubDataSourcesMetadata
@@ -17,7 +17,7 @@ class OpenDataContractStandardDataSourceMetadataTest extends SparkSuite {
     validateResult(connectionConfig, result)
   }
 
-  test("Can convert ODCS v3.0.0 file to column metadata") {
+  test("Can convert ODCS v3.0.0 file to field metadata") {
     val connectionConfig = Map(DATA_CONTRACT_FILE -> "src/test/resources/sample/metadata/odcs/full-example-v3.odcs.yaml")
     val odcsMetadata = OpenDataContractStandardDataSourceMetadata("odcs", "parquet", connectionConfig)
     val result = odcsMetadata.getSubDataSourcesMetadata

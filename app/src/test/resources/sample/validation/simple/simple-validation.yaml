@@ -6,6 +6,15 @@ dataSources:
     - options:
         path: "app/src/test/resources/sample/json/txn-gen"
       validations:
+        - field: amount
+          validation:
+            - type: "null"
+              negate: true
+            - type: between
+              min: 1
+              max: 10
+              description: "hello"
+              errorThreshold: 2
         - expr: "amount < 100"
         - expr: "year == 2021"
           errorThreshold: 0.1

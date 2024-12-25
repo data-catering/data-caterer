@@ -37,7 +37,7 @@ import {
     createNewConfigRow,
     getConfiguration
 } from "./helper-configuration.js";
-import {createGenerationElements, getGeneration} from "./helper-generation.js";
+import {createGenerationElements, getGeneration, getGenerationYaml} from "./helper-generation.js";
 import {createValidationFromPlan, getValidations} from "./helper-validation.js";
 import {createCountElementsFromPlan, createRecordCount, getRecordCount} from "./helper-record-count.js";
 import {configurationOptionsMap, reportConfigKeys} from "./configuration-data.js";
@@ -49,7 +49,7 @@ const configurationDiv = document.getElementById("configuration-details-body");
 const expandAllButton = document.getElementById("expand-all-button");
 const collapseAllButton = document.getElementById("collapse-all-button");
 const relationshipExampleSwitch = document.getElementById("showRelationshipExample");
-const perColumnExampleSwitch = document.getElementById("showPerColumnExample");
+const perFieldExampleSwitch = document.getElementById("showPerFieldExample");
 const planName = document.getElementById("plan-name");
 let numDataSources = 1;
 
@@ -84,10 +84,10 @@ relationshipExampleSwitch.addEventListener("click", function () {
         txn2.classList.replace("example-2-disabled", "example-2-enabled");
     }
 });
-perColumnExampleSwitch.addEventListener("click", function () {
-    let table = $("#with-per-unique-column-values-example-transactions");
+perFieldExampleSwitch.addEventListener("click", function () {
+    let table = $("#with-per-unique-field-values-example-transactions");
     let colIndex = [1, 2, 4, 5];
-    if ($(perColumnExampleSwitch).is(":checked")) {
+    if ($(perFieldExampleSwitch).is(":checked")) {
         colIndex.forEach(i => $(table).bootstrapTable("showRow", {index: i}));
     } else {
         colIndex.forEach(i => $(table).bootstrapTable("hideRow", {index: i}));
@@ -223,7 +223,7 @@ async function createDataConnectionInput(index) {
 /*
 Will contain:
 - Data generation: auto, manual
-    - Record count: total, per column, generated
+    - Record count: total, per field, generated
 - Validation: auto, manual
  */
 async function createDataSourceConfiguration(index, closeButton, divider) {
@@ -261,7 +261,14 @@ function createReportConfiguration() {
 }
 
 function getOverrideConnectionOptions(dataSource, currentDataSource) {
-    currentDataSource["options"] = getOverrideConnectionOptionsAsMap(dataSource, currentDataSource);
+    let additionalOps = getOverrideConnectionOptionsAsMap(dataSource);
+    if (!currentDataSource["options"]) {
+        currentDataSource["options"] = additionalOps;
+    } else {
+        Object.entries(additionalOps).forEach(opt => {
+            currentDataSource["options"][opt[0]] = opt[1];
+        });
+    }
 }
 
 createReportConfiguration();
@@ -273,28 +280,47 @@ function getPlanDetails(form) {
     let planName = form.querySelector("#plan-name").value;
     let allDataSources = form.querySelectorAll(".data-source-config-container");
     const runId = crypto.randomUUID();
-    let allUserInputs = [];
-    for (let dataSource of allDataSources) {
-        let currentDataSource = {};
-        // get data connection name
-        currentDataSource["name"] = $(dataSource).find("select[class~=data-connection-name]").val();
-        currentDataSource["taskName"] = dataSource.querySelector(".task-name-field").value;
+    let planTasks = [];
+    let plan = {name: planName, tasks: planTasks, validations: []};
+    let tasks = [];
+    let validations = [];
+    let taskToDataSource = {};
 
-        getGeneration(dataSource, currentDataSource);
-        getValidations(dataSource, currentDataSource);
-        getRecordCount(dataSource, currentDataSource);
-        getOverrideConnectionOptions(dataSource, currentDataSource);
-        allUserInputs.push(currentDataSource);
+    for (let dataSource of allDataSources) {
+        let currentTask = {};
+        let currentValidation = {};
+        let currentTaskValidations = {};
+
+        let dataSourceName = $(dataSource).find("select[class~=data-connection-name]").val();
+        currentTask["name"] = dataSource.querySelector(".task-name-field").value;
+        planTasks.push({name: currentTask["name"], dataSourceName: dataSourceName});
+        taskToDataSource[currentTask["name"]] = dataSourceName;
+        currentValidation["name"] = dataSource.querySelector(".task-name-field").value;
+        currentValidation["dataSources"] = {};
+
+        getGenerationYaml(dataSource, currentTask);
+        getValidations(dataSource, currentTaskValidations);
+        getRecordCount(dataSource, currentTask);
+        getOverrideConnectionOptions(dataSource, currentTask);
+        if (Object.keys(currentTask).length > 0) {
+            tasks.push(currentTask);
+        }
+        if (Object.keys(currentTaskValidations).length > 0) {
+            plan["validations"].push(currentTask["name"]);
+            currentValidation["dataSources"][dataSourceName] = [currentTaskValidations];
+            validations.push(currentValidation);
+        }
     }
 
-    let mappedForeignKeys = getForeignKeys();
+    let mappedForeignKeys = getForeignKeys(taskToDataSource);
+    plan["sinkOptions"] = {foreignKeys: mappedForeignKeys};
     let mappedConfiguration = getConfiguration();
 
     const requestBody = {
-        name: planName,
         id: runId,
-        dataSources: allUserInputs,
-        foreignKeys: mappedForeignKeys,
+        plan: plan,
+        tasks: tasks,
+        validation: validations,
         configuration: mappedConfiguration
     };
     return {planName, runId, requestBody};
@@ -346,7 +372,7 @@ function savePlan() {
     let savePlanButton = document.getElementById("save-plan");
     savePlanButton.addEventListener("click", function () {
         let form = document.getElementById("plan-form");
-        let {planName, requestBody} = getPlanDetails(form);
+        let {planName,  requestBody} = getPlanDetails(form);
         console.log(JSON.stringify(requestBody));
         fetch("http://localhost:9898/plan", {
             method: "POST",
@@ -368,10 +394,12 @@ function savePlan() {
                 }
             })
             .then(resp => {
-                if (resp.includes("fail")) {
-                    createToast(planName, `Plan ${planName} save failed!`, "fail");
-                } else {
-                    createToast(planName, `Plan ${planName} saved.`, "success");
+                if (resp) {
+                    if (resp.includes("fail")) {
+                        createToast(planName, `Plan ${planName} save failed!`, "fail");
+                    } else {
+                        createToast(planName, `Plan ${planName} saved.`, "success");
+                    }
                 }
             })
     });
@@ -399,23 +427,55 @@ if (currUrlParams.includes("plan-name=")) {
             // clear out default data source
             document.querySelector(".data-source-config-container").remove();
             let tasksDetailsBody = document.getElementById("tasks-details-body");
-            for (const dataSource of respJson.dataSources) {
+            //need to first group by data source for task and validation
+            let dataSourceToTaskName = new Map();
+            let taskNameToDataSource = new Map();
+            let taskNameToValidations = new Map();
+            let taskNameToTask = new Map();
+            respJson.plan.tasks.forEach(t => {
+                dataSourceToTaskName.set(t.dataSourceName, t.name);
+                taskNameToDataSource.set(t.name, t.dataSourceName);
+            });
+            respJson.tasks.forEach(t => taskNameToTask.set(t.name, t));
+
+            let allTaskNames = [];
+            respJson.plan.tasks.forEach(t => allTaskNames.push(t.name));
+            respJson.plan.validations.forEach(v => {
+                if (!allTaskNames.includes(v)) {
+                    allTaskNames.push(v);
+                }
+            });
+            respJson.validation.forEach(v => {
+                Object.entries(v.dataSources).forEach(dsV => {
+                    let dataSourceName = dsV[0];
+                    let dataSourceValidations = dsV[1][0];
+                    let taskName = dataSourceToTaskName.get(dataSourceName);
+                    taskNameToValidations.set(taskName, dataSourceValidations);
+                });
+            });
+
+            for (const taskName of allTaskNames) {
                 numDataSources += 1;
                 let newDataSource = await createDataSourceForPlan(numDataSources);
                 tasksDetailsBody.append(newDataSource);
-                $(newDataSource).find(".task-name-field").val(dataSource.taskName);
-                let updatedConnectionName = $(newDataSource).find(".data-connection-name").selectpicker("val", dataSource.name);
+                $(newDataSource).find(".task-name-field").val(taskName);
+                let dataSourceName = taskNameToDataSource.get(taskName);
+                let task = taskNameToTask.get(taskName);
+                let validation = taskNameToValidations.get(taskName);
+                let updatedConnectionName = $(newDataSource).find(".data-connection-name").selectpicker("val", dataSourceName);
                 dispatchEvent(updatedConnectionName, "change");
                 await wait(100);
-                for (let [key, value] of Object.entries(dataSource.options)) {
+                for (let [key, value] of Object.entries(task.options)) {
                     $(newDataSource).find(`[class~=data-source-property][aria-label=${key}]`).val(value);
                 }
 
-                await createGenerationElements(dataSource, newDataSource, numDataSources);
-                createCountElementsFromPlan(dataSource, newDataSource);
-                await createValidationFromPlan(dataSource, newDataSource, numDataSources);
+                await createGenerationElements(task, newDataSource, numDataSources);
+                createCountElementsFromPlan(task, newDataSource);
+                await createValidationFromPlan(validation, newDataSource, numDataSources);
             }
-            await createForeignKeysFromPlan(respJson);
+            if (respJson.plan.sinkOptions && respJson.plan.sinkOptions.foreignKeys) {
+                await createForeignKeysFromPlan(respJson.plan.sinkOptions.foreignKeys);
+            }
             createConfigurationFromPlan(respJson);
             wait(500).then(r => $(document).find('button[aria-controls="report-body"]:not(.collapsed),button[aria-controls="configuration-body"]:not(.collapsed)').click());
         });

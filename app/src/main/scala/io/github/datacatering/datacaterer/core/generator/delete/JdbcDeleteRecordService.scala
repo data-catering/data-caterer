@@ -13,14 +13,14 @@ class JdbcDeleteRecordService extends DeleteRecordService {
 
   override def deleteRecords(dataSourceName: String, trackedRecords: DataFrame, options: Map[String, String])(implicit sparkSession: SparkSession): Unit = {
     val table = options.getOrElse(JDBC_TABLE, throw InvalidDataSourceOptions(dataSourceName, JDBC_TABLE))
-    val whereClauseColumns = trackedRecords.columns.map(c => s"$c = ?").mkString(" AND ")
+    val whereClauseFields = trackedRecords.columns.map(c => s"$c = ?").mkString(" AND ")
 
     trackedRecords.rdd.foreachPartition(partition => {
       val url = options.getOrElse(URL, throw InvalidDataSourceOptions(dataSourceName, URL))
       val username = options.getOrElse(USERNAME, throw InvalidDataSourceOptions(dataSourceName, USERNAME))
       val password = options.getOrElse(PASSWORD, throw InvalidDataSourceOptions(dataSourceName, PASSWORD))
       val connection = DriverManager.getConnection(url, username, password)
-      val preparedStatement = connection.prepareStatement(s"DELETE FROM $table WHERE $whereClauseColumns")
+      val preparedStatement = connection.prepareStatement(s"DELETE FROM $table WHERE $whereClauseFields")
 
       partition.grouped(BATCH_SIZE).foreach(batch => {
         batch.foreach(r => {

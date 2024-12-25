@@ -102,7 +102,7 @@ object ExpressionPredictor {
         case _ => None
       }
       if (optExpression.isDefined) {
-        LOGGER.debug(s"Identified column as a faker expression, column-name=${structField.name}, expression=${optExpression.get}")
+        LOGGER.debug(s"Identified field as a faker expression, field-name=${structField.name}, expression=${optExpression.get}")
       }
       optExpression.map(e => e.copy(fakerExpression = s"#{${e.fakerExpression}}"))
     } else {

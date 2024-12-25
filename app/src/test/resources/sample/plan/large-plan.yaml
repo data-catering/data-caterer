@@ -10,6 +10,11 @@ tasks:
 
 sinkOptions:
   foreignKeys:
-    - - "json.file_account.account_id"
-      - - "csv.transactions.account_id"
-      - []
+    - source:
+        dataSource: "json"
+        step: "file_account"
+        fields: [ "account_id" ]
+      generate:
+        - dataSource: "csv"
+          step: "transaction"
+          fields: [ "account_id" ]

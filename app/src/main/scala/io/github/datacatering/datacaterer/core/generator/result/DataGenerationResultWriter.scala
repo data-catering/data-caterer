@@ -97,7 +97,7 @@ class DataGenerationResultWriter(val dataCatererConfiguration: DataCatererConfig
     val fieldMetadata = dataSourceResults.flatMap(_.sinkResult.generatedMetadata)
       .groupBy(_.name)
       .map(field => {
-        val metadataList = field._2.map(_.generator.map(gen => gen.options).getOrElse(Map()))
+        val metadataList = field._2.map(_.options)
         //TODO combine the metadata from each batch together to show summary
         field._2.head
       }).toList

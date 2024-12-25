@@ -25,30 +25,32 @@ class ValidationProcessorTest extends SparkSuite {
 
   test("Can pre-filter data before running validation") {
     val validation = ValidationBuilder()
-      .preFilter(PreFilterBuilder().filter(ValidationBuilder().col("transaction_id").in("txn3", "txn4")))
-      .col("amount").greaterThan(100)
+      .preFilter(PreFilterBuilder().filter(ValidationBuilder().field("transaction_id").in("txn3", "txn4")))
+      .field("amount").greaterThan(100)
     val validationProcessor = new ValidationProcessor(Map(), None, ValidationConfig(), FoldersConfig())
     val result = validationProcessor.tryValidate(df, validation)
 
-    assert(result.isSuccess)
-    assertResult(2)(result.total)
-    assert(result.sampleErrorValues.isEmpty)
+    assertResult(1)(result.size)
+    assert(result.head.isSuccess)
+    assertResult(2)(result.head.total)
+    assert(result.head.sampleErrorValues.isEmpty)
   }
 
   test("Can pre-filter data with multiple conditions before running validation") {
     val validation = ValidationBuilder()
       .preFilter(PreFilterBuilder()
-        .filter(ValidationBuilder().col("transaction_id").in("txn3", "txn4"))
-        .and(ValidationBuilder().col("account_id").isEqual("acc123"))
-        .and(ValidationBuilder().col("name").isEqual("peter"))
+        .filter(ValidationBuilder().field("transaction_id").in("txn3", "txn4"))
+        .and(ValidationBuilder().field("account_id").isEqual("acc123"))
+        .and(ValidationBuilder().field("name").isEqual("peter"))
       )
-      .col("amount").greaterThan(100)
+      .field("amount").greaterThan(100)
     val validationProcessor = new ValidationProcessor(Map(), None, ValidationConfig(), FoldersConfig())
     val result = validationProcessor.tryValidate(df, validation)
 
-    assert(result.isSuccess)
-    assertResult(2)(result.total)
-    assert(result.sampleErrorValues.isEmpty)
+    assertResult(1)(result.size)
+    assert(result.head.isSuccess)
+    assertResult(2)(result.head.total)
+    assert(result.head.sampleErrorValues.isEmpty)
   }
 
   test("Can read Iceberg data for validation") {
@@ -89,7 +91,7 @@ class ValidationProcessorTest extends SparkSuite {
       Map("test_connection" ->
         List(DataSourceValidation(
           options = connectionConfig.head._2,
-          validations = List(ValidationBuilder().col("transaction_id").startsWith("txn"))
+          validations = List(ValidationBuilder().field("transaction_id").startsWith("txn"))
         ))
       )
     )

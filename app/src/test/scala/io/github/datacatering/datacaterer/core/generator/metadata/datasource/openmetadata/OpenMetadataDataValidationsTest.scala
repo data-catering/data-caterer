@@ -65,9 +65,9 @@ class OpenMetadataDataValidationsTest extends AnyFunSuite {
     assertResult(1)(result.size)
     assert(result.forall(_.validation.isInstanceOf[GroupByValidation]))
     assert(result.exists(v => v.validation.asInstanceOf[GroupByValidation].aggExpr == "count >= 1.0"))
-    assert(result.exists(v => v.validation.asInstanceOf[GroupByValidation].groupByCols.isEmpty))
+    assert(result.exists(v => v.validation.asInstanceOf[GroupByValidation].groupByFields.isEmpty))
     assert(result.exists(v => v.validation.asInstanceOf[GroupByValidation].aggType == "count"))
-    assert(result.exists(v => v.validation.asInstanceOf[GroupByValidation].aggCol.isEmpty))
+    assert(result.exists(v => v.validation.asInstanceOf[GroupByValidation].aggField.isEmpty))
   }
 
   test("Can convert to table count check with only maxValue") {
@@ -79,9 +79,9 @@ class OpenMetadataDataValidationsTest extends AnyFunSuite {
     assertResult(1)(result.size)
     assert(result.forall(_.validation.isInstanceOf[GroupByValidation]))
     assert(result.exists(v => v.validation.asInstanceOf[GroupByValidation].aggExpr == "count <= 100.0"))
-    assert(result.exists(v => v.validation.asInstanceOf[GroupByValidation].groupByCols.isEmpty))
+    assert(result.exists(v => v.validation.asInstanceOf[GroupByValidation].groupByFields.isEmpty))
     assert(result.exists(v => v.validation.asInstanceOf[GroupByValidation].aggType == "count"))
-    assert(result.exists(v => v.validation.asInstanceOf[GroupByValidation].aggCol.isEmpty))
+    assert(result.exists(v => v.validation.asInstanceOf[GroupByValidation].aggField.isEmpty))
   }
 
   test("Can convert to table count check") {
@@ -94,9 +94,9 @@ class OpenMetadataDataValidationsTest extends AnyFunSuite {
     assert(result.forall(_.validation.isInstanceOf[GroupByValidation]))
     assert(result.exists(v => v.validation.asInstanceOf[GroupByValidation].aggExpr == "count >= 1.0"))
     assert(result.exists(v => v.validation.asInstanceOf[GroupByValidation].aggExpr == "count <= 100.0"))
-    assert(result.forall(v => v.validation.asInstanceOf[GroupByValidation].groupByCols.isEmpty))
+    assert(result.forall(v => v.validation.asInstanceOf[GroupByValidation].groupByFields.isEmpty))
     assert(result.forall(v => v.validation.asInstanceOf[GroupByValidation].aggType == "count"))
-    assert(result.forall(v => v.validation.asInstanceOf[GroupByValidation].aggCol.isEmpty))
+    assert(result.forall(v => v.validation.asInstanceOf[GroupByValidation].aggField.isEmpty))
   }
 
   test("Can convert to table count equal check") {
@@ -108,12 +108,12 @@ class OpenMetadataDataValidationsTest extends AnyFunSuite {
     assertResult(1)(result.size)
     assert(result.forall(_.validation.isInstanceOf[GroupByValidation]))
     assert(result.exists(v => v.validation.asInstanceOf[GroupByValidation].aggExpr == "count == 10.0"))
-    assert(result.exists(v => v.validation.asInstanceOf[GroupByValidation].groupByCols.isEmpty))
-    assert(result.exists(v => v.validation.asInstanceOf[GroupByValidation].aggCol.isEmpty))
+    assert(result.exists(v => v.validation.asInstanceOf[GroupByValidation].groupByFields.isEmpty))
+    assert(result.exists(v => v.validation.asInstanceOf[GroupByValidation].aggField.isEmpty))
     assert(result.exists(v => v.validation.asInstanceOf[GroupByValidation].aggType == "count"))
   }
 
-  test("Can convert to column max between validation") {
+  test("Can convert to field max between validation") {
     val params = Map("minValueForMaxInCol" -> "10", "maxValueForMaxInCol" -> "20")
     val testCase = createTestCaseWithParams(params)
 
@@ -123,12 +123,12 @@ class OpenMetadataDataValidationsTest extends AnyFunSuite {
     assert(result.forall(_.validation.isInstanceOf[GroupByValidation]))
     assert(result.exists(v => v.validation.asInstanceOf[GroupByValidation].aggExpr == "max(amount) >= 10.0"))
     assert(result.exists(v => v.validation.asInstanceOf[GroupByValidation].aggExpr == "max(amount) <= 20.0"))
-    assert(result.forall(v => v.validation.asInstanceOf[GroupByValidation].groupByCols.isEmpty))
+    assert(result.forall(v => v.validation.asInstanceOf[GroupByValidation].groupByFields.isEmpty))
     assert(result.forall(v => v.validation.asInstanceOf[GroupByValidation].aggType == "max"))
-    assert(result.forall(v => v.validation.asInstanceOf[GroupByValidation].aggCol == "amount"))
+    assert(result.forall(v => v.validation.asInstanceOf[GroupByValidation].aggField == "amount"))
   }
 
-  test("Can convert to column max between validation with only min") {
+  test("Can convert to field max between validation with only min") {
     val params = Map("minValueForMaxInCol" -> "10")
     val testCase = createTestCaseWithParams(params)
 
@@ -137,12 +137,12 @@ class OpenMetadataDataValidationsTest extends AnyFunSuite {
     assertResult(1)(result.size)
     assert(result.forall(_.validation.isInstanceOf[GroupByValidation]))
     assert(result.exists(v => v.validation.asInstanceOf[GroupByValidation].aggExpr == "max(amount) >= 10.0"))
-    assert(result.exists(v => v.validation.asInstanceOf[GroupByValidation].groupByCols.isEmpty))
-    assert(result.exists(v => v.validation.asInstanceOf[GroupByValidation].aggCol == "amount"))
+    assert(result.exists(v => v.validation.asInstanceOf[GroupByValidation].groupByFields.isEmpty))
+    assert(result.exists(v => v.validation.asInstanceOf[GroupByValidation].aggField == "amount"))
     assert(result.exists(v => v.validation.asInstanceOf[GroupByValidation].aggType == "max"))
   }
 
-  test("Can convert to column max between validation with only max") {
+  test("Can convert to field max between validation with only max") {
     val params = Map("maxValueForMaxInCol" -> "20")
     val testCase = createTestCaseWithParams(params)
 
@@ -151,12 +151,12 @@ class OpenMetadataDataValidationsTest extends AnyFunSuite {
     assertResult(1)(result.size)
     assert(result.forall(_.validation.isInstanceOf[GroupByValidation]))
     assert(result.exists(v => v.validation.asInstanceOf[GroupByValidation].aggExpr == "max(amount) <= 20.0"))
-    assert(result.exists(v => v.validation.asInstanceOf[GroupByValidation].groupByCols.isEmpty))
+    assert(result.exists(v => v.validation.asInstanceOf[GroupByValidation].groupByFields.isEmpty))
     assert(result.exists(v => v.validation.asInstanceOf[GroupByValidation].aggType == "max"))
-    assert(result.exists(v => v.validation.asInstanceOf[GroupByValidation].aggCol == "amount"))
+    assert(result.exists(v => v.validation.asInstanceOf[GroupByValidation].aggField == "amount"))
   }
 
-  test("Can convert to column mean between validation") {
+  test("Can convert to field mean between validation") {
     val params = Map("minValueForMeanInCol" -> "10")
     val testCase = createTestCaseWithParams(params)
 
@@ -165,12 +165,12 @@ class OpenMetadataDataValidationsTest extends AnyFunSuite {
     assertResult(1)(result.size)
     assert(result.forall(_.validation.isInstanceOf[GroupByValidation]))
     assert(result.exists(v => v.validation.asInstanceOf[GroupByValidation].aggExpr == "avg(amount) >= 10.0"))
-    assert(result.exists(v => v.validation.asInstanceOf[GroupByValidation].groupByCols.isEmpty))
+    assert(result.exists(v => v.validation.asInstanceOf[GroupByValidation].groupByFields.isEmpty))
     assert(result.exists(v => v.validation.asInstanceOf[GroupByValidation].aggType == "avg"))
-    assert(result.exists(v => v.validation.asInstanceOf[GroupByValidation].aggCol == "amount"))
+    assert(result.exists(v => v.validation.asInstanceOf[GroupByValidation].aggField == "amount"))
   }
 
-  test("Can convert to column median between validation") {
+  test("Can convert to field median between validation") {
     val params = Map("minValueForMedianInCol" -> "10")
     val testCase = createTestCaseWithParams(params)
 
@@ -179,7 +179,7 @@ class OpenMetadataDataValidationsTest extends AnyFunSuite {
     assert(result.isEmpty)
   }
 
-  test("Can convert to column min between validation") {
+  test("Can convert to field min between validation") {
     val params = Map("minValueForMinInCol" -> "10")
     val testCase = createTestCaseWithParams(params)
 
@@ -188,12 +188,12 @@ class OpenMetadataDataValidationsTest extends AnyFunSuite {
     assertResult(1)(result.size)
     assert(result.forall(_.validation.isInstanceOf[GroupByValidation]))
     assert(result.exists(v => v.validation.asInstanceOf[GroupByValidation].aggExpr == "min(amount) >= 10.0"))
-    assert(result.exists(v => v.validation.asInstanceOf[GroupByValidation].groupByCols.isEmpty))
-    assert(result.exists(v => v.validation.asInstanceOf[GroupByValidation].aggCol == "amount"))
+    assert(result.exists(v => v.validation.asInstanceOf[GroupByValidation].groupByFields.isEmpty))
+    assert(result.exists(v => v.validation.asInstanceOf[GroupByValidation].aggField == "amount"))
     assert(result.exists(v => v.validation.asInstanceOf[GroupByValidation].aggType == "min"))
   }
 
-  test("Can convert to column stddev between validation") {
+  test("Can convert to field stddev between validation") {
     val params = Map("minValueForStdDevInCol" -> "10")
     val testCase = createTestCaseWithParams(params)
 
@@ -202,12 +202,12 @@ class OpenMetadataDataValidationsTest extends AnyFunSuite {
     assertResult(1)(result.size)
     assert(result.forall(_.validation.isInstanceOf[GroupByValidation]))
     assert(result.exists(v => v.validation.asInstanceOf[GroupByValidation].aggExpr == "stddev(amount) >= 10.0"))
-    assert(result.exists(v => v.validation.asInstanceOf[GroupByValidation].groupByCols.isEmpty))
+    assert(result.exists(v => v.validation.asInstanceOf[GroupByValidation].groupByFields.isEmpty))
     assert(result.exists(v => v.validation.asInstanceOf[GroupByValidation].aggType == "stddev"))
-    assert(result.exists(v => v.validation.asInstanceOf[GroupByValidation].aggCol == "amount"))
+    assert(result.exists(v => v.validation.asInstanceOf[GroupByValidation].aggField == "amount"))
   }
 
-  test("Can convert to column sum between validation") {
+  test("Can convert to field sum between validation") {
     val params = Map("minValueForColSum" -> "10")
     val testCase = createTestCaseWithParams(params)
 
@@ -216,12 +216,12 @@ class OpenMetadataDataValidationsTest extends AnyFunSuite {
     assertResult(1)(result.size)
     assert(result.forall(_.validation.isInstanceOf[GroupByValidation]))
     assert(result.exists(v => v.validation.asInstanceOf[GroupByValidation].aggExpr == "sum(amount) >= 10.0"))
-    assert(result.exists(v => v.validation.asInstanceOf[GroupByValidation].groupByCols.isEmpty))
+    assert(result.exists(v => v.validation.asInstanceOf[GroupByValidation].groupByFields.isEmpty))
     assert(result.exists(v => v.validation.asInstanceOf[GroupByValidation].aggType == "sum"))
-    assert(result.exists(v => v.validation.asInstanceOf[GroupByValidation].aggCol == "amount"))
+    assert(result.exists(v => v.validation.asInstanceOf[GroupByValidation].aggField == "amount"))
   }
 
-  test("Can convert to column missing count validation") {
+  test("Can convert to field missing count validation") {
     val params = Map("missingCountValue" -> "10", "missingValueMatch" -> "N/A")
     val testCase = createTestCaseWithParams(params)
 
@@ -234,7 +234,7 @@ class OpenMetadataDataValidationsTest extends AnyFunSuite {
     assert(result.exists(v => v.validation.asInstanceOf[ExpressionValidation].expr == "`name` != 'N/A'"))
   }
 
-  test("Can convert to column in set validation") {
+  test("Can convert to field in set validation") {
     val params = Map("allowedValues" -> "\\\"peter\\\",\\\"flook\\\"")
     val testCase = createTestCaseWithParams(params)
 
@@ -245,7 +245,7 @@ class OpenMetadataDataValidationsTest extends AnyFunSuite {
     assert(result.exists(v => v.validation.asInstanceOf[ExpressionValidation].expr == "`name` IN ('peter','flook')"))
   }
 
-  test("Can convert to column not in set validation") {
+  test("Can convert to field not in set validation") {
     val params = Map("forbiddenValues" -> "\\\"peter\\\",\\\"flook\\\"")
     val testCase = createTestCaseWithParams(params)
 
@@ -256,8 +256,8 @@ class OpenMetadataDataValidationsTest extends AnyFunSuite {
     assert(result.exists(v => v.validation.asInstanceOf[ExpressionValidation].expr == "NOT `name` IN ('peter','flook')"))
   }
 
-  test("Can convert to column not null validation") {
-    val params = Map("columnValuesToBeNotNull" -> "")
+  test("Can convert to field not null validation") {
+    val params = Map("fieldValuesToBeNotNull" -> "")
     val testCase = createTestCaseWithParams(params)
 
     val result = OpenMetadataDataValidations.getDataValidations(testCase, params, Some("name"))
@@ -267,8 +267,8 @@ class OpenMetadataDataValidationsTest extends AnyFunSuite {
     assert(result.exists(v => v.validation.asInstanceOf[ExpressionValidation].expr == "ISNOTNULL(`name`)"))
   }
 
-  test("Can convert to column unique validation") {
-    val params = Map("columnValuesToBeUnique" -> "")
+  test("Can convert to field unique validation") {
+    val params = Map("fieldValuesToBeUnique" -> "")
     val testCase = createTestCaseWithParams(params)
 
     val result = OpenMetadataDataValidations.getDataValidations(testCase, params, Some("name"))
@@ -277,11 +277,11 @@ class OpenMetadataDataValidationsTest extends AnyFunSuite {
     assert(result.forall(_.validation.isInstanceOf[GroupByValidation]))
     assert(result.exists(v => v.validation.asInstanceOf[GroupByValidation].aggExpr == "count == 1"))
     assert(result.exists(v => v.validation.asInstanceOf[GroupByValidation].aggType == "count"))
-    assert(result.exists(v => v.validation.asInstanceOf[GroupByValidation].groupByCols == Seq("name")))
-    assert(result.exists(v => v.validation.asInstanceOf[GroupByValidation].aggCol == "unique"))
+    assert(result.exists(v => v.validation.asInstanceOf[GroupByValidation].groupByFields == Seq("name")))
+    assert(result.exists(v => v.validation.asInstanceOf[GroupByValidation].aggField == "unique"))
   }
 
-  test("Can convert to column match regex validation") {
+  test("Can convert to field match regex validation") {
     val params = Map("regex" -> "^abc123$")
     val testCase = createTestCaseWithParams(params)
 
@@ -292,7 +292,7 @@ class OpenMetadataDataValidationsTest extends AnyFunSuite {
     assert(result.exists(v => v.validation.asInstanceOf[ExpressionValidation].expr == "REGEXP(`name`, '^abc123$')"))
   }
 
-  test("Can convert to column not match regex validation") {
+  test("Can convert to field not match regex validation") {
     val params = Map("forbiddenRegex" -> "^abc123$")
     val testCase = createTestCaseWithParams(params)
 

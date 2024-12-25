@@ -54,7 +54,7 @@ class OpenLineageMetadataTest extends SparkSuite with MockFactory {
     assertResult(4)(result.fields.size)
   }
 
-  test("Can get additional column metadata from Marquez") {
+  test("Can get additional field metadata from Marquez") {
     val mockHttp = mock[AsyncHttpClient]
     val openLineageMetadata = OpenLineageMetadata("my_postgres", "jdbc", Map(METADATA_SOURCE_URL -> "localhost:1001", OPEN_LINEAGE_NAMESPACE -> "food_delivery"), mockHttp)
     val mockBoundRequest = mock[BoundRequestBuilder]

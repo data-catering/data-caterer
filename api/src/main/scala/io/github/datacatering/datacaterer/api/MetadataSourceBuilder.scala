@@ -1,9 +1,9 @@
 package io.github.datacatering.datacaterer.api
 
 import io.github.datacatering.datacaterer.api.converter.Converters.toScalaMap
-import io.github.datacatering.datacaterer.api.model.Constants.{DATA_CONTRACT_FILE, DATA_CONTRACT_SCHEMA, GREAT_EXPECTATIONS_FILE, METADATA_SOURCE_URL, OPEN_LINEAGE_DATASET, OPEN_LINEAGE_NAMESPACE, OPEN_METADATA_API_VERSION, OPEN_METADATA_AUTH_TYPE, OPEN_METADATA_AUTH_TYPE_OPEN_METADATA, OPEN_METADATA_DEFAULT_API_VERSION, OPEN_METADATA_HOST, OPEN_METADATA_JWT_TOKEN, SCHEMA_LOCATION}
+import io.github.datacatering.datacaterer.api.model.Constants.{CONFLUENT_SCHEMA_REGISTRY_ID, CONFLUENT_SCHEMA_REGISTRY_SUBJECT, CONFLUENT_SCHEMA_REGISTRY_VERSION, DATA_CONTRACT_FILE, DATA_CONTRACT_SCHEMA, GREAT_EXPECTATIONS_FILE, METADATA_SOURCE_URL, OPEN_LINEAGE_DATASET, OPEN_LINEAGE_NAMESPACE, OPEN_METADATA_API_VERSION, OPEN_METADATA_AUTH_TYPE, OPEN_METADATA_AUTH_TYPE_OPEN_METADATA, OPEN_METADATA_DEFAULT_API_VERSION, OPEN_METADATA_HOST, OPEN_METADATA_JWT_TOKEN, SCHEMA_LOCATION}
 import com.softwaremill.quicklens.ModifyPimp
-import io.github.datacatering.datacaterer.api.model.{DataContractCliSource, GreatExpectationsSource, MarquezMetadataSource, MetadataSource, OpenAPISource, OpenDataContractStandardSource, OpenMetadataSource}
+import io.github.datacatering.datacaterer.api.model.{ConfluentSchemaRegistrySource, DataContractCliSource, GreatExpectationsSource, MarquezMetadataSource, MetadataSource, OpenAPISource, OpenDataContractStandardSource, OpenMetadataSource}
 
 case class MetadataSourceBuilder(metadataSource: MetadataSource = MarquezMetadataSource()) {
   def this() = this(MarquezMetadataSource())
@@ -103,6 +103,28 @@ case class MetadataSourceBuilder(metadataSource: MetadataSource = MarquezMetadat
     this.modify(_.metadataSource).setTo(DataContractCliSource(Map(
       DATA_CONTRACT_FILE -> dataContractFile,
       DATA_CONTRACT_SCHEMA -> modelNames.mkString(",")
+    )))
+  }
+
+  def confluentSchemaRegistry(url: String, schemaId: Int): MetadataSourceBuilder = {
+    this.modify(_.metadataSource).setTo(ConfluentSchemaRegistrySource(Map(
+      METADATA_SOURCE_URL -> url,
+      CONFLUENT_SCHEMA_REGISTRY_ID -> schemaId.toString
+    )))
+  }
+
+  def confluentSchemaRegistry(url: String, schemaSubject: String): MetadataSourceBuilder = {
+    this.modify(_.metadataSource).setTo(ConfluentSchemaRegistrySource(Map(
+      METADATA_SOURCE_URL -> url,
+      CONFLUENT_SCHEMA_REGISTRY_SUBJECT -> schemaSubject
+    )))
+  }
+
+  def confluentSchemaRegistry(url: String, schemaSubject: String, version: Int): MetadataSourceBuilder = {
+    this.modify(_.metadataSource).setTo(ConfluentSchemaRegistrySource(Map(
+      METADATA_SOURCE_URL -> url,
+      CONFLUENT_SCHEMA_REGISTRY_SUBJECT -> schemaSubject,
+      CONFLUENT_SCHEMA_REGISTRY_VERSION -> version.toString,
     )))
   }
 }

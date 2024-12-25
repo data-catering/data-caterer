@@ -3,7 +3,7 @@ package io.github.datacatering.datacaterer.core.sink.http
 import io.github.datacatering.datacaterer.api.model.Constants.DEFAULT_REAL_TIME_HEADERS_DATA_TYPE
 import io.github.datacatering.datacaterer.api.model.Step
 import io.github.datacatering.datacaterer.core.exception.AddHttpHeaderException
-import io.github.datacatering.datacaterer.core.model.Constants.{DEFAULT_HTTP_METHOD, HTTP_HEADER_COL_PREFIX, REAL_TIME_BODY_COL, REAL_TIME_HEADERS_COL, REAL_TIME_METHOD_COL, REAL_TIME_URL_COL}
+import io.github.datacatering.datacaterer.core.model.Constants.{DEFAULT_HTTP_METHOD, HTTP_HEADER_FIELD_PREFIX, REAL_TIME_BODY_FIELD, REAL_TIME_HEADERS_FIELD, REAL_TIME_METHOD_FIELD, REAL_TIME_URL_FIELD}
 import io.github.datacatering.datacaterer.core.model.RealTimeSinkResult
 import io.github.datacatering.datacaterer.core.sink.http.model.HttpResult
 import io.github.datacatering.datacaterer.core.sink.{RealTimeSinkProcessor, SinkProcessor}
@@ -39,10 +39,10 @@ object HttpSinkProcessor extends RealTimeSinkProcessor[Unit] with Serializable {
   implicit val httpResultEncoder: Encoder[HttpResult] = Encoders.kryo[HttpResult]
 
   override val expectedSchema: Map[String, String] = Map(
-    REAL_TIME_URL_COL -> StringType.typeName,
-    REAL_TIME_BODY_COL -> StringType.typeName,
-    REAL_TIME_METHOD_COL -> StringType.typeName,
-    REAL_TIME_HEADERS_COL -> DEFAULT_REAL_TIME_HEADERS_DATA_TYPE
+    REAL_TIME_URL_FIELD -> StringType.typeName,
+    REAL_TIME_BODY_FIELD -> StringType.typeName,
+    REAL_TIME_METHOD_FIELD -> StringType.typeName,
+    REAL_TIME_HEADERS_FIELD -> DEFAULT_REAL_TIME_HEADERS_DATA_TYPE
   )
 
   override def createConnections(connectionConfig: Map[String, String], step: Step): SinkProcessor[_] = {
@@ -122,9 +122,9 @@ object HttpSinkProcessor extends RealTimeSinkProcessor[Unit] with Serializable {
 
   def createHttpRequest(row: Row, connectionConfig: Option[Map[String, String]] = None): Request = {
     connectionConfig.foreach(conf => this.connectionConfig = conf)
-    val httpUrl = getRowValue[String](row, REAL_TIME_URL_COL)
-    val method = getRowValue[String](row, REAL_TIME_METHOD_COL, DEFAULT_HTTP_METHOD)
-    val body = getRowValue[String](row, REAL_TIME_BODY_COL, "")
+    val httpUrl = getRowValue[String](row, REAL_TIME_URL_FIELD)
+    val method = getRowValue[String](row, REAL_TIME_METHOD_FIELD, DEFAULT_HTTP_METHOD)
+    val body = getRowValue[String](row, REAL_TIME_BODY_FIELD, "")
 
     val basePrepareRequest = http.prepare(method, httpUrl)
       .setBody(body)
@@ -144,16 +144,12 @@ object HttpSinkProcessor extends RealTimeSinkProcessor[Unit] with Serializable {
   }
 
   private def getHeaders(row: Row): Map[String, String] = {
-    row.schema.fields.filter(_.name.startsWith(HTTP_HEADER_COL_PREFIX))
+    row.schema.fields.filter(_.name.startsWith(HTTP_HEADER_FIELD_PREFIX))
       .map(field => {
-        val headerName = field.metadata.getString(HTTP_HEADER_COL_PREFIX)
+        val headerName = field.metadata.getString(HTTP_HEADER_FIELD_PREFIX)
         val fieldValue = row.getAs[Any](field.name).toString
         headerName -> fieldValue
       }).toMap ++ getAuthHeader(connectionConfig)
-  }
-
-  private def saveToFile(request: Request, response: Response): Unit = {
-
   }
 
   private def buildClient: AsyncHttpClient = {

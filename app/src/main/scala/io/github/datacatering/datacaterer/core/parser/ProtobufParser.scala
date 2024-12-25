@@ -1,7 +1,8 @@
 package io.github.datacatering.datacaterer.core.parser
 
 import com.google.inject.Guice
-import io.github.datacatering.datacaterer.api.model.{BooleanType, ByteType, DataType, DecimalType, DoubleType, Field, FloatType, Generator, IntegerType, LongType, MapType, Schema, StringType, StructType}
+import io.github.datacatering.datacaterer.api.model.{ArrayType, BooleanType, ByteType, DataType, DecimalType, DoubleType, Field, FloatType, IntegerType, LongType, MapType, StringType, StructType}
+import io.github.datacatering.datacaterer.core.exception.InvalidNumberOfProtobufMessages
 import io.protostuff.compiler.ParserModule
 import io.protostuff.compiler.model.{Message, ScalarFieldType, UserType}
 import io.protostuff.compiler.parser.{Importer, LocalFileReader}
@@ -11,27 +12,31 @@ import scala.jdk.CollectionConverters.iterableAsScalaIterableConverter
 
 object ProtobufParser {
 
-  def getSchemaFromProtoFile(filePath: Path, messageName: String): Schema = {
-    val message = getMessageFromProtoFile(filePath, messageName)
+  def getSchemaFromProtoFile(filePath: Path): List[Field] = {
+    val message = getMessageFromProtoFile(filePath)
     protoMessageToSchema(message)
   }
 
-  def getMessageFromProtoString(protoString: String, messageName: String): Schema = {
-    val tmpFile = Files.createTempFile("proto", s"$messageName.proto")
+  def getSchemaFromProtoString(protoString: String, schemaName: String): List[Field] = {
+    val tmpFile = Files.createTempFile("proto", s"$schemaName.proto")
     Files.writeString(tmpFile, protoString)
-    val message = getMessageFromProtoFile(tmpFile, messageName)
+    val message = getMessageFromProtoFile(tmpFile)
     protoMessageToSchema(message)
   }
 
-  private def getMessageFromProtoFile(filePath: Path, messageName: String): Message = {
+  private def getMessageFromProtoFile(filePath: Path): Message = {
     val injector = Guice.createInjector(new ParserModule)
     val importer = injector.getInstance(classOf[Importer])
     val protoContext = importer.importFile(new LocalFileReader(filePath.getParent), filePath.getFileName.toString)
-
-    protoContext.getProto.getMessage(messageName)
+    val protoMessages = protoContext.getProto.getMessages
+    if (protoMessages.isEmpty || protoMessages.size() > 1) {
+      throw InvalidNumberOfProtobufMessages(filePath.getFileName.toString)
+    } else {
+      protoMessages.get(0)
+    }
   }
 
-  def protoMessageToSchema(message: Message): Schema = {
+  private def protoMessageToSchema(message: Message): List[Field] = {
     if (message.getFields != null && !message.getFields.isEmpty) {
       val mappedFields = message.getFields.asScala.map(field => {
         val (dataType, opts) = field.getType match {
@@ -65,46 +70,41 @@ object ProtobufParser {
                 userType.getProto.getMessage(userType.getName)
               }
               val innerSchema = protoMessageToSchema(baseMessage)
-              val innerFields = innerSchema.fields.getOrElse(List())
-                .map(f => f.name -> DataType.fromString(f.`type`.getOrElse(StringType.toString)))
+              val innerFields = innerSchema.map(f => f.name -> DataType.fromString(f.`type`.getOrElse(StringType.toString)))
               (new StructType(innerFields), Map[String, String]())
             } else if (field.isMap) {
               val innerMessage = userType.asInstanceOf[Message]
-              val innerSchema = protoMessageToSchema(innerMessage).fields.getOrElse(List())
-              val keyType = innerSchema.find(f => f.name == "key")
-                .map(_.`type`.getOrElse("string"))
-                .getOrElse("string")
-              val valueType = innerSchema.find(f => f.name == "value")
-                .map(_.`type`.getOrElse("string"))
-                .getOrElse("string")
+              val innerSchema = protoMessageToSchema(innerMessage)
+              val keyType = getInnerDataType(innerSchema, "key")
+              val valueType = getInnerDataType(innerSchema, "value")
               (new MapType(DataType.fromString(keyType), DataType.fromString(valueType)), Map[String, String]())
             } else {
               (StringType, Map[String, String]())
             }
-          case _ =>
-            //check if it is a map or array type
-            if (field.isMap) {
-              new MapType()
-            } else if (field.isRepeated) {
+          case _ => (StringType, Map[String, String]())
+        }
 
-            } else if (field.isOneofPart) {
-              field.getOneof
-            } else {
-              StringType
-            }
-            (StringType, Map[String, String]())
+        val finalDataType = if (field.hasModifier && !field.isMap && field.getModifier.name().equalsIgnoreCase("repeated")) {
+          new ArrayType(dataType)
+        } else {
+          dataType
         }
         Field(
           field.getName,
-          Some(dataType.toString),
-          Some(Generator(options = opts)),
+          Some(finalDataType.toString),
+          opts,
           nullable = field.getModifier.name() == "OPTIONAL"
         )
       }).toList
-      Schema(Some(mappedFields))
+      mappedFields
     } else {
-      Schema(None)
+      List()
     }
   }
 
+  private def getInnerDataType(innerSchema: List[Field], fieldName: String): String = {
+    innerSchema.find(f => f.name == fieldName)
+      .map(_.`type`.getOrElse("string"))
+      .getOrElse("string")
+  }
 }

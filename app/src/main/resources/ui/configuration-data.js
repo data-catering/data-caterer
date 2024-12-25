@@ -262,10 +262,10 @@ dataTypeOptionsMap.set("array", {
 dataTypeOptionsMap.set("struct", {...defaultDataTypeOptions, addBlock: {type: "field"}});
 
 export const validationTypeDisplayNameMap = new Map();
-validationTypeDisplayNameMap.set("column", "Field");
+validationTypeDisplayNameMap.set("field", "Field");
 validationTypeDisplayNameMap.set("groupBy", "Group By/Aggregate");
 validationTypeDisplayNameMap.set("upstream", "Upstream");
-validationTypeDisplayNameMap.set("columnNames", "Field Names");
+validationTypeDisplayNameMap.set("fieldNames", "Field Names");
 export const validationTypeOptionsMap = new Map();
 const defaultValidationOptions = {
     description: {
@@ -282,7 +282,7 @@ const defaultValidationOptions = {
         help: "Number or percentage (0.0 to 1.0) of errors before marking validation as failed."
     },
 }
-validationTypeOptionsMap.set("column", {
+validationTypeOptionsMap.set("field", {
     ...defaultValidationOptions,
     defaultChildField: {displayName: "Field", default: "", type: "text", required: "", help: "Field to validate."},
     equal: {
@@ -292,8 +292,14 @@ validationTypeOptionsMap.set("column", {
         group: {type: "checkbox", innerText: "Not"},
         help: "Equal to value. Select 'Not' for not equals."
     },
-    null: {displayName: "Null", default: "", type: "text", disabled: "", help: "Values are null."},
-    notNull: {displayName: "Not Null", default: "", type: "text", disabled: "", help: "Values are not null."},
+    null: {
+        displayName: "Null",
+        default: "",
+        type: "text",
+        disabled: "",
+        group: {type: "checkbox", innerText: "Not"},
+        help: "Values are null."
+    },
     contains: {
         displayName: "Contains",
         default: "",
@@ -386,6 +392,7 @@ validationTypeOptionsMap.set("column", {
         default: "",
         type: "text",
         disabled: "",
+        group: {type: "checkbox", innerText: "Not"},
         help: "Values are valid credit card or identification numbers according to Luhn Algorithm.",
         required: ""
     },
@@ -394,6 +401,7 @@ validationTypeOptionsMap.set("column", {
         default: "string",
         type: "text",
         choice: baseDataTypes,
+        group: {type: "checkbox", innerText: "Not"},
         help: "Values are of data type."
     },
     sql: {
@@ -406,7 +414,7 @@ validationTypeOptionsMap.set("column", {
 });
 validationTypeOptionsMap.set("groupBy", {
     ...defaultValidationOptions,
-    defaultChildGroupByColumns: {
+    defaultChildGroupByFields: {
         displayName: "Group By Field(s)",
         default: "",
         type: "text",
@@ -418,14 +426,14 @@ validationTypeOptionsMap.set("groupBy", {
         default: "",
         type: "text",
         help: "Field name to count number of groups after group by.",
-        addBlock: {type: "column"}
+        addBlock: {type: "field"}
     },
     sum: {
         displayName: "Sum",
         default: "",
         type: "text",
         help: "Field name of values to sum after group by.",
-        addBlock: {type: "column"},
+        addBlock: {type: "field"},
         required: ""
     },
     min: {
@@ -433,7 +441,7 @@ validationTypeOptionsMap.set("groupBy", {
         default: "",
         type: "text",
         help: "Field name to find minimum value after group by.",
-        addBlock: {type: "column"},
+        addBlock: {type: "field"},
         required: ""
     },
     max: {
@@ -441,7 +449,7 @@ validationTypeOptionsMap.set("groupBy", {
         default: "",
         type: "text",
         help: "Field name to find maximum value after group by.",
-        addBlock: {type: "column"},
+        addBlock: {type: "field"},
         required: ""
     },
     average: {
@@ -449,7 +457,7 @@ validationTypeOptionsMap.set("groupBy", {
         default: "",
         type: "text",
         help: "Field name to find average value after group by.",
-        addBlock: {type: "column"},
+        addBlock: {type: "field"},
         required: ""
     },
     standardDeviation: {
@@ -457,7 +465,7 @@ validationTypeOptionsMap.set("groupBy", {
         default: "",
         type: "text",
         help: "Field name to find standard deviation value after group by.",
-        addBlock: {type: "column"},
+        addBlock: {type: "field"},
         required: ""
     },
 });
@@ -472,7 +480,7 @@ validationTypeOptionsMap.set("upstream", {
         help: "Name of upstream data generation task."
     },
     addBlock: {type: "validation"},
-    joinColumns: {
+    joinFields: {
         displayName: "Join Field(s)",
         default: "",
         type: "text",
@@ -494,7 +502,7 @@ validationTypeOptionsMap.set("upstream", {
         required: ""
     }
 });
-validationTypeOptionsMap.set("columnNames", {
+validationTypeOptionsMap.set("fieldNames", {
     ...defaultValidationOptions,
     countEqual: {
         displayName: "Count Equal",
@@ -883,7 +891,7 @@ dataSourcePropertiesMap.set("csv", {
             displayName: "Partition By",
             default: "",
             type: "text",
-            help: "Column name(s) to partition by (comma separated).",
+            help: "Field name(s) to partition by (comma separated).",
             override: "true"
         }
     }
@@ -910,7 +918,7 @@ dataSourcePropertiesMap.set("delta", {
             displayName: "Partition By",
             default: "",
             type: "text",
-            help: "Column name(s) to partition by (comma separated).",
+            help: "Field name(s) to partition by (comma separated).",
             override: "true"
         }
     }
@@ -975,7 +983,7 @@ dataSourcePropertiesMap.set("iceberg", {
             displayName: "Partition By",
             default: "",
             type: "text",
-            help: "Column name(s) to partition by (comma separated).",
+            help: "Field name(s) to partition by (comma separated).",
             override: "true"
         }
     }
@@ -1002,7 +1010,7 @@ dataSourcePropertiesMap.set("json", {
             displayName: "Partition By",
             default: "",
             type: "text",
-            help: "Column name(s) to partition by (comma separated).",
+            help: "Field name(s) to partition by (comma separated).",
             override: "true"
         }
     }
@@ -1091,7 +1099,7 @@ dataSourcePropertiesMap.set("orc", {
             displayName: "Partition By",
             default: "",
             type: "text",
-            help: "Column name(s) to partition by (comma separated).",
+            help: "Field name(s) to partition by (comma separated).",
             override: "true"
         }
     }
@@ -1118,7 +1126,7 @@ dataSourcePropertiesMap.set("parquet", {
             displayName: "Partition By",
             default: "",
             type: "text",
-            help: "Column name(s) to partition by (comma separated).",
+            help: "Field name(s) to partition by (comma separated).",
             override: "true"
         }
     }

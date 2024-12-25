@@ -1,6 +1,6 @@
 package io.github.datacatering.datacaterer.core.generator.metadata
 
-import io.github.datacatering.datacaterer.api.model.{Count, Field, FoldersConfig, Generator, Schema, Step, Task}
+import io.github.datacatering.datacaterer.api.model.{Count, Field, FoldersConfig, ForeignKey, ForeignKeyRelation, Step, Task}
 import io.github.datacatering.datacaterer.core.util.SparkSuite
 import org.junit.runner.RunWith
 import org.scalatestplus.junit.JUnitRunner
@@ -15,14 +15,18 @@ class PlanGeneratorTest extends SparkSuite {
     val folderPath = "src/test/resources/sample/plan-gen"
     val task = Task("basic_account", List(
       Step("account_json", "json", Count(), Map(),
-        Schema(Some(List(
-          Field("id", Some("string"), Some(Generator("random", Map("unique" -> "true")))),
-          Field("name", Some("string"), Some(Generator("random", Map("expression" -> "#{Name.name}")))),
-          Field("amount", Some("double"), Some(Generator("random", Map("min" -> "10.0")))),
-        )))
+        List(
+          Field("id", Some("string"), Map("unique" -> "true")),
+          Field("name", Some("string"), Map("expression" -> "#{Name.name}")),
+          Field("amount", Some("double"), Map("min" -> "10.0")),
+        )
       )
     ))
-    val foreignKeys = List(("json.account_json.id", List("postgres.account.id"), List()))
+    val foreignKeys = List(ForeignKey(
+      ForeignKeyRelation("json.id", "account_json", List("id")),
+      List(ForeignKeyRelation("postgres", "account", List("id"))),
+      List()
+    ))
 
     PlanGenerator.writeToFiles(None, List(("account_json", task)), foreignKeys, List(), FoldersConfig(generatedPlanAndTaskFolderPath = folderPath))
 

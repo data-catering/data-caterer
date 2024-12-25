@@ -77,19 +77,19 @@ case class OpenMetadataDataSourceMetadata(
       }
       val allOptions = readOptions ++ Map(METADATA_IDENTIFIER -> table.getFullyQualifiedName)
 
-      val columnMetadata = table.getColumns.asScala.map(col => {
+      val fieldMetadata = table.getColumns.asScala.map(col => {
         val dataType = dataTypeMapping(col)
         val (miscMetadata, dataTypeWithMisc) = getMiscMetadata(col, dataType)
         val description = if (col.getDescription == null) "" else col.getDescription
         val metadata = Map(
           FIELD_DATA_TYPE -> dataTypeWithMisc.toString,
           FIELD_DESCRIPTION -> description,
-          SOURCE_COLUMN_DATA_TYPE -> col.getDataType.getValue.toLowerCase
+          SOURCE_FIELD_DATA_TYPE -> col.getDataType.getValue.toLowerCase
         ) ++ miscMetadata
         FieldMetadata(col.getName, allOptions, metadata)
       })
-      val columnMetadataDataset = sparkSession.createDataset(columnMetadata)
-      SubDataSourceMetadata(allOptions, Some(columnMetadataDataset))
+      val fieldMetadataDataset = sparkSession.createDataset(fieldMetadata)
+      SubDataSourceMetadata(allOptions, Some(fieldMetadataDataset))
     }).toArray
   }
 
@@ -102,7 +102,7 @@ case class OpenMetadataDataSourceMetadata(
   }
 
   override def getDataSourceValidations(dataSourceReadOptions: Map[String, String]): List[ValidationBuilder] = {
-    val entityNameWithColumnPattern = "^(.+?)\\.(.+?)\\.(.+?)\\.(.+?)\\.(.+?)$".r
+    val entityNameWithFieldPattern = "^(.+?)\\.(.+?)\\.(.+?)\\.(.+?)\\.(.+?)$".r
     val testCasesApi = gateway.buildClient(classOf[TestCasesApi])
     val listTestCases = testCasesApi.listTestCases(Map.empty[String, Object].asJava)
 
@@ -116,12 +116,12 @@ case class OpenMetadataDataSourceMetadata(
           val testParams = testCase.getParameterValues.asScala.map(testParam => {
             (testParam.getName, testParam.getValue)
           }).toMap
-          val optColumnName = testCase.getEntityFQN match {
-            case entityNameWithColumnPattern(_, _, _, _, column) => Some(column)
+          val optFieldName = testCase.getEntityFQN match {
+            case entityNameWithFieldPattern(_, _, _, _, field) => Some(field)
             case _ => None
           }
 
-          OpenMetadataDataValidations.getDataValidations(testCase, testParams, optColumnName)
+          OpenMetadataDataValidations.getDataValidations(testCase, testParams, optFieldName)
         }).toList
     }
   }

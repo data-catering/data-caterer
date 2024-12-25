@@ -45,7 +45,7 @@ case class OpenLineageMetadata(
       val allOptions = if (format.equalsIgnoreCase(JDBC)) baseOptions ++ Map(JDBC_TABLE -> ds.physicalName) else baseOptions
 
       val facets = ds.facets
-      val columnMetadata = ds.fields
+      val fieldMetadata = ds.fields
         .map(field => {
           val dataType = field.`type`.getOrElse(DEFAULT_FIELD_TYPE).toLowerCase
           val parsedDataType = if (dataType == "varchar" || dataType == "text") "string" else dataType
@@ -60,11 +60,11 @@ case class OpenLineageMetadata(
           FieldMetadata(field.name, allOptions, metadata)
         })
 
-      SubDataSourceMetadata(allOptions, Some(sparkSession.createDataset(columnMetadata)))
+      SubDataSourceMetadata(allOptions, Some(sparkSession.createDataset(fieldMetadata)))
     }).toArray
   }
 
-  override def getAdditionalColumnMetadata(implicit sparkSession: SparkSession): Dataset[FieldMetadata] = {
+  override def getAdditionalFieldMetadata(implicit sparkSession: SparkSession): Dataset[FieldMetadata] = {
     sparkSession.emptyDataset
   }
 

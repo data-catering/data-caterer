@@ -1,11 +1,11 @@
 package io.github.datacatering.datacaterer.core.generator.metadata.datasource.confluentschemaregistry
 
-import io.github.datacatering.datacaterer.api.model.Constants.{CONFLUENT_SCHEMA_REGISTRY_ID, CONFLUENT_SCHEMA_REGISTRY_MESSAGE_NAME, CONFLUENT_SCHEMA_REGISTRY_SUBJECT, CONFLUENT_SCHEMA_REGISTRY_VERSION, DATA_SOURCE_NAME, DEFAULT_CONFLUENT_SCHEMA_REGISTRY_VERSION, DEFAULT_FIELD_TYPE, FACET_DATA_SOURCE, FIELD_DATA_TYPE, FIELD_DESCRIPTION, JDBC, JDBC_TABLE, METADATA_IDENTIFIER, METADATA_SOURCE_URL, OPEN_LINEAGE_NAMESPACE, URI}
-import io.github.datacatering.datacaterer.core.exception.{FailedConfluentSchemaRegistryHttpCallException, InvalidConfluentSchemaRegistryResponseException, InvalidConfluentSchemaRegistrySchemaRequestException}
+import io.github.datacatering.datacaterer.api.model.Constants.{CONFLUENT_SCHEMA_REGISTRY, CONFLUENT_SCHEMA_REGISTRY_ID, CONFLUENT_SCHEMA_REGISTRY_SUBJECT, CONFLUENT_SCHEMA_REGISTRY_VERSION, DEFAULT_CONFLUENT_SCHEMA_REGISTRY_VERSION, FIELD_DATA_TYPE, METADATA_IDENTIFIER, METADATA_SOURCE_URL}
+import io.github.datacatering.datacaterer.api.model.Field
+import io.github.datacatering.datacaterer.core.exception.{FailedConfluentSchemaRegistryHttpCallException, FailedConfluentSchemaRegistryResponseException, InvalidConfluentSchemaRegistryResponseException, InvalidConfluentSchemaRegistrySchemaRequestException}
 import io.github.datacatering.datacaterer.core.generator.metadata.datasource.database.FieldMetadata
 import io.github.datacatering.datacaterer.core.generator.metadata.datasource.{DataSourceMetadata, SubDataSourceMetadata}
-import io.github.datacatering.datacaterer.core.model.confluentschemaregistry.{ConfluentSchemaRegistrySchemaResponse, ConfluentSchemaRegistrySubjectVersionResponse}
-import io.github.datacatering.datacaterer.core.model.openlineage.{ListDatasetResponse, OpenLineageDataset}
+import io.github.datacatering.datacaterer.core.model.confluentschemaregistry.ConfluentSchemaRegistrySchemaResponse
 import io.github.datacatering.datacaterer.core.parser.ProtobufParser
 import io.github.datacatering.datacaterer.core.util.ObjectMapperUtil
 import org.apache.log4j.Logger
@@ -35,37 +35,45 @@ case class ConfluentSchemaRegistryMetadata(
   override val hasSourceData: Boolean = false
 
   override def getSubDataSourcesMetadata(implicit sparkSession: SparkSession): Array[SubDataSourceMetadata] = {
-    val (schemaType, schema) = (OPT_SCHEMA_ID, OPT_SUBJECT, OPT_VERSION) match {
+    val schemaDetails = getSchemaDetails
+
+    //TODO add in support for avro and json
+    val parsedFields = if (schemaDetails.`type`.equalsIgnoreCase("protobuf")) {
+      LOGGER.info(s"Found schema of type protobuf from Confluent Schema Registry, schema-name=${schemaDetails.name}")
+      ProtobufParser.getSchemaFromProtoString(schemaDetails.schema, schemaDetails.name)
+    } else {
+      LOGGER.warn(s"Unsupported schema type from Confluent Schema Registry, schema-type=${schemaDetails.`type`}, schema-name=${schemaDetails.name}")
+      List()
+    }
+    val ds = sparkSession.createDataset(parsedFields.map(f => fieldToFieldMetadata(f, schemaDetails.name)))
+    Array(SubDataSourceMetadata(
+      Map(METADATA_IDENTIFIER -> toMetadataIdentifier(schemaDetails.name)) ++ connectionConfig,
+      Some(ds)
+    ))
+  }
+
+  private def getSchemaDetails: ConfluentSchemaDetails = {
+    (OPT_SCHEMA_ID, OPT_SUBJECT, OPT_VERSION) match {
       case (Some(id), _, _) =>
+        LOGGER.info(s"Attempting to get schema from Confluent Schema Registry for schema id, id=$id")
         val baseSchema = getSchema(id)
-        (baseSchema.schemaType, baseSchema.schema)
+        ConfluentSchemaDetails(id, baseSchema.schemaType, baseSchema.schema)
       case (None, Some(subject), Some(version)) =>
+        LOGGER.debug(s"Attempting to get schema from Confluent Schema Registry for schema subject and version, subject=$subject, version=$version")
         val baseSchema = getSchema(subject, version)
-        (baseSchema.schemaType, baseSchema.schema)
+        ConfluentSchemaDetails(subject, baseSchema.schemaType, baseSchema.schema)
       case (None, Some(subject), None) =>
+        LOGGER.debug(s"Attempting to get schema from Confluent Schema Registry for schema subject, subject=$subject")
         val baseSchema = getSchema(subject, DEFAULT_CONFLUENT_SCHEMA_REGISTRY_VERSION)
-        (baseSchema.schemaType, baseSchema.schema)
-      case (None, None, Some(version)) =>
+        ConfluentSchemaDetails(subject, baseSchema.schemaType, baseSchema.schema)
+      case (None, None, Some(_)) =>
         throw InvalidConfluentSchemaRegistrySchemaRequestException("subject")
       case _ =>
         throw InvalidConfluentSchemaRegistrySchemaRequestException("id, subject, version")
     }
-
-    val parsedSchema = if (schemaType.equalsIgnoreCase("protobuf")) {
-      val optMessageName = connectionConfig.get(CONFLUENT_SCHEMA_REGISTRY_MESSAGE_NAME)
-      optMessageName match {
-        case Some(messageName) => ProtobufParser.getMessageFromProtoString(schema, messageName)
-        case None => throw InvalidConfluentSchemaRegistrySchemaRequestException(CONFLUENT_SCHEMA_REGISTRY_MESSAGE_NAME)
-      }
-    } else if (schemaType.equalsIgnoreCase("avro")) {
-
-    } else if (schemaType.equalsIgnoreCase("json")) {
-
-    }
-    Array()
   }
 
-  override def getAdditionalColumnMetadata(implicit sparkSession: SparkSession): Dataset[FieldMetadata] = {
+  override def getAdditionalFieldMetadata(implicit sparkSession: SparkSession): Dataset[FieldMetadata] = {
     sparkSession.emptyDataset
   }
 
@@ -73,22 +81,27 @@ case class ConfluentSchemaRegistryMetadata(
     asyncHttpClient.close()
   }
 
-  def toMetadataIdentifier(dataset: OpenLineageDataset) = s"${dataset.id.namespace}_${dataset.id.name}"
+  private def toMetadataIdentifier(schemaName: String): String = s"${CONFLUENT_SCHEMA_REGISTRY}_$schemaName"
 
-  def getSchema(id: String): ConfluentSchemaRegistrySchemaResponse = {
-    val response = getResponse(s"$BASE_URL/schemas/id/$id")
-    val tryParseResponse = Try(
-      ObjectMapperUtil.jsonObjectMapper.readValue(response.getResponseBody, classOf[ConfluentSchemaRegistrySchemaResponse])
-    )
-    getResponse(tryParseResponse)
+  private def getSchema(id: String): ConfluentSchemaRegistrySchemaResponse = {
+    val response = getResponse(s"$BASE_URL/schemas/ids/$id")
+    parseResponse(response)
   }
 
-  def getSchema(subject: String, version: String): ConfluentSchemaRegistrySubjectVersionResponse = {
+  private def getSchema(subject: String, version: String): ConfluentSchemaRegistrySchemaResponse = {
     val response = getResponse(s"$BASE_URL/subjects/$subject/versions/$version")
-    val tryParseResponse = Try(
-      ObjectMapperUtil.jsonObjectMapper.readValue(response.getResponseBody, classOf[ConfluentSchemaRegistrySubjectVersionResponse])
+    parseResponse(response)
+  }
+
+  private def fieldToFieldMetadata(field: Field, schemaName: String): FieldMetadata = {
+    val generatorOpts = field.options.map(o => o._1 -> o._2.toString)
+    val optNested = field.fields.map(f => fieldToFieldMetadata(f, schemaName))
+    FieldMetadata(
+      field.name,
+      Map(METADATA_IDENTIFIER -> toMetadataIdentifier(schemaName)),
+      Map(FIELD_DATA_TYPE -> field.`type`.getOrElse("string")) ++ generatorOpts,
+      optNested
     )
-    getResponse(tryParseResponse)
   }
 
   private def getResponse(url: String): Response = {
@@ -99,14 +112,23 @@ case class ConfluentSchemaRegistryMetadata(
     }
   }
 
-  private def getResponse[T](tryParse: Try[T]): T = {
-    tryParse match {
-      case Failure(exception) =>
-        LOGGER.error("Failed to parse response from Confluent Schema Registry")
-        throw InvalidConfluentSchemaRegistryResponseException(exception)
-      case Success(value) =>
-        LOGGER.debug("Successfully parse response from Marquez to OpenLineage definition")
-        value
+  private def parseResponse(response: Response): ConfluentSchemaRegistrySchemaResponse = {
+    if (response.getStatusCode == 200) {
+      val tryParseResponse = Try(
+        ObjectMapperUtil.jsonObjectMapper.readValue(response.getResponseBody, classOf[ConfluentSchemaRegistrySchemaResponse])
+      )
+      tryParseResponse match {
+        case Failure(exception) =>
+          LOGGER.error("Failed to parse response from Confluent Schema Registry")
+          throw InvalidConfluentSchemaRegistryResponseException(exception)
+        case Success(value) =>
+          LOGGER.debug("Successfully parse response from Confluent Schema Registry")
+          value
+      }
+    } else {
+      throw FailedConfluentSchemaRegistryResponseException(response.getUri.toFullUrl, response.getStatusCode, response.getStatusText)
     }
   }
+
+  private case class ConfluentSchemaDetails(name: String, `type`: String, schema: String)
 }

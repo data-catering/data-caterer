@@ -1,7 +1,7 @@
 package io.github.datacatering.datacaterer.core.generator.metadata
 
 import io.github.datacatering.datacaterer.api.PlanRun
-import io.github.datacatering.datacaterer.api.model.{FoldersConfig, Plan, SinkOptions, Task, TaskSummary, ValidationConfiguration}
+import io.github.datacatering.datacaterer.api.model.{FoldersConfig, ForeignKey, Plan, SinkOptions, Task, TaskSummary, ValidationConfiguration}
 import io.github.datacatering.datacaterer.core.util.FileUtil.writeStringToFile
 import io.github.datacatering.datacaterer.core.util.ObjectMapperUtil
 import org.apache.hadoop.fs.FileSystem
@@ -18,7 +18,7 @@ object PlanGenerator {
   def writeToFiles(
                     optPlanRun: Option[PlanRun],
                     tasks: List[(String, Task)],
-                    foreignKeys: List[(String, List[String], List[String])],
+                    foreignKeys: List[ForeignKey],
                     validationConfig: List[ValidationConfiguration],
                     foldersConfig: FoldersConfig
                   )(implicit sparkSession: SparkSession): (Plan, List[Task], List[ValidationConfiguration]) = {
@@ -35,7 +35,7 @@ object PlanGenerator {
   private def writePlanToFile(
                                optPlanRun: Option[PlanRun],
                                tasks: List[(String, Task)],
-                               foreignKeys: List[(String, List[String], List[String])],
+                               foreignKeys: List[ForeignKey],
                                planFolder: String,
                                fileSystem: FileSystem
                              ): Plan = {

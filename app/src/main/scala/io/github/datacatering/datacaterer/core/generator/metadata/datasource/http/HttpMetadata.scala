@@ -39,8 +39,8 @@ case class HttpMetadata(name: String, format: String, connectionConfig: Map[Stri
             .map(pathOperation => {
               val stepName = StepNameProvider.fromHttp(pathOperation._1.name(), path._1)
               val readOptions = Map(METADATA_IDENTIFIER -> stepName)
-              val columnMetadata = openAPIConverter.toColumnMetadata(path._1, pathOperation._1, pathOperation._2, readOptions)
-              val dsMetadata = sparkSession.createDataset(columnMetadata)
+              val fieldMetadata = openAPIConverter.toFieldMetadata(path._1, pathOperation._1, pathOperation._2, readOptions)
+              val dsMetadata = sparkSession.createDataset(fieldMetadata)
               SubDataSourceMetadata(readOptions, Some(dsMetadata))
             })
         }).toArray

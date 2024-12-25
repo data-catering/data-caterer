@@ -5,7 +5,7 @@ import {
     validationTypeOptionsMap
 } from "./configuration-data.js";
 import {
-    addColumnValidationBlock,
+    addFieldValidationBlock,
     incValidations,
     numValidations,
     updateAccordionHeaderOnInputAndSelect
@@ -351,28 +351,28 @@ export function addHelp(attrMetadata, child, parent) {
 }
 
 export function addNewDataTypeAttribute(attribute, attrMetadata, attributeContainerId, inputClass, elementContainer) {
-    let hasAddBlockColumn = attrMetadata["addBlock"] && attrMetadata["addBlock"].type === "column";
+    let hasAddBlockField = attrMetadata["addBlock"] && attrMetadata["addBlock"].type === "field";
     // add attribute field to field container
     let newAttributeRow = document.createElement("div");
     newAttributeRow.setAttribute("class", "row g-3 m-1 align-items-center user-added-attribute");
     let attrType = attrMetadata["type"];
 
     if (attrType === "min-max") {
-        let formFloatingAttrMin = createAttributeFormFloating(attrMetadata, attributeContainerId, inputClass, attribute + "Min", "col-4");
-        let formFloatingAttrMax = createAttributeFormFloating(attrMetadata, attributeContainerId, inputClass, attribute + "Max", "col-3");
+        let formFloatingAttrMin = createAttributeFormFloating(attrMetadata, attributeContainerId, inputClass, "min", "col-4");
+        let formFloatingAttrMax = createAttributeFormFloating(attrMetadata, attributeContainerId, inputClass, "max", "col-3");
         newAttributeRow.append(formFloatingAttrMin, formFloatingAttrMax);
         addHelp(attrMetadata, formFloatingAttrMin, newAttributeRow);
-        if (!hasAddBlockColumn) elementContainer.append(newAttributeRow);
+        if (!hasAddBlockField) elementContainer.append(newAttributeRow);
     } else {
         let formFloatingAttr = createAttributeFormFloating(attrMetadata, attributeContainerId, inputClass, attribute, "col-7");
         newAttributeRow.append(formFloatingAttr);
         addHelp(attrMetadata, formFloatingAttr, newAttributeRow);
-        if (!hasAddBlockColumn) elementContainer.append(newAttributeRow);
+        if (!hasAddBlockField) elementContainer.append(newAttributeRow);
     }
 
-    if (hasAddBlockColumn) {
+    if (hasAddBlockField) {
         // need to use card for appending to mainContainer
-        addColumnValidationBlock(newAttributeRow, elementContainer, attributeContainerId, inputClass);
+        addFieldValidationBlock(newAttributeRow, elementContainer, attributeContainerId, inputClass);
     } else if (!attrMetadata.required) {
         let closeButton = createCloseButton(newAttributeRow);
         let closeCol = document.createElement("div");
@@ -601,7 +601,10 @@ export function executePlan(requestBody, planName, runId, runType) {
             createToast(`Plan run ${planName}`, `Failed to run plan ${planName}! Error: ${err}`, "fail");
         })
         .then(r => {
-            if (r.ok) {
+            if (!r) {
+                createToast(planName, `Failed to run plan ${planName}! Check if server is running.`, "fail");
+                throw new Error(`Failed to run plan ${planName}, no response from server`);
+            } else if (r.ok) {
                 return r.text();
             } else {
                 r.text().then(text => {
@@ -635,20 +638,27 @@ export function executePlan(requestBody, planName, runId, runType) {
                         }
                     })
                     .then(respJson => {
-                        let latestStatus = respJson.status;
-                        if (latestStatus !== currentStatus) {
-                            currentStatus = latestStatus;
-                            let type = "running";
-                            let msg = `Plan ${planName} update, status: ${latestStatus}`;
-                            if (currentStatus === "finished") {
-                                type = "success";
-                                msg = `Successfully completed ${planName}.`;
-                            } else if (currentStatus === "failed") {
-                                type = "fail";
-                                let failReason = respJson.failedReason.length > 200 ? respJson.failedReason.substring(0, 200) + "..." : respJson.failedReason;
-                                msg = `Plan ${planName} failed! Error: ${failReason}`;
-                            }
+                        if (!respJson.status) {
+                            currentStatus = "failed";
+                            let type = "fail";
+                            let msg = `Failed to run plan ${planName}! Check server logs.`;
                             createToast(planName, msg, type);
+                        } else {
+                            let latestStatus = respJson.status;
+                            if (latestStatus !== currentStatus) {
+                                currentStatus = latestStatus;
+                                let type = "running";
+                                let msg = `Plan ${planName} update, status: ${latestStatus}`;
+                                if (currentStatus === "finished") {
+                                    type = "success";
+                                    msg = `Successfully completed ${planName}.`;
+                                } else if (currentStatus === "failed") {
+                                    type = "fail";
+                                    let failReason = respJson.failedReason.length > 200 ? respJson.failedReason.substring(0, 200) + "..." : respJson.failedReason;
+                                    msg = `Plan ${planName} failed! Error: ${failReason}`;
+                                }
+                                createToast(planName, msg, type);
+                            }
                         }
                     });
                 await wait(500);
@@ -741,7 +751,7 @@ export function addConnectionOverrideOptions(connectionName, iconDiv, overrideOp
                 return r.json();
             } else {
                 r.text().then(text => {
-                    createToast(`Get connection ${connectionName}`, `Failed to get connection ${connectionName}! Error: ${err}`, "fail");
+                    createToast(`Get connection ${connectionName}`, `Failed to get connection ${connectionName}!`, "fail");
                     throw new Error(text);
                 });
             }
@@ -761,7 +771,9 @@ export function addConnectionOverrideOptions(connectionName, iconDiv, overrideOp
 
                 //allow overriding sub data source options if not defined in connection
                 //remove previous properties
-                overrideOptionsContainer.replaceChildren();
+                if (overrideOptionsContainer && overrideOptionsContainer.hasChildNodes()) {
+                    overrideOptionsContainer.replaceChildren();
+                }
                 let dataSourceType = respJson.type;
                 let dataSourceProperties = dataSourcePropertiesMap.get(dataSourceType).properties;
                 let propertyEntries = Object.entries(dataSourceProperties);
@@ -868,7 +880,7 @@ newFieldDetails.set("generation", {
         }
     },
     accordion: {
-        name: "column",
+        name: "field",
         classes: "data-field-container",
         header: {
             updateOn: "input"
@@ -951,12 +963,14 @@ export async function createNewField(index, type) {
 }
 
 export async function createAutoFromMetadata(autoFromMetadataContainer, dataSource) {
-    let updatedMetadataSource = $(autoFromMetadataContainer).find(".metadata-connection-name").selectpicker("val", dataSource.fields.optMetadataSource.name);
+    let updatedMetadataSource = $(autoFromMetadataContainer).find(".metadata-connection-name").selectpicker("val", dataSource.options["metadataSourceName"]);
     dispatchEvent(updatedMetadataSource, "change");
     // takes some time to get the override options
     await wait(100);
-    for (let [key, value] of Object.entries(dataSource.fields.optMetadataSource.overrideOptions)) {
-        $(autoFromMetadataContainer).find(`input[aria-label="${key}"]`).val(value);
+    for (let [key, value] of Object.entries(dataSource.options)) {
+        if (key.startsWith("metadata") && key !== "metadataSourceName") {
+            $(autoFromMetadataContainer).find(`input[aria-label="${key}"]`).val(value);
+        }
     }
 }
 

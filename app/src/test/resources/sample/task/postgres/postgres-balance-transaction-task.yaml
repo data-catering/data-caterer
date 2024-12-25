@@ -6,43 +6,36 @@ steps:
       records: 1000
     options:
       dbtable: "account.balances"
-    schema:
-      fields:
-        - name: "account_number"
-          generator:
-            type: "regex"
-            options:
-              regex: "ACC1[0-9]{5,10}"
-        - name: "create_time"
-          type: "timestamp"
-        - name: "account_status"
-          type: "string"
-          generator:
-            type: "oneOf"
-            options:
-              oneOf:
-                - "open"
-                - "closed"
-                - "suspended"
-        - name: "balance"
-          type: "double"
+    fields:
+      - name: "account_number"
+        options:
+          regex: "ACC1[0-9]{5,10}"
+      - name: "create_time"
+        type: "timestamp"
+      - name: "account_status"
+        type: "string"
+        options:
+          oneOf:
+            - "open"
+            - "closed"
+            - "suspended"
+      - name: "balance"
+        type: "double"
   - name: "transactions"
     type: "postgres"
     count:
-      perColumn:
-        columnNames:
+      perField:
+        fieldNames:
           - "account_number"
         count: 5
     options:
       dbtable: "account.transactions"
-    schema:
-      fields:
-        - name: "account_number"
-        - name: "create_time"
-          type: "timestamp"
-        - name: "transaction_id"
-          generator:
-            options:
-              regex: "txn-[0-9]{10}"
-        - name: "amount"
-          type: "double"
+    fields:
+      - name: "account_number"
+      - name: "create_time"
+        type: "timestamp"
+      - name: "transaction_id"
+        options:
+          regex: "txn-[0-9]{10}"
+      - name: "amount"
+        type: "double"

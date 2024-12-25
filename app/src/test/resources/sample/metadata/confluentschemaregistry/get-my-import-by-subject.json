@@ -1,0 +1,7 @@
+{
+  "subject": "my-import",
+  "version": 1,
+  "id": 1,
+  "schemaType": "PROTOBUF",
+  "schema": "syntax = \"proto3\";\npackage com.github.pflooky;\n\nmessage ImportExample {\n  string import = 1;\n}\n"
+}

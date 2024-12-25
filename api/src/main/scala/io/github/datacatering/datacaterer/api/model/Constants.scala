@@ -101,7 +101,7 @@ object Constants {
   lazy val IS_NULLABLE = "isNullable"
   lazy val NULL_COUNT = "nullCount"
   lazy val HISTOGRAM = "histogram"
-  lazy val SOURCE_COLUMN_DATA_TYPE = "sourceDataType"
+  lazy val SOURCE_FIELD_DATA_TYPE = "sourceDataType"
   lazy val NUMERIC_PRECISION = "precision"
   lazy val NUMERIC_SCALE = "scale"
   lazy val DEFAULT_VALUE = "defaultValue"
@@ -270,7 +270,7 @@ object Constants {
   lazy val DEFAULT_ICEBERG_CATALOG_TYPE = ICEBERG_CATALOG_HADOOP
 
   //foreign key defaults
-  lazy val DEFAULT_FOREIGN_KEY_COLUMN = "default_column"
+  lazy val DEFAULT_FOREIGN_KEY_FIELD = "default_field"
   lazy val FOREIGN_KEY_DELIMITER = "||"
   lazy val FOREIGN_KEY_DELIMITER_REGEX = "\\|\\|"
   lazy val FOREIGN_KEY_PLAN_FILE_DELIMITER = "."
@@ -300,7 +300,7 @@ object Constants {
 
   //count defaults
   lazy val DEFAULT_COUNT_RECORDS = 1000L
-  lazy val DEFAULT_PER_COLUMN_COUNT_RECORDS = 10L
+  lazy val DEFAULT_PER_FIELD_COUNT_RECORDS = 10L
 
   //validation defaults
   lazy val DEFAULT_VALIDATION_CONFIG_NAME = "default_validation"
@@ -311,7 +311,7 @@ object Constants {
   lazy val DEFAULT_VALIDATION_WEBHOOK_HTTP_DATA_SOURCE_NAME = "tmp_http_data_source"
   lazy val DEFAULT_VALIDATION_WEBHOOK_HTTP_METHOD = "GET"
   lazy val DEFAULT_VALIDATION_WEBHOOK_HTTP_STATUS_CODES = List(200)
-  lazy val DEFAULT_VALIDATION_COLUMN_NAME_TYPE = VALIDATION_COLUMN_NAME_COUNT_EQUAL
+  lazy val DEFAULT_VALIDATION_FIELD_NAME_TYPE = VALIDATION_FIELD_NAME_COUNT_EQUAL
 
   //metadata source
   lazy val METADATA_SOURCE_TYPE = "metadataSourceType"
@@ -420,75 +420,80 @@ object Constants {
   lazy val AGGREGATION_STDDEV = "stddev"
 
   //validation types
-  lazy val VALIDATION_COLUMN = "column"
   lazy val VALIDATION_FIELD = "field"
-  lazy val VALIDATION_COLUMN_NAMES = "columnNames"
   lazy val VALIDATION_FIELD_NAMES = "fieldNames"
   lazy val VALIDATION_UPSTREAM = "upstream"
   lazy val VALIDATION_GROUP_BY = "groupBy"
   //validation support
   lazy val VALIDATION_DESCRIPTION = "description"
   lazy val VALIDATION_ERROR_THRESHOLD = "errorThreshold"
-  //column validations
+  //field validations
   lazy val VALIDATION_EQUAL = "equal"
-  lazy val VALIDATION_NOT_EQUAL = "notEqual"
   lazy val VALIDATION_NULL = "null"
-  lazy val VALIDATION_NOT_NULL = "notNull"
   lazy val VALIDATION_CONTAINS = "contains"
-  lazy val VALIDATION_NOT_CONTAINS = "notContains"
   lazy val VALIDATION_UNIQUE = "unique"
   lazy val VALIDATION_LESS_THAN = "lessThan"
-  lazy val VALIDATION_LESS_THAN_OR_EQUAL = "equalOrLessThan"
   lazy val VALIDATION_GREATER_THAN = "greaterThan"
-  lazy val VALIDATION_GREATER_THAN_OR_EQUAL = "equalOrGreaterThan"
   lazy val VALIDATION_BETWEEN = "between"
-  lazy val VALIDATION_NOT_BETWEEN = "notBetween"
   lazy val VALIDATION_IN = "in"
-  lazy val VALIDATION_NOT_IN = "notIn"
   lazy val VALIDATION_MATCHES = "matches"
-  lazy val VALIDATION_NOT_MATCHES = "notMatches"
   lazy val VALIDATION_STARTS_WITH = "startsWith"
-  lazy val VALIDATION_NOT_STARTS_WITH = "notStartsWith"
   lazy val VALIDATION_ENDS_WITH = "endsWith"
-  lazy val VALIDATION_NOT_ENDS_WITH = "notEndsWith"
   lazy val VALIDATION_SIZE = "size"
-  lazy val VALIDATION_NOT_SIZE = "notSize"
   lazy val VALIDATION_LESS_THAN_SIZE = "lessThanSize"
-  lazy val VALIDATION_LESS_THAN_OR_EQUAL_SIZE = "equalOrLessThanSize"
   lazy val VALIDATION_GREATER_THAN_SIZE = "greaterThanSize"
-  lazy val VALIDATION_GREATER_THAN_OR_EQUAL_SIZE = "equalOrGreaterThanSize"
   lazy val VALIDATION_LUHN_CHECK = "luhnCheck"
   lazy val VALIDATION_HAS_TYPE = "hasType"
+  lazy val VALIDATION_HAS_TYPES = "hasTypes"
+  lazy val VALIDATION_DISTINCT_IN_SET = "distinctInSet"
+  lazy val VALIDATION_DISTINCT_CONTAINS_SET = "distinctContainsSet"
+  lazy val VALIDATION_DISTINCT_EQUAL = "distinctEqual"
+  lazy val VALIDATION_MAX_BETWEEN = "maxBetween"
+  lazy val VALIDATION_MEAN_BETWEEN = "meanBetween"
+  lazy val VALIDATION_MEDIAN_BETWEEN = "medianBetween"
+  lazy val VALIDATION_MIN_BETWEEN = "minBetween"
+  lazy val VALIDATION_STD_DEV_BETWEEN = "stdDevBetween"
+  lazy val VALIDATION_SUM_BETWEEN = "sumBetween"
+  lazy val VALIDATION_LENGTH_BETWEEN = "lengthBetween"
+  lazy val VALIDATION_LENGTH_EQUAL = "lengthEqual"
+  lazy val VALIDATION_IS_DECREASING = "isDecreasing"
+  lazy val VALIDATION_IS_INCREASING = "isIncreasing"
+  lazy val VALIDATION_IS_JSON_PARSABLE = "isJsonParsable"
+  lazy val VALIDATION_MATCH_JSON_SCHEMA = "matchJsonSchema"
+  lazy val VALIDATION_MATCH_DATE_TIME_FORMAT = "matchDateTimeFormat"
+  lazy val VALIDATION_MOST_COMMON_VALUE_IN_SET = "mostCommonValueInSet"
+  lazy val VALIDATION_UNIQUE_VALUES_PROPORTION_BETWEEN = "uniqueValuesProportionBetween"
+  lazy val VALIDATION_QUANTILE_VALUES_BETWEEN = "quantileValuesBetween"
   lazy val VALIDATION_SQL = "sql"
   //group by validations
   lazy val VALIDATION_AGGREGATION_TYPE = "aggType"
-  lazy val VALIDATION_AGGREGATION_COLUMN = "aggCol"
+  lazy val VALIDATION_AGGREGATION_FIELD = "aggField"
   lazy val VALIDATION_MIN = "min"
   lazy val VALIDATION_MAX = "max"
   lazy val VALIDATION_COUNT = "count"
   lazy val VALIDATION_SUM = "sum"
   lazy val VALIDATION_AVERAGE = "average"
   lazy val VALIDATION_STANDARD_DEVIATION = "standardDeviation"
-  lazy val VALIDATION_GROUP_BY_COLUMNS = "groupByColumns"
+  lazy val VALIDATION_GROUP_BY_FIELDS = "groupByFields"
   //upstream validations
   lazy val VALIDATION_UPSTREAM_TASK_NAME = "upstreamTaskName"
-  lazy val VALIDATION_UPSTREAM_JOIN_COLUMNS = "joinColumns"
+  lazy val VALIDATION_UPSTREAM_JOIN_FIELDS = "joinFields"
   lazy val VALIDATION_UPSTREAM_JOIN_TYPE = "joinType"
   lazy val VALIDATION_UPSTREAM_JOIN_EXPR = "joinExpr"
-  //column name validations
-  lazy val VALIDATION_COLUMN_NAMES_COUNT_EQUAL = "countEqual"
-  lazy val VALIDATION_COLUMN_NAMES_COUNT_BETWEEN = "countBetween"
-  lazy val VALIDATION_COLUMN_NAMES_MATCH_ORDER = "matchOrder"
-  lazy val VALIDATION_COLUMN_NAMES_MATCH_SET = "matchSet"
+  //field name validations
+  lazy val VALIDATION_FIELD_NAMES_COUNT_EQUAL = "countEqual"
+  lazy val VALIDATION_FIELD_NAMES_COUNT_BETWEEN = "countBetween"
+  lazy val VALIDATION_FIELD_NAMES_MATCH_ORDER = "matchOrder"
+  lazy val VALIDATION_FIELD_NAMES_MATCH_SET = "matchSet"
 
   lazy val VALIDATION_OPTION_DELIMITER = ","
-  lazy val VALIDATION_SUPPORTING_OPTIONS = List(VALIDATION_COLUMN, VALIDATION_FIELD, VALIDATION_MIN, VALIDATION_MAX, VALIDATION_GROUP_BY_COLUMNS, VALIDATION_DESCRIPTION, VALIDATION_ERROR_THRESHOLD)
+  lazy val VALIDATION_SUPPORTING_OPTIONS = List(VALIDATION_FIELD, VALIDATION_FIELD, VALIDATION_MIN, VALIDATION_MAX, VALIDATION_GROUP_BY_FIELDS, VALIDATION_DESCRIPTION, VALIDATION_ERROR_THRESHOLD)
 
   lazy val VALIDATION_PREFIX_JOIN_EXPRESSION = "expr:"
-  lazy val VALIDATION_COLUMN_NAME_COUNT_EQUAL = "columnCountEqual"
-  lazy val VALIDATION_COLUMN_NAME_COUNT_BETWEEN = "columnCountBetween"
-  lazy val VALIDATION_COLUMN_NAME_MATCH_ORDER = "columnNameMatchOrder"
-  lazy val VALIDATION_COLUMN_NAME_MATCH_SET = "columnNameMatchSet"
+  lazy val VALIDATION_FIELD_NAME_COUNT_EQUAL = "fieldCountEqual"
+  lazy val VALIDATION_FIELD_NAME_COUNT_BETWEEN = "fieldCountBetween"
+  lazy val VALIDATION_FIELD_NAME_MATCH_ORDER = "fieldNameMatchOrder"
+  lazy val VALIDATION_FIELD_NAME_MATCH_SET = "fieldNameMatchSet"
 
   //configuration names
   //flags config
