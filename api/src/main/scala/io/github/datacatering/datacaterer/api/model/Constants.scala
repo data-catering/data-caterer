@@ -189,6 +189,7 @@ object Constants {
   lazy val DEFAULT_ENABLE_VALIDATION = true
   lazy val DEFAULT_ENABLE_SUGGEST_VALIDATIONS = false
   lazy val DEFAULT_ENABLE_ALERTS = true
+  lazy val DEFAULT_ENABLE_TRACK_ACTIVITY = true
 
   //folders defaults
   lazy val DEFAULT_PLAN_FILE_PATH = "/opt/app/plan/customer-create-plan.yaml"
@@ -551,5 +552,11 @@ object Constants {
   lazy val PLAN_RUN_EXECUTION_DELIMITER = "||"
   lazy val PLAN_RUN_EXECUTION_DELIMITER_REGEX = "\\|\\|"
   lazy val PLAN_RUN_SUMMARY_DELIMITER = "&&"
+
+  //source of plan run
+  lazy val DATA_CATERER_INTERFACE_JAVA = "java"
+  lazy val DATA_CATERER_INTERFACE_SCALA = "scala"
+  lazy val DATA_CATERER_INTERFACE_UI = "ui"
+  lazy val DATA_CATERER_INTERFACE_YAML = "yaml"
 
 }

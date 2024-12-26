@@ -2,7 +2,6 @@ package io.github.datacatering.datacaterer.core.generator.delete
 
 import io.github.datacatering.datacaterer.api.model.Constants.{DRIVER, JDBC_TABLE, MYSQL_DRIVER, PASSWORD, URL, USERNAME}
 import io.github.datacatering.datacaterer.core.exception.{InvalidDataSourceOptions, UnsupportedJdbcDeleteDataType}
-import org.apache.log4j.Logger
 import org.apache.spark.sql.types.{ArrayType, BinaryType, BooleanType, ByteType, DateType, DecimalType, DoubleType, FloatType, IntegerType, LongType, MapType, ShortType, StringType, StructField, StructType, TimestampType}
 import org.apache.spark.sql.{DataFrame, Row, SparkSession}
 

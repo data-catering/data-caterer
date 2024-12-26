@@ -1,4 +1,4 @@
-package io.github.datacatering.datacaterer.core.util
+package io.github.datacatering.datacaterer.api.util
 
 object ConfigUtil {
 

@@ -2,9 +2,9 @@ package io.github.datacatering.datacaterer.api
 
 import com.softwaremill.quicklens.ModifyPimp
 import io.github.datacatering.datacaterer.api
+import io.github.datacatering.datacaterer.api.connection.ConnectionTaskBuilder
 import io.github.datacatering.datacaterer.api.converter.Converters.toScalaList
 import io.github.datacatering.datacaterer.api.model.Constants.METADATA_SOURCE_TYPE
-import io.github.datacatering.datacaterer.api.connection.ConnectionTaskBuilder
 import io.github.datacatering.datacaterer.api.model.{ForeignKeyRelation, Plan}
 
 import scala.annotation.varargs

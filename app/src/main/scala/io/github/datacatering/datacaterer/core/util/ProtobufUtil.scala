@@ -1,14 +1,10 @@
 package io.github.datacatering.datacaterer.core.util
 
-import com.google.protobuf.DescriptorProtos.FieldDescriptorProto
 import com.google.protobuf.Descriptors.FieldDescriptor
-import com.google.protobuf.Descriptors.FieldDescriptor.JavaType
 import com.google.protobuf.{BoolValue, BytesValue, DescriptorProtos, DoubleValue, FloatValue, Int32Value, Int64Value, StringValue, UInt32Value, UInt64Value, WireFormat}
 import io.github.datacatering.datacaterer.api.model.{ArrayType, BinaryType, BooleanType, DataType, DecimalType, DoubleType, Field, FloatType, IntegerType, LongType, MapType, StringType, StructType, TimestampType}
 import io.github.datacatering.datacaterer.core.exception.UnsupportedProtobufType
 import org.apache.log4j.Logger
-import org.apache.spark.sql.protobuf.utils.SchemaConverters
-import org.apache.spark.sql.types.{DataTypes, StructField}
 
 import java.io.{BufferedInputStream, FileInputStream}
 import scala.collection.JavaConverters.asScalaBufferConverter
