@@ -1,7 +1,7 @@
 package io.github.datacatering.datacaterer.core.model
 
 import io.github.datacatering.datacaterer.api.ValidationBuilder
-import io.github.datacatering.datacaterer.api.model.{DistinctContainsSetFieldValidation, DistinctEqualFieldValidation, DistinctInSetFieldValidation, ExpressionValidation, FieldNamesValidation, FieldValidations, IsDecreasingFieldValidation, IsIncreasingFieldValidation, IsJsonParsableFieldValidation, LengthBetweenFieldValidation, LengthEqualFieldValidation, MatchDateTimeFormatFieldValidation, MatchJsonSchemaFieldValidation, MaxBetweenFieldValidation, MeanBetweenFieldValidation, MedianBetweenFieldValidation, MinBetweenFieldValidation, MostCommonValueInSetFieldValidation, QuantileValuesBetweenFieldValidation, StdDevBetweenFieldValidation, SumBetweenFieldValidation, UniqueValuesProportionBetweenFieldValidation}
+import io.github.datacatering.datacaterer.api.model.{DistinctContainsSetFieldValidation, DistinctEqualFieldValidation, DistinctInSetFieldValidation, ExpressionValidation, FieldNamesValidation, FieldValidations, IsDecreasingFieldValidation, IsIncreasingFieldValidation, IsJsonParsableFieldValidation, LengthBetweenFieldValidation, LengthEqualFieldValidation, MatchDateTimeFormatFieldValidation, MatchJsonSchemaFieldValidation, MatchesListFieldValidation, MaxBetweenFieldValidation, MeanBetweenFieldValidation, MedianBetweenFieldValidation, MinBetweenFieldValidation, MostCommonValueInSetFieldValidation, QuantileValuesBetweenFieldValidation, StdDevBetweenFieldValidation, SumBetweenFieldValidation, UniqueValuesProportionBetweenFieldValidation}
 import io.github.datacatering.datacaterer.core.util.{SparkSuite, Transaction}
 import io.github.datacatering.datacaterer.core.validator.{ExpressionValidationOps, FieldNamesValidationOps, FieldValidationsOps}
 import org.junit.runner.RunWith
@@ -32,6 +32,15 @@ class ValidationOperationsTest extends SparkSuite {
   test("Can define select expression to run before where expression") {
     val validation = ExpressionValidation("median_amount < 1000", List("PERCENTILE(amount, 0.5) AS median_amount"))
     val result = new ExpressionValidationOps(validation).validate(df, 4)
+
+    assertResult(1)(result.size)
+    assert(result.head.isSuccess)
+    assert(result.head.sampleErrorValues.isEmpty)
+  }
+
+  test("Can define matches list field validation") {
+    val validation = MatchesListFieldValidation(List("peter"))
+    val result = new FieldValidationsOps(FieldValidations("name", List(validation))).validate(df, 4)
 
     assertResult(1)(result.size)
     assert(result.head.isSuccess)
@@ -253,7 +262,7 @@ class ValidationOperationsTest extends SparkSuite {
   }
 
   test("Can check field names count is equal") {
-    val validation = new ValidationBuilder().fieldNames.countEqual(5).validation.asInstanceOf[FieldNamesValidation]
+    val validation = new ValidationBuilder().fieldNames.countEqual(6).validation.asInstanceOf[FieldNamesValidation]
     val result = new FieldNamesValidationOps(validation).validate(df, 4)
 
     assertResult(1)(result.size)
@@ -264,7 +273,7 @@ class ValidationOperationsTest extends SparkSuite {
   }
 
   test("Can check field names count is between") {
-    val validation = new ValidationBuilder().fieldNames.countBetween(3, 5).validation.asInstanceOf[FieldNamesValidation]
+    val validation = new ValidationBuilder().fieldNames.countBetween(3, 6).validation.asInstanceOf[FieldNamesValidation]
     val result = new FieldNamesValidationOps(validation).validate(df, 4)
 
     assertResult(1)(result.size)

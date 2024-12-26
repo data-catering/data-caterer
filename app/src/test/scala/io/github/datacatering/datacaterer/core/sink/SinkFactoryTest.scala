@@ -49,7 +49,7 @@ class SinkFactoryTest extends SparkSuite {
   ignore("Can overwrite existing Iceberg data") {
     sparkSession.sql("DELETE FROM iceberg.account.transactions_overwrite").count()
     val sinkFactory = new SinkFactory(FlagsConfig(), MetadataConfig(), FoldersConfig())
-    val options = Map(FORMAT -> ICEBERG, TABLE -> "account.transactions_overwrite", PATH -> "/tmp/iceberg-test")
+    val options = Map(FORMAT -> ICEBERG, TABLE -> "account.transactions_overwrite", PATH -> "/tmp/iceberg-test-overwrite")
     val step = Step(options = options)
     val existingDataRes = sinkFactory.pushToSink(df, "iceberg-data-source", step, LocalDateTime.now())
 

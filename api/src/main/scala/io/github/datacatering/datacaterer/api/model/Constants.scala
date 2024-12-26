@@ -437,6 +437,7 @@ object Constants {
   lazy val VALIDATION_BETWEEN = "between"
   lazy val VALIDATION_IN = "in"
   lazy val VALIDATION_MATCHES = "matches"
+  lazy val VALIDATION_MATCHES_LIST = "matchesList"
   lazy val VALIDATION_STARTS_WITH = "startsWith"
   lazy val VALIDATION_ENDS_WITH = "endsWith"
   lazy val VALIDATION_SIZE = "size"
