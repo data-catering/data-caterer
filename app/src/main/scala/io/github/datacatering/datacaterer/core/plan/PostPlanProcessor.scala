@@ -1,8 +1,7 @@
 package io.github.datacatering.datacaterer.core.plan
 
-import io.github.datacatering.datacaterer.api.model.{DataCatererConfiguration, Plan}
+import io.github.datacatering.datacaterer.api.model.{DataCatererConfiguration, DataSourceResult, Plan, ValidationConfigResult}
 import io.github.datacatering.datacaterer.core.listener.SparkRecordListener
-import io.github.datacatering.datacaterer.core.model.{DataSourceResult, ValidationConfigResult}
 
 trait PostPlanProcessor {
 

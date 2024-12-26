@@ -1,6 +1,6 @@
 package io.github.datacatering.datacaterer.api.model
 
-import Constants._
+import io.github.datacatering.datacaterer.api.model.Constants._
 
 case class FlagsConfig(
                         enableCount: Boolean = DEFAULT_ENABLE_COUNT,
@@ -14,7 +14,8 @@ case class FlagsConfig(
                         enableSaveReports: Boolean = DEFAULT_ENABLE_SAVE_REPORTS,
                         enableValidation: Boolean = DEFAULT_ENABLE_VALIDATION,
                         enableGenerateValidations: Boolean = DEFAULT_ENABLE_SUGGEST_VALIDATIONS,
-                        enableAlerts: Boolean = DEFAULT_ENABLE_ALERTS
+                        enableAlerts: Boolean = DEFAULT_ENABLE_ALERTS,
+                        enableTrackActivity: Boolean = DEFAULT_ENABLE_TRACK_ACTIVITY
                       )
 
 case class FoldersConfig(

@@ -235,8 +235,8 @@ class ValidationOperationsTest extends SparkSuite {
     assertResult(1)(result.size)
     assert(!result.head.isSuccess)
     assert(result.head.sampleErrorValues.isDefined)
-    assertResult(2)(result.head.sampleErrorValues.get.count())
-    assertResult(2)(result.head.sampleErrorValues.get.filter(r => r.getAs[Double]("amount") >= 100).count())
+    assertResult(2)(result.head.sampleErrorValues.get.length)
+    assertResult(2)(result.head.sampleErrorValues.get.count(r => r("amount").asInstanceOf[Double] >= 100))
   }
 
   test("Can get sample rows when validation is not successful by error threshold greater than 1") {
@@ -246,8 +246,8 @@ class ValidationOperationsTest extends SparkSuite {
     assertResult(1)(result.size)
     assert(!result.head.isSuccess)
     assert(result.head.sampleErrorValues.isDefined)
-    assertResult(3)(result.head.sampleErrorValues.get.count())
-    assertResult(3)(result.head.sampleErrorValues.get.filter(r => r.getAs[Double]("amount") >= 20).count())
+    assertResult(3)(result.head.sampleErrorValues.get.length)
+    assertResult(3)(result.head.sampleErrorValues.get.count(r => r("amount").asInstanceOf[Double] >= 20))
   }
 
   test("Can get sample rows when validation is not successful by error threshold less than 1") {
@@ -257,8 +257,8 @@ class ValidationOperationsTest extends SparkSuite {
     assertResult(1)(result.size)
     assert(!result.head.isSuccess)
     assert(result.head.sampleErrorValues.isDefined)
-    assertResult(2)(result.head.sampleErrorValues.get.count())
-    assertResult(2)(result.head.sampleErrorValues.get.filter(r => r.getAs[Double]("amount") >= 100).count())
+    assertResult(2)(result.head.sampleErrorValues.get.length)
+    assertResult(2)(result.head.sampleErrorValues.get.count(r => r("amount").asInstanceOf[Double] >= 100))
   }
 
   test("Can check field names count is equal") {
@@ -292,7 +292,7 @@ class ValidationOperationsTest extends SparkSuite {
     assertResult(5)(result.head.total)
     assertResult(2)(result.head.numErrors)
     assert(result.head.sampleErrorValues.isDefined)
-    assertResult(2)(result.head.sampleErrorValues.get.count())
+    assertResult(2)(result.head.sampleErrorValues.get.length)
   }
 
   test("Can show error when field name not in set") {
@@ -304,6 +304,6 @@ class ValidationOperationsTest extends SparkSuite {
     assertResult(4)(result.head.total)
     assertResult(1)(result.head.numErrors)
     assert(result.head.sampleErrorValues.isDefined)
-    assertResult(1)(result.head.sampleErrorValues.get.count())
+    assertResult(1)(result.head.sampleErrorValues.get.length)
   }
 }

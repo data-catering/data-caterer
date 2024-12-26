@@ -1,6 +1,6 @@
 package io.github.datacatering.datacaterer.core.ui.plan
 
-import io.github.datacatering.datacaterer.api.model.Constants.{CONFIG_FLAGS_DELETE_GENERATED_RECORDS, CONFIG_FLAGS_GENERATE_DATA, CONFIG_FLAGS_GENERATE_VALIDATIONS, DEFAULT_MASTER, DEFAULT_RUNTIME_CONFIG, FORMAT, METADATA_SOURCE_NAME}
+import io.github.datacatering.datacaterer.api.model.Constants.{CONFIG_FLAGS_DELETE_GENERATED_RECORDS, CONFIG_FLAGS_GENERATE_DATA, CONFIG_FLAGS_GENERATE_VALIDATIONS, DATA_CATERER_INTERFACE_UI, DEFAULT_MASTER, DEFAULT_RUNTIME_CONFIG, FORMAT, METADATA_SOURCE_NAME}
 import io.github.datacatering.datacaterer.api.model.{DataSourceValidation, Task, ValidationConfiguration, YamlUpstreamDataSourceValidation}
 import io.github.datacatering.datacaterer.api.{DataCatererConfigurationBuilder, ValidationBuilder}
 import io.github.datacatering.datacaterer.core.exception.SaveFileException
@@ -139,7 +139,7 @@ object PlanRepository {
       case Success(planAsYaml) =>
         updatePlanRunExecution(planRunExecution, PARSED_PLAN)
         val runPlanFuture = Future {
-          PlanProcessor.determineAndExecutePlan(Some(planAsYaml))
+          PlanProcessor.determineAndExecutePlan(Some(planAsYaml), DATA_CATERER_INTERFACE_UI)
         }
 
         runPlanFuture.onComplete {

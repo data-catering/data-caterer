@@ -2,8 +2,8 @@ package io.github.datacatering.datacaterer.core.validator
 
 import io.github.datacatering.datacaterer.api.model.Constants.FORMAT
 import io.github.datacatering.datacaterer.api.model.{DataExistsWaitCondition, FileExistsWaitCondition, PauseWaitCondition, WaitCondition, WebhookWaitCondition}
+import io.github.datacatering.datacaterer.api.util.ConfigUtil
 import io.github.datacatering.datacaterer.core.exception.InvalidWaitConditionException
-import io.github.datacatering.datacaterer.core.util.ConfigUtil
 import io.github.datacatering.datacaterer.core.util.HttpUtil.getAuthHeader
 import org.apache.hadoop.fs.{FileSystem, Path}
 import org.apache.log4j.Logger

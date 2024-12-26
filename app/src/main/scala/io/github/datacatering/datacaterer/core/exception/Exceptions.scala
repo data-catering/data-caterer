@@ -1,7 +1,7 @@
 package io.github.datacatering.datacaterer.core.exception
 
 import io.github.datacatering.datacaterer.api.model.Constants.{DATA_CONTRACT_FILE, FOREIGN_KEY_DELIMITER, FOREIGN_KEY_PLAN_FILE_DELIMITER}
-import io.github.datacatering.datacaterer.api.model.{Count, Field, Step, Validation}
+import io.github.datacatering.datacaterer.api.model.{Field, Step, Validation}
 import org.apache.spark.sql.types.{DataType, Metadata, StructField}
 
 //files

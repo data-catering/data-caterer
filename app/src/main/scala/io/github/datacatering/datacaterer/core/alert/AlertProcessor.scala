@@ -1,9 +1,8 @@
 package io.github.datacatering.datacaterer.core.alert
 
 import io.github.datacatering.datacaterer.api.model.Constants.{ALERT_TRIGGER_ON_ALL, ALERT_TRIGGER_ON_FAILURE, ALERT_TRIGGER_ON_GENERATION_FAILURE, ALERT_TRIGGER_ON_GENERATION_SUCCESS, ALERT_TRIGGER_ON_SUCCESS, ALERT_TRIGGER_ON_VALIDATION_FAILURE, ALERT_TRIGGER_ON_VALIDATION_SUCCESS}
-import io.github.datacatering.datacaterer.api.model.{DataCatererConfiguration, Plan}
+import io.github.datacatering.datacaterer.api.model.{DataCatererConfiguration, DataSourceResult, Plan, ValidationConfigResult}
 import io.github.datacatering.datacaterer.core.listener.SparkRecordListener
-import io.github.datacatering.datacaterer.core.model.{DataSourceResult, ValidationConfigResult}
 import io.github.datacatering.datacaterer.core.plan.PostPlanProcessor
 import org.apache.log4j.Logger
 

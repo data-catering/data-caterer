@@ -1,11 +1,12 @@
 package io.github.datacatering.datacaterer.core.generator
 
-import io.github.datacatering.datacaterer.api.model.{DataCatererConfiguration, Plan, Task, TaskSummary, ValidationConfiguration}
+import io.github.datacatering.datacaterer.api.model.{DataCatererConfiguration, DataSourceResult, Plan, Task, TaskSummary, ValidationConfigResult, ValidationConfiguration}
+import io.github.datacatering.datacaterer.core.activity.PlanRunPostPlanProcessor
 import io.github.datacatering.datacaterer.core.alert.AlertProcessor
 import io.github.datacatering.datacaterer.core.generator.delete.DeleteRecordProcessor
 import io.github.datacatering.datacaterer.core.generator.result.DataGenerationResultWriter
 import io.github.datacatering.datacaterer.core.listener.SparkRecordListener
-import io.github.datacatering.datacaterer.core.model.{DataSourceResult, PlanRunResults, ValidationConfigResult}
+import io.github.datacatering.datacaterer.core.model.PlanRunResults
 import io.github.datacatering.datacaterer.core.parser.PlanParser
 import io.github.datacatering.datacaterer.core.util.PlanImplicits.TaskOps
 import io.github.datacatering.datacaterer.core.validator.ValidationProcessor
@@ -80,7 +81,11 @@ class DataGeneratorProcessor(dataCatererConfiguration: DataCatererConfiguration)
 
   private def applyPostPlanProcessors(plan: Plan, sparkRecordListener: SparkRecordListener,
                                       generationResult: List[DataSourceResult], validationResults: List[ValidationConfigResult]): Unit = {
-    val postPlanProcessors = List(new DataGenerationResultWriter(dataCatererConfiguration), new AlertProcessor(dataCatererConfiguration))
+    val postPlanProcessors = List(
+      new DataGenerationResultWriter(dataCatererConfiguration),
+      new AlertProcessor(dataCatererConfiguration),
+      new PlanRunPostPlanProcessor(dataCatererConfiguration),
+    )
 
     postPlanProcessors.foreach(postPlanProcessor => {
       if (postPlanProcessor.enabled) postPlanProcessor.apply(plan, sparkRecordListener, generationResult, validationResults)

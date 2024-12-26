@@ -1,6 +1,6 @@
 package io.github.datacatering.datacaterer.core.generator.metadata.datasource.openlineage
 
-import io.github.datacatering.datacaterer.api.model.Constants.{DATA_SOURCE_NAME, DEFAULT_FIELD_TYPE, DEFAULT_STEP_NAME, FACET_DATA_SOURCE, FIELD_DATA_TYPE, FIELD_DESCRIPTION, JDBC, JDBC_TABLE, METADATA_IDENTIFIER, METADATA_SOURCE_URL, OPEN_LINEAGE_DATASET, OPEN_LINEAGE_NAMESPACE, URI}
+import io.github.datacatering.datacaterer.api.model.Constants.{DATA_SOURCE_NAME, DEFAULT_FIELD_TYPE, FACET_DATA_SOURCE, FIELD_DATA_TYPE, FIELD_DESCRIPTION, JDBC, JDBC_TABLE, METADATA_IDENTIFIER, METADATA_SOURCE_URL, OPEN_LINEAGE_DATASET, OPEN_LINEAGE_NAMESPACE, URI}
 import io.github.datacatering.datacaterer.core.exception.{FailedMarquezHttpCallException, InvalidMarquezResponseException}
 import io.github.datacatering.datacaterer.core.generator.metadata.datasource.database.FieldMetadata
 import io.github.datacatering.datacaterer.core.generator.metadata.datasource.{DataSourceMetadata, SubDataSourceMetadata}

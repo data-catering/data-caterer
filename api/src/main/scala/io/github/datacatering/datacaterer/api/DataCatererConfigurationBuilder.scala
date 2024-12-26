@@ -1,9 +1,9 @@
 package io.github.datacatering.datacaterer.api
 
-import io.github.datacatering.datacaterer.api.converter.Converters.toScalaMap
-import io.github.datacatering.datacaterer.api.model.Constants._
 import com.softwaremill.quicklens.ModifyPimp
 import io.github.datacatering.datacaterer.api.connection.{CassandraBuilder, ConnectionTaskBuilder, FileBuilder, HttpBuilder, KafkaBuilder, MySqlBuilder, NoopBuilder, PostgresBuilder, SolaceBuilder}
+import io.github.datacatering.datacaterer.api.converter.Converters.toScalaMap
+import io.github.datacatering.datacaterer.api.model.Constants._
 import io.github.datacatering.datacaterer.api.model.DataCatererConfiguration
 
 import scala.annotation.varargs

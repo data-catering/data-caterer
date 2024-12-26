@@ -3,9 +3,8 @@ package io.github.datacatering.datacaterer.core.alert
 import com.slack.api.Slack
 import com.slack.api.methods.MethodsClient
 import com.slack.api.methods.request.chat.ChatPostMessageRequest
-import io.github.datacatering.datacaterer.api.model.SlackAlertConfig
+import io.github.datacatering.datacaterer.api.model.{DataSourceResult, SlackAlertConfig, ValidationConfigResult}
 import io.github.datacatering.datacaterer.core.model.Constants.REPORT_HOME_HTML
-import io.github.datacatering.datacaterer.core.model.{DataSourceResult, ValidationConfigResult}
 import org.apache.log4j.Logger
 
 import scala.util.{Failure, Success, Try}

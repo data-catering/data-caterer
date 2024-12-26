@@ -2,11 +2,12 @@ package io.github.datacatering.datacaterer.core.generator.metadata.datasource
 
 import io.github.datacatering.datacaterer.api.model.Constants.METADATA_SOURCE_TYPE
 import io.github.datacatering.datacaterer.api.model.{DataCatererConfiguration, DataSourceValidation, Field, Plan, Task, ValidationConfiguration}
+import io.github.datacatering.datacaterer.api.util.ConfigUtil
 import io.github.datacatering.datacaterer.api.{PlanRun, ValidationBuilder}
 import io.github.datacatering.datacaterer.core.generator.metadata.PlanGenerator.writeToFiles
 import io.github.datacatering.datacaterer.core.model.{ForeignKeyRelationship, ValidationConfigurationHelper}
 import io.github.datacatering.datacaterer.core.util.MetadataUtil.getMetadataFromConnectionConfig
-import io.github.datacatering.datacaterer.core.util.{ConfigUtil, ForeignKeyUtil, MetadataUtil, SchemaHelper, TaskHelper}
+import io.github.datacatering.datacaterer.core.util.{ForeignKeyUtil, MetadataUtil, SchemaHelper, TaskHelper}
 import org.apache.log4j.Logger
 import org.apache.spark.sql.types.StructType
 import org.apache.spark.sql.{Dataset, SparkSession}

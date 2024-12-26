@@ -3,7 +3,7 @@ package io.github.datacatering.datacaterer.api
 import com.softwaremill.quicklens.ModifyPimp
 import io.github.datacatering.datacaterer.api.converter.Converters.toScalaMap
 import io.github.datacatering.datacaterer.api.model.Constants._
-import io.github.datacatering.datacaterer.api.model.{Count, DataType, Field, PerFieldCount, Step, StringType, Task, TaskSummary}
+import io.github.datacatering.datacaterer.api.model.{Count, DataType, Field, PerFieldCount, Step, Task, TaskSummary}
 
 import scala.annotation.varargs
 
