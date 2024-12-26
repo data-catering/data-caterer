@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.13.1
+
+- Clear exception message on which validation failed to run when running list of validations
+- Add test for all field validations being read from YAML
+- Create ValidationBuilders for Java API
+- Add in missing Matches List field validation
+
 ## 0.13.0
 
 Following major changes to API were made:

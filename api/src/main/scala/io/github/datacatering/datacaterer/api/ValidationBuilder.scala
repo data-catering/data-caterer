@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.annotation.JsonSerialize
 import com.softwaremill.quicklens.ModifyPimp
 import io.github.datacatering.datacaterer.api.ValidationHelper.cleanFieldName
 import io.github.datacatering.datacaterer.api.connection.{ConnectionTaskBuilder, FileBuilder}
+import io.github.datacatering.datacaterer.api.converter.Converters.{toScalaList, toScalaMap}
 import io.github.datacatering.datacaterer.api.model.ConditionType.ConditionType
 import io.github.datacatering.datacaterer.api.model.Constants.{AGGREGATION_AVG, AGGREGATION_COUNT, AGGREGATION_MAX, AGGREGATION_MIN, AGGREGATION_STDDEV, AGGREGATION_SUM, DEFAULT_VALIDATION_JOIN_TYPE, DEFAULT_VALIDATION_WEBHOOK_HTTP_DATA_SOURCE_NAME, VALIDATION_FIELD_NAME_COUNT_BETWEEN, VALIDATION_FIELD_NAME_COUNT_EQUAL, VALIDATION_FIELD_NAME_MATCH_ORDER, VALIDATION_FIELD_NAME_MATCH_SET, VALIDATION_PREFIX_JOIN_EXPRESSION, VALIDATION_UNIQUE}
 import io.github.datacatering.datacaterer.api.model.{ConditionType, DataExistsWaitCondition, DataSourceValidation, ExpressionValidation, FieldNamesValidation, FileExistsWaitCondition, GroupByValidation, PauseWaitCondition, UpstreamDataSourceValidation, Validation, ValidationConfiguration, WaitCondition, WebhookWaitCondition}
@@ -11,6 +12,7 @@ import io.github.datacatering.datacaterer.api.parser.ValidationBuilderSerializer
 
 import java.sql.{Date, Timestamp}
 import scala.annotation.varargs
+import scala.util.{Failure, Success, Try}
 
 
 case class ValidationConfigurationBuilder(validationConfiguration: ValidationConfiguration = ValidationConfiguration()) {
@@ -248,6 +250,10 @@ case class FieldValidationBuilder(validationBuilder: ValidationBuilder = Validat
     validationBuilder.expr(s"$field $sign ${fieldValueToString(value)}")
   }
 
+  def isEqual(value: Any): ValidationBuilder = {
+    isEqual(value, false)
+  }
+
   /**
    * Check if field values are equal to another field for each record
    *
@@ -260,6 +266,10 @@ case class FieldValidationBuilder(validationBuilder: ValidationBuilder = Validat
     validationBuilder.expr(s"$field $sign $value")
   }
 
+  def isEqualField(value: String): ValidationBuilder = {
+    isEqualField(value, false)
+  }
+
   /**
    * Check if field values are null
    *
@@ -269,6 +279,10 @@ case class FieldValidationBuilder(validationBuilder: ValidationBuilder = Validat
   def isNull(negate: Boolean = false): ValidationBuilder = {
     val nullExpr = if (negate) "ISNOTNULL" else "ISNULL"
     validationBuilder.expr(s"$nullExpr($field)")
+  }
+
+  def isNull: ValidationBuilder = {
+    isNull(false)
   }
 
   /**
@@ -283,6 +297,10 @@ case class FieldValidationBuilder(validationBuilder: ValidationBuilder = Validat
     validationBuilder.expr(s"${sign}CONTAINS($field, '$value')")
   }
 
+  def contains(value: String): ValidationBuilder = {
+    contains(value, false)
+  }
+
   /**
    * Check if field values are less than certain value
    *
@@ -293,6 +311,10 @@ case class FieldValidationBuilder(validationBuilder: ValidationBuilder = Validat
   def lessThan(value: Any, strictly: Boolean = true): ValidationBuilder = {
     val sign = if (strictly) "<" else "<="
     validationBuilder.expr(s"$field $sign ${fieldValueToString(value)}")
+  }
+
+  def lessThan(value: Any): ValidationBuilder = {
+    lessThan(value, true)
   }
 
   /**
@@ -307,6 +329,10 @@ case class FieldValidationBuilder(validationBuilder: ValidationBuilder = Validat
     validationBuilder.expr(s"$field $sign $value")
   }
 
+  def lessThanField(value: String): ValidationBuilder = {
+    lessThanField(value, true)
+  }
+
   /**
    * Check if field is greater than a certain value
    *
@@ -317,6 +343,10 @@ case class FieldValidationBuilder(validationBuilder: ValidationBuilder = Validat
   def greaterThan(value: Any, strictly: Boolean = true): ValidationBuilder = {
     val sign = if (strictly) ">" else ">="
     validationBuilder.expr(s"$field $sign ${fieldValueToString(value)}")
+  }
+
+  def greaterThan(value: Any): ValidationBuilder = {
+    greaterThan(value, true)
   }
 
   /**
@@ -331,30 +361,42 @@ case class FieldValidationBuilder(validationBuilder: ValidationBuilder = Validat
     validationBuilder.expr(s"$field $sign $value")
   }
 
+  def greaterThanField(value: String): ValidationBuilder = {
+    greaterThanField(value, true)
+  }
+
   /**
    * Check if field values are between two values (inclusive)
    *
-   * @param minValue Minimum value (inclusive)
-   * @param maxValue Maximum value (inclusive)
+   * @param min Minimum value (inclusive)
+   * @param max Maximum value (inclusive)
    * @param negate Check if not between when set to true
    * @return
    */
-  def between(minValue: Any, maxValue: Any, negate: Boolean = false): ValidationBuilder = {
+  def between(min: Any, max: Any, negate: Boolean = false): ValidationBuilder = {
     val prefix = if (negate) "NOT " else ""
-    validationBuilder.expr(s"$field ${prefix}BETWEEN ${fieldValueToString(minValue)} AND ${fieldValueToString(maxValue)}")
+    validationBuilder.expr(s"$field ${prefix}BETWEEN ${fieldValueToString(min)} AND ${fieldValueToString(max)}")
+  }
+
+  def between(min: Any, max: Any): ValidationBuilder = {
+    between(min, max, false)
   }
 
   /**
    * Check if field values are between values of other fields (inclusive)
    *
-   * @param minValue Other field name determining minimum value (inclusive)
-   * @param maxValue Other field name determining maximum value (inclusive)
+   * @param min Other field name determining minimum value (inclusive)
+   * @param max Other field name determining maximum value (inclusive)
    * @param negate Check if not between fields when set to true
    * @return
    */
-  def betweenFields(minValue: String, maxValue: String, negate: Boolean = false): ValidationBuilder = {
+  def betweenFields(min: String, max: String, negate: Boolean = false): ValidationBuilder = {
     val prefix = if (negate) "NOT " else ""
-    validationBuilder.expr(s"$field ${prefix}BETWEEN $minValue AND $maxValue")
+    validationBuilder.expr(s"$field ${prefix}BETWEEN $min AND $max")
+  }
+
+  def betweenFields(min: String, max: String): ValidationBuilder = {
+    betweenFields(min, max, false)
   }
 
   /**
@@ -391,6 +433,10 @@ case class FieldValidationBuilder(validationBuilder: ValidationBuilder = Validat
     validationBuilder.expr(s"${prefix}REGEXP($field, '$regex')")
   }
 
+  def matches(regex: String): ValidationBuilder = {
+    matches(regex, false)
+  }
+
   /**
    * Check if field values match certain regex patterns (Java regular expression)
    *
@@ -408,6 +454,10 @@ case class FieldValidationBuilder(validationBuilder: ValidationBuilder = Validat
     validationBuilder.expr(s"$prefix($checkAllPatterns)")
   }
 
+  def matchesList(regexes: List[String]): ValidationBuilder = {
+    matchesList(regexes, true, false)
+  }
+
   /**
    * Check if field values start with certain string (only for string fields)
    *
@@ -418,6 +468,10 @@ case class FieldValidationBuilder(validationBuilder: ValidationBuilder = Validat
   def startsWith(value: String, negate: Boolean = false): ValidationBuilder = {
     val prefix = if (negate) "!" else ""
     validationBuilder.expr(s"${prefix}STARTSWITH($field, '$value')")
+  }
+
+  def startsWith(value: String): ValidationBuilder = {
+    startsWith(value, false)
   }
 
   /**
@@ -432,6 +486,10 @@ case class FieldValidationBuilder(validationBuilder: ValidationBuilder = Validat
     validationBuilder.expr(s"${prefix}ENDSWITH($field, '$value')")
   }
 
+  def endsWith(value: String): ValidationBuilder = {
+    endsWith(value, false)
+  }
+
   /**
    * Check if field size is equal to certain amount (only for array or map fields)
    *
@@ -442,6 +500,10 @@ case class FieldValidationBuilder(validationBuilder: ValidationBuilder = Validat
   def size(size: Int, negate: Boolean = false): ValidationBuilder = {
     val sign = if (negate) "!=" else "=="
     validationBuilder.expr(s"SIZE($field) $sign $size")
+  }
+
+  def size(s: Int): ValidationBuilder = {
+    size(s, false)
   }
 
   /**
@@ -456,6 +518,10 @@ case class FieldValidationBuilder(validationBuilder: ValidationBuilder = Validat
     validationBuilder.expr(s"SIZE($field) $sign $size")
   }
 
+  def lessThanSize(size: Int): ValidationBuilder = {
+    lessThanSize(size, true)
+  }
+
   /**
    * Check if field size is greater than certain amount (only for array or map fields)
    *
@@ -466,6 +532,10 @@ case class FieldValidationBuilder(validationBuilder: ValidationBuilder = Validat
   def greaterThanSize(size: Int, strictly: Boolean = true): ValidationBuilder = {
     val sign = if (strictly) ">" else ">="
     validationBuilder.expr(s"SIZE($field) $sign $size")
+  }
+
+  def greaterThanSize(size: Int): ValidationBuilder = {
+    greaterThanSize(size, true)
   }
 
   /**
@@ -479,16 +549,24 @@ case class FieldValidationBuilder(validationBuilder: ValidationBuilder = Validat
     validationBuilder.expr(s"${prefix}LUHN_CHECK($field)")
   }
 
+  def luhnCheck(): ValidationBuilder = {
+    luhnCheck(false)
+  }
+
   /**
    * Check if field values adhere to expected type
    *
-   * @param `type` Expected data type
+   * @param value Expected data type
    * @param negate Check if not has type when set to true
    * @return
    */
-  def hasType(`type`: String, negate: Boolean = false): ValidationBuilder = {
+  def hasType(value: String, negate: Boolean = false): ValidationBuilder = {
     val sign = if (negate) "!=" else "=="
-    validationBuilder.expr(s"TYPEOF($field) $sign '${`type`}'")
+    validationBuilder.expr(s"TYPEOF($field) $sign '${value}'")
+  }
+
+  def hasType(value: String): ValidationBuilder = {
+    hasType(value, false)
   }
 
   /**
@@ -513,74 +591,90 @@ case class FieldValidationBuilder(validationBuilder: ValidationBuilder = Validat
     validationBuilder.expr(s"TYPEOF($field) ${prefix}IN (${types.map(t => s"'$t'").mkString(",")})")
   }
 
-  /**
-   * Check if distinct values of field exist in set
-   *
-   * @param set Expected set of distinct values
-   * @return
-   */
-  @varargs def distinctInSet(set: Any*): ValidationBuilder = {
-    distinctInSet(set.toList, false)
+  def hasTypes(types: java.util.List[String], negate: Boolean): ValidationBuilder = {
+    hasTypes(toScalaList(types), negate)
   }
 
   /**
    * Check if distinct values of field exist in set
    *
-   * @param set Expected set of distinct values
+   * @param values Expected set of distinct values
+   * @return
+   */
+  @varargs def distinctInSet(values: Any*): ValidationBuilder = {
+    distinctInSet(values.toList, false)
+  }
+
+  /**
+   * Check if distinct values of field exist in set
+   *
+   * @param values Expected set of distinct values
    * @param negate Check if distinct values are not in set when set to true
    * @return
    */
-  def distinctInSet(set: List[Any], negate: Boolean = false): ValidationBuilder = {
+  def distinctInSet(values: List[Any], negate: Boolean = false): ValidationBuilder = {
     val sign = if (negate) "!" else ""
     val removeTicksField = field.replaceAll("`", "")
     validationBuilder.selectExpr(s"COLLECT_SET($field) AS ${removeTicksField}_distinct")
-      .expr(s"${sign}FORALL(${removeTicksField}_distinct, x -> ARRAY_CONTAINS(ARRAY(${seqToString(set)}), x))")
+      .expr(s"${sign}FORALL(${removeTicksField}_distinct, x -> ARRAY_CONTAINS(ARRAY(${seqToString(values)}), x))")
+  }
+
+  def distinctInSet(values: java.util.List[Any], negate: Boolean): ValidationBuilder = {
+    distinctInSet(toScalaList(values), negate)
   }
 
   /**
    * Check if distinct values of field contains set
    *
-   * @param set Expected contained set of distinct values
+   * @param values Expected contained set of distinct values
    * @return
    */
-  @varargs def distinctContainsSet(set: Any*): ValidationBuilder = {
-    distinctContainsSet(set.toList, false)
+  @varargs def distinctContainsSet(values: Any*): ValidationBuilder = {
+    distinctContainsSet(values.toList, false)
   }
 
   /**
    * Check if distinct values of field contains set
    *
-   * @param set Expected contained set of distinct values
+   * @param values Expected contained set of distinct values
    * @param negate Check if distinct values does not contain set when set to true
    * @return
    */
-  def distinctContainsSet(set: List[Any], negate: Boolean = false): ValidationBuilder = {
+  def distinctContainsSet(values: List[Any], negate: Boolean = false): ValidationBuilder = {
     val sign = if (negate) "!" else ""
     validationBuilder.selectExpr(s"COLLECT_SET($field) AS ${removeTicksField}_distinct")
-      .expr(s"${sign}FORALL(ARRAY(${seqToString(set)}), x -> ARRAY_CONTAINS(${removeTicksField}_distinct, x))")
+      .expr(s"${sign}FORALL(ARRAY(${seqToString(values)}), x -> ARRAY_CONTAINS(${removeTicksField}_distinct, x))")
+  }
+
+  def distinctContainsSet(values: java.util.List[Any], negate: Boolean): ValidationBuilder = {
+    distinctContainsSet(toScalaList(values), negate)
   }
 
   /**
    * Check if distinct values of field equals set
    *
-   * @param set Expected set of distinct values
+   * @param values Expected set of distinct values
    * @return
    */
-  @varargs def distinctEqual(set: Any*): ValidationBuilder = {
-    distinctEqual(set.toList, false)
+  @varargs def distinctEqual(values: Any*): ValidationBuilder = {
+    distinctEqual(values.toList, false)
   }
 
   /**
    * Check if distinct values of field equals set
    *
-   * @param set Expected set of distinct values
+   * @param values Expected set of distinct values
    * @param negate Check if distinct values does not equal set when set to true
    * @return
    */
-  def distinctEqual(set: List[Any], negate: Boolean = false): ValidationBuilder = {
+  def distinctEqual(values: List[Any], negate: Boolean = false): ValidationBuilder = {
     val sign = if (negate) "!=" else "=="
     validationBuilder.selectExpr(s"COLLECT_SET($field) AS ${removeTicksField}_distinct")
-      .expr(s"ARRAY_SIZE(ARRAY_EXCEPT(ARRAY(${seqToString(set)}), ${removeTicksField}_distinct)) $sign 0")
+      .expr(s"ARRAY_SIZE(ARRAY_EXCEPT(ARRAY(${seqToString(values)}), ${removeTicksField}_distinct)) $sign 0")
+  }
+
+  def distinctEqual(values: java.util.List[Any], negate: Boolean): ValidationBuilder = {
+    distinctEqual(toScalaList(values), negate)
   }
 
   /**
@@ -595,6 +689,10 @@ case class FieldValidationBuilder(validationBuilder: ValidationBuilder = Validat
     validationBuilder.groupBy().max(field).between(min, max, negate)
   }
 
+  def maxBetween(min: Any, max: Any): ValidationBuilder = {
+    maxBetween(min, max, false)
+  }
+
   /**
    * Check if mean field value is between two values
    *
@@ -605,6 +703,10 @@ case class FieldValidationBuilder(validationBuilder: ValidationBuilder = Validat
    */
   def meanBetween(min: Any, max: Any, negate: Boolean = false): ValidationBuilder = {
     validationBuilder.groupBy().avg(field).between(min, max, negate)
+  }
+
+  def meanBetween(min: Any, max: Any): ValidationBuilder = {
+    meanBetween(min, max, false)
   }
 
   /**
@@ -622,6 +724,10 @@ case class FieldValidationBuilder(validationBuilder: ValidationBuilder = Validat
       .expr(s"${removeTicksField}_median ${prefix}BETWEEN $min AND $max")
   }
 
+  def medianBetween(min: Any, max: Any): ValidationBuilder = {
+    medianBetween(min, max, false)
+  }
+
   /**
    * Check if min field value is between two values
    *
@@ -632,6 +738,10 @@ case class FieldValidationBuilder(validationBuilder: ValidationBuilder = Validat
    */
   def minBetween(min: Any, max: Any, negate: Boolean = false): ValidationBuilder = {
     validationBuilder.groupBy().min(field).between(min, max, negate)
+  }
+
+  def minBetween(min: Any, max: Any): ValidationBuilder = {
+    minBetween(min, max, false)
   }
 
   /**
@@ -646,6 +756,10 @@ case class FieldValidationBuilder(validationBuilder: ValidationBuilder = Validat
     validationBuilder.groupBy().stddev(field).between(min, max, negate)
   }
 
+  def stdDevBetween(min: Any, max: Any): ValidationBuilder = {
+    stdDevBetween(min, max, false)
+  }
+
   /**
    * Check if sum field values is between two values
    *
@@ -656,6 +770,10 @@ case class FieldValidationBuilder(validationBuilder: ValidationBuilder = Validat
    */
   def sumBetween(min: Any, max: Any, negate: Boolean = false): ValidationBuilder = {
     validationBuilder.groupBy().sum(field).between(min, max, negate)
+  }
+
+  def sumBetween(min: Any, max: Any): ValidationBuilder = {
+    sumBetween(min, max, false)
   }
 
   /**
@@ -671,6 +789,10 @@ case class FieldValidationBuilder(validationBuilder: ValidationBuilder = Validat
     validationBuilder.expr(s"LENGTH($field) ${prefix}BETWEEN $min AND $max")
   }
 
+  def lengthBetween(min: Int, max: Int): ValidationBuilder = {
+    lengthBetween(min, max, false)
+  }
+
   /**
    * Check if length of field values is equal to value
    *
@@ -681,6 +803,10 @@ case class FieldValidationBuilder(validationBuilder: ValidationBuilder = Validat
   def lengthEqual(value: Int, negate: Boolean = false): ValidationBuilder = {
     val sign = if (negate) "!=" else "=="
     validationBuilder.expr(s"LENGTH($field) $sign $value")
+  }
+
+  def lengthEqual(value: Int): ValidationBuilder = {
+    lengthEqual(value, false)
   }
 
   /**
@@ -696,6 +822,10 @@ case class FieldValidationBuilder(validationBuilder: ValidationBuilder = Validat
       .expr(s"is_${removeTicksField}_decreasing")
   }
 
+  def isDecreasing: ValidationBuilder = {
+    isDecreasing(true)
+  }
+
   /**
    * Check if field values are increasing
    *
@@ -709,6 +839,10 @@ case class FieldValidationBuilder(validationBuilder: ValidationBuilder = Validat
       .expr(s"is_${removeTicksField}_increasing")
   }
 
+  def isIncreasing: ValidationBuilder = {
+    isIncreasing(true)
+  }
+
   /**
    * Check if field values can be parsed as JSON
    *
@@ -718,6 +852,10 @@ case class FieldValidationBuilder(validationBuilder: ValidationBuilder = Validat
   def isJsonParsable(negate: Boolean = false): ValidationBuilder = {
     val prefix = if (negate) "" else "NOT "
     validationBuilder.expr(s"GET_JSON_OBJECT($field, '$$') IS ${prefix}NULL")
+  }
+
+  def isJsonParsable: ValidationBuilder = {
+    isJsonParsable(false)
   }
 
   /**
@@ -732,6 +870,10 @@ case class FieldValidationBuilder(validationBuilder: ValidationBuilder = Validat
     validationBuilder.expr(s"FROM_JSON($field, '$schema') IS ${prefix}NULL")
   }
 
+  def matchJsonSchema(schema: String): ValidationBuilder = {
+    matchJsonSchema(schema, false)
+  }
+
   /**
    * Check if field values match date time format
    *
@@ -742,6 +884,10 @@ case class FieldValidationBuilder(validationBuilder: ValidationBuilder = Validat
   def matchDateTimeFormat(format: String, negate: Boolean = false): ValidationBuilder = {
     val prefix = if (negate) "" else "NOT "
     validationBuilder.expr(s"TRY_TO_TIMESTAMP($field, '$format') IS ${prefix}NULL")
+  }
+
+  def matchDateTimeFormat(format: String): ValidationBuilder = {
+    matchDateTimeFormat(format, false)
   }
 
   /**
@@ -756,6 +902,14 @@ case class FieldValidationBuilder(validationBuilder: ValidationBuilder = Validat
     validationBuilder
       .selectExpr(s"MODE($field) AS ${removeTicksField}_mode")
       .expr(s"${prefix}ARRAY_CONTAINS(ARRAY(${seqToString(values)}), ${removeTicksField}_mode)")
+  }
+
+  def mostCommonValueInSet(values: java.util.List[Any]): ValidationBuilder = {
+    mostCommonValueInSet(toScalaList(values), false)
+  }
+
+  def mostCommonValueInSet(values: java.util.List[Any], negate: Boolean): ValidationBuilder = {
+    mostCommonValueInSet(toScalaList(values), negate)
   }
 
   /**
@@ -773,11 +927,15 @@ case class FieldValidationBuilder(validationBuilder: ValidationBuilder = Validat
       .expr(s"${removeTicksField}_unique_proportion ${prefix}BETWEEN $min AND $max")
   }
 
+  def uniqueValuesProportionBetween(min: Double, max: Double): ValidationBuilder = {
+    uniqueValuesProportionBetween(min, max, false)
+  }
+
   /**
    * Check if quantiles of field values is within range.
    *
    * For example,
-   * `Map(0.1 -> (1, 2))` -> 10th percentile should be between 1 and 2
+   * `Map(0.1 -> (1.0, 2.0))` -> 10th percentile should be between 1 and 2
    *
    * @param quantileRanges Map of quantile to expected range
    * @param negate Check if quantile value is not between two values when set to true
@@ -786,9 +944,17 @@ case class FieldValidationBuilder(validationBuilder: ValidationBuilder = Validat
   def quantileValuesBetween(quantileRanges: Map[Double, (Double, Double)], negate: Boolean = false): ValidationBuilder = {
     val prefix = if (negate) "NOT " else ""
     val quantileExprs = quantileRanges.zipWithIndex.map(quantileEntry => {
-      val quantile = quantileEntry._1._1
-      val min = quantileEntry._1._2._1
-      val max = quantileEntry._1._2._2
+      //if coming from YAML file, quantile value is string
+      val tryGetQuantile = Try(quantileEntry._1._1)
+      val quantileWithDouble = tryGetQuantile match {
+        case Success(_) => quantileEntry._1
+        case Failure(_) =>
+          val stringKeys = quantileEntry._1.asInstanceOf[(String, (Double, Double))]
+          stringKeys._1.toDouble -> stringKeys._2
+      }
+      val quantile = quantileWithDouble._1
+      val min = quantileWithDouble._2._1
+      val max = quantileWithDouble._2._2
       val idx = quantileEntry._2
       val percentileColName = s"${removeTicksField}_percentile_$idx"
       val selectExpr = s"PERCENTILE($field, $quantile) AS $percentileColName"
@@ -798,6 +964,14 @@ case class FieldValidationBuilder(validationBuilder: ValidationBuilder = Validat
     val selectExpr = quantileExprs.keys.toList
     val whereExpr = quantileExprs.values.mkString(" AND ")
     validationBuilder.selectExpr(selectExpr: _*).expr(whereExpr)
+  }
+
+  def quantileValuesBetween(quantileRanges: java.util.Map[Double, (Double, Double)], negate: Boolean): ValidationBuilder = {
+    quantileValuesBetween(toScalaMap(quantileRanges), negate)
+  }
+
+  def quantileValuesBetween(quantileRanges: java.util.Map[Double, (Double, Double)]): ValidationBuilder = {
+    quantileValuesBetween(toScalaMap(quantileRanges), false)
   }
 
   /**

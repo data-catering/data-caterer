@@ -15,6 +15,11 @@ dataSources:
               max: 10
               description: "hello"
               errorThreshold: 2
+            - type: quantileValuesBetween
+              quantileRanges:
+                0.1:
+                  - - 1.0
+                    - 10.0
         - expr: "amount < 100"
         - expr: "year == 2021"
           errorThreshold: 0.1

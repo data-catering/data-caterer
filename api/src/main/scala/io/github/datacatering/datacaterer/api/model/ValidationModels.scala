@@ -140,6 +140,7 @@ case class FieldValidations(
   new Type(value = classOf[BetweenFieldValidation], name = "between"),
   new Type(value = classOf[InFieldValidation], name = "in"),
   new Type(value = classOf[MatchesFieldValidation], name = "matches"),
+  new Type(value = classOf[MatchesListFieldValidation], name = "matchesList"),
   new Type(value = classOf[StartsWithFieldValidation], name = "startsWith"),
   new Type(value = classOf[EndsWithFieldValidation], name = "endsWith"),
   new Type(value = classOf[SizeFieldValidation], name = "size"),
@@ -213,6 +214,10 @@ case class InFieldValidation(values: List[Any], negate: Boolean = false) extends
 
 case class MatchesFieldValidation(regex: String, negate: Boolean = false) extends FieldValidation {
   override val `type`: String = VALIDATION_MATCHES
+}
+
+case class MatchesListFieldValidation(regexes: List[String], matchAll: Boolean = true, negate: Boolean = false) extends FieldValidation {
+  override val `type`: String = VALIDATION_MATCHES_LIST
 }
 
 case class StartsWithFieldValidation(value: String, negate: Boolean = false) extends FieldValidation {

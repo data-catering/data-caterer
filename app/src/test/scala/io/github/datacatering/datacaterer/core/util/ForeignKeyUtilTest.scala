@@ -280,4 +280,4 @@ class ForeignKeyUtilTest extends SparkSuite {
 
 case class Account(account_id: String = "acc123", name: String = "peter", open_date: Date = Date.valueOf("2023-01-31"), age: Int = 10, debitCredit: String = "D")
 
-case class Transaction(account_id: String, name: String, transaction_id: String, created_date: Date, amount: Double)
+case class Transaction(account_id: String, name: String, transaction_id: String, created_date: Date, amount: Double, links: List[String] = List())

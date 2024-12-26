@@ -113,7 +113,7 @@ class PlanProcessorTest extends SparkSuite {
     assert(csvData.forall(r => r.getAs[String]("time").substring(0, 10) == r.getAs[String]("date")))
   }
 
-  ignore("Write YAML for plan") {
+  test("Write YAML for plan") {
     val docPlanRun = new TestValidation()
     val planWrite = ObjectMapperUtil.yamlObjectMapper.writeValueAsString(docPlanRun._validations)
     println(planWrite)
@@ -385,6 +385,7 @@ class PlanProcessorTest extends SparkSuite {
       .count(count.records(10).recordsPerField(3, "account_id"))
       .validations(
         validation.field("account_id").isNull(true),
+        validation.field("amount").quantileValuesBetween(Map(0.1 -> (1.0 -> 10.0))),
         validation.groupBy("account_id").count().isEqual(1),
         validation.fieldNames.countEqual(3),
         validation.fieldNames.countBetween(1, 2),

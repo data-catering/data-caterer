@@ -2,13 +2,15 @@ package io.github.datacatering.datacaterer.core.validator
 
 import io.github.datacatering.datacaterer.api.ValidationBuilder
 import io.github.datacatering.datacaterer.api.model.Constants.{AGGREGATION_COUNT, FORMAT, VALIDATION_FIELD_NAME_COUNT_BETWEEN, VALIDATION_FIELD_NAME_COUNT_EQUAL, VALIDATION_FIELD_NAME_MATCH_ORDER, VALIDATION_FIELD_NAME_MATCH_SET, VALIDATION_PREFIX_JOIN_EXPRESSION, VALIDATION_UNIQUE}
-import io.github.datacatering.datacaterer.api.model.{BetweenFieldValidation, ContainsFieldValidation, DistinctContainsSetFieldValidation, DistinctEqualFieldValidation, DistinctInSetFieldValidation, EndsWithFieldValidation, EqualFieldValidation, ExpressionValidation, FieldNamesValidation, FieldValidations, GreaterThanFieldValidation, GreaterThanSizeFieldValidation, GroupByValidation, HasTypeFieldValidation, HasTypesFieldValidation, InFieldValidation, IsDecreasingFieldValidation, IsIncreasingFieldValidation, IsJsonParsableFieldValidation, LengthBetweenFieldValidation, LengthEqualFieldValidation, LessThanFieldValidation, LessThanSizeFieldValidation, LuhnCheckFieldValidation, MatchDateTimeFormatFieldValidation, MatchJsonSchemaFieldValidation, MatchesFieldValidation, MaxBetweenFieldValidation, MeanBetweenFieldValidation, MedianBetweenFieldValidation, MinBetweenFieldValidation, MostCommonValueInSetFieldValidation, NullFieldValidation, QuantileValuesBetweenFieldValidation, SizeFieldValidation, StartsWithFieldValidation, StdDevBetweenFieldValidation, SumBetweenFieldValidation, UniqueFieldValidation, UniqueValuesProportionBetweenFieldValidation, UpstreamDataSourceValidation, Validation, YamlUpstreamDataSourceValidation}
-import io.github.datacatering.datacaterer.core.exception.UnsupportedDataValidationTypeException
+import io.github.datacatering.datacaterer.api.model._
+import io.github.datacatering.datacaterer.core.exception.{FailedFieldDataValidationException, UnsupportedDataValidationTypeException}
 import io.github.datacatering.datacaterer.core.model.ValidationResult
 import io.github.datacatering.datacaterer.core.validator.ValidationHelper.getValidationType
 import org.apache.log4j.Logger
 import org.apache.spark.sql.functions.{col, expr}
 import org.apache.spark.sql.{DataFrame, Dataset, Encoder, Encoders, Row, SparkSession}
+
+import scala.util.{Failure, Success, Try}
 
 abstract class ValidationOps(validation: Validation) {
 
@@ -80,6 +82,7 @@ class FieldValidationsOps(fieldValidations: FieldValidations) extends Validation
         case BetweenFieldValidation(min, max, negate) => build.between(min, max, negate)
         case InFieldValidation(values, negate) => build.in(values, negate)
         case MatchesFieldValidation(regex, negate) => build.matches(regex, negate)
+        case MatchesListFieldValidation(regexes, matchAll, negate) => build.matchesList(regexes, matchAll, negate)
         case StartsWithFieldValidation(value, negate) => build.startsWith(value, negate)
         case EndsWithFieldValidation(value, negate) => build.endsWith(value, negate)
         case SizeFieldValidation(size, negate) => build.size(size, negate)
@@ -113,9 +116,13 @@ class FieldValidationsOps(fieldValidations: FieldValidations) extends Validation
       val validationWithDescription = v.description.map(d => baseValidation.description(d)).getOrElse(validationWithThreshold)
       val validationWithPreFilter = v.preFilter.map(f => validationWithDescription.preFilter(f)).getOrElse(validationWithDescription)
 
-      validationWithPreFilter.validation match {
+      val tryRunValidation = Try(validationWithPreFilter.validation match {
         case e: ExpressionValidation => new ExpressionValidationOps(e).validate(df, dfCount)
         case g: GroupByValidation => new GroupByValidationOps(g).validate(df, dfCount)
+      })
+      tryRunValidation match {
+        case Success(value) => value
+        case Failure(exception) => throw FailedFieldDataValidationException(field, validationWithPreFilter.validation, exception)
       }
     })
   }

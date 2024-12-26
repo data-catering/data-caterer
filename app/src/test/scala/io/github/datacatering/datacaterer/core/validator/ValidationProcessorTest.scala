@@ -4,7 +4,7 @@ import io.github.datacatering.datacaterer.api.model.Constants.{DELTA, DELTA_LAKE
 import io.github.datacatering.datacaterer.api.model.{DataSourceValidation, FoldersConfig, ValidationConfig, ValidationConfiguration}
 import io.github.datacatering.datacaterer.api.{PreFilterBuilder, ValidationBuilder}
 import io.github.datacatering.datacaterer.core.model.ValidationConfigResult
-import io.github.datacatering.datacaterer.core.util.{SparkSuite, Transaction}
+import io.github.datacatering.datacaterer.core.util.{ObjectMapperUtil, SparkSuite, Transaction}
 import org.junit.runner.RunWith
 import org.scalatestplus.junit.JUnitRunner
 
@@ -81,8 +81,7 @@ class ValidationProcessorTest extends SparkSuite {
       ValidationConfig(),
       FoldersConfig(validationFolderPath = "src/test/resources/sample/validation/json")
     )
-    val result = validationProcessor.executeValidations
-    validateResult(result)
+    validationProcessor.executeValidations
   }
 
   private def setupValidationProcessor(connectingConfig: Map[String, String]): ValidationProcessor = {

@@ -1,7 +1,7 @@
 package io.github.datacatering.datacaterer.core.exception
 
 import io.github.datacatering.datacaterer.api.model.Constants.{DATA_CONTRACT_FILE, FOREIGN_KEY_DELIMITER, FOREIGN_KEY_PLAN_FILE_DELIMITER}
-import io.github.datacatering.datacaterer.api.model.{Count, Field, Step}
+import io.github.datacatering.datacaterer.api.model.{Count, Field, Step, Validation}
 import org.apache.spark.sql.types.{DataType, Metadata, StructField}
 
 //files
@@ -92,6 +92,11 @@ case class UnsupportedDataValidationAggregateFunctionException(function: String,
 
 case class DataValidationMissingUpstreamDataSourceException(name: String) extends RuntimeException(
   s"Failed to find upstream data source configuration, data-source-name=$name"
+)
+
+case class FailedFieldDataValidationException(field: String, validation: Validation, throwable: Throwable) extends RuntimeException(
+  s"Failed to run data validation, field-name=$field, validation=$validation",
+  throwable
 )
 
 //delete data
