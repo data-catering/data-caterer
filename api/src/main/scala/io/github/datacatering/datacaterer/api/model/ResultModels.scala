@@ -1,6 +1,6 @@
 package io.github.datacatering.datacaterer.api.model
 
-import io.github.datacatering.datacaterer.api.model.Constants.DEFAULT_DATA_SOURCE_NAME
+import io.github.datacatering.datacaterer.api.model.Constants.{DEFAULT_DATA_SOURCE_NAME, PLAN_STAGE_FINISHED}
 import io.github.datacatering.datacaterer.api.util.ConfigUtil.cleanseOptions
 import io.github.datacatering.datacaterer.api.util.ResultWriterUtil.getSuccessSymbol
 
@@ -152,7 +152,11 @@ object ValidationResult {
 case class PlanResults(
                         plan: Plan,
                         generationResult: List[DataSourceResult],
-                        validationResults: List[ValidationConfigResult]
+                        validationResult: List[ValidationConfigResult],
+                        generationSuccessful: Boolean = true,
+                        validationSuccessful: Boolean = true,
+                        stage: String = PLAN_STAGE_FINISHED,
+                        exception: Option[String] = None
                       )
 
 case class PlanRunSummary(

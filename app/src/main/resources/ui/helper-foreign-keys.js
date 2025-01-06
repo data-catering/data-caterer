@@ -82,7 +82,6 @@ export async function createForeignKeysFromPlan(respJson) {
                 let updatedFields = $(newForeignKey).find("input.foreign-key-source").val(foreignKey.source.fields);
                 dispatchEvent(updatedFields, "input");
                 //also add in other options
-                console.log(foreignKey.source.options);
                 if (foreignKey.source.options) {
                     for (let [key, value] of Object.entries(foreignKey.source.options)) {
                         let fkConnectionProperty = $(newForeignKey).find(`input.foreign-key-connection-property[aria-label=${key}]`);
@@ -231,7 +230,6 @@ async function createForeignKeyInput(index, name) {
             .then(() => {
                 //check if override options already exist in tasks
                 //TODO do we make a listener between the connection properties and the relationships properties to keep them in sync?
-                console.log($(taskNameInput).closest("[class~=data-source-config-container]").find("input[class~=data-source-property]"));
                 $(taskNameInput).closest("[class~=data-source-config-container]")
                     .find("input[class~=data-source-property]")
                     .each(function (i, obj) {

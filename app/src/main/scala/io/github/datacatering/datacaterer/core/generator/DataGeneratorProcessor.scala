@@ -1,5 +1,6 @@
 package io.github.datacatering.datacaterer.core.generator
 
+import io.github.datacatering.datacaterer.api.model.Constants.{PLAN_STAGE_DELETE_DATA, PLAN_STAGE_GENERATE_DATA, PLAN_STAGE_POST_PLAN_PROCESSORS, PLAN_STAGE_VALIDATE_DATA}
 import io.github.datacatering.datacaterer.api.model.{DataCatererConfiguration, DataSourceResult, Plan, Task, TaskSummary, ValidationConfigResult, ValidationConfiguration}
 import io.github.datacatering.datacaterer.core.activity.PlanRunPostPlanProcessor
 import io.github.datacatering.datacaterer.core.alert.AlertProcessor
@@ -24,6 +25,7 @@ class DataGeneratorProcessor(dataCatererConfiguration: DataCatererConfiguration)
   private lazy val deleteRecordProcessor = new DeleteRecordProcessor(connectionConfigsByName, foldersConfig.recordTrackingFolderPath)
   private lazy val batchDataProcessor = new BatchDataProcessor(connectionConfigsByName, foldersConfig, metadataConfig, flagsConfig, generationConfig)
   private lazy val sparkRecordListener = new SparkRecordListener(flagsConfig.enableCount)
+  private lazy val planRunPostPlanProcessor = new PlanRunPostPlanProcessor(dataCatererConfiguration)
   sparkSession.sparkContext.addSparkListener(sparkRecordListener)
 
   def generateData(): PlanRunResults = {
@@ -36,13 +38,12 @@ class DataGeneratorProcessor(dataCatererConfiguration: DataCatererConfiguration)
     val summaryWithTask = plan.tasks.map(t => (t, tasksByName(t.name)))
     val result = generateDataWithResult(plan, summaryWithTask, optValidations)
     if (flagsConfig.enableDeleteGeneratedRecords) {
-      val stepsByName = tasks.flatMap(_.steps).filter(_.enabled).map(s => (s.name, s)).toMap
-      deleteRecordProcessor.deleteGeneratedRecords(plan, stepsByName, summaryWithTask)
+      runDeleteRecords(plan, tasks, summaryWithTask, result)
     }
     result
   }
 
-  private def generateDataWithResult(plan: Plan, summaryWithTask: List[(TaskSummary, Task)], optValidations: Option[List[ValidationConfiguration]]): PlanRunResults = {
+  protected def generateDataWithResult(plan: Plan, summaryWithTask: List[(TaskSummary, Task)], optValidations: Option[List[ValidationConfiguration]]): PlanRunResults = {
     if (flagsConfig.enableDeleteGeneratedRecords && flagsConfig.enableGenerateData) {
       LOGGER.warn("Both enableGenerateData and enableDeleteGeneratedData are true. Please only enable one at a time. Will continue with generating data")
     }
@@ -53,11 +54,11 @@ class DataGeneratorProcessor(dataCatererConfiguration: DataCatererConfiguration)
     val numSteps = summaryWithTask.map(t =>
       t._2.steps.count(s => if (s.fields.nonEmpty) true else false)
     ).sum
-    val stepNames = summaryWithTask.map(t => s"task=${t._2.name}, num-steps=${t._2.steps.size}, steps=${t._2.steps.map(_.name).mkString(",")}").mkString("||")
 
     val generationResult = if (flagsConfig.enableGenerateData && numSteps > 0) {
+      val stepNames = summaryWithTask.map(t => s"task=${t._2.name}, num-steps=${t._2.steps.size}, steps=${t._2.steps.map(_.name).mkString(",")}").mkString("||")
       LOGGER.debug(s"Following tasks are enabled and will be executed: num-tasks=${summaryWithTask.size}, tasks=$stepNames")
-      batchDataProcessor.splitAndProcess(plan, summaryWithTask, optValidations)
+      runDataGeneration(plan, summaryWithTask, optValidations)
     } else {
       LOGGER.warn(s"No data will be generated as it is either disabled or there are no tasks defined with a schema, " +
         s"enable-generate-data=${flagsConfig.enableGenerateData}, num-steps=$numSteps")
@@ -65,8 +66,7 @@ class DataGeneratorProcessor(dataCatererConfiguration: DataCatererConfiguration)
     }
 
     val validationResults = if (flagsConfig.enableValidation) {
-      new ValidationProcessor(connectionConfigsByName, optValidations, dataCatererConfiguration.validationConfig, foldersConfig)
-        .executeValidations
+      runDataValidation(optValidations, plan, generationResult)
     } else {
       LOGGER.debug("Data validations disabled by flag configuration")
       List()
@@ -74,22 +74,71 @@ class DataGeneratorProcessor(dataCatererConfiguration: DataCatererConfiguration)
 
     applyPostPlanProcessors(plan, sparkRecordListener, generationResult, validationResults)
     val optReportPath = if (flagsConfig.enableSaveReports) {
-      plan.runId.map(id => s"${foldersConfig.generatedReportsFolderPath}/$id").orElse(Some(foldersConfig.generatedReportsFolderPath))
+      plan.runId.map(id => s"${foldersConfig.generatedReportsFolderPath}/$id")
+        .orElse(Some(foldersConfig.generatedReportsFolderPath))
     } else None
     PlanRunResults(generationResult, validationResults, optReportPath)
   }
 
+  private def runDeleteRecords(plan: Plan, tasks: List[Task], summaryWithTask: List[(TaskSummary, Task)], planRunResults: PlanRunResults): Unit = {
+    val stepsByName = tasks.flatMap(_.steps).filter(_.enabled).map(s => (s.name, s)).toMap
+    try {
+      deleteRecordProcessor.deleteGeneratedRecords(plan, stepsByName, summaryWithTask)
+    } catch {
+      case exception: Exception =>
+        notifyManagementApi(plan, planRunResults.generationResults, planRunResults.validationResults, PLAN_STAGE_DELETE_DATA, exception)
+        throw exception
+    }
+  }
+
+  private def runDataValidation(optValidations: Option[List[ValidationConfiguration]], plan: Plan, generationResults: List[DataSourceResult]): List[ValidationConfigResult] = {
+    try {
+      new ValidationProcessor(connectionConfigsByName, optValidations, dataCatererConfiguration.validationConfig, foldersConfig)
+        .executeValidations
+    } catch {
+      case exception: Exception =>
+        notifyManagementApi(plan, generationResults, List(), PLAN_STAGE_VALIDATE_DATA, exception)
+        throw exception
+    }
+  }
+
+  private def runDataGeneration(plan: Plan, summaryWithTask: List[(TaskSummary, Task)], optValidations: Option[List[ValidationConfiguration]]): List[DataSourceResult] = {
+    try {
+      batchDataProcessor.splitAndProcess(plan, summaryWithTask, optValidations)
+    } catch {
+      case exception: Exception =>
+        notifyManagementApi(plan, List(), List(), PLAN_STAGE_GENERATE_DATA, exception)
+        throw exception
+    }
+  }
+
   private def applyPostPlanProcessors(plan: Plan, sparkRecordListener: SparkRecordListener,
-                                      generationResult: List[DataSourceResult], validationResults: List[ValidationConfigResult]): Unit = {
+                                      generationResult: List[DataSourceResult], validationResult: List[ValidationConfigResult]): Unit = {
     val postPlanProcessors = List(
       new DataGenerationResultWriter(dataCatererConfiguration),
       new AlertProcessor(dataCatererConfiguration),
-      new PlanRunPostPlanProcessor(dataCatererConfiguration),
+      planRunPostPlanProcessor
     )
 
-    postPlanProcessors.foreach(postPlanProcessor => {
-      if (postPlanProcessor.enabled) postPlanProcessor.apply(plan, sparkRecordListener, generationResult, validationResults)
-    })
+    try {
+      postPlanProcessors.foreach(postPlanProcessor => {
+        if (postPlanProcessor.enabled) postPlanProcessor.apply(plan, sparkRecordListener, generationResult, validationResult)
+      })
+    } catch {
+      case exception: Exception =>
+        notifyManagementApi(plan, generationResult, validationResult, PLAN_STAGE_POST_PLAN_PROCESSORS, exception)
+        throw exception
+    }
+  }
+
+  private def notifyManagementApi(
+                                   plan: Plan,
+                                   generationResult: List[DataSourceResult],
+                                   validationResult: List[ValidationConfigResult],
+                                   stage: String,
+                                   exception: Exception
+                                 ): Unit = {
+    planRunPostPlanProcessor.notifyPlanFailed(plan, generationResult, validationResult, stage, Some(exception))
   }
 
 }

@@ -39,7 +39,8 @@ class DataGenerationResultWriter(val dataCatererConfiguration: DataCatererConfig
     val (stepSummary, taskSummary, dataSourceSummary) = getSummaries(generationResult)
     val fileSystem = FileSystem.get(sparkSession.sparkContext.hadoopConfiguration)
     fileSystem.setWriteChecksum(false)
-    val reportFolder = plan.runId.map(id => s"${foldersConfig.generatedReportsFolderPath}/$id").getOrElse(foldersConfig.generatedReportsFolderPath)
+    val reportFolder = plan.runId.map(id => s"${foldersConfig.generatedReportsFolderPath}/$id")
+      .getOrElse(foldersConfig.generatedReportsFolderPath)
 
     LOGGER.info(s"Writing data generation summary to HTML files, folder-path=$reportFolder")
     val htmlWriter = new ResultHtmlWriter()

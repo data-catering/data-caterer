@@ -10,6 +10,12 @@ object Constants {
   lazy val ADVANCED_APPLICATION = "advanced"
   lazy val TRIAL_APPLICATION = "trial"
 
+  //env vars
+  lazy val DATA_CATERER_MANAGEMENT_TRACK = "DATA_CATERER_MANAGEMENT_TRACK"
+  lazy val DATA_CATERER_MANAGEMENT_URL = "DATA_CATERER_MANAGEMENT_URL"
+  lazy val DATA_CATERER_API_TOKEN = "DATA_CATERER_API_TOKEN"
+  lazy val DATA_CATERER_API_USER = "DATA_CATERER_API_USER"
+
   //base config
   lazy val RUNTIME_MASTER = "runtime.master"
 

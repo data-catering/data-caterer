@@ -545,9 +545,6 @@ object Constants {
   lazy val ALERT_TRIGGER_ON_GENERATION_SUCCESS = "generation_success"
   lazy val ALERT_TRIGGER_ON_VALIDATION_SUCCESS = "validation_success"
 
-  //trial
-  lazy val API_KEY = "API_KEY"
-
   //ui
   lazy val PLAN_RUN_EXECUTION_DELIMITER = "||"
   lazy val PLAN_RUN_EXECUTION_DELIMITER_REGEX = "\\|\\|"
@@ -558,5 +555,20 @@ object Constants {
   lazy val DATA_CATERER_INTERFACE_SCALA = "scala"
   lazy val DATA_CATERER_INTERFACE_UI = "ui"
   lazy val DATA_CATERER_INTERFACE_YAML = "yaml"
+
+  //plan run stages
+  lazy val PLAN_STAGE_PARSE_PLAN = "parsePlan"
+  lazy val PLAN_STAGE_PRE_PLAN_PROCESSORS = "prePlanProcessors"
+  lazy val PLAN_STAGE_EXTRACT_METADATA = "extractMetadata"
+  lazy val PLAN_STAGE_GENERATE_DATA = "generateData"
+  lazy val PLAN_STAGE_VALIDATE_DATA = "validateData"
+  lazy val PLAN_STAGE_DELETE_DATA = "deleteData"
+  lazy val PLAN_STAGE_POST_PLAN_PROCESSORS = "postPlanProcessors"
+  lazy val PLAN_STAGE_FINISHED = "finished"
+  lazy val PLAN_STAGE_EXCEPTION_MESSAGE_LENGTH = 500
+
+  //plan run status
+  lazy val PLAN_STATUS_SUCCESS = "success"
+  lazy val PLAN_STATUS_FAILED = "failed"
 
 }

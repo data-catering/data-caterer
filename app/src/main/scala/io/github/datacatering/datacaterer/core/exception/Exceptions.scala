@@ -242,3 +242,9 @@ case class UnsupportedProtobufType(protobufType: String) extends RuntimeExceptio
 case class InvalidNumberOfProtobufMessages(filePath: String) extends RuntimeException(
   s"Only one message can be defined in .proto file for parsing, protobuf-file=$filePath"
 )
+
+//api
+case class MissingApiEnvVarException(envVar: String) extends RuntimeException(
+  s"Environment variable not defined, please set environment variable and run again, if you have not generated an API " +
+    s"key or token, please follow steps found here (https://data.catering/get-started/quick-start/), env-var=$envVar"
+)

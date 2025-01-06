@@ -265,6 +265,9 @@ tasks.shadowJar {
 
 tasks.test {
     finalizedBy(tasks.reportScoverage)
+    environment("DATA_CATERER_API_USER", "hello")
+    environment("DATA_CATERER_API_TOKEN", "world")
+    environment("DATA_CATERER_MANAGEMENT_TRACK", "data_caterer_is_cool")
 }
 
 configure<ScoverageExtension> {

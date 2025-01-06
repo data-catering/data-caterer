@@ -341,7 +341,6 @@ function checkFormValidity(form) {
 function getPlanDetailsAndRun(form) {
     // collect all the user inputs
     let {planName, runId, requestBody} = getPlanDetails(form);
-    console.log(JSON.stringify(requestBody));
     executePlan(requestBody, planName, runId);
 }
 
@@ -373,7 +372,6 @@ function savePlan() {
     savePlanButton.addEventListener("click", function () {
         let form = document.getElementById("plan-form");
         let {planName,  requestBody} = getPlanDetails(form);
-        console.log(JSON.stringify(requestBody));
         fetch("http://localhost:9898/plan", {
             method: "POST",
             headers: {"Content-Type": "application/json"},
