@@ -1,19 +1,17 @@
 package io.github.datacatering.datacaterer.core.generator.result
 
 import com.fasterxml.jackson.annotation.JsonInclude.Include
-import io.github.datacatering.datacaterer.api.model.Constants.{DEFAULT_GENERATED_REPORTS_FOLDER_PATH, SPECIFIC_DATA_SOURCE_OPTIONS}
-import io.github.datacatering.datacaterer.api.model.{DataCatererConfiguration, Field, Plan, Step, Task}
+import io.github.datacatering.datacaterer.api.model.Constants.SPECIFIC_DATA_SOURCE_OPTIONS
+import io.github.datacatering.datacaterer.api.model.{DataCatererConfiguration, DataSourceResult, DataSourceResultSummary, Field, Plan, Step, StepResultSummary, Task, TaskResultSummary, ValidationConfigResult}
 import io.github.datacatering.datacaterer.core.listener.SparkRecordListener
 import io.github.datacatering.datacaterer.core.model.Constants.{REPORT_DATA_CATERING_SVG, REPORT_DATA_SOURCES_HTML, REPORT_FIELDS_HTML, REPORT_HOME_HTML, REPORT_MAIN_CSS, REPORT_RESULT_JSON, REPORT_TASK_HTML, REPORT_VALIDATIONS_HTML}
-import io.github.datacatering.datacaterer.core.model.{DataSourceResult, DataSourceResultSummary, StepResultSummary, TaskResultSummary, ValidationConfigResult}
 import io.github.datacatering.datacaterer.core.plan.PostPlanProcessor
 import io.github.datacatering.datacaterer.core.util.FileUtil.writeStringToFile
 import io.github.datacatering.datacaterer.core.util.ObjectMapperUtil
-import org.apache.hadoop.fs.{FileSystem, Path}
+import org.apache.hadoop.fs.FileSystem
 import org.apache.log4j.Logger
 import org.apache.spark.sql.SparkSession
 
-import scala.util.{Failure, Success, Try}
 import scala.xml.Node
 
 class DataGenerationResultWriter(val dataCatererConfiguration: DataCatererConfiguration)
@@ -41,7 +39,8 @@ class DataGenerationResultWriter(val dataCatererConfiguration: DataCatererConfig
     val (stepSummary, taskSummary, dataSourceSummary) = getSummaries(generationResult)
     val fileSystem = FileSystem.get(sparkSession.sparkContext.hadoopConfiguration)
     fileSystem.setWriteChecksum(false)
-    val reportFolder = plan.runId.map(id => s"${foldersConfig.generatedReportsFolderPath}/$id").getOrElse(foldersConfig.generatedReportsFolderPath)
+    val reportFolder = plan.runId.map(id => s"${foldersConfig.generatedReportsFolderPath}/$id")
+      .getOrElse(foldersConfig.generatedReportsFolderPath)
 
     LOGGER.info(s"Writing data generation summary to HTML files, folder-path=$reportFolder")
     val htmlWriter = new ResultHtmlWriter()
@@ -107,7 +106,7 @@ class DataGenerationResultWriter(val dataCatererConfiguration: DataCatererConfig
   private def resultsAsJson(generationResult: List[DataSourceResult], validationResults: List[ValidationConfigResult]): String = {
     val resultMap = Map(
       "generation" -> getGenerationJsonSummary(generationResult),
-      "validation" -> validationResults.map(_.jsonSummary(validationConfig.numSampleErrorRecords))
+      "validation" -> validationResults.map(_.jsonSummary)
     )
     OBJECT_MAPPER.writeValueAsString(resultMap)
   }

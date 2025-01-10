@@ -1,8 +1,7 @@
 package io.github.datacatering.datacaterer.core.alert
 
 import io.github.datacatering.datacaterer.api.model.Constants.{ALERT_TRIGGER_ON_ALL, ALERT_TRIGGER_ON_FAILURE, ALERT_TRIGGER_ON_GENERATION_FAILURE, ALERT_TRIGGER_ON_GENERATION_SUCCESS, ALERT_TRIGGER_ON_SUCCESS, ALERT_TRIGGER_ON_VALIDATION_FAILURE, ALERT_TRIGGER_ON_VALIDATION_SUCCESS}
-import io.github.datacatering.datacaterer.api.model.{AlertConfig, DataCatererConfiguration}
-import io.github.datacatering.datacaterer.core.model.{DataSourceResult, DataSourceValidationResult, SinkResult, ValidationConfigResult, ValidationResult}
+import io.github.datacatering.datacaterer.api.model.{AlertConfig, DataCatererConfiguration, DataSourceResult, DataSourceValidationResult, SinkResult, ValidationConfigResult, ValidationResult}
 import org.junit.runner.RunWith
 import org.scalatest.funsuite.AnyFunSuite
 import org.scalatestplus.junit.JUnitRunner

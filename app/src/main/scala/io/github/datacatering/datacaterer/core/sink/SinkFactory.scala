@@ -2,11 +2,11 @@ package io.github.datacatering.datacaterer.core.sink
 
 import com.google.common.util.concurrent.RateLimiter
 import io.github.datacatering.datacaterer.api.model.Constants.{DELTA, DELTA_LAKE_SPARK_CONF, DRIVER, FORMAT, ICEBERG, ICEBERG_SPARK_CONF, JDBC, OMIT, PARTITIONS, PARTITION_BY, POSTGRES_DRIVER, RATE, ROWS_PER_SECOND, SAVE_MODE, TABLE}
-import io.github.datacatering.datacaterer.api.model.{FlagsConfig, FoldersConfig, MetadataConfig, Step}
+import io.github.datacatering.datacaterer.api.model.{FlagsConfig, FoldersConfig, MetadataConfig, SinkResult, Step}
+import io.github.datacatering.datacaterer.api.util.ConfigUtil
 import io.github.datacatering.datacaterer.core.exception.{FailedSaveDataDataFrameV2Exception, FailedSaveDataException}
 import io.github.datacatering.datacaterer.core.model.Constants.{BATCH, DEFAULT_ROWS_PER_SECOND, FAILED, FINISHED, PER_FIELD_INDEX_FIELD, STARTED}
-import io.github.datacatering.datacaterer.core.model.{RealTimeSinkResult, SinkResult}
-import io.github.datacatering.datacaterer.core.util.ConfigUtil
+import io.github.datacatering.datacaterer.core.model.RealTimeSinkResult
 import io.github.datacatering.datacaterer.core.util.GeneratorUtil.determineSaveTiming
 import io.github.datacatering.datacaterer.core.util.MetadataUtil.getFieldMetadata
 import io.github.datacatering.datacaterer.core.util.ValidationUtil.cleanValidationIdentifier

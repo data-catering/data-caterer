@@ -1,10 +1,11 @@
 package io.github.datacatering.datacaterer.core.parser
 
-import io.github.datacatering.datacaterer.api.model.Constants.ONE_OF_GENERATOR
-import io.github.datacatering.datacaterer.api.model.{DataCatererConfiguration, DataSourceValidation, Field, Plan, Task, UpstreamDataSourceValidation, ValidationConfiguration, YamlUpstreamDataSourceValidation, YamlValidationConfiguration}
-import io.github.datacatering.datacaterer.api.{ConnectionConfigWithTaskBuilder, ValidationBuilder}
+import io.github.datacatering.datacaterer.api.model.Constants.{HTTP_PATH_PARAM_FIELD_PREFIX, HTTP_QUERY_PARAM_FIELD_PREFIX, REAL_TIME_METHOD_FIELD, REAL_TIME_URL_FIELD, YAML_HTTP_BODY_FIELD, YAML_HTTP_HEADERS_FIELD, YAML_HTTP_URL_FIELD, YAML_REAL_TIME_BODY_FIELD, YAML_REAL_TIME_HEADERS_FIELD}
+import io.github.datacatering.datacaterer.api.model.{DataCatererConfiguration, DataSourceValidation, DataType, Field, Plan, Task, UpstreamDataSourceValidation, ValidationConfiguration, YamlUpstreamDataSourceValidation, YamlValidationConfiguration}
+import io.github.datacatering.datacaterer.api.{ConnectionConfigWithTaskBuilder, FieldBuilder, HttpMethodEnum, HttpQueryParameterStyleEnum, ValidationBuilder}
 import io.github.datacatering.datacaterer.core.exception.DataValidationMissingUpstreamDataSourceException
 import io.github.datacatering.datacaterer.core.util.FileUtil.{getFileContentFromFileSystem, isCloudStoragePath}
+import io.github.datacatering.datacaterer.core.util.PlanImplicits.FieldOps
 import io.github.datacatering.datacaterer.core.util.{FileUtil, ObjectMapperUtil}
 import org.apache.hadoop.fs.FileSystem
 import org.apache.log4j.Logger
@@ -45,6 +46,7 @@ object PlanParser {
   def parseTasks(taskFolderPath: String)(implicit sparkSession: SparkSession): Array[Task] = {
     val parsedTasks = YamlFileParser.parseFiles[Task](taskFolderPath)
     parsedTasks.map(convertTaskNumbersToString)
+      .map(convertToSpecificFields)
   }
 
   def parseValidations(
@@ -96,7 +98,7 @@ object PlanParser {
         perFieldCount.copy(options = stringOpts)
       })
       val countStringOpts = toStringValues(step.count.options)
-      val mappedSchema = fieldsToString(step.fields)
+      val mappedSchema = step.fields.map(_.fieldToStringOptions)
       step.copy(
         count = step.count.copy(perField = countPerColGenerator, options = countStringOpts),
         fields = mappedSchema
@@ -105,18 +107,57 @@ object PlanParser {
     task.copy(steps = stringSteps)
   }
 
-  private def fieldsToString(fields: List[Field]): List[Field] = {
-    fields.map(field => {
-      if (field.options.contains(ONE_OF_GENERATOR)) {
-        val fieldGenOpt = toStringValues(field.options)
-        field.copy(options = fieldGenOpt)
-      } else {
-        field.copy(fields = fieldsToString(field.fields))
-      }
+  private def convertToSpecificFields(task: Task): Task = {
+    val specificFields = task.steps.map(step => {
+      val mappedFields = step.fields.flatMap(field => {
+        field.name match {
+          case YAML_REAL_TIME_HEADERS_FIELD =>
+            val headerFields = field.fields.map(innerField => FieldBuilder(innerField))
+            val messageHeaders = FieldBuilder().messageHeaders(headerFields: _*)
+            List(messageHeaders.field)
+          case YAML_REAL_TIME_BODY_FIELD =>
+            val innerFields = field.fields.map(innerField => FieldBuilder(innerField))
+            val messageBodyBuilder = FieldBuilder().messageBody(innerFields: _*)
+            messageBodyBuilder.map(_.field)
+          case YAML_HTTP_URL_FIELD =>
+            val innerFields = field.fields.map(innerField => FieldBuilder(innerField))
+            val urlField = innerFields.find(f => f.field.name == REAL_TIME_URL_FIELD).flatMap(f => f.field.static)
+            val methodField = innerFields.find(f => f.field.name == REAL_TIME_METHOD_FIELD).flatMap(f => f.field.static)
+            val pathParams = innerFields.find(f => f.field.name == HTTP_PATH_PARAM_FIELD_PREFIX)
+              .map(f => f.field.fields.map(f1 => FieldBuilder(f1).httpPathParam(f1.name)))
+              .getOrElse(List())
+            val queryParams = innerFields.find(f => f.field.name == HTTP_QUERY_PARAM_FIELD_PREFIX)
+              .map(f => f.field.fields.map(f1 =>
+                FieldBuilder(f1).httpQueryParam(
+                  f1.name,
+                  DataType.fromString(f1.`type`.getOrElse("string")),
+                  f1.options.get("style").map(style => HttpQueryParameterStyleEnum.withName(style.toString)).getOrElse(HttpQueryParameterStyleEnum.FORM),
+                  f1.options.get("explode").forall(_.toString.toBoolean)
+                )
+              ))
+              .getOrElse(List())
+            FieldBuilder().httpUrl(
+              urlField.get,
+              HttpMethodEnum.withName(methodField.get),
+              pathParams,
+              queryParams
+            ).map(_.field)
+          case YAML_HTTP_HEADERS_FIELD =>
+            val headerFields = field.fields.map(innerField => FieldBuilder(innerField).httpHeader(innerField.name))
+            headerFields.map(_.field)
+          case YAML_HTTP_BODY_FIELD =>
+            val innerFields = field.fields.map(innerField => FieldBuilder(innerField))
+            val httpBody = FieldBuilder().httpBody(innerFields: _*)
+            httpBody.map(_.field)
+          case _ => List(field)
+        }
+      })
+      step.copy(fields = mappedFields)
     })
+    task.copy(steps = specificFields)
   }
 
-  private def toStringValues(options: Map[String, Any]): Map[String, Any] = {
+  private def toStringValues(options: Map[String, Any]): Map[String, String] = {
     options.map(x => (x._1, x._2.toString))
   }
 }

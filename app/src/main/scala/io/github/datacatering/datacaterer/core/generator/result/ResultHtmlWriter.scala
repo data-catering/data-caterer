@@ -1,10 +1,10 @@
 package io.github.datacatering.datacaterer.core.generator.result
 
 import io.github.datacatering.datacaterer.api.model.Constants.HISTOGRAM
-import io.github.datacatering.datacaterer.api.model.{FlagsConfig, Plan, Step, Validation, ValidationConfig}
+import io.github.datacatering.datacaterer.api.model.{DataSourceResult, DataSourceResultSummary, FlagsConfig, Plan, Step, StepResultSummary, TaskResultSummary, Validation, ValidationConfig, ValidationConfigResult}
 import io.github.datacatering.datacaterer.core.listener.{SparkRecordListener, SparkTaskRecordSummary}
 import io.github.datacatering.datacaterer.core.model.Constants.{REPORT_DATA_SOURCES_HTML, REPORT_FIELDS_HTML, REPORT_HOME_HTML, REPORT_VALIDATIONS_HTML}
-import io.github.datacatering.datacaterer.core.model.{DataSourceResult, DataSourceResultSummary, StepResultSummary, TaskResultSummary, ValidationConfigResult}
+import io.github.datacatering.datacaterer.core.util.ObjectMapperUtil
 import io.github.datacatering.datacaterer.core.util.PlanImplicits.CountOps
 import org.joda.time.DateTime
 
@@ -467,7 +467,15 @@ class ResultHtmlWriter {
                     {keyValueTable(getValidationOptions(validationRes.validation))}
                   </td>
                   <td>
-                    {if (validationRes.isSuccess) "" else keyValueTable(validationRes.sampleErrorValues.get.take(validationConfig.numSampleErrorRecords).map(e => List(e.json)).toList)}
+                    {if (validationRes.isSuccess) {
+                    ""
+                  } else {
+                    keyValueTable(
+                      validationRes.sampleErrorValues.getOrElse(Array())
+                        .map(e => List(ObjectMapperUtil.jsonObjectMapper.writeValueAsString(e)))
+                        .toList
+                    )
+                  }}
                   </td>
                 </tr>
               })

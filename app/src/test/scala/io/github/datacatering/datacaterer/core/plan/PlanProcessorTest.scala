@@ -1,9 +1,9 @@
 package io.github.datacatering.datacaterer.core.plan
 
-import io.github.datacatering.datacaterer.api.PlanRun
 import io.github.datacatering.datacaterer.api.model.Constants.{OPEN_METADATA_AUTH_TYPE_OPEN_METADATA, OPEN_METADATA_JWT_TOKEN, OPEN_METADATA_TABLE_FQN, PARTITIONS, ROWS_PER_SECOND, SAVE_MODE, VALIDATION_IDENTIFIER}
 import io.github.datacatering.datacaterer.api.model.{ArrayType, DateType, DoubleType, HeaderType, IntegerType, MapType, TimestampType}
-import io.github.datacatering.datacaterer.core.model.Constants.METADATA_FILTER_OUT_SCHEMA
+import io.github.datacatering.datacaterer.api.{HttpMethodEnum, PlanRun}
+import io.github.datacatering.datacaterer.core.model.Constants.{DATA_CATERER_API_TOKEN, DATA_CATERER_API_USER, METADATA_FILTER_OUT_SCHEMA}
 import io.github.datacatering.datacaterer.core.util.{ObjectMapperUtil, SparkSuite}
 import org.asynchttpclient.DefaultAsyncHttpClientConfig
 import org.asynchttpclient.Dsl.asyncHttpClient
@@ -89,7 +89,7 @@ class PlanProcessorTest extends SparkSuite {
   }
 
   test("Can run documentation plan run") {
-    PlanProcessor.determineAndExecutePlan(Some(new DocumentationPlanRun()))
+    PlanProcessor.determineAndExecutePlan(Some(new DocumentationPlanRun()), apiCheck = false)
     verifyGeneratedData(scalaBaseFolder)
   }
 
@@ -113,14 +113,14 @@ class PlanProcessorTest extends SparkSuite {
     assert(csvData.forall(r => r.getAs[String]("time").substring(0, 10) == r.getAs[String]("date")))
   }
 
-  test("Write YAML for plan") {
+  ignore("Write YAML for plan") {
     val docPlanRun = new TestValidation()
     val planWrite = ObjectMapperUtil.yamlObjectMapper.writeValueAsString(docPlanRun._validations)
     println(planWrite)
   }
 
   ignore("Can run Postgres plan run") {
-    PlanProcessor.determineAndExecutePlan(Some(new TestHttp))
+    PlanProcessor.determineAndExecutePlan(Some(new TestBasicHttp), apiCheck = false)
   }
 
   class TestPostgres extends PlanRun {
@@ -279,11 +279,28 @@ class PlanProcessorTest extends SparkSuite {
     execute(myPlan, conf, httpTask)
   }
 
+  class TestBasicHttp extends PlanRun {
+    val urlField = field.httpUrl(
+      "http://localhost:80/anything/user/{id}",
+      HttpMethodEnum.GET,
+      List(field.httpPathParam("id").regex("ACC[0-9]{8}")),
+      List(field.httpQueryParam("name").expression("#{Name.name}"))
+    )
+    val httpTask = http("my_http")
+      .fields(urlField: _*)
+      .fields(field.httpHeader("Content-Type").static("json"))
+      .count(count.records(5))
+
+    val conf = configuration.generatedReportsFolderPath("/tmp/report")
+
+    execute(conf, httpTask)
+  }
+
   class TestJson extends PlanRun {
     val jsonTask = json("my_json", "/tmp/data/json", Map("saveMode" -> "overwrite"))
       .fields(
         field.name("account_id").regex("ACC[0-9]{8}"),
-        field.name("year").`type`(IntegerType).sql("YEAR(date)"),
+        field.name("year").`type`(IntegerType).sql("YEAR(dates)"),
         field.name("balance").`type`(DoubleType).min(10).max(1000),
         field.name("date").`type`(DateType).min(Date.valueOf("2022-01-01")),
         field.name("status").sql("element_at(sort_array(update_history, false), 1).status"),
@@ -588,6 +605,32 @@ class PlanProcessorTest extends SparkSuite {
     execute(conf, accounts)
   }
 
+  ignore("Check fail status") {
+    System.setProperty(DATA_CATERER_API_USER, "")
+    System.setProperty(DATA_CATERER_API_TOKEN, "")
+    PlanProcessor.determineAndExecutePlan(Some(new TestFailedValidation))
+  }
+
+  class TestFailedGeneration extends PlanRun {
+    val accounts = json("customer_json", "/tmp/failed_gen")
+      .fields(field.name("name"), field.name("age").sql("invalid_field_name"))
+      .count(count.records(1))
+
+    execute(accounts)
+  }
+
+  class TestFailedValidation extends PlanRun {
+    val accounts = postgres("customer_json", "/tmp/failed_gen", "username", "password")
+      .fields(field.name("name"))
+      .validations(validation.unique("name2"))
+      .count(count.records(1))
+
+    val conf = configuration
+      .enableGenerateData(false)
+      .enableValidation(true)
+    execute(conf, accounts)
+  }
+
   ignore("Timing of http calls") {
     val config = new DefaultAsyncHttpClientConfig.Builder()
       .setRequestTimeout(5000).build()
@@ -600,7 +643,9 @@ class PlanProcessorTest extends SparkSuite {
         .toScala
         .map(r => {
           val endTime = Timestamp.from(Instant.now())
-          println("Time taken: " + {endTime.getTime - startTime.getTime} + "ms")
+          println("Time taken: " + {
+            endTime.getTime - startTime.getTime
+          } + "ms")
           r.getStatusCode
         })
       Await.result(futureResp, Duration.Inf)

@@ -1,10 +1,9 @@
 package io.github.datacatering.datacaterer.core.generator
 
 import io.github.datacatering.datacaterer.api.model.Constants.{DEFAULT_ENABLE_GENERATE_DATA, ENABLE_DATA_GENERATION, SAVE_MODE}
-import io.github.datacatering.datacaterer.api.model.{FlagsConfig, FoldersConfig, GenerationConfig, MetadataConfig, Plan, Step, Task, TaskSummary, UpstreamDataSourceValidation, ValidationConfiguration}
+import io.github.datacatering.datacaterer.api.model.{DataSourceResult, FlagsConfig, FoldersConfig, GenerationConfig, MetadataConfig, Plan, Step, Task, TaskSummary, UpstreamDataSourceValidation, ValidationConfiguration}
 import io.github.datacatering.datacaterer.core.exception.InvalidRandomSeedException
 import io.github.datacatering.datacaterer.core.generator.track.RecordTrackingProcessor
-import io.github.datacatering.datacaterer.core.model.DataSourceResult
 import io.github.datacatering.datacaterer.core.sink.SinkFactory
 import io.github.datacatering.datacaterer.core.util.GeneratorUtil.getDataSourceName
 import io.github.datacatering.datacaterer.core.util.PlanImplicits.PerFieldCountOps

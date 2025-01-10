@@ -1,10 +1,10 @@
 package io.github.datacatering.datacaterer.core.generator.metadata.datasource.http
 
-import io.github.datacatering.datacaterer.api.model.Constants.{ARRAY_MAXIMUM_LENGTH, ARRAY_MINIMUM_LENGTH, ENABLED_NULL, FIELD_DATA_TYPE, HTTP_HEADER_PARAMETER, HTTP_PARAMETER_TYPE, HTTP_PATH_PARAMETER, HTTP_QUERY_PARAMETER, IS_NULLABLE, MAXIMUM, MAXIMUM_LENGTH, MINIMUM, MINIMUM_LENGTH, ONE_OF_GENERATOR, ONE_OF_GENERATOR_DELIMITER, POST_SQL_EXPRESSION, REGEX_GENERATOR, SQL_GENERATOR, STATIC}
+import io.github.datacatering.datacaterer.api.model.Constants._
 import io.github.datacatering.datacaterer.api.model.{ArrayType, BinaryType, DataType, DateType, DoubleType, FloatType, IntegerType, LongType, StringType, StructType, TimestampType}
+import io.github.datacatering.datacaterer.api.{FieldBuilder, HttpMethodEnum, HttpQueryParameterStyleEnum}
 import io.github.datacatering.datacaterer.core.exception.UnsupportedOpenApiDataTypeException
 import io.github.datacatering.datacaterer.core.generator.metadata.datasource.database.FieldMetadata
-import io.github.datacatering.datacaterer.core.model.Constants.{HTTP_HEADER_FIELD_PREFIX, HTTP_PATH_PARAM_FIELD_PREFIX, HTTP_QUERY_PARAM_FIELD_PREFIX, REAL_TIME_BODY_FIELD, REAL_TIME_BODY_CONTENT_FIELD, REAL_TIME_CONTENT_TYPE_FIELD, REAL_TIME_METHOD_FIELD, REAL_TIME_URL_FIELD}
 import io.swagger.v3.oas.models.PathItem.HttpMethod
 import io.swagger.v3.oas.models.media.Schema
 import io.swagger.v3.oas.models.parameters.Parameter
@@ -76,20 +76,17 @@ class OpenAPIConverter(openAPI: OpenAPI = new OpenAPI()) {
     val queryParams = params
       .filter(p => p.getIn != null && p.getIn == HTTP_QUERY_PARAMETER)
       .map(p => {
-        val colName = s"$HTTP_QUERY_PARAM_FIELD_PREFIX${p.getName}"
-        val sqlGenerator = p.getSchema.getType match {
-          case "array" =>
-            val style = if (p.getStyle == null) StyleEnum.FORM else p.getStyle
-            val explode = if (p.getExplode == null) true else p.getExplode.booleanValue()
-            val delimiter = (style, explode) match {
-              case (StyleEnum.FORM, false) => ","
-              case (StyleEnum.SPACEDELIMITED, false) => "%20"
-              case (StyleEnum.PIPEDELIMITED, false) => "|"
-              case _ => s"&${p.getName}="
-            }
-            s"""CASE WHEN ARRAY_SIZE($colName) > 0 THEN CONCAT('${p.getName}=', ARRAY_JOIN($colName, '$delimiter')) ELSE null END"""
-          case _ => s"CONCAT('${p.getName}=', $colName)"
+        val dataType = if (p.getSchema.getType.contentEquals("array")) ArrayType else StringType
+        val queryParamStyle = p.getStyle match {
+          case StyleEnum.FORM => HttpQueryParameterStyleEnum.FORM
+          case StyleEnum.SPACEDELIMITED => HttpQueryParameterStyleEnum.SPACE_DELIMITED
+          case StyleEnum.PIPEDELIMITED => HttpQueryParameterStyleEnum.PIPE_DELIMITED
+          case _ => HttpQueryParameterStyleEnum.OTHER
         }
+        val explode = if (p.getExplode == null) true else p.getExplode.booleanValue()
+        val fieldBuilder = FieldBuilder().httpQueryParam(p.getName, dataType, queryParamStyle, explode).field
+        val colName = fieldBuilder.name
+        val sqlGenerator = fieldBuilder.options.getOrElse(POST_SQL_EXPRESSION, "").toString
 
         val metadata = Map(
           HTTP_PARAMETER_TYPE -> HTTP_QUERY_PARAMETER,
@@ -149,16 +146,11 @@ class OpenAPIConverter(openAPI: OpenAPI = new OpenAPI()) {
   }
 
   def urlSqlGenerator(baseUrl: String, pathParams: List[FieldMetadata], queryParams: List[FieldMetadata]): String = {
-    val urlWithPathParamReplace = pathParams.foldLeft(s"'$baseUrl'")((url, pathParam) => {
-      val colName = pathParam.field
-      val colNameWithoutPrefix = colName.replaceFirst(HTTP_PATH_PARAM_FIELD_PREFIX, "")
-      val replaceValue = pathParam.metadata.getOrElse(POST_SQL_EXPRESSION, s"`$colName`")
-      s"REPLACE($url, '{$colNameWithoutPrefix}', URL_ENCODE($replaceValue))"
-    })
-    val urlWithPathAndQuery = if (queryParams.nonEmpty) s"CONCAT($urlWithPathParamReplace, '?')" else urlWithPathParamReplace
-    val combinedQueryParams = queryParams.map(q => s"CAST(${q.metadata.getOrElse(POST_SQL_EXPRESSION, s"`${q.field}``")} AS STRING)").mkString(",")
-    val combinedQuerySql = s"URL_ENCODE(ARRAY_JOIN(ARRAY($combinedQueryParams), '&'))"
-    s"CONCAT($urlWithPathAndQuery, $combinedQuerySql)"
+    val pathParamsAsFields = pathParams.map(f => FieldBuilder().name(f.field).options(f.metadata))
+    val queryParamsAsFields = queryParams.map(f => FieldBuilder().name(f.field).options(f.metadata))
+    val urlFields = FieldBuilder().httpUrl(baseUrl, HttpMethodEnum.GET, pathParamsAsFields, queryParamsAsFields)
+    val urlField = urlFields.find(f => f.field.name == REAL_TIME_URL_FIELD)
+    urlField.map(f => f.field.options(SQL_GENERATOR).toString).getOrElse("")
   }
 
   def getFieldMetadata(schema: Schema[_]): List[FieldMetadata] = {

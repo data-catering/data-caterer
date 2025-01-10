@@ -5,7 +5,6 @@ import org.apache.pekko.actor.typed.scaladsl.Behaviors
 
 object PlanResponseHandler {
 
-  // Trait defining successful and failure responses
   sealed trait Response
 
   case object OK extends Response

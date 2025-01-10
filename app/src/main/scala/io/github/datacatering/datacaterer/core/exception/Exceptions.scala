@@ -1,7 +1,7 @@
 package io.github.datacatering.datacaterer.core.exception
 
 import io.github.datacatering.datacaterer.api.model.Constants.{DATA_CONTRACT_FILE, FOREIGN_KEY_DELIMITER, FOREIGN_KEY_PLAN_FILE_DELIMITER}
-import io.github.datacatering.datacaterer.api.model.{Count, Field, Step, Validation}
+import io.github.datacatering.datacaterer.api.model.{Field, Step, Validation}
 import org.apache.spark.sql.types.{DataType, Metadata, StructField}
 
 //files
@@ -241,4 +241,22 @@ case class UnsupportedProtobufType(protobufType: String) extends RuntimeExceptio
 
 case class InvalidNumberOfProtobufMessages(filePath: String) extends RuntimeException(
   s"Only one message can be defined in .proto file for parsing, protobuf-file=$filePath"
+)
+
+//api
+case class MissingApiEnvVarException(envVar: String) extends RuntimeException(
+  s"Environment variable not defined, please set environment variable and run again, if you have not generated an API " +
+    s"key or token, please follow steps found here (https://data.catering/get-started/quick-start/), env-var=$envVar"
+)
+
+case class ManagementApiException(errorMessage: String) extends RuntimeException(
+  s"Error message from data-caterer management API, error-message=$errorMessage"
+)
+
+case class UserNotFoundException(userId: String) extends RuntimeException(
+  s"User not found for data-caterer, user-id=$userId"
+)
+
+case class InvalidCredentialsException(userId: String) extends RuntimeException(
+  s"Invalid user ID for data-caterer, user-id=$userId"
 )

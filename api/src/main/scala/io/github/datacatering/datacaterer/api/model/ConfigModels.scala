@@ -1,6 +1,6 @@
 package io.github.datacatering.datacaterer.api.model
 
-import Constants._
+import io.github.datacatering.datacaterer.api.model.Constants._
 
 case class FlagsConfig(
                         enableCount: Boolean = DEFAULT_ENABLE_COUNT,

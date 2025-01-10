@@ -1,21 +1,23 @@
 package io.github.datacatering.datacaterer.core.ui.plan
 
-import io.github.datacatering.datacaterer.api.model.Constants.{CONFIG_FLAGS_DELETE_GENERATED_RECORDS, CONFIG_FLAGS_GENERATE_DATA, CONFIG_FLAGS_GENERATE_VALIDATIONS, DEFAULT_MASTER, DEFAULT_RUNTIME_CONFIG, FORMAT, METADATA_SOURCE_NAME}
+import io.github.datacatering.datacaterer.api.model.Constants.{CONFIG_FLAGS_DELETE_GENERATED_RECORDS, CONFIG_FLAGS_GENERATE_DATA, CONFIG_FLAGS_GENERATE_VALIDATIONS, DATA_CATERER_INTERFACE_UI, DEFAULT_MASTER, DEFAULT_RUNTIME_CONFIG, DRIVER, FORMAT, JDBC, METADATA_SOURCE_NAME, MYSQL, MYSQL_DRIVER, POSTGRES, POSTGRES_DRIVER}
 import io.github.datacatering.datacaterer.api.model.{DataSourceValidation, Task, ValidationConfiguration, YamlUpstreamDataSourceValidation}
 import io.github.datacatering.datacaterer.api.{DataCatererConfigurationBuilder, ValidationBuilder}
 import io.github.datacatering.datacaterer.core.exception.SaveFileException
-import io.github.datacatering.datacaterer.core.model.Constants.{FAILED, FINISHED, PARSED_PLAN, STARTED}
+import io.github.datacatering.datacaterer.core.model.Constants.{DATA_CATERER_UI, FAILED, FINISHED, PARSED_PLAN, STARTED}
 import io.github.datacatering.datacaterer.core.model.PlanRunResults
 import io.github.datacatering.datacaterer.core.parser.PlanParser
 import io.github.datacatering.datacaterer.core.plan.{PlanProcessor, YamlPlanRun}
 import io.github.datacatering.datacaterer.core.ui.config.UiConfiguration.INSTALL_DIRECTORY
 import io.github.datacatering.datacaterer.core.ui.mapper.ConfigurationMapper.configurationMapping
-import io.github.datacatering.datacaterer.core.ui.model.{Connection, PlanRunExecution, PlanRunRequest, PlanRunRequests}
+import io.github.datacatering.datacaterer.core.ui.model.{Connection, CredentialsRequest, PlanRunExecution, PlanRunRequest, PlanRunRequests}
 import io.github.datacatering.datacaterer.core.ui.plan.PlanResponseHandler.{KO, OK, Response}
+import io.github.datacatering.datacaterer.core.ui.security.CredentialsManager
 import io.github.datacatering.datacaterer.core.util.{ObjectMapperUtil, SparkProvider}
 import org.apache.log4j.Logger
 import org.apache.pekko.actor.typed.scaladsl.Behaviors
 import org.apache.pekko.actor.typed.{ActorRef, Behavior, SupervisorStrategy}
+import org.apache.spark.sql.SparkSession
 import org.joda.time.{DateTime, Seconds}
 
 import java.nio.file.{Files, Path, StandardOpenOption}
@@ -139,7 +141,7 @@ object PlanRepository {
       case Success(planAsYaml) =>
         updatePlanRunExecution(planRunExecution, PARSED_PLAN)
         val runPlanFuture = Future {
-          PlanProcessor.determineAndExecutePlan(Some(planAsYaml))
+          PlanProcessor.determineAndExecutePlan(Some(planAsYaml), DATA_CATERER_INTERFACE_UI)
         }
 
         runPlanFuture.onComplete {
@@ -161,8 +163,12 @@ object PlanRepository {
     val taskToDataSourceMap = parsedRequest.plan.tasks.map(t => t.name -> t.dataSourceName).toMap
     val dataSourceConnectionInfo = getConnectionDetails(taskToDataSourceMap)
       .map(c => {
-        val formatMap = Map(FORMAT -> c.`type`)
-        c.name -> (c.options ++ formatMap)
+        val additionalConfig = c.`type` match {
+          case POSTGRES => Map(FORMAT -> JDBC, DRIVER -> POSTGRES_DRIVER)
+          case MYSQL => Map(FORMAT -> JDBC, DRIVER -> MYSQL_DRIVER)
+          case format => Map(FORMAT -> format)
+        }
+        c.name -> (c.options ++ additionalConfig)
       })
       .toMap
 
@@ -376,13 +382,18 @@ object PlanRepository {
 
   private def startupSpark(): Response = {
     LOGGER.debug("Starting up Spark")
+    setUiRunning
     try {
-      implicit val sparkSession = new SparkProvider(DEFAULT_MASTER, DEFAULT_RUNTIME_CONFIG).getSparkSession
+      implicit val sparkSession: SparkSession = new SparkProvider(DEFAULT_MASTER, DEFAULT_RUNTIME_CONFIG).getSparkSession
       //run some dummy query
       sparkSession.sql("SELECT 1").collect()
       OK
     } catch {
       case ex: Throwable => KO("Failed to start up Spark", ex)
     }
+  }
+
+  private def setUiRunning: Unit = {
+    System.setProperty(DATA_CATERER_UI, "data_caterer_ui_is_cool")
   }
 }

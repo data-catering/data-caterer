@@ -1,5 +1,50 @@
 # Changelog
 
+## 0.14.0
+
+- Login via UI to run plans
+- Login via environment variables to run plans
+- Ability to track plan usage and failure
+  - Catch failures at any stage in the pipline
+    - `parsePlan`
+    - `prePlanProcessors`
+    - `extractMetadata`
+    - `generateData`
+    - `validateData`
+    - `deleteData`
+    - `postPlanProcessors`
+    - `planFinish`
+- Ability to stop plan running based on quota for feature usage
+- Add in pre-plan processing
+- Add in helper methods for creating HTTP and message fields
+  - `field.messageHeaders`
+  - `field.messageHeader`
+  - `field.messageBody`
+  - `field.httpHeader`
+  - `field.httpPathParam`
+  - `field.httpQueryParam`
+  - `field.httpUrl`
+  - `field.httpMethod`
+  - `field.httpBody`
+- Add in helper YAML fields for creating HTTP and message fields
+  - `messageBody`
+  - `messageHeaders`
+  - `httpBody`
+    - `url`
+    - `method`
+    - `pathParam`
+    - `queryParam`
+  - `httpHeaders`
+  - `httpUrl`
+- Fix for automatic retrieval of metadata from Postgres and MySQL failing because of `column` renamed to `field`
+- Move more constants to API layer instead of core
+- Convert sample errors to string values instead of keeping as DataFrame to make API layer simpler
+- HTTP calls now use Pekko for controlling rate of messages
+  - DataFrame is collected before being sent to HTTP endpoints
+  - More accurate timing of HTTP request and response
+- Fix bug when field options defined as non-string get ignored by data generator
+- Ensure all tests are run via JUnitRunner
+
 ## 0.13.1
 
 - Clear exception message on which validation failed to run when running list of validations

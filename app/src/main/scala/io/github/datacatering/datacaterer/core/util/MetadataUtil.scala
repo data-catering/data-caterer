@@ -2,6 +2,7 @@ package io.github.datacatering.datacaterer.core.util
 
 import io.github.datacatering.datacaterer.api.model.Constants._
 import io.github.datacatering.datacaterer.api.model.{Field, MetadataConfig, Step}
+import io.github.datacatering.datacaterer.api.util.ConfigUtil
 import io.github.datacatering.datacaterer.core.exception.UnsupportedDataFormatForTrackingException
 import io.github.datacatering.datacaterer.core.generator.metadata.ExpressionPredictor
 import io.github.datacatering.datacaterer.core.generator.metadata.datasource.DataSourceMetadata
@@ -130,11 +131,11 @@ object MetadataUtil {
   }
 
   private def computeFieldStatistics(
-                                       sourceData: DataFrame,
-                                       dataSourceReadOptions: Map[String, String],
-                                       dataSourceName: String,
-                                       dataSourceFormat: String
-                                     )(implicit sparkSession: SparkSession): Unit = {
+                                      sourceData: DataFrame,
+                                      dataSourceReadOptions: Map[String, String],
+                                      dataSourceName: String,
+                                      dataSourceFormat: String
+                                    )(implicit sparkSession: SparkSession): Unit = {
     //have to create temp view then analyze the field stats which can be found in the cached data
     sourceData.createOrReplaceTempView(TEMP_CACHED_TABLE_NAME)
     if (!sparkSession.catalog.isCached(TEMP_CACHED_TABLE_NAME)) sparkSession.catalog.cacheTable(TEMP_CACHED_TABLE_NAME)
@@ -152,11 +153,11 @@ object MetadataUtil {
   }
 
   def determineIfOneOfField(
-                              sourceData: DataFrame,
-                              fieldName: String,
-                              statisticsMap: Map[String, String],
-                              metadataConfig: MetadataConfig
-                            ): Option[Array[String]] = {
+                             sourceData: DataFrame,
+                             fieldName: String,
+                             statisticsMap: Map[String, String],
+                             metadataConfig: MetadataConfig
+                           ): Option[Array[String]] = {
     val fieldDataType = sourceData.schema.fields.find(_.name == fieldName).map(_.dataType)
     val count = statisticsMap(ROW_COUNT).toLong
     (fieldDataType, count) match {
@@ -191,7 +192,7 @@ object MetadataUtil {
         s"${step.options(CASSANDRA_KEYSPACE)}/${step.options(CASSANDRA_TABLE)}"
       case PARQUET | CSV | JSON | DELTA | ORC =>
         step.options(PATH).replaceAll("s3(a|n?)://|wasb(s?)://|gs://|file://|hdfs://[a-zA-Z0-9]+:[0-9]+", "")
-      case JMS =>
+      case JMS | SOLACE =>
         step.options(JMS_DESTINATION_NAME)
       case KAFKA =>
         step.options(KAFKA_TOPIC)

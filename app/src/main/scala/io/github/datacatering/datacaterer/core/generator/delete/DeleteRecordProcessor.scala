@@ -2,8 +2,8 @@ package io.github.datacatering.datacaterer.core.generator.delete
 
 import io.github.datacatering.datacaterer.api.model.Constants.{CASSANDRA, CSV, DELTA, FOREIGN_KEY_DELIMITER, FORMAT, JDBC, JSON, ORC, PARQUET, PATH}
 import io.github.datacatering.datacaterer.api.model.{ForeignKeyRelation, Plan, Step, Task, TaskSummary}
+import io.github.datacatering.datacaterer.api.util.ConfigUtil.cleanseOptions
 import io.github.datacatering.datacaterer.core.model.Constants.RECORD_TRACKING_VALIDATION_FORMAT
-import io.github.datacatering.datacaterer.core.util.ConfigUtil.cleanseOptions
 import io.github.datacatering.datacaterer.core.util.MetadataUtil.getSubDataSourcePath
 import io.github.datacatering.datacaterer.core.util.PlanImplicits.SinkOptionsOps
 import io.github.datacatering.datacaterer.core.util.{ForeignKeyRelationHelper, ForeignKeyUtil}
@@ -82,7 +82,7 @@ class DeleteRecordProcessor(connectionConfigsByName: Map[String, Map[String, Str
   }
 
   private def deleteRecords(dataSourceName: String, plan: Plan, step: Step, stepsByName: Map[String, Step] = Map(),
-                    optSourceForeignKey: Option[String] = None, optFullForeignKey: Option[(ForeignKeyRelation, String)] = None): Unit = {
+                            optSourceForeignKey: Option[String] = None, optFullForeignKey: Option[(ForeignKeyRelation, String)] = None): Unit = {
     val format = step.options(FORMAT)
     val subDataSourcePath = getSubDataSourcePath(dataSourceName, plan.name, step, recordTrackingFolderPath)
     val optDeleteRecordService = getDeleteRecordService(format)

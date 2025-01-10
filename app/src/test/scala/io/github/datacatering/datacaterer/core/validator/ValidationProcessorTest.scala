@@ -1,10 +1,9 @@
 package io.github.datacatering.datacaterer.core.validator
 
 import io.github.datacatering.datacaterer.api.model.Constants.{DELTA, DELTA_LAKE_SPARK_CONF, FORMAT, ICEBERG, ICEBERG_SPARK_CONF, PATH, TABLE}
-import io.github.datacatering.datacaterer.api.model.{DataSourceValidation, FoldersConfig, ValidationConfig, ValidationConfiguration}
+import io.github.datacatering.datacaterer.api.model.{DataSourceValidation, FoldersConfig, ValidationConfig, ValidationConfigResult, ValidationConfiguration}
 import io.github.datacatering.datacaterer.api.{PreFilterBuilder, ValidationBuilder}
-import io.github.datacatering.datacaterer.core.model.ValidationConfigResult
-import io.github.datacatering.datacaterer.core.util.{ObjectMapperUtil, SparkSuite, Transaction}
+import io.github.datacatering.datacaterer.core.util.{SparkSuite, Transaction}
 import org.junit.runner.RunWith
 import org.scalatestplus.junit.JUnitRunner
 

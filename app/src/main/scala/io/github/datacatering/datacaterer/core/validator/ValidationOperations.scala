@@ -4,19 +4,20 @@ import io.github.datacatering.datacaterer.api.ValidationBuilder
 import io.github.datacatering.datacaterer.api.model.Constants.{AGGREGATION_COUNT, FORMAT, VALIDATION_FIELD_NAME_COUNT_BETWEEN, VALIDATION_FIELD_NAME_COUNT_EQUAL, VALIDATION_FIELD_NAME_MATCH_ORDER, VALIDATION_FIELD_NAME_MATCH_SET, VALIDATION_PREFIX_JOIN_EXPRESSION, VALIDATION_UNIQUE}
 import io.github.datacatering.datacaterer.api.model._
 import io.github.datacatering.datacaterer.core.exception.{FailedFieldDataValidationException, UnsupportedDataValidationTypeException}
-import io.github.datacatering.datacaterer.core.model.ValidationResult
 import io.github.datacatering.datacaterer.core.validator.ValidationHelper.getValidationType
 import org.apache.log4j.Logger
+import org.apache.spark.sql.catalyst.expressions.GenericRowWithSchema
 import org.apache.spark.sql.functions.{col, expr}
-import org.apache.spark.sql.{DataFrame, Dataset, Encoder, Encoders, Row, SparkSession}
+import org.apache.spark.sql.{DataFrame, Dataset, Row, SparkSession}
 
+import scala.collection.mutable
 import scala.util.{Failure, Success, Try}
 
 abstract class ValidationOps(validation: Validation) {
 
   private val LOGGER = Logger.getLogger(getClass.getName)
 
-  def validate(df: DataFrame, dfCount: Long): List[ValidationResult]
+  def validate(df: DataFrame, dfCount: Long, numErrorSamples: Int = 10): List[ValidationResult]
 
   def filterData(df: DataFrame): DataFrame = {
     validation.preFilter.map(preFilter => {
@@ -32,13 +33,13 @@ abstract class ValidationOps(validation: Validation) {
     }).getOrElse(df)
   }
 
-  def validateWithExpression(df: DataFrame, dfCount: Long, expression: String): ValidationResult = {
+  def validateWithExpression(df: DataFrame, dfCount: Long, expression: String, numErrorSamples: Int): ValidationResult = {
     val notEqualDf = df.where(s"!($expression)")
-    val (isSuccess, sampleErrors, numErrors) = getIsSuccessAndSampleErrors(notEqualDf, dfCount)
+    val (isSuccess, sampleErrors, numErrors) = getIsSuccessAndSampleErrors(notEqualDf, dfCount, numErrorSamples)
     ValidationResult(validation, isSuccess, numErrors, dfCount, sampleErrors)
   }
 
-  private def getIsSuccessAndSampleErrors(notEqualDf: Dataset[Row], dfCount: Long): (Boolean, Option[DataFrame], Long) = {
+  private def getIsSuccessAndSampleErrors(notEqualDf: Dataset[Row], dfCount: Long, numErrorSamples: Int): (Boolean, Option[Array[Map[String, Any]]], Long) = {
     val numErrors = notEqualDf.count()
     val (isSuccess, sampleErrors) = (numErrors, validation.errorThreshold) match {
       case (c, Some(threshold)) if c > 0 =>
@@ -48,7 +49,31 @@ abstract class ValidationOps(validation: Validation) {
       case (c, None) if c > 0 => (false, Some(notEqualDf))
       case _ => (true, None)
     }
-    (isSuccess, sampleErrors, numErrors)
+    val errorsAsMap = sampleErrors.map(ds => {
+      ds.take(numErrorSamples)
+        .map(r => {
+          val valuesMap = r.getValuesMap(ds.columns)
+          valuesMap.flatMap(parseValueMap)
+        })
+    })
+    (isSuccess, errorsAsMap, numErrors)
+  }
+
+  private def parseValueMap[T](valMap: (String, T)): Map[String, Any] = {
+    valMap._2 match {
+      case genericRow: GenericRowWithSchema =>
+        val innerValueMap = genericRow.getValuesMap[T](genericRow.schema.fields.map(_.name))
+        Map(valMap._1 -> innerValueMap.flatMap(parseValueMap[T]))
+      case wrappedArray: mutable.WrappedArray[_] =>
+        Map(valMap._1 -> wrappedArray.map {
+          case genericRowWithSchema: GenericRowWithSchema =>
+            val innerValueMap = genericRowWithSchema.getValuesMap[T](genericRowWithSchema.schema.fields.map(_.name))
+            innerValueMap.flatMap(parseValueMap[T])
+          case x => x
+        })
+      case _ =>
+        Map(valMap)
+    }
   }
 }
 
@@ -68,7 +93,7 @@ object ValidationHelper {
 }
 
 class FieldValidationsOps(fieldValidations: FieldValidations) extends ValidationOps(fieldValidations) {
-  override def validate(df: DataFrame, dfCount: Long): List[ValidationResult] = {
+  override def validate(df: DataFrame, dfCount: Long, numErrorSamples: Int): List[ValidationResult] = {
     val field = fieldValidations.field
     val build = ValidationBuilder().field(field)
     fieldValidations.validation.flatMap(v => {
@@ -117,8 +142,8 @@ class FieldValidationsOps(fieldValidations: FieldValidations) extends Validation
       val validationWithPreFilter = v.preFilter.map(f => validationWithDescription.preFilter(f)).getOrElse(validationWithDescription)
 
       val tryRunValidation = Try(validationWithPreFilter.validation match {
-        case e: ExpressionValidation => new ExpressionValidationOps(e).validate(df, dfCount)
-        case g: GroupByValidation => new GroupByValidationOps(g).validate(df, dfCount)
+        case e: ExpressionValidation => new ExpressionValidationOps(e).validate(df, dfCount, numErrorSamples)
+        case g: GroupByValidation => new GroupByValidationOps(g).validate(df, dfCount, numErrorSamples)
       })
       tryRunValidation match {
         case Success(value) => value
@@ -129,15 +154,15 @@ class FieldValidationsOps(fieldValidations: FieldValidations) extends Validation
 }
 
 class ExpressionValidationOps(expressionValidation: ExpressionValidation) extends ValidationOps(expressionValidation) {
-  override def validate(df: DataFrame, dfCount: Long): List[ValidationResult] = {
+  override def validate(df: DataFrame, dfCount: Long, numErrorSamples: Int): List[ValidationResult] = {
     //TODO allow for pre-filter? can technically be done via custom sql validation using CASE WHERE ... ELSE true END
     val dfWithSelectExpr = df.selectExpr(expressionValidation.selectExpr: _*)
-    List(validateWithExpression(dfWithSelectExpr, dfCount, expressionValidation.expr))
+    List(validateWithExpression(dfWithSelectExpr, dfCount, expressionValidation.expr, numErrorSamples))
   }
 }
 
 class GroupByValidationOps(groupByValidation: GroupByValidation) extends ValidationOps(groupByValidation) {
-  override def validate(df: DataFrame, dfCount: Long): List[ValidationResult] = {
+  override def validate(df: DataFrame, dfCount: Long, numErrorSamples: Int): List[ValidationResult] = {
     //TODO allow for pre and post group filter?
     val groupByDf = df.groupBy(groupByValidation.groupByFields.map(col): _*)
     val (aggregateDf, validationCount) = if ((groupByValidation.aggField == VALIDATION_UNIQUE || groupByValidation.aggField.isEmpty) && groupByValidation.aggType == AGGREGATION_COUNT) {
@@ -149,7 +174,7 @@ class GroupByValidationOps(groupByValidation: GroupByValidation) extends Validat
       ))
       (aggDf, aggDf.count())
     }
-    List(validateWithExpression(aggregateDf, validationCount, groupByValidation.aggExpr))
+    List(validateWithExpression(aggregateDf, validationCount, groupByValidation.aggExpr, numErrorSamples))
   }
 }
 
@@ -157,14 +182,14 @@ class UpstreamDataSourceValidationOps(
                                        upstreamDataSourceValidation: UpstreamDataSourceValidation,
                                        recordTrackingForValidationFolderPath: String
                                      ) extends ValidationOps(upstreamDataSourceValidation) {
-  override def validate(df: DataFrame, dfCount: Long): List[ValidationResult] = {
+  override def validate(df: DataFrame, dfCount: Long, numErrorSamples: Int): List[ValidationResult] = {
     val upstreamDf = getUpstreamData(df.sparkSession)
     val joinedDf = getJoinedDf(df, upstreamDf)
     val joinedCount = joinedDf.count()
 
     upstreamDataSourceValidation.validations.flatMap(v => {
       val baseValidationOp = getValidationType(v.validation, recordTrackingForValidationFolderPath)
-      val result = baseValidationOp.validate(joinedDf, joinedCount)
+      val result = baseValidationOp.validate(joinedDf, joinedCount, numErrorSamples)
       result.map(r => ValidationResult.fromValidationWithBaseResult(upstreamDataSourceValidation, r))
     })
   }
@@ -203,37 +228,34 @@ class FieldNamesValidationOps(fieldNamesValidation: FieldNamesValidation) extend
 
   private val LOGGER = Logger.getLogger(getClass.getName)
 
-  override def validate(df: DataFrame, dfCount: Long): List[ValidationResult] = {
-    implicit val stringEncoder: Encoder[CustomErrorSample] = Encoders.kryo[CustomErrorSample]
-
+  override def validate(df: DataFrame, dfCount: Long, numErrorSamples: Int): List[ValidationResult] = {
     val (isSuccess, errorSamples, total) = fieldNamesValidation.fieldNameType match {
       case VALIDATION_FIELD_NAME_COUNT_EQUAL =>
         val isEqualLength = df.columns.length == fieldNamesValidation.count
-        val sample = if (isEqualLength) List() else List(CustomErrorSample(df.columns.length.toString))
+        val sample = if (isEqualLength) Array[Map[String, Any]]() else Array(Map[String, Any]("columnLength" -> df.columns.length.toString))
         (isEqualLength, sample, 1)
       case VALIDATION_FIELD_NAME_COUNT_BETWEEN =>
         val colLength = df.columns.length
         val isBetween = colLength >= fieldNamesValidation.min && colLength <= fieldNamesValidation.max
-        val sample = if (isBetween) List() else List(CustomErrorSample(colLength.toString))
+        val sample = if (isBetween) Array[Map[String, Any]]() else Array(Map[String, Any]("columnLength" -> colLength.toString))
         (isBetween, sample, 1)
       case VALIDATION_FIELD_NAME_MATCH_ORDER =>
         val zippedNames = df.columns.zip(fieldNamesValidation.names).zipWithIndex
         val misalignedNames = zippedNames.filter(n => n._1._1 != n._1._2)
-        (misalignedNames.isEmpty, misalignedNames.map(n => CustomErrorSample(s"${n._2}: ${n._1._1} -> ${n._1._2}")).toList, zippedNames.length)
+        val errorSample = misalignedNames.map(n => Map[String, Any](s"field_index_${n._2}" -> s"${n._1._1} -> ${n._1._2}"))
+        (misalignedNames.isEmpty, errorSample, zippedNames.length)
       case VALIDATION_FIELD_NAME_MATCH_SET =>
-        val missingNames = fieldNamesValidation.names.filter(n => !df.columns.contains(n)).map(CustomErrorSample)
-        (missingNames.isEmpty, missingNames.toList, fieldNamesValidation.names.length)
+        val missingNames = fieldNamesValidation.names.filter(n => !df.columns.contains(n))
+          .map(n => Map("missing_field" -> n))
+          .asInstanceOf[Array[Map[String, Any]]]
+        (missingNames.isEmpty, missingNames, fieldNamesValidation.names.length)
       case x =>
         LOGGER.error(s"Unknown field name validation type, returning as a failed validation, type=$x")
-        (false, List(), 1)
+        (false, Array[Map[String, Any]](), 1)
     }
 
-    val optErrorSample = if (isSuccess) {
-      None
-    } else {
-      Some(df.sparkSession.createDataFrame(errorSamples))
-    }
-    List(ValidationResult(fieldNamesValidation, isSuccess, errorSamples.size, total, optErrorSample))
+    val optErrorSample = if (isSuccess) None else Some(errorSamples)
+    List(ValidationResult(fieldNamesValidation, isSuccess, errorSamples.length, total, optErrorSample))
   }
 }
 

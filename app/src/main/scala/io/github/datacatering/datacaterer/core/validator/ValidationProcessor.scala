@@ -2,9 +2,9 @@ package io.github.datacatering.datacaterer.core.validator
 
 import io.github.datacatering.datacaterer.api.ValidationBuilder
 import io.github.datacatering.datacaterer.api.model.Constants.{DEFAULT_ENABLE_VALIDATION, DELTA, DELTA_LAKE_SPARK_CONF, ENABLE_DATA_VALIDATION, FORMAT, HTTP, ICEBERG, ICEBERG_SPARK_CONF, JMS, TABLE, VALIDATION_IDENTIFIER}
-import io.github.datacatering.datacaterer.api.model.{DataSourceValidation, ExpressionValidation, FoldersConfig, GroupByValidation, UpstreamDataSourceValidation, ValidationConfig, ValidationConfiguration}
-import io.github.datacatering.datacaterer.core.model.{DataSourceValidationResult, ValidationConfigResult, ValidationResult}
+import io.github.datacatering.datacaterer.api.model.{DataSourceValidation, DataSourceValidationResult, ExpressionValidation, FoldersConfig, GroupByValidation, UpstreamDataSourceValidation, ValidationConfig, ValidationConfigResult, ValidationConfiguration, ValidationResult}
 import io.github.datacatering.datacaterer.core.parser.PlanParser
+import io.github.datacatering.datacaterer.core.util.ObjectMapperUtil
 import io.github.datacatering.datacaterer.core.util.ValidationUtil.cleanValidationIdentifier
 import io.github.datacatering.datacaterer.core.validator.ValidationHelper.getValidationType
 import io.github.datacatering.datacaterer.core.validator.ValidationWaitImplicits.ValidationWaitConditionOps
@@ -102,10 +102,10 @@ class ValidationProcessor(
     val preFilterData = validation.filterData(df)
     if (!preFilterData.storageLevel.useMemory) preFilterData.cache()
     val count = preFilterData.count()
-    Try(validation.validate(preFilterData, count)) match {
+    Try(validation.validate(preFilterData, count, validationConfig.numSampleErrorRecords)) match {
       case Failure(exception) =>
         LOGGER.error(s"Failed to run data validation, $validationDescription", exception)
-        List(ValidationResult(validBuilder.validation, false, count, count, Some(sparkSession.createDataFrame(Seq(CustomErrorSample(exception.getLocalizedMessage))))))
+        List(ValidationResult(validBuilder.validation, false, count, count, Some(Array(Map("exception" -> exception.getLocalizedMessage)))))
       case Success(value) =>
         LOGGER.debug(s"Successfully ran data validation, $validationDescription")
         value
@@ -186,7 +186,9 @@ class ValidationProcessor(
             case UpstreamDataSourceValidation(_, upstreamDataSource, _, _, _) => ("upstreamDataSource", upstreamDataSource.connectionConfigWithTaskBuilder.dataSourceName)
             case _ => ("Unknown", "")
           }
-          val sampleErrors = validationRes.sampleErrorValues.get.take(validationConfig.numSampleErrorRecords).map(_.json).mkString(",")
+          val sampleErrors = validationRes.sampleErrorValues.getOrElse(Array())
+            .map(ObjectMapperUtil.jsonObjectMapper.writeValueAsString)
+            .mkString(",")
           LOGGER.error(s"Failed validation: validation-name=${vcr.name}, description=${vcr.description}, data-source-name=${dsr.dataSourceName}, " +
             s"data-source-options=${dsr.options}, is-success=${validationRes.isSuccess}, validation-type=$validationType, " +
             s"check=$validationCheck, sample-errors=$sampleErrors")
