@@ -26,101 +26,124 @@ jobs:
           ORG_GRADLE_PROJECT_signingKey: ${{ secrets.ORG_GRADLE_PROJECT_SIGNINGKEY }}
           ORG_GRADLE_PROJECT_signingKeyId: ${{ secrets.ORG_GRADLE_PROJECT_SIGNINGKEYID }}
           ORG_GRADLE_PROJECT_signingPassword: ${{ secrets.ORG_GRADLE_PROJECT_SIGNINGPASSWORD }}
-      - name: Upload jpackage jar
-        uses: actions/upload-artifact@v4
-        with:
-          name: jars
-          path: "app/build/libs/data-caterer.jar"
-          overwrite: true
-
-  osx:
-    needs: build
-    runs-on: [macos-latest]
-
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 2
-      - name: Set version
-        run: echo "APP_VERSION=$(grep version gradle.properties | cut -d= -f2)" >> $GITHUB_ENV
-      - uses: actions/setup-java@v4
-        with:
-          java-version: '21'
-          java-package: jdk
-          architecture: x64
-          distribution: oracle
-      - name: Download fat jar
-        uses: actions/download-artifact@v4
-        with:
-          name: jars
-          path: app/build/libs/
-      - name: Package jar as dmg installer
-        run: 'jpackage --main-jar data-caterer.jar "@misc/jpackage/jpackage.cfg" "@misc/jpackage/jpackage-mac.cfg"'
-      - name: Upload dmg
-        uses: actions/upload-artifact@v4
-        with:
-          name: data-caterer-mac
-          path: "DataCaterer-1.0.0.dmg"
-          overwrite: true
-
-  windows:
-    needs: build
-    runs-on: [windows-latest]
-
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 2
-      - name: Set version
-        run: echo "APP_VERSION=$(grep version gradle.properties | cut -d= -f2)" >> $env:GITHUB_ENV
-      - uses: actions/setup-java@v4
-        with:
-          java-version: '21'
-          java-package: jdk
-          architecture: x64
-          distribution: oracle
-      - name: Download fat jar
-        uses: actions/download-artifact@v4
-        with:
-          name: jars
-          path: app/build/libs/
-      - name: Package jar as exe
-        run: 'jpackage --main-jar data-caterer.jar "@misc/jpackage/jpackage.cfg" "@misc/jpackage/jpackage-windows.cfg"'
-      - name: Upload installer
-        uses: actions/upload-artifact@v4
-        with:
-          name: data-caterer-windows
-          path: "DataCaterer-1.0.0.exe"
-          overwrite: true
-
-  linux:
-    needs: build
-    runs-on: [ubuntu-latest]
-
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 2
-      - name: Set version
-        run: echo "APP_VERSION=$(grep version gradle.properties | cut -d= -f2)" >> $GITHUB_ENV
-      - uses: actions/setup-java@v4
-        with:
-          java-version: '21'
-          java-package: jdk
-          architecture: x64
-          distribution: oracle
-      - name: Download fat jar
-        uses: actions/download-artifact@v4
-        with:
-          name: jars
-          path: app/build/libs/
-      - name: Package jar as debian package
-        run: 'jpackage --main-jar data-caterer.jar "@misc/jpackage/jpackage.cfg" "@misc/jpackage/jpackage-linux.cfg"'
-      - name: List directory
-        run: ls -lart
-      - name: Upload deb
-        uses: actions/upload-artifact@v4
-        with:
-          name: data-caterer-linux
-          path: "datacaterer_1.0.0_amd64.deb"
-          overwrite: true
+#      - name: Upload jpackage jar
+#        uses: actions/upload-artifact@v4
+#        with:
+#          name: jars
+#          path: "app/build/libs/data-caterer.jar"
+#          overwrite: true
+#
+#  osx:
+#    needs: build
+#    runs-on: [macos-latest]
+#
+#    steps:
+#      - uses: actions/checkout@v4
+#        with:
+#          fetch-depth: 2
+#      - name: Set version
+#        run: echo "APP_VERSION=$(grep version gradle.properties | cut -d= -f2)" >> $GITHUB_ENV
+#      - uses: actions/setup-java@v4
+#        with:
+#          java-version: '21'
+#          java-package: jdk
+#          architecture: x64
+#          distribution: oracle
+#      - name: Download fat jar
+#        uses: actions/download-artifact@v4
+#        with:
+#          name: jars
+#          path: app/build/libs/
+#      - name: Package jar as dmg installer
+#        run: 'jpackage --main-jar data-caterer.jar "@misc/jpackage/jpackage.cfg" "@misc/jpackage/jpackage-mac.cfg"'
+#      - name: Upload dmg
+#        run: |
+#          RELEASE_ID=$(curl -L -H "Accept: application/vnd.github+json" -H "Authorization: Bearer ${{ secrets.GITHUB_API_TOKEN }}" -H "X-GitHub-Api-Version: 2022-11-28" https://api.github.com/repos/data-catering/data-caterer/releases/latest  grep -o '"id":[^,]*' | head -n 1 | awk -F: '{gsub(" ", "", $2); print $2}')
+#          echo "Removing previous version of Mac dmg"
+#          curl -L \
+#            -X DELETE \
+#            -H "Accept: application/vnd.github+json" \
+#            -H "Authorization: Bearer ${{ secrets.GITHUB_API_TOKEN }}" \
+#            -H "X-GitHub-Api-Version: 2022-11-28" \
+#            https://api.github.com/repos/data-catering/data-caterer/releases/assets/data-caterer-mac.zip
+#
+#          curl -L \
+#            -X POST \
+#            -H "Accept: application/vnd.github+json" \
+#            -H "Authorization: Bearer ${{ secrets.GITHUB_API_TOKEN }}" \
+#            -H "X-GitHub-Api-Version: 2022-11-28" \
+#            -H "Content-Type: application/octet-stream" \
+#            "https://uploads.github.com/repos/data-catering/data-caterer/releases/${RELEASE_ID}/assets?name=data-caterer-mac.zip" \
+#            --data-binary "@DataCaterer-1.0.0.dmg"
+#
+#  windows:
+#    needs: build
+#    runs-on: [windows-latest]
+#
+#    steps:
+#      - uses: actions/checkout@v4
+#        with:
+#          fetch-depth: 2
+#      - name: Set version
+#        run: echo "APP_VERSION=$(grep version gradle.properties | cut -d= -f2)" >> $env:GITHUB_ENV
+#      - uses: actions/setup-java@v4
+#        with:
+#          java-version: '21'
+#          java-package: jdk
+#          architecture: x64
+#          distribution: oracle
+#      - name: Download fat jar
+#        uses: actions/download-artifact@v4
+#        with:
+#          name: jars
+#          path: app/build/libs/
+#      - name: Package jar as exe
+#        run: 'jpackage --main-jar data-caterer.jar "@misc/jpackage/jpackage.cfg" "@misc/jpackage/jpackage-windows.cfg"'
+#      - name: Upload installer
+#        run: |
+#          RELEASE_ID=$(curl -L -H "Accept: application/vnd.github+json" -H "Authorization: Bearer ${{ secrets.GITHUB_API_TOKEN }}" -H "X-GitHub-Api-Version: 2022-11-28" https://api.github.com/repos/data-catering/data-caterer/releases/latest  grep -o '"id":[^,]*' | head -n 1 | awk -F: '{gsub(" ", "", $2); print $2}')
+#
+#          curl -L \
+#            -X POST \
+#            -H "Accept: application/vnd.github+json" \
+#            -H "Authorization: Bearer ${{ secrets.GITHUB_API_TOKEN }}" \
+#            -H "X-GitHub-Api-Version: 2022-11-28" \
+#            -H "Content-Type: application/octet-stream" \
+#            "https://uploads.github.com/repos/data-catering/data-caterer/releases/${RELEASE_ID}/assets?name=data-caterer-windows.zip" \
+#            --data-binary "@DataCaterer-1.0.0.exe"
+#
+#  linux:
+#    needs: build
+#    runs-on: [ubuntu-latest]
+#
+#    steps:
+#      - uses: actions/checkout@v4
+#        with:
+#          fetch-depth: 2
+#      - name: Set version
+#        run: echo "APP_VERSION=$(grep version gradle.properties | cut -d= -f2)" >> $GITHUB_ENV
+#      - uses: actions/setup-java@v4
+#        with:
+#          java-version: '21'
+#          java-package: jdk
+#          architecture: x64
+#          distribution: oracle
+#      - name: Download fat jar
+#        uses: actions/download-artifact@v4
+#        with:
+#          name: jars
+#          path: app/build/libs/
+#      - name: Package jar as debian package
+#        run: 'jpackage --main-jar data-caterer.jar "@misc/jpackage/jpackage.cfg" "@misc/jpackage/jpackage-linux.cfg"'
+#      - name: Upload deb
+#        run: |
+#          RELEASE_ID=$(curl -L -H "Accept: application/vnd.github+json" -H "Authorization: Bearer ${{ secrets.GITHUB_API_TOKEN }}" -H "X-GitHub-Api-Version: 2022-11-28" https://api.github.com/repos/data-catering/data-caterer/releases/latest  grep -o '"id":[^,]*' | head -n 1 | awk -F: '{gsub(" ", "", $2); print $2}')
+#
+#          curl -L \
+#            -X POST \
+#            -H "Accept: application/vnd.github+json" \
+#            -H "Authorization: Bearer ${{ secrets.GITHUB_API_TOKEN }}" \
+#            -H "X-GitHub-Api-Version: 2022-11-28" \
+#            -H "Content-Type: application/octet-stream" \
+#            "https://uploads.github.com/repos/data-catering/data-caterer/releases/${RELEASE_ID}/assets?name=data-caterer-linux.zip" \
+#            --data-binary "@datacaterer_1.0.0_amd64.deb"
