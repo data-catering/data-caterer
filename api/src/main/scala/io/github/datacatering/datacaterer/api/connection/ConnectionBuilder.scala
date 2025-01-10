@@ -1,8 +1,9 @@
 package io.github.datacatering.datacaterer.api.connection
 
+import io.github.datacatering.datacaterer.api.HttpMethodEnum.HttpMethodEnum
 import io.github.datacatering.datacaterer.api.model.Constants.{ALL_COMBINATIONS, ENABLE_DATA_VALIDATION, FORMAT}
 import io.github.datacatering.datacaterer.api.model.{Step, Task}
-import io.github.datacatering.datacaterer.api.{ConnectionConfigWithTaskBuilder, CountBuilder, FieldBuilder, GeneratorBuilder, MetadataSourceBuilder, StepBuilder, TaskBuilder, TasksBuilder, ValidationBuilder, WaitConditionBuilder}
+import io.github.datacatering.datacaterer.api.{ConnectionConfigWithTaskBuilder, CountBuilder, FieldBuilder, GeneratorBuilder, HttpMethodEnum, MetadataSourceBuilder, StepBuilder, TaskBuilder, TasksBuilder, ValidationBuilder, WaitConditionBuilder}
 
 import scala.annotation.varargs
 
@@ -219,6 +220,17 @@ case class KafkaBuilder() extends ConnectionTaskBuilder[KafkaBuilder] {
 case class HttpBuilder() extends ConnectionTaskBuilder[HttpBuilder] {
   override def fromBaseConfig(connectionTaskBuilder: ConnectionTaskBuilder[HttpBuilder]): HttpBuilder = {
     this.connectionConfigWithTaskBuilder = connectionTaskBuilder.connectionConfigWithTaskBuilder
+    this
+  }
+
+  def url(
+           url: String,
+           method: HttpMethodEnum = HttpMethodEnum.GET,
+           pathParams: List[FieldBuilder] = List(),
+           queryParams: List[FieldBuilder] = List()
+         ): HttpBuilder = {
+    val httpFields = FieldBuilder().httpUrl(url, method, pathParams, queryParams)
+    this.step = Some(getStep.fields(httpFields: _*))
     this
   }
 }

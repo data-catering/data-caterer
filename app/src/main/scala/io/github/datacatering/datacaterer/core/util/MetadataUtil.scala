@@ -192,7 +192,7 @@ object MetadataUtil {
         s"${step.options(CASSANDRA_KEYSPACE)}/${step.options(CASSANDRA_TABLE)}"
       case PARQUET | CSV | JSON | DELTA | ORC =>
         step.options(PATH).replaceAll("s3(a|n?)://|wasb(s?)://|gs://|file://|hdfs://[a-zA-Z0-9]+:[0-9]+", "")
-      case JMS =>
+      case JMS | SOLACE =>
         step.options(JMS_DESTINATION_NAME)
       case KAFKA =>
         step.options(KAFKA_TOPIC)

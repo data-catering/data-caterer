@@ -2,7 +2,9 @@ package io.github.datacatering.datacaterer.core.ui.plan
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.github.pjfanning.pekkohttpjackson.JacksonSupport
-import io.github.datacatering.datacaterer.core.ui.model.{PlanRunRequest, SaveConnectionsRequest}
+import io.github.datacatering.datacaterer.core.exception.{InvalidCredentialsException, UserNotFoundException}
+import io.github.datacatering.datacaterer.core.ui.model.{CredentialsRequest, PlanRunRequest, SaveConnectionsRequest}
+import io.github.datacatering.datacaterer.core.ui.plan.CredentialRepository.SaveCredentials
 import io.github.datacatering.datacaterer.core.util.ObjectMapperUtil
 import org.apache.log4j.Logger
 import org.apache.pekko.actor.typed.scaladsl.AskPattern.{Askable, schedulerFromActorSystem}
@@ -19,7 +21,8 @@ import scala.util.{Failure, Success}
 class PlanRoutes(
                   planRepository: ActorRef[PlanRepository.PlanCommand],
                   planResponseHandler: ActorRef[PlanResponseHandler.Response],
-                  connectionRepository: ActorRef[ConnectionRepository.ConnectionCommand]
+                  connectionRepository: ActorRef[ConnectionRepository.ConnectionCommand],
+                  credentialRepository: ActorRef[CredentialRepository.CredentialsCommand],
                 )(implicit system: ActorSystem[_]) extends Directives with JacksonSupport {
 
   private val LOGGER = Logger.getLogger(getClass.getName)
@@ -72,6 +75,30 @@ class PlanRoutes(
         getFromResource("report/data_catering_transparent.svg")
       }
     },
+    path("credentials") {
+      post {
+        entity(as[CredentialsRequest]) { creds =>
+          val futureResp = credentialRepository.ask(x => CredentialRepository.SaveCredentials(creds, x))
+          onComplete(futureResp) {
+            case Success(value) =>
+              value match {
+                case CredentialRepository.VerifiedCredentialsResponse() =>
+                  LOGGER.debug("Completed from credentials path")
+                  complete(value)
+                case CredentialRepository.InvalidCredentialsResponse() =>
+                  complete(StatusCodes.Unauthorized, s"Invalid user credentials, user-id=${creds.userId}")
+                case CredentialRepository.UserNotFoundCredentialsResponse() =>
+                  complete(StatusCodes.Unauthorized, s"User not found, user-id=${creds.userId}")
+                case CredentialRepository.InternalErrorCredentialsResponse() =>
+                  complete(StatusCodes.InternalServerError, s"Failed to validate user credentials, user-id=${creds.userId}")
+              }
+            case Failure(exception) =>
+              LOGGER.debug("Throwing exception from credentials path", exception)
+              complete(StatusCodes.InternalServerError, s"Failed to validate user credentials, user-id=${creds.userId}")
+          }
+        }
+      }
+    },
     pathPrefix("run") {
       concat(
         path("delete-data") {
@@ -92,9 +119,7 @@ class PlanRoutes(
         },
         path("status" / """[A-Za-z0-9-_]+""".r) { id =>
           val planStatus = planRepository.ask(x => PlanRepository.GetPlanRunStatus(id, x))
-          rejectEmptyResponse {
-            complete(planStatus)
-          }
+          complete(planStatus)
         },
         post {
           entity(as[PlanRunRequest]) { runInfo =>

@@ -26,7 +26,8 @@ object PlanServer {
     val planRepository = ctx.spawn(PlanRepository(), "PlanRepository")
     val planResponseHandler = ctx.spawn(PlanResponseHandler(), "PlanResponseHandler")
     val connectionRepository = ctx.spawn(ConnectionRepository(), "ConnectionRepository")
-    val routes = new PlanRoutes(planRepository, planResponseHandler, connectionRepository)
+    val credentialRepository = ctx.spawn(CredentialRepository(), "CredentialRepository")
+    val routes = new PlanRoutes(planRepository, planResponseHandler, connectionRepository, credentialRepository)
 
     //TODO should check if port 9898 is available, try other ports if not available
     val server = Http().newServerAt("0.0.0.0", 9898).bind(routes.planRoutes)

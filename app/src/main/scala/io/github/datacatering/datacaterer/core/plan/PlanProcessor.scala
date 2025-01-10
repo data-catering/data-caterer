@@ -5,12 +5,13 @@ import io.github.datacatering.datacaterer.api.model.Constants.{DATA_CATERER_INTE
 import io.github.datacatering.datacaterer.api.model.{DataCatererConfiguration, Plan, Task, ValidationConfiguration}
 import io.github.datacatering.datacaterer.core.activity.{PlanRunPostPlanProcessor, PlanRunPrePlanProcessor}
 import io.github.datacatering.datacaterer.core.config.ConfigParser
-import io.github.datacatering.datacaterer.core.exception.PlanRunClassNotFoundException
+import io.github.datacatering.datacaterer.core.exception.{ManagementApiException, PlanRunClassNotFoundException}
 import io.github.datacatering.datacaterer.core.generator.DataGeneratorProcessor
 import io.github.datacatering.datacaterer.core.generator.metadata.datasource.DataSourceMetadataFactory
 import io.github.datacatering.datacaterer.core.model.Constants.METADATA_CONNECTION_OPTIONS
 import io.github.datacatering.datacaterer.core.model.PlanRunResults
 import io.github.datacatering.datacaterer.core.parser.PlanParser
+import io.github.datacatering.datacaterer.core.util.LifecycleUtil.isTrackActivity
 import io.github.datacatering.datacaterer.core.util.ManagementUtil.getApiToken
 import io.github.datacatering.datacaterer.core.util.SparkProvider
 import org.apache.spark.sql.SparkSession
@@ -24,7 +25,7 @@ object PlanProcessor {
                                interface: String = DATA_CATERER_INTERFACE_SCALA,
                                apiCheck: Boolean = true
                              ): PlanRunResults = {
-    if (apiCheck) getApiToken
+    if (apiCheck && isTrackActivity) getApiToken
     val optPlanClass = getPlanClass
     optPlanClass.map(Class.forName)
       .map(cls => {
@@ -64,18 +65,22 @@ object PlanProcessor {
                                    ): PlanRunResults = {
     val connectionConf = optPlan.map(_._connectionTaskBuilders.flatMap(_.connectionConfigWithTaskBuilder.options).toMap).getOrElse(Map())
     implicit val sparkSession: SparkSession = new SparkProvider(dataCatererConfiguration.master, dataCatererConfiguration.runtimeConfig ++ connectionConf).getSparkSession
+    Class.forName("org.postgresql.Driver")
 
     val (planRun, resolvedInterface) = parsePlan(dataCatererConfiguration, optPlan, interface)
-    applyPrePlanProcessors(planRun, dataCatererConfiguration, resolvedInterface)
+    try {
+      applyPrePlanProcessors(planRun, dataCatererConfiguration, resolvedInterface)
 
-    val optPlanWithTasks = extractMetadata(dataCatererConfiguration, planRun)
-    val dataGeneratorProcessor = new DataGeneratorProcessor(dataCatererConfiguration)
+      val optPlanWithTasks = extractMetadata(dataCatererConfiguration, planRun)
+      val dataGeneratorProcessor = new DataGeneratorProcessor(dataCatererConfiguration)
 
-    (optPlanWithTasks, planRun) match {
-      case (Some((genPlan, genTasks, genValidation)), _) => dataGeneratorProcessor.generateData(genPlan, genTasks, Some(genValidation))
-      case (_, plan) => dataGeneratorProcessor.generateData(plan._plan, plan._tasks, Some(plan._validations))
+      (optPlanWithTasks, planRun) match {
+        case (Some((genPlan, genTasks, genValidation)), _) => dataGeneratorProcessor.generateData(genPlan, genTasks, Some(genValidation))
+        case (_, plan) => dataGeneratorProcessor.generateData(plan._plan, plan._tasks, Some(plan._validations))
+      }
+    } catch {
+      case ex: Exception => throw ex
     }
-
   }
 
   private def extractMetadata(dataCatererConfiguration: DataCatererConfiguration, planRun: PlanRun)(implicit sparkSession: SparkSession): Option[(Plan, List[Task], List[ValidationConfiguration])] = {
@@ -113,7 +118,7 @@ object PlanProcessor {
     val planRunPostPlanProcessor = optConfig.map(config => new PlanRunPostPlanProcessor(config))
       .getOrElse(new PlanRunPostPlanProcessor(DataCatererConfiguration()))
     val plan = optPlanRun.map(_._plan).getOrElse(Plan())
-    planRunPostPlanProcessor.notifyPlanFailed(plan, List(), List(), stage, Some(exception))
+    planRunPostPlanProcessor.notifyPlanResult(plan, List(), List(), stage, Some(exception))
   }
 
   private def getPlanClass: Option[String] = {

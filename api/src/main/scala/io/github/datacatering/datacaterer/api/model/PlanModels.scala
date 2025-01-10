@@ -69,7 +69,7 @@ case class PerFieldCount(
                           fieldNames: List[String] = List(),
                           @JsonDeserialize(contentAs = classOf[java.lang.Long]) count: Option[Long] = Some(DEFAULT_PER_FIELD_COUNT_RECORDS),
                           options: Map[String, Any] = Map()
-                         )
+                        )
 
 case class Field(
                   name: String = DEFAULT_FIELD_NAME,

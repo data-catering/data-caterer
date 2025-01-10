@@ -24,7 +24,7 @@ class PlanParserTest extends SparkSuite {
   test("Can parse task in YAML file") {
     val result = PlanParser.parseTasks("src/test/resources/sample/task")
 
-    assertResult(13)(result.length)
+    assertResult(15)(result.length)
   }
 
   test("Can parse plan in YAML file with foreign key") {

@@ -320,9 +320,35 @@ object PlanImplicits {
       }
     }
 
+    def fieldToStringOptions: Field = {
+      val stringFieldOptions = toStringValues(field.options)
+      val mappedInnerFields = field.fields.map(_.fieldToStringOptions)
+      field.copy(options = stringFieldOptions, fields = mappedInnerFields)
+    }
+
+    private def toStringValues(options: Map[String, Any]): Map[String, Any] = {
+      options.map(x => {
+        val value = x._2 match {
+          case _: Int | _: Long | _: Double | _: Float | _: Boolean => x._2.toString
+          case y: List[_] =>
+            if (y.nonEmpty) {
+              y.head match {
+                case _: Int | _: Long | _: Double | _: Float | _: Boolean => y.map(y1 => y1.toString)
+                case _ => y
+              }
+            } else {
+              y
+            }
+          case y => y
+        }
+        (x._1, value)
+      })
+    }
+
     private def getMetadata: Metadata = {
       if (field.options.nonEmpty) {
-        Metadata.fromJson(ObjectMapperUtil.jsonObjectMapper.writeValueAsString(field.options))
+        val cleanField = field.fieldToStringOptions
+        Metadata.fromJson(ObjectMapperUtil.jsonObjectMapper.writeValueAsString(cleanField.options))
       } else {
         Metadata.empty
       }

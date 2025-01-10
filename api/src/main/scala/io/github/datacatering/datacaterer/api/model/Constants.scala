@@ -172,6 +172,25 @@ object Constants {
   lazy val REGEX_GENERATOR = "regex"
   lazy val SQL_GENERATOR = "sql"
 
+  //real time field names
+  lazy val REAL_TIME_BODY_FIELD = "value"
+  lazy val REAL_TIME_BODY_CONTENT_FIELD = "bodyContent"
+  lazy val REAL_TIME_PARTITION_FIELD = "partition"
+  lazy val REAL_TIME_HEADERS_FIELD = "headers"
+  lazy val REAL_TIME_METHOD_FIELD = "method"
+  lazy val REAL_TIME_ENDPOINT = "endpoint"
+  lazy val REAL_TIME_CONTENT_TYPE_FIELD = "content_type"
+  lazy val REAL_TIME_URL_FIELD = "url"
+  lazy val HTTP_HEADER_FIELD_PREFIX = "header"
+  lazy val HTTP_PATH_PARAM_FIELD_PREFIX = "pathParam"
+  lazy val HTTP_QUERY_PARAM_FIELD_PREFIX = "queryParam"
+  lazy val HTTP_BODY_FIELD_PREFIX = "bodyContent"
+  lazy val YAML_REAL_TIME_HEADERS_FIELD = "messageHeaders"
+  lazy val YAML_REAL_TIME_BODY_FIELD = "messageBody"
+  lazy val YAML_HTTP_BODY_FIELD = "httpBody"
+  lazy val YAML_HTTP_HEADERS_FIELD = "httpHeaders"
+  lazy val YAML_HTTP_URL_FIELD = "httpUrl"
+
   //flag names
   lazy val ENABLE_DATA_GENERATION = "enableDataGeneration"
   lazy val ENABLE_DATA_VALIDATION = "enableDataValidation"
@@ -557,6 +576,7 @@ object Constants {
   lazy val DATA_CATERER_INTERFACE_YAML = "yaml"
 
   //plan run stages
+  lazy val PLAN_STAGE_START = "planStart"
   lazy val PLAN_STAGE_PARSE_PLAN = "parsePlan"
   lazy val PLAN_STAGE_PRE_PLAN_PROCESSORS = "prePlanProcessors"
   lazy val PLAN_STAGE_EXTRACT_METADATA = "extractMetadata"
@@ -564,7 +584,7 @@ object Constants {
   lazy val PLAN_STAGE_VALIDATE_DATA = "validateData"
   lazy val PLAN_STAGE_DELETE_DATA = "deleteData"
   lazy val PLAN_STAGE_POST_PLAN_PROCESSORS = "postPlanProcessors"
-  lazy val PLAN_STAGE_FINISHED = "finished"
+  lazy val PLAN_STAGE_FINISHED = "planFinish"
   lazy val PLAN_STAGE_EXCEPTION_MESSAGE_LENGTH = 500
 
   //plan run status

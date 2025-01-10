@@ -138,7 +138,7 @@ class DataGeneratorProcessor(dataCatererConfiguration: DataCatererConfiguration)
                                    stage: String,
                                    exception: Exception
                                  ): Unit = {
-    planRunPostPlanProcessor.notifyPlanFailed(plan, generationResult, validationResult, stage, Some(exception))
+    planRunPostPlanProcessor.notifyPlanResult(plan, generationResult, validationResult, stage, Some(exception))
   }
 
 }

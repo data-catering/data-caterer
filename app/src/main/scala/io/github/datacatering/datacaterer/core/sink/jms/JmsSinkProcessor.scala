@@ -1,9 +1,8 @@
 package io.github.datacatering.datacaterer.core.sink.jms
 
-import io.github.datacatering.datacaterer.api.model.Constants.{DEFAULT_REAL_TIME_HEADERS_DATA_TYPE, JMS_CONNECTION_FACTORY, JMS_DESTINATION_NAME, JMS_INITIAL_CONTEXT_FACTORY, JMS_VPN_NAME, PASSWORD, URL, USERNAME}
+import io.github.datacatering.datacaterer.api.model.Constants.{DEFAULT_REAL_TIME_HEADERS_DATA_TYPE, JMS_CONNECTION_FACTORY, JMS_DESTINATION_NAME, JMS_INITIAL_CONTEXT_FACTORY, JMS_VPN_NAME, PASSWORD, REAL_TIME_BODY_FIELD, REAL_TIME_HEADERS_FIELD, REAL_TIME_PARTITION_FIELD, URL, USERNAME}
 import io.github.datacatering.datacaterer.api.model.Step
 import io.github.datacatering.datacaterer.core.exception.{FailedJmsMessageCreateException, FailedJmsMessageGetBodyException, FailedJmsMessageSendException}
-import io.github.datacatering.datacaterer.core.model.Constants.{REAL_TIME_BODY_FIELD, REAL_TIME_HEADERS_FIELD, REAL_TIME_PARTITION_FIELD}
 import io.github.datacatering.datacaterer.core.model.RealTimeSinkResult
 import io.github.datacatering.datacaterer.core.sink.{RealTimeSinkProcessor, SinkProcessor}
 import io.github.datacatering.datacaterer.core.util.RowUtil.getRowValue

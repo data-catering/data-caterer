@@ -399,4 +399,9 @@ class RandomDataGeneratorTest extends AnyFunSuite {
     val res = mapGenerator.generate
     assertResult(3)(res.size)
   }
+
+  test("Can get min and max value from metadata for int field") {
+    val metadata = new MetadataBuilder().putString(MINIMUM, "1").putString(MAXIMUM, "10").build()
+//    RandomDataGenerator.sqlExpressionForNumeric()
+  }
 }

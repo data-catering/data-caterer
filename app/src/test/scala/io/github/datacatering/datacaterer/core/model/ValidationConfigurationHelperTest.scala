@@ -2,8 +2,11 @@ package io.github.datacatering.datacaterer.core.model
 
 import io.github.datacatering.datacaterer.api.model.{DataSourceValidation, ExpressionValidation, PauseWaitCondition, ValidationConfiguration}
 import io.github.datacatering.datacaterer.api.{ValidationBuilder, WaitConditionBuilder}
+import org.junit.runner.RunWith
 import org.scalatest.funsuite.AnyFunSuite
+import org.scalatestplus.junit.JUnitRunner
 
+@RunWith(classOf[JUnitRunner])
 class ValidationConfigurationHelperTest extends AnyFunSuite {
 
   test("Can merge validation config from user and generated validation config") {

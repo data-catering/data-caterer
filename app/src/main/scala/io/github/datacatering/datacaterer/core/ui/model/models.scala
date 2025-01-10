@@ -67,6 +67,8 @@ case class GetConnectionsResponse(connections: List[Connection])
 
 case class SaveConnectionsRequest(connections: List[Connection])
 
+case class CredentialsRequest(userId: String, token: String)
+
 case class Connection(name: String, `type`: String, groupType: Option[String], options: Map[String, String]) {
   override def toString: String = {
     val parsedGroupType = groupType.getOrElse(CONNECTION_GROUP_TYPE_MAP.getOrElse(`type`, CONNECTION_GROUP_DATA_SOURCE))
