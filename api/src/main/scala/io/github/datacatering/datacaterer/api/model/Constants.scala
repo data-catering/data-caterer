@@ -516,6 +516,27 @@ object Constants {
   lazy val VALIDATION_FIELD_NAME_MATCH_ORDER = "fieldNameMatchOrder"
   lazy val VALIDATION_FIELD_NAME_MATCH_SET = "fieldNameMatchSet"
 
+  //validation summary
+  lazy val VALIDATION_NAME = "name"
+  lazy val VALIDATION_IS_SUCCESS = "isSuccess"
+  lazy val VALIDATION_NUM_SUCCESS = "numSuccess"
+  lazy val VALIDATION_NUM_VALIDATIONS = "numValidations"
+  lazy val VALIDATION_SUCCESS_RATE = "successRate"
+  lazy val VALIDATION_DATA_SOURCE_NAME = "dataSourceName"
+  lazy val VALIDATION_OPTIONS = "options"
+  lazy val VALIDATION_DETAILS = "validation"
+  lazy val VALIDATION_NUM_ERRORS = "numErrors"
+  lazy val VALIDATION_SAMPLE_ERRORS = "sampleErrorValues"
+  lazy val VALIDATION_ERROR_VALIDATIONS = "errorValidations"
+
+  //generation summary
+  lazy val GENERATION_NAME = "name"
+  lazy val GENERATION_FORMAT = "format"
+  lazy val GENERATION_OPTIONS = "options"
+  lazy val GENERATION_IS_SUCCESS = "isSuccess"
+  lazy val GENERATION_NUM_RECORDS = "numRecords"
+  lazy val GENERATION_TIME_TAKEN_SECONDS = "timeTakenSeconds"
+
   //configuration names
   //flags config
   lazy val CONFIG_FLAGS_COUNT = "enableCount"

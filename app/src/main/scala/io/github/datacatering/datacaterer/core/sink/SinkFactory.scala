@@ -5,6 +5,7 @@ import io.github.datacatering.datacaterer.api.model.Constants.{DELTA, DELTA_LAKE
 import io.github.datacatering.datacaterer.api.model.{FlagsConfig, FoldersConfig, MetadataConfig, SinkResult, Step}
 import io.github.datacatering.datacaterer.api.util.ConfigUtil
 import io.github.datacatering.datacaterer.core.exception.{FailedSaveDataDataFrameV2Exception, FailedSaveDataException}
+import io.github.datacatering.datacaterer.core.generator.metadata.datasource.LogHolder
 import io.github.datacatering.datacaterer.core.model.Constants.{BATCH, DEFAULT_ROWS_PER_SECOND, FAILED, FINISHED, PER_FIELD_INDEX_FIELD, STARTED}
 import io.github.datacatering.datacaterer.core.model.RealTimeSinkResult
 import io.github.datacatering.datacaterer.core.util.GeneratorUtil.determineSaveTiming
@@ -315,14 +316,21 @@ class SinkFactory(
 
   private def saveRealTimeResponses(step: Step, saveResult: Dataset[Try[RealTimeSinkResult]]): Unit = {
     import sparkSession.implicits._
-    val resultJson = saveResult.map(tryRes => tryRes.getOrElse(RealTimeSinkResult()).result)
+    val resultJson = saveResult.map {
+      case Success(value) => value.result
+      case Failure(exception) => s"""{"exception": "${exception.getMessage}"}"""
+    }
     val jsonSchema = sparkSession.read.json(resultJson).schema
     val topLevelFieldNames = jsonSchema.fields.map(f => s"result.${f.name}")
-    val parsedResult = resultJson.selectExpr(s"FROM_JSON(value, '${jsonSchema.toDDL}') AS result")
-      .selectExpr(topLevelFieldNames: _*)
-    val cleanStepName = cleanValidationIdentifier(step.name)
-    parsedResult.write
-      .mode(SaveMode.Overwrite)
-      .json(s"${foldersConfig.recordTrackingForValidationFolderPath}/$cleanStepName")
+    if (jsonSchema.nonEmpty) {
+      val parsedResult = resultJson.selectExpr(s"FROM_JSON(value, '${jsonSchema.toDDL}') AS result")
+        .selectExpr(topLevelFieldNames: _*)
+      val cleanStepName = cleanValidationIdentifier(step.name)
+      parsedResult.write
+        .mode(SaveMode.Overwrite)
+        .json(s"${foldersConfig.recordTrackingForValidationFolderPath}/$cleanStepName")
+    } else {
+      LOGGER.warn("Unable to save real-time responses with empty schema")
+    }
   }
 }

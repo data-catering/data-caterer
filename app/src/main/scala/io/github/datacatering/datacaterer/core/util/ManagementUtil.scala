@@ -7,7 +7,7 @@ object ManagementUtil {
 
   def getDataCatererManagementUrl: String = {
     val envVar = System.getenv(DATA_CATERER_MANAGEMENT_URL)
-    if (envVar == null) "http://localhost:8082/v1" else envVar
+    if (envVar == null) "https://api.data.catering/v1" else envVar
   }
 
   def getApiToken: String = getEnvOrProperty(DATA_CATERER_API_TOKEN)

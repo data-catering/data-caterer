@@ -15,7 +15,7 @@ import scala.util.{Failure, Success, Try}
 trait LifecycleManagement {
 
   private val LOGGER = Logger.getLogger(getClass.getName)
-  private val apiKey: String = if (isTrackActivity) getApiToken else ""
+  private val apiToken: String = if (isTrackActivity) getApiToken else ""
   private val apiUser: String = if (isTrackActivity) getApiUser else ""
   private val http: AsyncHttpClient = asyncHttpClient
   private val isDataCatererUi: Boolean = isRunningDataCatererUi
@@ -26,7 +26,7 @@ trait LifecycleManagement {
     val prepareRequest = http.preparePost(url)
       .setBody(body)
       .setHeader("Content-Type", "application/json")
-      .setHeader("x-api-key", apiKey)
+      .setHeader("x-api-token", apiToken)
       .setHeader("x-api-user", apiUser)
 
     val scalaFuture = prepareRequest.execute().toCompletableFuture.toScala
@@ -35,7 +35,6 @@ trait LifecycleManagement {
         LOGGER.debug(s"Successfully sent request to API server, url=$url")
         if (value.getStatusCode == 429) {
           LOGGER.warn(s"You have reached the quota limit for your plan, ${value.getResponseBody}")
-          //don't exit for UI
           if (!isDataCatererUi) {
             System.exit(0)
           } else {

@@ -14,7 +14,7 @@ object ConfigUtil {
     )
   }
 
-  private def cleanseAdditionalOptions(config: Map[String, String]): Map[String, String] = {
+  def cleanseAdditionalOptions(config: Map[String, String]): Map[String, String] = {
     config.filter(o =>
       !(allCleanseKeys.contains(o._1.toLowerCase) || o._2.toLowerCase.contains("password"))
     )
@@ -33,27 +33,6 @@ object ConfigUtil {
     })
 
     planRunSummary.copy(tasks = cleanTasksOptions, validations = cleanValidations)
-  }
-
-  def cleanOptions(planResults: PlanResults): PlanResults = {
-    val cleanGenerationRes = planResults.generationResult.map(dataSourceRes => {
-      val cleanSinkResOpts = cleanseAdditionalOptions(dataSourceRes.sinkResult.options)
-      val cleanSinkResult = dataSourceRes.sinkResult.copy(options = cleanSinkResOpts)
-      dataSourceRes.copy(
-        sinkResult = cleanSinkResult,
-        step = cleanStep(dataSourceRes.step),
-        task = cleanTask(dataSourceRes.task)
-      )
-    })
-    val cleanValidationRes = planResults.validationResult.map(validationConfig => {
-      val cleanValidations = validationConfig.dataSourceValidationResults.map(dataSourceValidation => {
-        val cleanDataSourceOpts = cleanseAdditionalOptions(dataSourceValidation.options)
-        dataSourceValidation.copy(options = cleanDataSourceOpts)
-      })
-      validationConfig.copy(dataSourceValidationResults = cleanValidations)
-    })
-
-    planResults.copy(generationResult = cleanGenerationRes, validationResult = cleanValidationRes)
   }
 
   private def cleanTasks(tasks: List[Task]) = {
