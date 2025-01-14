@@ -44,6 +44,9 @@
   - More accurate timing of HTTP request and response
 - Fix bug when field options defined as non-string get ignored by data generator
 - Ensure all tests are run via JUnitRunner
+- Reduce size of planFinish payload, only send generation and validation summary
+- Use apiToken naming convention to keep consistency
+- Don't save real-time responses if schema is empty
 
 ## 0.13.1
 
