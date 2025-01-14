@@ -1,0 +1,128 @@
+name: Build and upload OS installations
+
+on: workflow_dispatch
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+      - name: Gradle build with cache
+        uses: burrunan/gradle-cache-action@v2
+        with:
+          arguments: "shadowJar"
+      - name: Upload jpackage jar
+        uses: actions/upload-artifact@v4
+        with:
+          name: jars
+          path: "app/build/libs/data-caterer.jar"
+          overwrite: true
+
+  osx:
+    needs: build
+    runs-on: [macos-latest]
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - name: Set version
+        run: echo "APP_VERSION=$(grep version gradle.properties | cut -d= -f2)" >> $GITHUB_ENV
+      - uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          java-package: jdk
+          architecture: x64
+          distribution: oracle
+      - name: Download fat jar
+        uses: actions/download-artifact@v4
+        with:
+          name: jars
+          path: app/build/libs/
+      - name: Package jar as dmg installer
+        run: 'jpackage --main-jar data-caterer.jar "@misc/jpackage/jpackage.cfg" "@misc/jpackage/jpackage-mac.cfg"'
+      - uses: shallwefootball/s3-upload-action@master
+        name: Upload dmg to S3
+        id: S3
+        with:
+          aws_key_id: ${{ secrets.AWS_KEY_ID }}
+          aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws_bucket: ${{ secrets.AWS_BUCKET }}
+          source_dir: 'DataCaterer-1.0.0.dmg'
+          destination_dir: 'downloads/os/mac/DataCaterer-1.0.0.dmg'
+
+  windows:
+    needs: build
+    runs-on: [windows-latest]
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - name: Set version
+        run: echo "APP_VERSION=$(grep version gradle.properties | cut -d= -f2)" >> $env:GITHUB_ENV
+      - uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          java-package: jdk
+          architecture: x64
+          distribution: oracle
+      - name: Download fat jar
+        uses: actions/download-artifact@v4
+        with:
+          name: jars
+          path: app/build/libs/
+      - name: Package jar as exe
+        run: 'jpackage --main-jar data-caterer.jar "@misc/jpackage/jpackage.cfg" "@misc/jpackage/jpackage-windows.cfg"'
+      - uses: shallwefootball/s3-upload-action@master
+        name: Upload exe to S3
+        id: S3
+        with:
+          aws_key_id: ${{ secrets.AWS_KEY_ID }}
+          aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws_bucket: ${{ secrets.AWS_BUCKET }}
+          source_dir: 'DataCaterer-1.0.0.exe'
+          destination_dir: 'downloads/os/windows/DataCaterer-1.0.0.exe'
+
+  linux:
+    needs: build
+    runs-on: [ubuntu-latest]
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - name: Set version
+        run: echo "APP_VERSION=$(grep version gradle.properties | cut -d= -f2)" >> $GITHUB_ENV
+      - uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          java-package: jdk
+          architecture: x64
+          distribution: oracle
+      - name: Download fat jar
+        uses: actions/download-artifact@v4
+        with:
+          name: jars
+          path: app/build/libs/
+      - name: Package jar as debian package
+        run: 'jpackage --main-jar data-caterer.jar "@misc/jpackage/jpackage.cfg" "@misc/jpackage/jpackage-linux.cfg"'
+      - uses: shallwefootball/s3-upload-action@master
+        name: Upload deb to S3
+        id: S3
+        with:
+          aws_key_id: ${{ secrets.AWS_KEY_ID }}
+          aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws_bucket: ${{ secrets.AWS_BUCKET }}
+          source_dir: 'datacaterer_1.0.0_amd64.deb'
+          destination_dir: 'downloads/os/linux/datacaterer_1.0.0_amd64.deb'
+
+  cleanup:
+    needs: [osx, windows, linux]
+    runs-on: ubuntu:latest
+    steps:
+      - name: Remove jars
+        uses: geekyeggo/delete-artifact@v5
+        with:
+          name: jars
