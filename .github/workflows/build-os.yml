@@ -42,15 +42,16 @@ jobs:
           path: app/build/libs/
       - name: Package jar as dmg installer
         run: 'jpackage --main-jar data-caterer.jar "@misc/jpackage/jpackage.cfg" "@misc/jpackage/jpackage-mac.cfg"'
-      - uses: shallwefootball/s3-upload-action@master
-        name: Upload dmg to S3
+      - uses: ahkohd/s3-upload-action@master
+        name: Upload exe to S3
         id: S3
         with:
-          aws_key_id: ${{ secrets.AWS_KEY_ID }}
-          aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws_bucket: ${{ secrets.AWS_BUCKET }}
-          source_dir: 'DataCaterer-1.0.0.dmg'
-          destination_dir: 'downloads/os/mac/DataCaterer-1.0.0.dmg'
+          aws-access-key-id: ${{ secrets.AWS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-bucket: ${{ secrets.AWS_BUCKET }}
+          aws-region: 'ap-southeast-1'
+          file-path: 'DataCaterer-1.0.0.dmg'
+          destination-dir: 'download/os/mac'
 
   windows:
     needs: build
@@ -75,15 +76,16 @@ jobs:
           path: app/build/libs/
       - name: Package jar as exe
         run: 'jpackage --main-jar data-caterer.jar "@misc/jpackage/jpackage.cfg" "@misc/jpackage/jpackage-windows.cfg"'
-      - uses: shallwefootball/s3-upload-action@master
+      - uses: ahkohd/s3-upload-action@master
         name: Upload exe to S3
         id: S3
         with:
-          aws_key_id: ${{ secrets.AWS_KEY_ID }}
-          aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws_bucket: ${{ secrets.AWS_BUCKET }}
-          source_dir: 'DataCaterer-1.0.0.exe'
-          destination_dir: 'downloads/os/windows/DataCaterer-1.0.0.exe'
+          aws-access-key-id: ${{ secrets.AWS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-bucket: ${{ secrets.AWS_BUCKET }}
+          aws-region: 'ap-southeast-1'
+          file-path: 'DataCaterer-1.0.0.exe'
+          destination-dir: 'download/os/windows'
 
   linux:
     needs: build
@@ -108,15 +110,16 @@ jobs:
           path: app/build/libs/
       - name: Package jar as debian package
         run: 'jpackage --main-jar data-caterer.jar "@misc/jpackage/jpackage.cfg" "@misc/jpackage/jpackage-linux.cfg"'
-      - uses: shallwefootball/s3-upload-action@master
+      - uses: ahkohd/s3-upload-action@master
         name: Upload deb to S3
         id: S3
         with:
-          aws_key_id: ${{ secrets.AWS_KEY_ID }}
-          aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws_bucket: ${{ secrets.AWS_BUCKET }}
-          source_dir: 'datacaterer_1.0.0_amd64.deb'
-          destination_dir: 'downloads/os/linux/datacaterer_1.0.0_amd64.deb'
+          aws-access-key-id: ${{ secrets.AWS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-bucket: ${{ secrets.AWS_BUCKET }}
+          aws-region: 'ap-southeast-1'
+          file-path: 'datacaterer_1.0.0_amd64.deb'
+          destination-dir: 'download/os/linux'
 
   cleanup:
     needs: [osx, windows, linux]
