@@ -51,7 +51,7 @@ jobs:
           aws-bucket: ${{ secrets.AWS_BUCKET }}
           aws-region: 'ap-southeast-1'
           file-path: 'DataCaterer-1.0.0.dmg'
-          destination-dir: 'download/os/mac'
+          destination-dir: 'data-caterer/download/os/mac'
 
   windows:
     needs: build
@@ -85,7 +85,7 @@ jobs:
           aws-bucket: ${{ secrets.AWS_BUCKET }}
           aws-region: 'ap-southeast-1'
           file-path: 'DataCaterer-1.0.0.exe'
-          destination-dir: 'download/os/windows'
+          destination-dir: 'data-caterer/download/os/windows'
 
   linux:
     needs: build
@@ -119,7 +119,7 @@ jobs:
           aws-bucket: ${{ secrets.AWS_BUCKET }}
           aws-region: 'ap-southeast-1'
           file-path: 'datacaterer_1.0.0_amd64.deb'
-          destination-dir: 'download/os/linux'
+          destination-dir: 'data-caterer/download/os/linux'
 
   cleanup:
     needs: [osx, windows, linux]
