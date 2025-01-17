@@ -123,7 +123,7 @@ jobs:
 
   cleanup:
     needs: [osx, windows, linux]
-    runs-on: ubuntu:latest
+    runs-on: ubuntu-latest
     steps:
       - name: Remove jars
         uses: geekyeggo/delete-artifact@v5
