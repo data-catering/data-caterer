@@ -462,6 +462,10 @@ final case class ConnectionConfigWithTaskBuilder(
     this.modify(_.options)(_ ++ options)
   }
 
+  def option(option: (String, String)): ConnectionConfigWithTaskBuilder = {
+    this.modify(_.options)(_ ++ Map(option))
+  }
+
   def metadataSource(metadataSourceBuilder: MetadataSourceBuilder): ConnectionConfigWithTaskBuilder = {
     this.modify(_.options)(_ ++ metadataSourceBuilder.metadataSource.allOptions)
   }

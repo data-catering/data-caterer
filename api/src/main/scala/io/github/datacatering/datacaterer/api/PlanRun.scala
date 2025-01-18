@@ -50,6 +50,20 @@ trait PlanRun {
   def foreignField(dataSource: String, step: String, fields: List[String]): ForeignKeyRelation =
     ForeignKeyRelation(dataSource, step, fields)
 
+  def foreignField(connectionTask: ConnectionTaskBuilder[_], field: String): ForeignKeyRelation =
+    ForeignKeyRelation(
+      connectionTask.connectionConfigWithTaskBuilder.dataSourceName,
+      connectionTask.getStep.step.name,
+      List(field)
+    )
+
+  def foreignField(connectionTask: ConnectionTaskBuilder[_], fields: List[String]): ForeignKeyRelation =
+    ForeignKeyRelation(
+      connectionTask.connectionConfigWithTaskBuilder.dataSourceName,
+      connectionTask.getStep.step.name,
+      fields
+    )
+
   def foreignField(connectionTask: ConnectionTaskBuilder[_], step: String, fields: List[String]): ForeignKeyRelation =
     ForeignKeyRelation(connectionTask.connectionConfigWithTaskBuilder.dataSourceName, step, fields)
 

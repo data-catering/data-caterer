@@ -3,7 +3,7 @@ package io.github.datacatering.datacaterer.core.util
 import io.github.datacatering.datacaterer.api.PlanRun
 import io.github.datacatering.datacaterer.api.model.Constants.OMIT
 import io.github.datacatering.datacaterer.api.model.{ForeignKey, Plan}
-import io.github.datacatering.datacaterer.core.exception.MissingDataSourceFromForeignKeyException
+import io.github.datacatering.datacaterer.core.exception.{MissingDataSourceForForeignKeyException, MissingDataSourceFromForeignKeyException}
 import io.github.datacatering.datacaterer.core.model.{ForeignKeyRelationship, ForeignKeyWithGenerateAndDelete}
 import io.github.datacatering.datacaterer.core.util.ForeignKeyRelationHelper.updateForeignKeyName
 import io.github.datacatering.datacaterer.core.util.GeneratorUtil.applySqlExpressions
@@ -54,7 +54,8 @@ object ForeignKeyUtil {
           if (!dfWithForeignKeys.storageLevel.useMemory) dfWithForeignKeys.cache()
           (targetDfName, dfWithForeignKeys)
         } else {
-          LOGGER.warn("Foreign key data source does not contain foreign key defined in plan, defaulting to base generated data")
+          LOGGER.warn(s"Foreign key data source does not contain all foreign key(s) defined in plan, defaulting to base generated data, " +
+            s"target-foreign-key-fields=${target.fields.mkString(",")}, target-columns=${targetDf.columns.mkString(",")}")
           (targetDfName, targetDf)
         }
       })
@@ -75,6 +76,9 @@ object ForeignKeyUtil {
     val subForeignKeySources = fkr.generationLinks.map(_.dataSource)
     val isSubForeignKeySourceEnabled = subForeignKeySources.forall(enabledSources.contains)
     val disabledSubSources = subForeignKeySources.filter(s => !enabledSources.contains(s))
+    if (!generatedDataForeachTask.contains(fkr.source.dataFrameName)) {
+      throw MissingDataSourceForForeignKeyException(fkr.source.dataFrameName)
+    }
     val mainDfFields = generatedDataForeachTask(fkr.source.dataFrameName).schema.fields
     val fieldExistsMain = fkr.source.fields.forall(c => hasDfContainField(c, mainDfFields))
 
