@@ -120,7 +120,7 @@ class PlanProcessorTest extends SparkSuite {
   }
 
   ignore("Can run Postgres plan run") {
-    PlanProcessor.determineAndExecutePlan(Some(new TestBasicHttp), apiCheck = false)
+    PlanProcessor.determineAndExecutePlan(Some(new TestRelationshipTask), apiCheck = false)
   }
 
   class TestPostgres extends PlanRun {
@@ -228,7 +228,7 @@ class PlanProcessorTest extends SparkSuite {
       .recordTrackingForValidationFolderPath("/tmp/record-tracking-validation")
 
     val myPlan = plan.addForeignKeyRelationship(
-      foreignField("my_http", "POST/pets", "bodyContent.id"),
+      foreignField("my_http", "POST/pets", "body.id"),
       foreignField("my_http", "DELETE/pets/{id}", "pathParamid"),
       foreignField("my_http", "GET/pets/{id}", "pathParamid"),
     )
@@ -263,11 +263,11 @@ class PlanProcessorTest extends SparkSuite {
   class TestHttp extends PlanRun {
     val httpTask = http("my_http")
       .fields(metadataSource.openApi("app/src/test/resources/sample/http/openapi/petstore.json"))
-      .fields(field.name("bodyContent").fields(field.name("id").regex("ID[0-9]{8}")))
+      .fields(field.name("body").fields(field.name("id").regex("ID[0-9]{8}")))
       .count(count.records(20))
 
     val myPlan = plan.addForeignKeyRelationship(
-      foreignField("my_http", "POST/pets", "bodyContent.id"),
+      foreignField("my_http", "POST/pets", "body.id"),
       foreignField("my_http", "DELETE/pets/{id}", "pathParamid"),
       foreignField("my_http", "GET/pets/{id}", "pathParamid"),
     )
@@ -294,6 +294,61 @@ class PlanProcessorTest extends SparkSuite {
     val conf = configuration.generatedReportsFolderPath("/tmp/report")
 
     execute(conf, httpTask)
+  }
+
+  class TestRelationshipTask extends PlanRun {
+    val httpPostTask = http("post_http")
+      .fields(field.httpHeader("Content-Type").static("application/json"))
+      .fields(field.httpUrl(
+        "http://localhost:80/anything/pets", //url
+        HttpMethodEnum.POST //method
+      ): _*)
+      .fields(field.httpBody(
+        field.name("id").regex("[0-9]{8}"),
+        field.name("name").expression("#{Name.name}")
+      ): _*)
+      .count(count.records(20))
+      .validations(
+        validation.field("request.method").isEqual("POST"),
+        validation.field("request.method").isEqualField("response.statusText"),
+        validation.field("response.statusCode").isEqual(200),
+        validation.field("response.headers.Content-Length").greaterThan(0),
+        validation.field("response.headers.Content-Type").isEqual("application/json"),
+      )
+
+    val httpGetTask = http("get_http")
+      .fields(
+        field.httpHeader("Content-Type").static("application/json"),
+      )
+      .fields(field.httpUrl(
+        "http://localhost:80/anything/pets/{id}", //url
+        HttpMethodEnum.GET, //method
+        List(
+          field.name("id") //path parameters
+        ),
+        List(
+          field.name("limit").`type`(IntegerType).min(1).max(10) //query parameters
+        )
+      ): _*)
+      .validations(
+        validation.field("request.method").isEqual("GET"),
+        validation.field("request.method").isEqualField("response.statusText"),
+        validation.field("response.statusCode").isEqual(200),
+        validation.field("response.headers.Content-Length").greaterThan(0),
+        validation.field("response.headers.Content-Type").isEqual("application/json"),
+      )
+
+    val myPlan = plan.addForeignKeyRelationship(
+      foreignField(httpPostTask, "body.id"),
+      foreignField(httpGetTask, "id")
+    )
+
+    val conf = configuration.enableGeneratePlanAndTasks(true)
+      .enableDeleteRecordTrackingFiles(false)
+      .generatedReportsFolderPath("/tmp/report")
+      .recordTrackingForValidationFolderPath("/tmp/valid-track")
+
+    execute(myPlan, conf, httpPostTask, httpGetTask)
   }
 
   class TestJson extends PlanRun {

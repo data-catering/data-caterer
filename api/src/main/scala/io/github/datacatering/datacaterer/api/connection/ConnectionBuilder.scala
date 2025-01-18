@@ -1,7 +1,7 @@
 package io.github.datacatering.datacaterer.api.connection
 
 import io.github.datacatering.datacaterer.api.HttpMethodEnum.HttpMethodEnum
-import io.github.datacatering.datacaterer.api.model.Constants.{ALL_COMBINATIONS, ENABLE_DATA_VALIDATION, FORMAT}
+import io.github.datacatering.datacaterer.api.model.Constants.{ALL_COMBINATIONS, ENABLE_DATA_VALIDATION, FORMAT, VALIDATION_IDENTIFIER}
 import io.github.datacatering.datacaterer.api.model.{Step, Task}
 import io.github.datacatering.datacaterer.api.{ConnectionConfigWithTaskBuilder, CountBuilder, FieldBuilder, GeneratorBuilder, HttpMethodEnum, MetadataSourceBuilder, StepBuilder, TaskBuilder, TasksBuilder, ValidationBuilder, WaitConditionBuilder}
 
@@ -121,9 +121,13 @@ trait ConnectionTaskBuilder[T] {
     optBaseTask.map(TasksBuilder().addTasks(dataSourceName, _))
   }
 
-  protected def getStep: StepBuilder = step match {
+  def getStep: StepBuilder = step match {
     case Some(value) => value
-    case None => StepBuilder()
+    case None =>
+      val baseStep = StepBuilder()
+      this.connectionConfigWithTaskBuilder = this.connectionConfigWithTaskBuilder.option(VALIDATION_IDENTIFIER -> baseStep.step.name)
+      baseStep.option(VALIDATION_IDENTIFIER -> baseStep.step.name)
+      baseStep
   }
 
   protected def getTask: TaskBuilder = task match {

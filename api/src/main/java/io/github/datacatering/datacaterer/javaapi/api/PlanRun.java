@@ -223,6 +223,38 @@ public abstract class PlanRun {
     }
 
     /**
+     * Creates a ForeignKeyRelation instance with the provided ConnectionTaskBuilder and field.
+     * It assumes there is only one step inside the ConnectionTaskBuilder.
+     *
+     * @param connectionTaskBuilder The ConnectionTaskBuilder instance representing the task.
+     * @param field                 The list of fields for the ForeignKeyRelation.
+     * @return A ForeignKeyRelation instance.
+     */
+    public ForeignKeyRelation foreignField(ConnectionTaskBuilder<?> connectionTaskBuilder, String field) {
+        return new ForeignKeyRelation(
+                connectionTaskBuilder.connectionConfigWithTaskBuilder().dataSourceName(),
+                connectionTaskBuilder.getStep().step().name(),
+                toScalaList(List.of(field))
+        );
+    }
+
+    /**
+     * Creates a ForeignKeyRelation instance with the provided ConnectionTaskBuilder and fields.
+     * It assumes there is only one step inside the ConnectionTaskBuilder.
+     *
+     * @param connectionTaskBuilder The ConnectionTaskBuilder instance representing the task.
+     * @param fields                The list of fields for the ForeignKeyRelation.
+     * @return A ForeignKeyRelation instance.
+     */
+    public ForeignKeyRelation foreignField(ConnectionTaskBuilder<?> connectionTaskBuilder, List<String> fields) {
+        return new ForeignKeyRelation(
+                connectionTaskBuilder.connectionConfigWithTaskBuilder().dataSourceName(),
+                connectionTaskBuilder.getStep().step().name(),
+                toScalaList(fields)
+        );
+    }
+
+    /**
      * Creates a ForeignKeyRelation instance with the provided ConnectionTaskBuilder, step, and fields.
      *
      * @param connectionTaskBuilder The ConnectionTaskBuilder instance representing the task.

@@ -18,11 +18,16 @@ case class SaveFileException(filePath: String, throwable: Throwable) extends Run
 //Foreign key
 case class InvalidForeignKeyFormatException(foreignKey: String) extends RuntimeException(
   s"Unexpected foreign key relation format. Should have at least 2 or 3 parts delimited " +
-  s"by either $FOREIGN_KEY_DELIMITER or $FOREIGN_KEY_PLAN_FILE_DELIMITER, foreign-key=$foreignKey"
+    s"by either $FOREIGN_KEY_DELIMITER or $FOREIGN_KEY_PLAN_FILE_DELIMITER, foreign-key=$foreignKey"
 )
 
 case class MissingDataSourceFromForeignKeyException(dataSourceName: String) extends RuntimeException(
   s"Cannot create target foreign key as one of the data sources not created. " +
+    s"Please ensure there exists a data source with name (<plan dataSourceName>.<task step name>): $dataSourceName"
+)
+
+case class MissingDataSourceForForeignKeyException(dataSourceName: String) extends RuntimeException(
+  "Unable to find data source with name and step name. " +
     s"Please ensure there exists a data source with name (<plan dataSourceName>.<task step name>): $dataSourceName"
 )
 
