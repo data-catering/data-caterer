@@ -228,7 +228,7 @@ class PlanProcessorTest extends SparkSuite {
       .recordTrackingForValidationFolderPath("/tmp/record-tracking-validation")
 
     val myPlan = plan.addForeignKeyRelationship(
-      foreignField("my_http", "POST/pets", "bodyContent.id"),
+      foreignField("my_http", "POST/pets", "body.id"),
       foreignField("my_http", "DELETE/pets/{id}", "pathParamid"),
       foreignField("my_http", "GET/pets/{id}", "pathParamid"),
     )
@@ -263,11 +263,11 @@ class PlanProcessorTest extends SparkSuite {
   class TestHttp extends PlanRun {
     val httpTask = http("my_http")
       .fields(metadataSource.openApi("app/src/test/resources/sample/http/openapi/petstore.json"))
-      .fields(field.name("bodyContent").fields(field.name("id").regex("ID[0-9]{8}")))
+      .fields(field.name("body").fields(field.name("id").regex("ID[0-9]{8}")))
       .count(count.records(20))
 
     val myPlan = plan.addForeignKeyRelationship(
-      foreignField("my_http", "POST/pets", "bodyContent.id"),
+      foreignField("my_http", "POST/pets", "body.id"),
       foreignField("my_http", "DELETE/pets/{id}", "pathParamid"),
       foreignField("my_http", "GET/pets/{id}", "pathParamid"),
     )
@@ -339,7 +339,7 @@ class PlanProcessorTest extends SparkSuite {
       )
 
     val myPlan = plan.addForeignKeyRelationship(
-      foreignField(httpPostTask, "bodyContent.id"),
+      foreignField(httpPostTask, "body.id"),
       foreignField(httpGetTask, "id")
     )
 

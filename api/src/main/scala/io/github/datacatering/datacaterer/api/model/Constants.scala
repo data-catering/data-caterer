@@ -174,7 +174,7 @@ object Constants {
 
   //real time field names
   lazy val REAL_TIME_BODY_FIELD = "value"
-  lazy val REAL_TIME_BODY_CONTENT_FIELD = "bodyContent"
+  lazy val REAL_TIME_BODY_CONTENT_FIELD = "body"
   lazy val REAL_TIME_PARTITION_FIELD = "partition"
   lazy val REAL_TIME_HEADERS_FIELD = "headers"
   lazy val REAL_TIME_METHOD_FIELD = "method"
@@ -184,7 +184,6 @@ object Constants {
   lazy val HTTP_HEADER_FIELD_PREFIX = "header"
   lazy val HTTP_PATH_PARAM_FIELD_PREFIX = "pathParam"
   lazy val HTTP_QUERY_PARAM_FIELD_PREFIX = "queryParam"
-  lazy val HTTP_BODY_FIELD_PREFIX = "bodyContent"
   lazy val YAML_REAL_TIME_HEADERS_FIELD = "messageHeaders"
   lazy val YAML_REAL_TIME_BODY_FIELD = "messageBody"
   lazy val YAML_HTTP_BODY_FIELD = "httpBody"
