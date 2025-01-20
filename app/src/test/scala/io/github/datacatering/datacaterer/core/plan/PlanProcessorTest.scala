@@ -302,11 +302,11 @@ class PlanProcessorTest extends SparkSuite {
       .fields(field.httpUrl(
         "http://localhost:80/anything/pets", //url
         HttpMethodEnum.POST //method
-      ): _*)
+      ))
       .fields(field.httpBody(
         field.name("id").regex("[0-9]{8}"),
         field.name("name").expression("#{Name.name}")
-      ): _*)
+      ))
       .count(count.records(20))
       .validations(
         validation.field("request.method").isEqual("POST"),
@@ -344,7 +344,6 @@ class PlanProcessorTest extends SparkSuite {
     )
 
     val conf = configuration.enableGeneratePlanAndTasks(true)
-      .enableDeleteRecordTrackingFiles(false)
       .generatedReportsFolderPath("/tmp/report")
       .recordTrackingForValidationFolderPath("/tmp/valid-track")
 

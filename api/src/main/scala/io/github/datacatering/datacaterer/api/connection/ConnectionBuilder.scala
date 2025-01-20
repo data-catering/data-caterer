@@ -36,6 +36,11 @@ trait ConnectionTaskBuilder[T] {
     this
   }
 
+  def fields(fields: List[FieldBuilder]): ConnectionTaskBuilder[T] = {
+    this.step = Some(getStep.fields(fields))
+    this
+  }
+
   def fields(metadataSourceBuilder: MetadataSourceBuilder): ConnectionTaskBuilder[T] = {
     this.connectionConfigWithTaskBuilder = this.connectionConfigWithTaskBuilder.metadataSource(metadataSourceBuilder)
     this.step = Some(getStep.options(metadataSourceBuilder.metadataSource.allOptions))
