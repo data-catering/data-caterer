@@ -360,6 +360,15 @@ case class StepBuilder(step: Step = Step(), optValidation: Option[DataSourceVali
     this.modify(_.step.fields).setTo(step.fields ++ fields.map(_.field))
 
   /**
+   * Define fields of the schema of the data source to use when generating data.
+   *
+   * @param fields Fields of the schema
+   * @return StepBuilder
+   */
+  def fields(fields: List[FieldBuilder]): StepBuilder =
+    this.modify(_.step.fields).setTo(step.fields ++ fields.map(_.field))
+
+  /**
    * Define data validations once data has been generated. The result of the validations is logged out and included
    * as part of the HTML report.
    *
@@ -575,6 +584,15 @@ case class FieldBuilder(field: Field = Field()) {
    * @return a new `FieldBuilder` with the updated schema
    */
   @varargs def fields(fields: FieldBuilder*): FieldBuilder =
+    this.modify(_.field.fields).setTo(field.fields ++ fields.map(_.field))
+
+  /**
+   * Adds the specified fields to the schema of this `FieldBuilder`.
+   *
+   * @param fields the fields to add to the schema
+   * @return a new `FieldBuilder` with the updated schema
+   */
+  def fields(fields: List[FieldBuilder]): FieldBuilder =
     this.modify(_.field.fields).setTo(field.fields ++ fields.map(_.field))
 
   /**
