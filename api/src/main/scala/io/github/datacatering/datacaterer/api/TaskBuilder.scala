@@ -911,6 +911,23 @@ case class FieldBuilder(field: Field = Field()) {
     this.modify(_.field.options).setTo(getGenBuilder.mean(mean).options)
 
   /**
+   * The distribution of the data is exponential.
+   *
+   * @param rate Rate parameter to control skewness of distribution.
+   * @return GeneratorBuilder
+   */
+  def exponentialDistribution(rate: Double): FieldBuilder =
+    this.modify(_.field.options)(_ ++ Map(DISTRIBUTION -> DISTRIBUTION_EXPONENTIAL, DISTRIBUTION_RATE_PARAMETER -> rate.toString))
+
+  /**
+   * The distribution of the data is normal.
+   *
+   * @return GeneratorBuilder
+   */
+  def normalDistribution(): FieldBuilder =
+    this.modify(_.field.options)(_ ++ Map(DISTRIBUTION -> DISTRIBUTION_NORMAL))
+
+  /**
    * Create message header fields. Can be used for data sources such as Kafka or Solace.
    *
    * @param messageHeader Headers of the message

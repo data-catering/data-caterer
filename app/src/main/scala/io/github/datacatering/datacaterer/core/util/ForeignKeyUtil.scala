@@ -3,7 +3,7 @@ package io.github.datacatering.datacaterer.core.util
 import io.github.datacatering.datacaterer.api.PlanRun
 import io.github.datacatering.datacaterer.api.model.Constants.OMIT
 import io.github.datacatering.datacaterer.api.model.{ForeignKey, Plan}
-import io.github.datacatering.datacaterer.core.exception.{MissingDataSourceForForeignKeyException, MissingDataSourceFromForeignKeyException}
+import io.github.datacatering.datacaterer.core.exception.MissingDataSourceFromForeignKeyException
 import io.github.datacatering.datacaterer.core.model.{ForeignKeyRelationship, ForeignKeyWithGenerateAndDelete}
 import io.github.datacatering.datacaterer.core.util.ForeignKeyRelationHelper.updateForeignKeyName
 import io.github.datacatering.datacaterer.core.util.GeneratorUtil.applySqlExpressions
@@ -24,30 +24,37 @@ object ForeignKeyUtil {
    * Apply same values from source data frame fields to target foreign key fields
    *
    * @param plan                     where foreign key definitions are defined
-   * @param generatedDataForeachTask map of <dataSourceName>.<stepName> => generated data as dataframe
+   * @param generatedDataForeachTask list of <dataSourceName>.<stepName> => generated data as dataframe
    * @return map of <dataSourceName>.<stepName> => dataframe
    */
-  def getDataFramesWithForeignKeys(plan: Plan, generatedDataForeachTask: Map[String, DataFrame]): List[(String, DataFrame)] = {
+  def getDataFramesWithForeignKeys(plan: Plan, generatedDataForeachTask: List[(String, DataFrame)]): List[(String, DataFrame)] = {
+    val generatedDataForeachTaskMap = generatedDataForeachTask.toMap
     val enabledSources = plan.tasks.filter(_.enabled).map(_.dataSourceName)
     val sinkOptions = plan.sinkOptions.get
     val foreignKeyRelations = sinkOptions.foreignKeys
       .map(fk => sinkOptions.gatherForeignKeyRelations(fk.source))
     val enabledForeignKeys = foreignKeyRelations
-      .filter(fkr => isValidForeignKeyRelation(generatedDataForeachTask, enabledSources, fkr))
+      .filter(fkr => isValidForeignKeyRelation(generatedDataForeachTaskMap, enabledSources, fkr))
     var taskDfs = generatedDataForeachTask
 
     val foreignKeyAppliedDfs = enabledForeignKeys.flatMap(foreignKeyDetails => {
       val sourceDfName = foreignKeyDetails.source.dataFrameName
       LOGGER.debug(s"Getting source dataframe, source=$sourceDfName")
-      if (!taskDfs.contains(sourceDfName)) {
+      val optSourceDf = taskDfs.find(task => task._1.equalsIgnoreCase(sourceDfName))
+      if (optSourceDf.isEmpty) {
         throw MissingDataSourceFromForeignKeyException(sourceDfName)
       }
-      val sourceDf = taskDfs(sourceDfName)
+      val sourceDf = optSourceDf.get._2
 
       val sourceDfsWithForeignKey = foreignKeyDetails.generationLinks.map(target => {
         val targetDfName = target.dataFrameName
         LOGGER.debug(s"Getting target dataframe, source=$targetDfName")
-        val targetDf = taskDfs(targetDfName)
+        val optTargetDf = taskDfs.find(task => task._1.equalsIgnoreCase(targetDfName))
+        if (optTargetDf.isEmpty) {
+          throw MissingDataSourceFromForeignKeyException(targetDfName)
+        }
+
+        val targetDf = optTargetDf.get._2
         if (target.fields.forall(targetDf.columns.contains)) {
           LOGGER.info(s"Applying foreign key values to target data source, source-data=${foreignKeyDetails.source.dataSource}, target-data=${target.dataSource}")
           val dfWithForeignKeys = applyForeignKeysToTargetDf(sourceDf, targetDf, foreignKeyDetails.source.fields, target.fields)
@@ -65,19 +72,22 @@ object ForeignKeyUtil {
 
     val insertOrder = getInsertOrder(foreignKeyRelations.map(f => (f.source.dataFrameName, f.generationLinks.map(_.dataFrameName))))
     val insertOrderDfs = insertOrder
-      .filter(i => foreignKeyAppliedDfs.exists(f => f._1.equalsIgnoreCase(i)))
-      .map(s => (s, foreignKeyAppliedDfs.filter(f => f._1.equalsIgnoreCase(s)).head._2))
-    taskDfs.toList.filter(t => !insertOrderDfs.exists(_._1.equalsIgnoreCase(t._1))) ++ insertOrderDfs
+      .map(s => {
+        foreignKeyAppliedDfs.find(f => f._1.equalsIgnoreCase(s))
+          .getOrElse(s -> taskDfs.find(t => t._1.equalsIgnoreCase(s)).get._2)
+      })
+    val nonForeignKeyTasks = taskDfs.filter(t => !insertOrderDfs.exists(_._1.equalsIgnoreCase(t._1)))
+    insertOrderDfs ++ nonForeignKeyTasks
   }
 
-  private def isValidForeignKeyRelation(generatedDataForeachTask: Map[String, DataFrame], enabledSources: List[String],
-                                        fkr: ForeignKeyWithGenerateAndDelete) = {
+  def isValidForeignKeyRelation(generatedDataForeachTask: Map[String, DataFrame], enabledSources: List[String],
+                                fkr: ForeignKeyWithGenerateAndDelete) = {
     val isMainForeignKeySourceEnabled = enabledSources.contains(fkr.source.dataSource)
     val subForeignKeySources = fkr.generationLinks.map(_.dataSource)
     val isSubForeignKeySourceEnabled = subForeignKeySources.forall(enabledSources.contains)
     val disabledSubSources = subForeignKeySources.filter(s => !enabledSources.contains(s))
     if (!generatedDataForeachTask.contains(fkr.source.dataFrameName)) {
-      throw MissingDataSourceForForeignKeyException(fkr.source.dataFrameName)
+      throw MissingDataSourceFromForeignKeyException(fkr.source.dataFrameName)
     }
     val mainDfFields = generatedDataForeachTask(fkr.source.dataFrameName).schema.fields
     val fieldExistsMain = fkr.source.fields.forall(c => hasDfContainField(c, mainDfFields))
@@ -203,18 +213,39 @@ object ForeignKeyUtil {
 
   //get insert order
   def getInsertOrder(foreignKeys: List[(String, List[String])]): List[String] = {
-    val result = mutable.ListBuffer.empty[String]
-    val visited = mutable.Set.empty[String]
+    // Step 1: Build graph (adjacency list) & track in-degrees
+    val adjList = mutable.Map[String, List[String]]().withDefaultValue(List())
+    val inDegree = mutable.Map[String, Int]().withDefaultValue(0)
+    val allTables = mutable.Set[String]()
 
-    def visit(table: String): Unit = {
-      if (!visited.contains(table)) {
-        visited.add(table)
-        foreignKeys.find(f => f._1 == table).map(_._2).getOrElse(List.empty).foreach(visit)
-        result.prepend(table)
+    foreignKeys.foreach { case (parent, children) =>
+      allTables += parent
+      children.foreach { child =>
+        adjList.update(parent, adjList(parent) :+ child) // Preserve child order
+        inDegree.update(child, inDegree(child) + 1)
+        allTables += child
       }
     }
 
-    foreignKeys.map(_._1).foreach(visit)
+    // Step 2: Identify root nodes (in-degree == 0)
+    val queue = mutable.Queue[String]()
+    allTables.foreach { table =>
+      if (inDegree(table) == 0) queue.enqueue(table)
+    }
+
+    // Step 3: Topological sort with child order preserved
+    val result = mutable.ListBuffer[String]()
+    while (queue.nonEmpty) {
+      val table = queue.dequeue()
+      result += table
+
+      // Process children in defined order
+      adjList(table).foreach { child =>
+        inDegree.update(child, inDegree(child) - 1)
+        if (inDegree(child) == 0) queue.enqueue(child)
+      }
+    }
+
     result.toList
   }
 

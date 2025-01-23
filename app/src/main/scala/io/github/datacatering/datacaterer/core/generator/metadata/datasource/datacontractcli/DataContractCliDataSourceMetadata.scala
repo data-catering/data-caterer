@@ -1,6 +1,6 @@
 package io.github.datacatering.datacaterer.core.generator.metadata.datasource.datacontractcli
 
-import io.github.datacatering.datacaterer.api.model.Constants.{DATA_CONTRACT_FILE, DATA_CONTRACT_SCHEMA, FIELD_DATA_TYPE, FORMAT, IS_UNIQUE, JSON, KAFKA_TOPIC, MAXIMUM, MAXIMUM_LENGTH, METADATA_IDENTIFIER, MINIMUM, MINIMUM_LENGTH, ONE_OF_GENERATOR, PARQUET, PATH, REGEX_GENERATOR, SCHEMA, URL}
+import io.github.datacatering.datacaterer.api.model.Constants.{DATA_CONTRACT_FILE, DATA_CONTRACT_SCHEMA, FIELD_DATA_TYPE, FORMAT, IS_PRIMARY_KEY, IS_UNIQUE, JSON, KAFKA_TOPIC, MAXIMUM, MAXIMUM_LENGTH, METADATA_IDENTIFIER, MINIMUM, MINIMUM_LENGTH, ONE_OF_GENERATOR, PARQUET, PATH, REGEX_GENERATOR, SCHEMA, URL}
 import io.github.datacatering.datacaterer.api.model.{ArrayType, BinaryType, BooleanType, DataType, DateType, DecimalType, DoubleType, FloatType, IntegerType, LongType, StringType, StructType, TimestampType}
 import io.github.datacatering.datacaterer.core.exception.{DataContractModelNotFoundException, InvalidDataContractFileFormatException, MissingDataContractFilePathException}
 import io.github.datacatering.datacaterer.core.generator.metadata.datasource.database.FieldMetadata
@@ -123,6 +123,7 @@ case class DataContractCliDataSourceMetadata(
       REGEX_GENERATOR -> field.pattern,
       MINIMUM -> field.minimum.map(_.toString),
       MAXIMUM -> field.maximum.map(_.toString),
+      IS_PRIMARY_KEY -> field.primary.map(_.toString)
     )
     val options = contractOptionsMapping.filter(x => x._2.isDefined)
       .map(x => x._1 -> x._2.get)

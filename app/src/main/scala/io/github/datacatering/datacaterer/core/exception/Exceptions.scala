@@ -26,11 +26,6 @@ case class MissingDataSourceFromForeignKeyException(dataSourceName: String) exte
     s"Please ensure there exists a data source with name (<plan dataSourceName>.<task step name>): $dataSourceName"
 )
 
-case class MissingDataSourceForForeignKeyException(dataSourceName: String) extends RuntimeException(
-  "Unable to find data source with name and step name. " +
-    s"Please ensure there exists a data source with name (<plan dataSourceName>.<task step name>): $dataSourceName"
-)
-
 //UI exceptions
 case class MissingConnectionForForeignKeyException(taskName: String) extends RuntimeException(
   s"No connection found with task name, task-name=$taskName"
