@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.14.3
+
+- Update Data Contract CLI to capture primary key
+- Capture `map` data type when converting from YAML
+- Ensure foreign key insert order is correct and pushes non-foreign key data sources to the end
+- Update to use insta-integration@v2 github action
+- Add `exponentialDistribution` and `normalDistribution` to data generator
+
 ## 0.14.0
 
 - Login via UI to run plans

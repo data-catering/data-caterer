@@ -379,6 +379,7 @@ class TasksBuilderTest extends AnyFunSuite {
       .clusteringPosition(1)
       .standardDeviation(0.1)
       .mean(5.1)
+      .exponentialDistribution(1.0)
       .options(Map("customMetadata" -> "yes"))
       .option("data" -> "big")
       .field
@@ -414,6 +415,8 @@ class TasksBuilderTest extends AnyFunSuite {
     assertResult("big")(gen("data"))
     assertResult("0.1")(gen("stddev"))
     assertResult("5.1")(gen("mean"))
+    assertResult("exponential")(gen("distribution"))
+    assertResult("1.0")(gen("distributionRateParam"))
   }
 
 }
