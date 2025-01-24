@@ -7,6 +7,8 @@ run:
       PLAN_FILE_PATH: app/src/test/resources/sample/plan/account-balance-transaction-plan.yaml
       TASK_FOLDER_PATH: app/src/test/resources/sample/task
       APPLICATION_CONFIG_PATH: app/src/main/resources/application.conf
+      DATA_CATERER_API_USER: ${DATA_CATERER_USER}
+      DATA_CATERER_API_TOKEN: ${DATA_CATERER_TOKEN}
     generateFirst: false
     test:
       validation:
