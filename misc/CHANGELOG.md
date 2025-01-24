@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.14.4
+
+- Ensure step options are persisted when user defined steps come from YAML combined with generated from metadata steps
+- Catch all exception when running plan, return error message and exit accordingly
+  - Always show how long it took to run the plan
+
 ## 0.14.3
 
 - Update Data Contract CLI to capture primary key
