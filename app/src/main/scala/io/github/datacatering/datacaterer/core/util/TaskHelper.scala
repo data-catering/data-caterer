@@ -59,10 +59,16 @@ object TaskHelper {
       } else if (matchingDataSourceConfig.size > 1) {
         //multiple matches, so have to match against step options as well if defined
         val matchingStepOptions = matchingDataSourceConfig.filter(dsConf => dsConf.step.isDefined && dsConf.step.get.step.options == generatedDetails.sparkOptions)
-        if (matchingStepOptions.size > 1) {
-          LOGGER.warn(s"Multiple definitions of same sub data source found. Will default to taking first definition, data-source-name=$name, step-name=$stepName")
+        if (matchingStepOptions.nonEmpty) {
+          if (matchingStepOptions.size > 1) {
+            LOGGER.warn(s"Multiple definitions of same sub data source found. Will default to taking first definition, " +
+              s"data-source-name=$name, step-name=$stepName")
+          }
+          stepWithOptNameMapping(matchingStepOptions, stepName)
+        } else {
+          LOGGER.warn(s"No matching step options, defaulting to first matching data source config, data-source-name=$name, step-name=$stepName")
+          stepWithOptNameMapping(matchingDataSourceConfig, stepName)
         }
-        stepWithOptNameMapping(matchingStepOptions, stepName)
       } else {
         getUserDefinedFromPlanSteps(name, generatedDetails, stepName, planRun)
       }

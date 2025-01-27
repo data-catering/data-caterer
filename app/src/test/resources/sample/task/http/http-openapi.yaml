@@ -2,7 +2,7 @@ name: "http_openapi"
 steps:
   - name: "pets"
     count:
-      records: 5
+      records: 2
     options:
       schemaLocation: app/src/test/resources/sample/http/openapi/petstore.json
       metadataSourceType: openApi

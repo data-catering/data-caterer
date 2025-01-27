@@ -1,11 +1,11 @@
 package io.github.datacatering.datacaterer.core.generator
 
-import io.github.datacatering.datacaterer.api.model.Constants.{ALL_COMBINATIONS, MAXIMUM_LENGTH, MINIMUM_LENGTH, ONE_OF_GENERATOR, REGEX_GENERATOR}
+import io.github.datacatering.datacaterer.api.model.Constants.{ALL_COMBINATIONS, MAXIMUM_LENGTH, MINIMUM_LENGTH, OMIT, ONE_OF_GENERATOR, REGEX_GENERATOR}
 import io.github.datacatering.datacaterer.api.model.{Count, Field, PerFieldCount, Step}
 import io.github.datacatering.datacaterer.core.util.{Account, SparkSuite}
 import net.datafaker.Faker
 import org.apache.spark.sql.types.{DoubleType, IntegerType, StringType}
-import org.apache.spark.sql.{Dataset, Encoder, Encoders}
+import org.apache.spark.sql.{Dataset, Encoder, Encoders, Row}
 import org.junit.runner.RunWith
 import org.scalatestplus.junit.JUnitRunner
 
@@ -21,7 +21,13 @@ class DataGeneratorFactoryTest extends SparkSuite {
     Field("code", Some("int"), Map("sql" -> "CASE WHEN debit_credit == 'D' THEN 1 ELSE 0 END")),
   )
 
-  private val simpleFields = List(Field("id"))
+  private val simpleFields = List(Field("id"), Field("name"))
+
+  private val nestedFields = List(
+    Field("id"),
+    Field("tmp_account_id", Some("string"), Map(REGEX_GENERATOR -> "ACC[0-9]{8}", OMIT -> "true")),
+    Field("details", fields = List(Field("account_id", Some("string"), Map("sql" -> "tmp_account_id"))))
+  )
 
   test("Can generate data for basic step") {
     val step = Step("transaction", "parquet", Count(records = Some(10)), Map("path" -> "sample/output/parquet/transactions"), fields)
@@ -124,6 +130,23 @@ class DataGeneratorFactoryTest extends SparkSuite {
     assertResult(2)(df.collect().count(r => r.getString(statusIdx) == "open"))
     assertResult(2)(df.collect().count(r => r.getString(statusIdx) == "closed"))
     assertResult(2)(df.collect().count(r => r.getString(statusIdx) == "suspended"))
+  }
+
+  test("Can generate data with nested field part of per field count") {
+    val step = Step("transaction", "parquet", Count(Some(10),
+      perField = Some(PerFieldCount(List("tmp_account_id"), Some(2)))),
+      Map("path" -> "sample/output/parquet/transactions"), nestedFields)
+
+    val df = dataGeneratorFactory.generateDataForStep(step, "parquet", 0, 10)
+    df.cache()
+
+    assertResult(20L)(df.count())
+    val dfArr = df.collect()
+    dfArr.foreach(row => {
+      val sampleId = row.getAs[Row]("details").getAs[String]("account_id")
+      val sampleRows = df.filter(_.getAs[Row]("details").getAs[String]("account_id") == sampleId)
+      assert(sampleRows.count() == 2L)
+    })
   }
 
   ignore("Can run spark streaming output at 2 records per second") {
