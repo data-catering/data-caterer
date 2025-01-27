@@ -1,6 +1,6 @@
 package io.github.datacatering.datacaterer.core.ui.plan
 
-import io.github.datacatering.datacaterer.api.model.Constants.{CONFIG_FLAGS_DELETE_GENERATED_RECORDS, CONFIG_FLAGS_GENERATE_DATA, CONFIG_FLAGS_GENERATE_VALIDATIONS, DATA_CATERER_INTERFACE_UI, DEFAULT_MASTER, DEFAULT_RUNTIME_CONFIG, DRIVER, FORMAT, JDBC, METADATA_SOURCE_NAME, MYSQL, MYSQL_DRIVER, POSTGRES, POSTGRES_DRIVER}
+import io.github.datacatering.datacaterer.api.model.Constants.{CONFIG_FLAGS_DELETE_GENERATED_RECORDS, CONFIG_FLAGS_GENERATE_DATA, CONFIG_FLAGS_GENERATE_VALIDATIONS, DATA_CATERER_INTERFACE_UI, DEFAULT_MASTER, DEFAULT_RUNTIME_CONFIG, DRIVER, FORMAT, JDBC, METADATA_SOURCE_NAME, METADATA_SOURCE_TYPE, MYSQL, MYSQL_DRIVER, POSTGRES, POSTGRES_DRIVER}
 import io.github.datacatering.datacaterer.api.model.{DataSourceValidation, Task, ValidationConfiguration, YamlUpstreamDataSourceValidation}
 import io.github.datacatering.datacaterer.api.{DataCatererConfigurationBuilder, ValidationBuilder}
 import io.github.datacatering.datacaterer.core.exception.SaveFileException
@@ -226,7 +226,12 @@ object PlanRepository {
 
   private def getMetadataSourceInfo(dataSourceConnectionInfo: Map[String, Map[String, String]], options: Map[String, String]): Map[String, String] = {
     if (options.contains(METADATA_SOURCE_NAME)) {
-      dataSourceConnectionInfo(options(METADATA_SOURCE_NAME))
+      if (dataSourceConnectionInfo.contains(options(METADATA_SOURCE_NAME))) {
+        dataSourceConnectionInfo(options(METADATA_SOURCE_NAME))
+      } else {
+        val metadataConnection = ConnectionRepository.getConnection(options(METADATA_SOURCE_NAME), false)
+        metadataConnection.options ++ Map(METADATA_SOURCE_TYPE -> metadataConnection.`type`)
+      }
     } else {
       Map()
     }

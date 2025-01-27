@@ -2,7 +2,7 @@ name: "simple_http"
 steps:
   - name: "account"
     count:
-      records: 50
+      records: 5
     fields:
       - name: "httpUrl"
         fields:
@@ -14,26 +14,27 @@ steps:
             fields:
               - name: "id"
                 options:
-                  sql: "bodyContent.account_id"
+                  sql: "body.account_id"
           - name: "queryParam"
             fields:
               - name: "limit"
                 type: "integer"
                 options:
-                  oneOf:
-                    - 10
-                    - 5
+                  min: 1
+                  max: 10
       - name: "httpHeaders"
         fields:
           - name: "Content-Type"
             static: "application/json"
+          - name: "Content-Length"
+            type: "integer"
           - name: "X-Account-Id"
             options:
-              sql: "bodyContent.account_id"
+              sql: "body.account_id"
           - name: "X-Updated"
             type: "timestamp"
             options:
-              sql: "bodyContent.details.updated_by.time"
+              sql: "body.details.updated_by.time"
       - name: "httpBody"
         fields:
           - name: "account_id"

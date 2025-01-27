@@ -300,3 +300,20 @@ http("my_http")
 parquet("customer_parquet", "/data/parquet/customer")
   .validations(metadataSource.greatExpectations("/data/great-expectations/taxi-expectations.json"))
 ```
+
+## Issues with current testing
+
+- No one properly tests in lower environments
+  - Integration tests are turned into sanity checks
+  - Too many test environments (dev, test, sit, uat, staging, beta, pre-prod)
+  - Meme about error in production
+    - Business will ask "was this tested in X environment", the test in X environment is something irrelevant or small
+- Integration tests are too difficult and slow
+  - But what has anyone done to try solve the problem?
+- Testers stuck manually generating data
+  - Hard to create data with relationships within the same data source or across data sources
+- Testing only becomes a priority when things go wrong in production
+  - Show companies that have had big problems due to lack of testing or leaking customer data
+    - Sonos
+    - Crowdstrike
+    - Optus

@@ -92,6 +92,21 @@ function getNumberOptions(min, max) {
             type: "number", ...minMaxOpt,
             help: "Mean of generated values.",
             required: ""
+        },
+        round: {
+            displayName: "Round",
+            default: 2,
+            type: "integer",
+            help: "Round to number of decimal places.",
+            required: ""
+        },
+        distribution: {
+            displayName: "Distribution",
+            default: "normal",
+            type: "text",
+            choice: ["normal", "exponential"],
+            help: "Type of distribution values should follow.",
+            required: ""
         }
     };
 }

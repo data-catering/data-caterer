@@ -120,49 +120,16 @@ class PlanProcessorTest extends SparkSuite {
   }
 
   ignore("Can run Postgres plan run") {
-    PlanProcessor.determineAndExecutePlan(Some(new TestRelationshipTask), apiCheck = false)
+    PlanProcessor.determineAndExecutePlan(Some(new TestKafka), apiCheck = false)
   }
 
   class TestPostgres extends PlanRun {
-    val accountTask = postgres("customer_postgres", "jdbc:postgresql://localhost:5432/customer")
-      .table("account", "accounts")
-      .fields(
-        field.name("account_number").regex("[0-9]{10}").unique(true),
-        field.name("customer_id_int").`type`(IntegerType).min(1).max(1000),
-        field.name("created_by").expression("#{Name.name}"),
-        field.name("created_by_fixed_length").sql("CASE WHEN account_status IN ('open', 'closed') THEN 'eod' ELSE 'event' END"),
-        field.name("open_timestamp").`type`(TimestampType).min(Date.valueOf(LocalDate.now())),
-        field.name("account_status").oneOf("open", "closed", "suspended", "pending")
-      )
-      .count(count.records(100))
+    val postgresTask = postgres("customer_postgres", "jdbc:postgresql://localhost:5432/customer")
+    val transactionTask = postgres(postgresTask).table("account.transactions")
+      .count(count.recordsPerFieldExponentialDistribution(1, 10, 2.0, "account_number"))
+    val config = configuration.enableGeneratePlanAndTasks(true).recordTrackingFolderPath("/tmp/record-track")
 
-    val jsonTask = json("my_json", "/tmp/data/json", Map("saveMode" -> "overwrite"))
-      .fields(
-        field.name("account_id").regex("ACC[0-9]{8}"),
-        field.name("name").expression("#{Name.name}"),
-        field.name("amount").`type`(DoubleType).max(10),
-      )
-      .count(count.recordsPerField(2, "account_id", "name"))
-      .validations(
-        validation.groupBy("account_id", "name").max("amount").lessThan(100),
-        validation.unique("account_id", "name"),
-      )
-    val csvTask = json("my_csv", "/tmp/data/csv", Map("saveMode" -> "overwrite"))
-      .fields(
-        field.name("account_number").regex("[0-9]{8}"),
-        field.name("name").expression("#{Name.name}"),
-        field.name("amount").`type`(DoubleType).max(10),
-      )
-      .validations(
-        validation.field("account_number").isNull(true).description("account_number is a primary key"),
-        validation.field("name").matches("[A-Z][a-z]+ [A-Z][a-z]+").errorThreshold(0.3).description("Some names follow a different pattern"),
-      )
-
-    val conf = configuration
-      .generatedReportsFolderPath("/tmp/report")
-      .enableSinkMetadata(true)
-
-    execute(conf, accountTask)
+    execute(config, postgresTask, transactionTask)
   }
 
   class TestCsvPostgres extends PlanRun {
@@ -659,6 +626,32 @@ class PlanProcessorTest extends SparkSuite {
     execute(conf, accounts)
   }
 
+  class TestKafka extends PlanRun {
+    val accounts = kafka("customer_kafka", "localhost:9092")
+      .topic("accounts")
+      .fields(
+        field.name("key").sql("body.account_id"),
+        field.name("tmp_acc").regex("ACC[0-9]{8}").omit(true)
+      )
+      .fields(
+        field.messageBody(
+          field.name("account_id").regex("ACC[0-9]{8}"),
+          field.name("account_status").oneOf("open", "closed", "suspended", "pending"),
+          field.name("balance").`type`(DoubleType).round(2),
+          field.name("details")
+            .fields(
+              field.name("name").expression("#{Name.name}"),
+              field.name("first_txn_date").`type`(DateType).min(LocalDate.now().minusDays(10))
+            )
+        )
+      )
+      .count(count.records(2).recordsPerFieldGenerator(generator.min(1).max(10), "body.account_id"))
+
+    val conf = configuration.generatedReportsFolderPath("/tmp/report")
+
+    execute(conf, accounts)
+  }
+
   ignore("Check fail status") {
     System.setProperty(DATA_CATERER_API_USER, "")
     System.setProperty(DATA_CATERER_API_TOKEN, "")
@@ -683,6 +676,32 @@ class PlanProcessorTest extends SparkSuite {
       .enableGenerateData(false)
       .enableValidation(true)
     execute(conf, accounts)
+  }
+
+  class TestIcebergValidation extends PlanRun {
+    val validationTask = iceberg("customer_accounts", "dev.transactions", "/tmp/data/iceberg/customer/transaction")
+      .fields(
+        field.name("account_id").regex("ACC[0-9]{8}").unique(true),
+        field.name("balance").`type`(DoubleType).min(1).max(1000).round(2),
+        field.name("created_by").sql("CASE WHEN status IN ('open', 'closed') THEN 'eod' ELSE 'event' END"),
+        field.name("name").expression("#{Name.name}"),
+        field.name("open_time").`type`(TimestampType).min(java.sql.Date.valueOf("2022-01-01")),
+        field.name("status").oneOf("open", "closed", "suspended", "pending")
+      )
+      .validations(
+        validation.unique("account_id"),
+        validation.groupBy("account_id").sum("balance").greaterThan(0),
+        validation.field("open_time").isIncreasing(),
+        validation.preFilter(validation.field("status").isEqual("closed")).field("balance").isEqual(0)
+      )
+      .validationWait(waitCondition.file("/tmp/data/iceberg/customer/transaction"))
+
+
+    val config = configuration.generatedReportsFolderPath("/tmp/data/report")
+      .recordTrackingForValidationFolderPath("/tmp/valid")
+      .recordTrackingFolderPath("/tmp/track")
+
+    execute(config, validationTask)
   }
 
   ignore("Timing of http calls") {

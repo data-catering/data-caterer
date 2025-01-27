@@ -369,16 +369,16 @@ public abstract class PlanRun {
      * @return A FileBuilder instance for the Iceberg table.
      */
 
-    public FileBuilder iceberg(String name, String path, String tableName) {
-        return basePlanRun.icebergJava(name, path, tableName);
+    public FileBuilder iceberg(String name, String tableName, String path) {
+        return basePlanRun.icebergJava(name, tableName, path);
     }
 
     /**
      * Creates a FileBuilder instance for an Iceberg table with the provided parameters.
      *
      * @param name        The name of the FileBuilder instance.
-     * @param path        The path to the Iceberg table.
      * @param tableName   The name of the Iceberg table.
+     * @param path        The path to the Iceberg table.
      * @param catalogType The type of the Iceberg catalog.
      * @param catalogUri  The URI of the Iceberg catalog.
      * @param options     A map of options to be used for the Iceberg table.
@@ -386,13 +386,13 @@ public abstract class PlanRun {
      */
     public FileBuilder iceberg(
             String name,
-            String path,
             String tableName,
+            String path,
             String catalogType,
             String catalogUri,
             Map<String, String> options
     ) {
-        return basePlanRun.iceberg(name, path, tableName, catalogType, catalogUri, toScalaMap(options));
+        return basePlanRun.iceberg(name, tableName, path, catalogType, catalogUri, toScalaMap(options));
     }
 
     /**

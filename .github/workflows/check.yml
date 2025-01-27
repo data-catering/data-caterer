@@ -19,6 +19,8 @@ jobs:
         uses: data-catering/insta-integration@v2
         env:
           LOG_LEVEL: debug
+          DATA_CATERER_USER: ${{ secrets.DATA_CATERER_USER }}
+          DATA_CATERER_TOKEN: ${{ secrets.DATA_CATERER_TOKEN }}
         with:
           data_caterer_user: ${{ secrets.DATA_CATERER_USER }}
           data_caterer_token: ${{ secrets.DATA_CATERER_TOKEN }}

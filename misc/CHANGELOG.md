@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.14.5
+
+- Allow for `iceberg` data to be tracked for validation
+- Changed order for `iceberg` connection details in Java to be `name`, `tableName` and `path`
+- Add getting metadata source connection details when generated from UI
+- When capturing relationship from UI, convert override options to step name
+- Fix bug when metadata generated details try to match with user defined details fails when no step options match
+- Replaced deprecated usage of `udf` function call with schema type with `selectExpr` with named struct
+
+## 0.14.4
+
+- Ensure step options are persisted when user defined steps come from YAML combined with generated from metadata steps
+- Catch all exception when running plan, return error message and exit accordingly
+  - Always show how long it took to run the plan
+
 ## 0.14.3
 
 - Update Data Contract CLI to capture primary key
