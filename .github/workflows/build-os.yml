@@ -3,6 +3,22 @@ name: Build and upload OS installations
 on: workflow_dispatch
 
 jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+      - name: Gradle build with cache
+        uses: burrunan/gradle-cache-action@v2
+        with:
+          arguments: "shadowJar"
+      - name: Upload jpackage jar
+        uses: actions/upload-artifact@v4
+        with:
+          name: jars
+          path: "app/build/libs/data-caterer.jar"
+          overwrite: true
+
   osx:
     runs-on: [macos-latest]
 
@@ -12,10 +28,17 @@ jobs:
           fetch-depth: 2
       - name: Set version
         run: echo "APP_VERSION=$(grep version gradle.properties | cut -d= -f2)" >> $GITHUB_ENV
-      - name: Gradle build with cache
-        uses: burrunan/gradle-cache-action@v2
+      - uses: actions/setup-java@v4
         with:
-          arguments: "shadowJar"
+          java-version: '21'
+          java-package: jdk
+          architecture: x64
+          distribution: oracle
+      - name: Download fat jar
+        uses: actions/download-artifact@v4
+        with:
+          name: jars
+          path: app/build/libs/
       - name: Package jar as dmg installer
         run: 'jpackage --main-jar data-caterer.jar "@misc/jpackage/jpackage.cfg" "@misc/jpackage/jpackage-mac.cfg"'
       - uses: ahkohd/s3-upload-action@master
@@ -30,6 +53,7 @@ jobs:
           destination-dir: 'data-caterer/download/os/mac'
 
   windows:
+    needs: build
     runs-on: [windows-latest]
 
     steps:
@@ -38,10 +62,17 @@ jobs:
           fetch-depth: 2
       - name: Set version
         run: echo "APP_VERSION=$(grep version gradle.properties | cut -d= -f2)" >> $env:GITHUB_ENV
-      - name: Gradle build with cache
-        uses: burrunan/gradle-cache-action@v2
+      - uses: actions/setup-java@v4
         with:
-          arguments: "shadowJar"
+          java-version: '21'
+          java-package: jdk
+          architecture: x64
+          distribution: oracle
+      - name: Download fat jar
+        uses: actions/download-artifact@v4
+        with:
+          name: jars
+          path: app/build/libs/
       - name: Package jar as exe
         run: 'jpackage --main-jar data-caterer.jar "@misc/jpackage/jpackage.cfg" "@misc/jpackage/jpackage-windows.cfg"'
       - uses: ahkohd/s3-upload-action@master
@@ -56,6 +87,7 @@ jobs:
           destination-dir: 'data-caterer/download/os/windows'
 
   linux:
+    needs: build
     runs-on: [ubuntu-latest]
 
     steps:
@@ -64,10 +96,17 @@ jobs:
           fetch-depth: 2
       - name: Set version
         run: echo "APP_VERSION=$(grep version gradle.properties | cut -d= -f2)" >> $GITHUB_ENV
-      - name: Gradle build with cache
-        uses: burrunan/gradle-cache-action@v2
+      - uses: actions/setup-java@v4
         with:
-          arguments: "shadowJar"
+          java-version: '21'
+          java-package: jdk
+          architecture: x64
+          distribution: oracle
+      - name: Download fat jar
+        uses: actions/download-artifact@v4
+        with:
+          name: jars
+          path: app/build/libs/
       - name: Package jar as debian package
         run: 'jpackage --main-jar data-caterer.jar "@misc/jpackage/jpackage.cfg" "@misc/jpackage/jpackage-linux.cfg"'
       - uses: ahkohd/s3-upload-action@master
@@ -81,3 +120,11 @@ jobs:
           file-path: 'datacaterer_1.0.0_amd64.deb'
           destination-dir: 'data-caterer/download/os/linux'
 
+  cleanup:
+    needs: [osx, windows, linux]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Remove jars
+        uses: geekyeggo/delete-artifact@v5
+        with:
+          name: jars
