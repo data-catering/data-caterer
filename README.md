@@ -6,55 +6,37 @@ A test data management tool with automated data generation, validation and clean
 
 ![Basic data flow for Data Caterer](misc/design/high_level_flow-run-config-basic-flow.svg)
 
-[Generate data](https://data.catering/setup/generator/data-generator/) for databases, files, messaging systems or HTTP 
+[Generate data](https://data.catering/latest/docs/generator/data-generator/) for databases, files, messaging systems or HTTP 
 requests via UI, Scala/Java SDK or YAML input and executed via Spark. Run 
-[data validations](https://data.catering/setup/validation/) after generating data to ensure it is consumed correctly. 
-[Clean up generated data or consumed data](https://data.catering/setup/delete-data/) in downstream data sources to keep 
-your environments tidy. [Define alerts](https://data.catering/setup/report/alert/) to get notified when failures occur 
-and deep dive into issues [from the generated report](https://data.catering/sample/report/html/).
+[data validations](https://data.catering/latest/docs/validation/) after generating data to ensure it is consumed correctly. 
+[Clean up generated data or consumed data](https://data.catering/latest/docs/delete-data/) in downstream data sources to keep 
+your environments tidy. [Define alerts](https://data.catering/latest/docs/report/alert/) to get notified when failures occur 
+and deep dive into issues [from the generated report](https://data.catering/latest/docs/report/html-report/).
 
-[**Full docs can be found here**](https://data.catering/setup/).
+[**Full docs can be found here**](https://data.catering/latest/docs/).
   
 [**Scala/Java examples found here**](https://github.com/data-catering/data-caterer-example).
   
-[**A demo of the UI found here**](https://data.catering/sample/ui/index.html).
+[**A demo of the UI found here**](https://data.catering/latest/sample/ui/).
 
 ## Features
 
-- [Batch and/or event data generation](https://data.catering/setup/connection/)
-- [Maintain relationships across any dataset](https://data.catering/setup/foreign-key/)
-- [Create custom data generation/validation scenarios](https://data.catering/setup/generator/data-generator/)
-- [Data validation](https://data.catering/setup/validation/)
-- [Clean up generated and downstream data](https://data.catering/setup/delete-data/)
-- [Suggest data validations](https://data.catering/setup/validation/)
-- [Metadata discovery](https://data.catering/setup/guide/scenario/auto-generate-connection/)
-- [Detailed report of generated data and validation results](https://data.catering/sample/report/html/)
-- [Alerts to be notified of results](https://data.catering/setup/report/alert/)
+- [Batch and/or event data generation](https://data.catering/latest/docs/connection/)
+- [Maintain relationships across any dataset](https://data.catering/latest/docs/generator/foreign-key/)
+- [Create custom data generation/validation scenarios](https://data.catering/latest/docs/generator/data-generator/)
+- [Data validation](https://data.catering/latest/docs/validation/)
+- [Clean up generated and downstream data](https://data.catering/latest/docs/delete-data/)
+- [Suggest data validations](https://data.catering/latest/docs/validation/)
+- [Metadata discovery](https://data.catering/latest/docs/guide/scenario/auto-generate-connection/)
+- [Detailed report of generated data and validation results](https://data.catering/latest/docs/report/html-report/)
+- [Alerts to be notified of results](https://data.catering/latest/docs/report/alert/)
 - [Run as GitHub Action](https://github.com/data-catering/insta-integration)
 
 ![Basic flow](misc/design/basic_data_caterer_flow_medium.gif)
 
 ## Quick start
 
-1. Docker
-   ```shell
-   docker run -d -i -p 9898:9898 -e DEPLOY_MODE=standalone --name datacaterer datacatering/data-caterer:0.12.1
-   ```
-   [Open localhost:9898](http://localhost:9898).
-1. [Run Scala/Java examples](#run-scalajava-examples)
-   ```shell
-   git clone git@github.com:data-catering/data-caterer-example.git
-   cd data-caterer-example && ./run.sh
-   #check results under docker/sample/report/index.html folder
-   ```
-1. [UI App: Mac download](https://nightly.link/data-catering/data-caterer/workflows/build/main/data-caterer-mac.zip)
-1. [UI App: Windows download](https://nightly.link/data-catering/data-caterer/workflows/build/main/data-caterer-windows.zip)
-   1. After downloading, go to 'Downloads' folder and 'Extract All' from data-caterer-windows
-   1. Double-click 'DataCaterer-1.0.0' to install Data Caterer
-   1. Click on 'More info' then at the bottom, click 'Run anyway'
-   1. Go to '/Program Files/DataCaterer' folder and run DataCaterer application
-   1. If your browser doesn't open, go to [http://localhost:9898](http://localhost:9898) in your preferred browser
-1. [UI App: Linux download](https://nightly.link/data-catering/data-caterer/workflows/build/main/data-caterer-linux.zip)
+[Follow quick start instructions from here](https://data.catering/latest/get-started/quick-start/).
 
 ## Integrations
 
@@ -96,17 +78,6 @@ Data Caterer supports the below data sources. [Check here for the full roadmap](
 | Metadata         | Solace Event Portal                | ❌       |
 
 
-## Sponsorship
-
-Data Caterer is set up under a sponsorship model. If you require support or additional features from Data Caterer
-as an enterprise, you are required to be a sponsor for the project.
-
-[Find out more details here to help with sponsorship.](https://data.catering/sponsor)
-
-## Contributing
-
-[View details here about how you can contribute to the project.](misc/CONTRIBUTING.md)
-
 ## Additional Details
 
 ## Run Configurations
@@ -117,11 +88,17 @@ Different ways to run Data Caterer based on your use case:
 
 ### Design
 
-[Design motivations and details can be found here.](https://data.catering/setup/design)
+[Design motivations and details can be found here.](https://data.catering/latest/docs/design/)
 
 ### Roadmap
 
-[Can check here for full list.](https://data.catering/use-case/roadmap/)
+[Can check here for full list of roadmap items.](https://data.catering/latest/use-case/roadmap/)
+
+## Pricing
+
+Data Caterer is set up under a usage pricing model for the latest application version. There are different pricing tiers based on how much you use Data Caterer. This also includes support and requesting features. The current open-source version will be kept for those who want to continue using the open-source version.
+
+[Find out more details here.](https://data.catering/latest/pricing/)
 
 ### Mildly Quick Start
 
