@@ -95,7 +95,7 @@ class BatchDataProcessor(connectionConfigsByName: Map[String, Map[String, String
       LOGGER.info(s"Starting batch, batch=$batch, num-batches=$numBatches")
       val generatedDataForeachTask = executableTasks.flatMap(task =>
         task._2.steps.filter(_.enabled).map(s => generateDataForStep(batch, task, s))
-      ).toMap
+      )
 
       val sinkDf = plan.sinkOptions
         .map(_ => ForeignKeyUtil.getDataFramesWithForeignKeys(plan, generatedDataForeachTask))

@@ -91,7 +91,6 @@ async function createValidationsFromDataSource(validations, validationOpts, manu
 export async function createValidationFromPlan(dataSource, newDataSource, numDataSources) {
     let dataSourceValidationContainer = $(newDataSource).find("#data-source-validation-config-container");
 
-    console.log(dataSource);
     if (dataSource.validations && dataSource.options["metadataSourceName"]) {
         $(dataSourceValidationContainer).find("[id^=auto-from-metadata-source-validation-checkbox]").prop("checked", true);
         let autoFromMetadataSchema = await createAutoFromMetadataSourceContainer(numDataSources);
@@ -150,7 +149,6 @@ function getValidationsFromContainer(dataSourceValidations, visitedValidations) 
                             if (!jQuery.isEmptyObject(currNested)) {
                                 currNested.forEach(n => {
                                     if (!jQuery.isEmptyObject(n)) {
-                                        console.log(n);
                                         if (fieldValue === "upstream") {
                                             if (options["validation"]) {
                                                 options["validation"].push(n);

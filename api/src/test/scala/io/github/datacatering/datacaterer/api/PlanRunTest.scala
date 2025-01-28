@@ -1,6 +1,6 @@
 package io.github.datacatering.datacaterer.api
 
-import io.github.datacatering.datacaterer.api.model.Constants.{FORMAT, JDBC_TABLE, PATH, URL}
+import io.github.datacatering.datacaterer.api.model.Constants.{FORMAT, JDBC_TABLE, PATH, URL, VALIDATION_IDENTIFIER}
 import io.github.datacatering.datacaterer.api.model.ExpressionValidation
 import org.junit.runner.RunWith
 import org.scalatest.funsuite.AnyFunSuite
@@ -78,7 +78,11 @@ class PlanRunTest extends AnyFunSuite {
     val dsValidation = result._validations.head.dataSources.head
     assertResult("my_csv")(dsValidation._1)
     assert(dsValidation._2.head.options.nonEmpty)
-    assertResult(Map(FORMAT -> "csv", PATH -> "/my/data/path"))(dsValidation._2.head.options)
+    assertResult(Map(
+      FORMAT -> "csv",
+      PATH -> "/my/data/path",
+      VALIDATION_IDENTIFIER -> result._tasks.head.steps.head.name
+    ))(dsValidation._2.head.options)
     assertResult(1)(dsValidation._2.head.validations.size)
     assert(dsValidation._2.head.validations.head.validation.isInstanceOf[ExpressionValidation])
     val expressionValidation = dsValidation._2.head.validations.head.validation.asInstanceOf[ExpressionValidation]
@@ -124,7 +128,11 @@ class PlanRunTest extends AnyFunSuite {
     assertResult(1)(validRes.validations.size)
     assertResult("account_id != 'acc123'")(validRes.validations.head.validation.asInstanceOf[ExpressionValidation].expr)
     assert(validRes.options.nonEmpty)
-    assertResult(Map(FORMAT -> "csv", PATH -> "/my/csv"))(validRes.options)
+    assertResult(Map(
+      FORMAT -> "csv",
+      PATH -> "/my/csv",
+      VALIDATION_IDENTIFIER -> result._tasks.head.steps.head.name
+    ))(validRes.options)
   }
 
 

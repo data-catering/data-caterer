@@ -37,10 +37,11 @@ import {
     createNewConfigRow,
     getConfiguration
 } from "./helper-configuration.js";
-import {createGenerationElements, getGeneration, getGenerationYaml} from "./helper-generation.js";
+import {createGenerationElements, getGenerationYaml} from "./helper-generation.js";
 import {createValidationFromPlan, getValidations} from "./helper-validation.js";
 import {createCountElementsFromPlan, createRecordCount, getRecordCount} from "./helper-record-count.js";
 import {configurationOptionsMap, reportConfigKeys} from "./configuration-data.js";
+import {initLoginButton, initLoginCloseButton, initLoginSaveButton} from "./login.js";
 
 const addTaskButton = document.getElementById("add-task-button");
 const tasksDiv = document.getElementById("tasks-details-body");
@@ -53,6 +54,9 @@ const perFieldExampleSwitch = document.getElementById("showPerFieldExample");
 const planName = document.getElementById("plan-name");
 let numDataSources = 1;
 
+initLoginButton();
+initLoginSaveButton();
+initLoginCloseButton();
 tasksDiv.append(await createDataSourceForPlan(numDataSources));
 foreignKeysDiv.append(createForeignKeys());
 configurationDiv.append(createConfiguration());
@@ -341,7 +345,6 @@ function checkFormValidity(form) {
 function getPlanDetailsAndRun(form) {
     // collect all the user inputs
     let {planName, runId, requestBody} = getPlanDetails(form);
-    console.log(JSON.stringify(requestBody));
     executePlan(requestBody, planName, runId);
 }
 
@@ -372,8 +375,7 @@ function savePlan() {
     let savePlanButton = document.getElementById("save-plan");
     savePlanButton.addEventListener("click", function () {
         let form = document.getElementById("plan-form");
-        let {planName,  requestBody} = getPlanDetails(form);
-        console.log(JSON.stringify(requestBody));
+        let {planName, requestBody} = getPlanDetails(form);
         fetch("http://localhost:9898/plan", {
             method: "POST",
             headers: {"Content-Type": "application/json"},

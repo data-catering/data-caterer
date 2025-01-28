@@ -2,8 +2,11 @@ package io.github.datacatering.datacaterer.core.util
 
 import io.github.datacatering.datacaterer.api.model.{Count, GenerationConfig, Step, Task}
 import io.github.datacatering.datacaterer.api.{CountBuilder, GeneratorBuilder}
+import org.junit.runner.RunWith
 import org.scalatest.funsuite.AnyFunSuite
+import org.scalatestplus.junit.JUnitRunner
 
+@RunWith(classOf[JUnitRunner])
 class RecordCountUtilTest extends AnyFunSuite {
 
   private val generationConfig = GenerationConfig(100, None)

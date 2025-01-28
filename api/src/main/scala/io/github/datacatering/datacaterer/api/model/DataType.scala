@@ -22,6 +22,7 @@ object DataType {
       case "binary" => BinaryType
       case "byte" => ByteType
       case "array" | "list" | "seq" => ArrayType
+      case "map" => MapType
       case _ => StructType
     }
   }

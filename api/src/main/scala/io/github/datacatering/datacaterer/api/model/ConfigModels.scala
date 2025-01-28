@@ -14,8 +14,7 @@ case class FlagsConfig(
                         enableSaveReports: Boolean = DEFAULT_ENABLE_SAVE_REPORTS,
                         enableValidation: Boolean = DEFAULT_ENABLE_VALIDATION,
                         enableGenerateValidations: Boolean = DEFAULT_ENABLE_SUGGEST_VALIDATIONS,
-                        enableAlerts: Boolean = DEFAULT_ENABLE_ALERTS,
-                        enableTrackActivity: Boolean = DEFAULT_ENABLE_TRACK_ACTIVITY
+                        enableAlerts: Boolean = DEFAULT_ENABLE_ALERTS
                       )
 
 case class FoldersConfig(

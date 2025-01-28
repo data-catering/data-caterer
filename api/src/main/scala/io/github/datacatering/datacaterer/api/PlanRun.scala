@@ -50,6 +50,20 @@ trait PlanRun {
   def foreignField(dataSource: String, step: String, fields: List[String]): ForeignKeyRelation =
     ForeignKeyRelation(dataSource, step, fields)
 
+  def foreignField(connectionTask: ConnectionTaskBuilder[_], field: String): ForeignKeyRelation =
+    ForeignKeyRelation(
+      connectionTask.connectionConfigWithTaskBuilder.dataSourceName,
+      connectionTask.getStep.step.name,
+      List(field)
+    )
+
+  def foreignField(connectionTask: ConnectionTaskBuilder[_], fields: List[String]): ForeignKeyRelation =
+    ForeignKeyRelation(
+      connectionTask.connectionConfigWithTaskBuilder.dataSourceName,
+      connectionTask.getStep.step.name,
+      fields
+    )
+
   def foreignField(connectionTask: ConnectionTaskBuilder[_], step: String, fields: List[String]): ForeignKeyRelation =
     ForeignKeyRelation(connectionTask.connectionConfigWithTaskBuilder.dataSourceName, step, fields)
 
@@ -153,12 +167,12 @@ trait PlanRun {
    * Create new ICEBERG generation step with only warehouse path and table name. Uses hadoop as the catalog type.
    *
    * @param name      Data source name
-   * @param path      Warehouse path to generated ICEBERG
    * @param tableName Table name for generated ICEBERG
+   * @param path      Warehouse path to generated ICEBERG
    * @return FileBuilder
    */
-  def icebergJava(name: String, path: String, tableName: String): FileBuilder =
-    iceberg(name, path, tableName)
+  def icebergJava(name: String, tableName: String, path: String): FileBuilder =
+    iceberg(name, tableName, path)
 
   /**
    * Create new POSTGRES generation step with connection configuration

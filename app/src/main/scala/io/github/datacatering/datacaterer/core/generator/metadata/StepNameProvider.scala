@@ -1,7 +1,6 @@
 package io.github.datacatering.datacaterer.core.generator.metadata
 
-import io.github.datacatering.datacaterer.api.model.Constants.{CASSANDRA_KEYSPACE, CASSANDRA_TABLE, JDBC_TABLE, JMS_DESTINATION_NAME, METADATA_IDENTIFIER, PATH}
-import io.github.datacatering.datacaterer.core.model.Constants.{REAL_TIME_ENDPOINT, REAL_TIME_METHOD_FIELD}
+import io.github.datacatering.datacaterer.api.model.Constants.{CASSANDRA_KEYSPACE, CASSANDRA_TABLE, JDBC_TABLE, JMS_DESTINATION_NAME, METADATA_IDENTIFIER, PATH, REAL_TIME_ENDPOINT, REAL_TIME_METHOD_FIELD}
 
 object StepNameProvider {
 

@@ -3,6 +3,7 @@ package io.github.datacatering.datacaterer.api.model
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize
 import io.github.datacatering.datacaterer.api.model.Constants.{DEFAULT_COUNT_RECORDS, DEFAULT_DATA_SOURCE_NAME, DEFAULT_FIELD_NAME, DEFAULT_FIELD_NULLABLE, DEFAULT_FIELD_TYPE, DEFAULT_PER_FIELD_COUNT_RECORDS, DEFAULT_STEP_ENABLED, DEFAULT_STEP_NAME, DEFAULT_STEP_TYPE, DEFAULT_TASK_NAME, DEFAULT_TASK_SUMMARY_ENABLE, FOREIGN_KEY_DELIMITER}
 
+import java.util.UUID
 import scala.language.implicitConversions
 
 case class Plan(
@@ -11,8 +12,8 @@ case class Plan(
                  tasks: List[TaskSummary] = List(),
                  sinkOptions: Option[SinkOptions] = None,
                  validations: List[String] = List(),
-                 runId: Option[String] = None,
-                 interface: Option[String] = None
+                 runId: Option[String] = Some(UUID.randomUUID().toString),
+                 runInterface: Option[String] = None
                )
 
 case class SinkOptions(
@@ -68,7 +69,7 @@ case class PerFieldCount(
                           fieldNames: List[String] = List(),
                           @JsonDeserialize(contentAs = classOf[java.lang.Long]) count: Option[Long] = Some(DEFAULT_PER_FIELD_COUNT_RECORDS),
                           options: Map[String, Any] = Map()
-                         )
+                        )
 
 case class Field(
                   name: String = DEFAULT_FIELD_NAME,

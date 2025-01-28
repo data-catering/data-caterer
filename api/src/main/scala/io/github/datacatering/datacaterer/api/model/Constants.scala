@@ -61,7 +61,7 @@ object Constants {
   lazy val ICEBERG_CATALOG_TYPE = "catalogType"
   lazy val ICEBERG_CATALOG_URI = "catalogUri"
   lazy val ICEBERG_CATALOG_DEFAULT_NAMESPACE = "catalogDefaultNamespace"
-  lazy val SPECIFIC_DATA_SOURCE_OPTIONS = List(FORMAT, PATH, CASSANDRA_KEYSPACE, CASSANDRA_TABLE, JDBC_TABLE, JDBC_QUERY,
+  lazy val SPECIFIC_DATA_SOURCE_OPTIONS = List(PATH, CASSANDRA_KEYSPACE, CASSANDRA_TABLE, JDBC_TABLE, JDBC_QUERY,
     SCHEMA, TABLE, URL, DRIVER, PARTITIONS, PARTITION_BY, KAFKA_TOPIC, JMS_DESTINATION_NAME, JMS_VPN_NAME, SCHEMA_LOCATION,
     GREAT_EXPECTATIONS_FILE, DATA_CONTRACT_FILE, ROWS_PER_SECOND, HUDI_TABLE_NAME, ICEBERG_CATALOG_TYPE, ICEBERG_CATALOG_URI)
 
@@ -171,6 +171,24 @@ object Constants {
   lazy val ONE_OF_GENERATOR = "oneOf"
   lazy val REGEX_GENERATOR = "regex"
   lazy val SQL_GENERATOR = "sql"
+
+  //real time field names
+  lazy val REAL_TIME_BODY_FIELD = "value"
+  lazy val REAL_TIME_BODY_CONTENT_FIELD = "body"
+  lazy val REAL_TIME_PARTITION_FIELD = "partition"
+  lazy val REAL_TIME_HEADERS_FIELD = "headers"
+  lazy val REAL_TIME_METHOD_FIELD = "method"
+  lazy val REAL_TIME_ENDPOINT = "endpoint"
+  lazy val REAL_TIME_CONTENT_TYPE_FIELD = "content_type"
+  lazy val REAL_TIME_URL_FIELD = "url"
+  lazy val HTTP_HEADER_FIELD_PREFIX = "header"
+  lazy val HTTP_PATH_PARAM_FIELD_PREFIX = "pathParam"
+  lazy val HTTP_QUERY_PARAM_FIELD_PREFIX = "queryParam"
+  lazy val YAML_REAL_TIME_HEADERS_FIELD = "messageHeaders"
+  lazy val YAML_REAL_TIME_BODY_FIELD = "messageBody"
+  lazy val YAML_HTTP_BODY_FIELD = "httpBody"
+  lazy val YAML_HTTP_HEADERS_FIELD = "httpHeaders"
+  lazy val YAML_HTTP_URL_FIELD = "httpUrl"
 
   //flag names
   lazy val ENABLE_DATA_GENERATION = "enableDataGeneration"
@@ -497,6 +515,27 @@ object Constants {
   lazy val VALIDATION_FIELD_NAME_MATCH_ORDER = "fieldNameMatchOrder"
   lazy val VALIDATION_FIELD_NAME_MATCH_SET = "fieldNameMatchSet"
 
+  //validation summary
+  lazy val VALIDATION_NAME = "name"
+  lazy val VALIDATION_IS_SUCCESS = "isSuccess"
+  lazy val VALIDATION_NUM_SUCCESS = "numSuccess"
+  lazy val VALIDATION_NUM_VALIDATIONS = "numValidations"
+  lazy val VALIDATION_SUCCESS_RATE = "successRate"
+  lazy val VALIDATION_DATA_SOURCE_NAME = "dataSourceName"
+  lazy val VALIDATION_OPTIONS = "options"
+  lazy val VALIDATION_DETAILS = "validation"
+  lazy val VALIDATION_NUM_ERRORS = "numErrors"
+  lazy val VALIDATION_SAMPLE_ERRORS = "sampleErrorValues"
+  lazy val VALIDATION_ERROR_VALIDATIONS = "errorValidations"
+
+  //generation summary
+  lazy val GENERATION_NAME = "name"
+  lazy val GENERATION_FORMAT = "format"
+  lazy val GENERATION_OPTIONS = "options"
+  lazy val GENERATION_IS_SUCCESS = "isSuccess"
+  lazy val GENERATION_NUM_RECORDS = "numRecords"
+  lazy val GENERATION_TIME_TAKEN_SECONDS = "timeTakenSeconds"
+
   //configuration names
   //flags config
   lazy val CONFIG_FLAGS_COUNT = "enableCount"
@@ -545,9 +584,6 @@ object Constants {
   lazy val ALERT_TRIGGER_ON_GENERATION_SUCCESS = "generation_success"
   lazy val ALERT_TRIGGER_ON_VALIDATION_SUCCESS = "validation_success"
 
-  //trial
-  lazy val API_KEY = "API_KEY"
-
   //ui
   lazy val PLAN_RUN_EXECUTION_DELIMITER = "||"
   lazy val PLAN_RUN_EXECUTION_DELIMITER_REGEX = "\\|\\|"
@@ -558,5 +594,21 @@ object Constants {
   lazy val DATA_CATERER_INTERFACE_SCALA = "scala"
   lazy val DATA_CATERER_INTERFACE_UI = "ui"
   lazy val DATA_CATERER_INTERFACE_YAML = "yaml"
+
+  //plan run stages
+  lazy val PLAN_STAGE_START = "planStart"
+  lazy val PLAN_STAGE_PARSE_PLAN = "parsePlan"
+  lazy val PLAN_STAGE_PRE_PLAN_PROCESSORS = "prePlanProcessors"
+  lazy val PLAN_STAGE_EXTRACT_METADATA = "extractMetadata"
+  lazy val PLAN_STAGE_GENERATE_DATA = "generateData"
+  lazy val PLAN_STAGE_VALIDATE_DATA = "validateData"
+  lazy val PLAN_STAGE_DELETE_DATA = "deleteData"
+  lazy val PLAN_STAGE_POST_PLAN_PROCESSORS = "postPlanProcessors"
+  lazy val PLAN_STAGE_FINISHED = "planFinish"
+  lazy val PLAN_STAGE_EXCEPTION_MESSAGE_LENGTH = 500
+
+  //plan run status
+  lazy val PLAN_STATUS_SUCCESS = "success"
+  lazy val PLAN_STATUS_FAILED = "failed"
 
 }

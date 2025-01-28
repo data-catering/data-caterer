@@ -1,16 +1,18 @@
 package io.github.datacatering.datacaterer.core.plan
 
 import io.github.datacatering.datacaterer.api.PlanRun
-import io.github.datacatering.datacaterer.api.model.Constants.{DATA_CATERER_INTERFACE_JAVA, DATA_CATERER_INTERFACE_SCALA, DATA_CATERER_INTERFACE_YAML, PLAN_CLASS}
+import io.github.datacatering.datacaterer.api.model.Constants.{DATA_CATERER_INTERFACE_JAVA, DATA_CATERER_INTERFACE_SCALA, DATA_CATERER_INTERFACE_YAML, PLAN_CLASS, PLAN_STAGE_EXTRACT_METADATA, PLAN_STAGE_PARSE_PLAN, PLAN_STAGE_PRE_PLAN_PROCESSORS}
 import io.github.datacatering.datacaterer.api.model.{DataCatererConfiguration, Plan, Task, ValidationConfiguration}
-import io.github.datacatering.datacaterer.core.activity.PlanRunPrePlanProcessor
+import io.github.datacatering.datacaterer.core.activity.{PlanRunPostPlanProcessor, PlanRunPrePlanProcessor}
 import io.github.datacatering.datacaterer.core.config.ConfigParser
-import io.github.datacatering.datacaterer.core.exception.PlanRunClassNotFoundException
+import io.github.datacatering.datacaterer.core.exception.{ManagementApiException, PlanRunClassNotFoundException}
 import io.github.datacatering.datacaterer.core.generator.DataGeneratorProcessor
 import io.github.datacatering.datacaterer.core.generator.metadata.datasource.DataSourceMetadataFactory
 import io.github.datacatering.datacaterer.core.model.Constants.METADATA_CONNECTION_OPTIONS
 import io.github.datacatering.datacaterer.core.model.PlanRunResults
 import io.github.datacatering.datacaterer.core.parser.PlanParser
+import io.github.datacatering.datacaterer.core.util.LifecycleUtil.isTrackActivity
+import io.github.datacatering.datacaterer.core.util.ManagementUtil.getApiToken
 import io.github.datacatering.datacaterer.core.util.SparkProvider
 import org.apache.spark.sql.SparkSession
 
@@ -20,8 +22,10 @@ object PlanProcessor {
 
   def determineAndExecutePlan(
                                optPlanRun: Option[PlanRun] = None,
-                               interface: String = DATA_CATERER_INTERFACE_SCALA
+                               interface: String = DATA_CATERER_INTERFACE_SCALA,
+                               apiCheck: Boolean = true
                              ): PlanRunResults = {
+    if (apiCheck && isTrackActivity) getApiToken
     val optPlanClass = getPlanClass
     optPlanClass.map(Class.forName)
       .map(cls => {
@@ -61,22 +65,60 @@ object PlanProcessor {
                                    ): PlanRunResults = {
     val connectionConf = optPlan.map(_._connectionTaskBuilders.flatMap(_.connectionConfigWithTaskBuilder.options).toMap).getOrElse(Map())
     implicit val sparkSession: SparkSession = new SparkProvider(dataCatererConfiguration.master, dataCatererConfiguration.runtimeConfig ++ connectionConf).getSparkSession
+    Class.forName("org.postgresql.Driver")
 
-    val (planRun, resolvedInterface) = if (optPlan.isDefined) {
-      (optPlan.get, interface)
-    } else {
-      val (parsedPlan, enabledTasks, validations) = PlanParser.getPlanTasksFromYaml(dataCatererConfiguration)
-      (new YamlPlanRun(parsedPlan, enabledTasks, validations, dataCatererConfiguration), DATA_CATERER_INTERFACE_YAML)
+    val (planRun, resolvedInterface) = parsePlan(dataCatererConfiguration, optPlan, interface)
+    try {
+      applyPrePlanProcessors(planRun, dataCatererConfiguration, resolvedInterface)
+
+      val optPlanWithTasks = extractMetadata(dataCatererConfiguration, planRun)
+      val dataGeneratorProcessor = new DataGeneratorProcessor(dataCatererConfiguration)
+
+      (optPlanWithTasks, planRun) match {
+        case (Some((genPlan, genTasks, genValidation)), _) => dataGeneratorProcessor.generateData(genPlan, genTasks, Some(genValidation))
+        case (_, plan) => dataGeneratorProcessor.generateData(plan._plan, plan._tasks, Some(plan._validations))
+      }
+    } catch {
+      case ex: Exception => throw ex
     }
-    applyPrePlanProcessors(planRun, dataCatererConfiguration, resolvedInterface)
+  }
 
-    val optPlanWithTasks = new DataSourceMetadataFactory(dataCatererConfiguration).extractAllDataSourceMetadata(planRun)
-    val dataGeneratorProcessor = new DataGeneratorProcessor(dataCatererConfiguration)
-
-    (optPlanWithTasks, planRun) match {
-      case (Some((genPlan, genTasks, genValidation)), _) => dataGeneratorProcessor.generateData(genPlan, genTasks, Some(genValidation))
-      case (_, plan) => dataGeneratorProcessor.generateData(plan._plan, plan._tasks, Some(plan._validations))
+  private def extractMetadata(dataCatererConfiguration: DataCatererConfiguration, planRun: PlanRun)(implicit sparkSession: SparkSession): Option[(Plan, List[Task], List[ValidationConfiguration])] = {
+    try {
+      val dataSourceMetadataFactory = new DataSourceMetadataFactory(dataCatererConfiguration)
+      dataSourceMetadataFactory.extractAllDataSourceMetadata(planRun)
+    } catch {
+      case exception: Exception =>
+        notifyManagementApi(exception, PLAN_STAGE_EXTRACT_METADATA)
+        throw exception
     }
+  }
+
+  private def parsePlan(dataCatererConfiguration: DataCatererConfiguration, optPlan: Option[PlanRun], interface: String)(implicit sparkSession: SparkSession): (PlanRun, String) = {
+    try {
+      if (optPlan.isDefined) {
+        (optPlan.get, interface)
+      } else {
+        val (parsedPlan, enabledTasks, validations) = PlanParser.getPlanTasksFromYaml(dataCatererConfiguration)
+        (new YamlPlanRun(parsedPlan, enabledTasks, validations, dataCatererConfiguration), DATA_CATERER_INTERFACE_YAML)
+      }
+    } catch {
+      case parsePlanException: Exception =>
+        notifyManagementApi(parsePlanException, PLAN_STAGE_PARSE_PLAN)
+        throw parsePlanException
+    }
+  }
+
+  private def notifyManagementApi(
+                                   exception: Exception,
+                                   stage: String = PLAN_STAGE_PARSE_PLAN,
+                                   optConfig: Option[DataCatererConfiguration] = None,
+                                   optPlanRun: Option[PlanRun] = None
+                                 ): Unit = {
+    val planRunPostPlanProcessor = optConfig.map(config => new PlanRunPostPlanProcessor(config))
+      .getOrElse(new PlanRunPostPlanProcessor(DataCatererConfiguration()))
+    val plan = optPlanRun.map(_._plan).getOrElse(Plan())
+    planRunPostPlanProcessor.notifyPlanResult(plan, List(), List(), stage, Some(exception))
   }
 
   private def getPlanClass: Option[String] = {
@@ -90,11 +132,16 @@ object PlanProcessor {
   }
 
   private def applyPrePlanProcessors(planRun: PlanRun, dataCatererConfiguration: DataCatererConfiguration, interface: String): Unit = {
-    val prePlanProcessors = List(new PlanRunPrePlanProcessor(dataCatererConfiguration))
-
-    prePlanProcessors.foreach(prePlanProcessor => {
-      if (prePlanProcessor.enabled) prePlanProcessor.apply(planRun._plan.copy(interface = Some(interface)), planRun._tasks, planRun._validations)
-    })
+    try {
+      val prePlanProcessors = List(new PlanRunPrePlanProcessor(dataCatererConfiguration))
+      prePlanProcessors.foreach(prePlanProcessor => {
+        if (prePlanProcessor.enabled) prePlanProcessor.apply(planRun._plan.copy(runInterface = Some(interface)), planRun._tasks, planRun._validations)
+      })
+    } catch {
+      case preProcessorException: Exception =>
+        notifyManagementApi(preProcessorException, PLAN_STAGE_PRE_PLAN_PROCESSORS, Some(dataCatererConfiguration), Some(planRun))
+        throw preProcessorException
+    }
   }
 }
 

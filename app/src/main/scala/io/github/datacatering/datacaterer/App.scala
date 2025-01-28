@@ -15,10 +15,17 @@ object App {
   def main(args: Array[String]): Unit = {
     val startTime = LocalDateTime.now()
     LOGGER.info("Starting Data Caterer")
-    PlanProcessor.determineAndExecutePlan()
-    val endTime = LocalDateTime.now()
-    val duration = Duration.between(startTime, endTime)
-    LOGGER.info(s"Completed in ${duration.toSeconds}s")
-    System.exit(0)
+    try {
+      PlanProcessor.determineAndExecutePlan()
+    } catch {
+      case e: Exception =>
+        LOGGER.error("An error occurred while processing the plan", e)
+        System.exit(1)
+    } finally {
+      val endTime = LocalDateTime.now()
+      val duration = Duration.between(startTime, endTime)
+      LOGGER.info(s"Completed in ${duration.toSeconds}s")
+      System.exit(0)
+    }
   }
 }

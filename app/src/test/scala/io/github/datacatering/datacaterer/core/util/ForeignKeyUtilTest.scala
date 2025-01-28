@@ -3,10 +3,13 @@ package io.github.datacatering.datacaterer.core.util
 import io.github.datacatering.datacaterer.api.PlanRun
 import io.github.datacatering.datacaterer.api.model.Constants.FOREIGN_KEY_DELIMITER
 import io.github.datacatering.datacaterer.api.model.{ForeignKey, ForeignKeyRelation, Plan, SinkOptions, TaskSummary}
-import io.github.datacatering.datacaterer.core.model.ForeignKeyRelationship
+import io.github.datacatering.datacaterer.core.exception.MissingDataSourceFromForeignKeyException
+import io.github.datacatering.datacaterer.core.model.{ForeignKeyRelationship, ForeignKeyWithGenerateAndDelete}
 import org.apache.spark.sql.Encoders
 import org.apache.spark.sql.types.{ArrayType, StringType, StructField, StructType}
 import org.junit.runner.RunWith
+import org.scalatest.matchers.must.Matchers.contain
+import org.scalatest.matchers.should.Matchers.convertToAnyShouldWrapper
 import org.scalatestplus.junit.JUnitRunner
 
 import java.sql.Date
@@ -18,11 +21,11 @@ class ForeignKeyUtilTest extends SparkSuite {
   test("When no foreign keys defined, return back same dataframes") {
     val sinkOptions = SinkOptions(None, None, List())
     val plan = Plan("no foreign keys", "simple plan", List(), Some(sinkOptions))
-    val dfMap = Map("name" -> sparkSession.emptyDataFrame)
+    val dfMap = List("name" -> sparkSession.emptyDataFrame)
 
     val result = ForeignKeyUtil.getDataFramesWithForeignKeys(plan, dfMap)
 
-    assertResult(result)(dfMap.toList)
+    assertResult(result)(dfMap)
   }
 
   test("Can get insert order") {
@@ -32,7 +35,27 @@ class ForeignKeyUtilTest extends SparkSuite {
       "reviews" -> List("products", "customers")
     )
     val result = ForeignKeyUtil.getInsertOrder(foreignKeys)
-    assertResult("reviews")(result.head)
+
+    result should contain theSameElementsInOrderAs List("order_items", "reviews", "orders", "products", "customers")
+  }
+
+  test("Can get insert order with multiple foreign keys") {
+    val foreignKeys = List(
+      "products" -> List("customers", "prices", "orders"),
+      "customers" -> List("addresses")
+    )
+    val result = ForeignKeyUtil.getInsertOrder(foreignKeys)
+
+    result should contain theSameElementsInOrderAs List("products", "customers", "prices", "orders", "addresses")
+  }
+
+  test("Can get insert order when multiple generations are defined") {
+    val foreignKeys = List(
+      "products" -> List("customers", "prices", "orders"),
+    )
+    val result = ForeignKeyUtil.getInsertOrder(foreignKeys)
+
+    result should contain theSameElementsInOrderAs List("products", "customers", "prices", "orders")
   }
 
   test("Can link foreign keys between data sets") {
@@ -51,7 +74,7 @@ class ForeignKeyUtilTest extends SparkSuite {
       Transaction("some_acc9", "rand2", "id124", Date.valueOf(LocalDate.now()), 23.9),
       Transaction("some_acc10", "rand3", "id125", Date.valueOf(LocalDate.now()), 85.1),
     )
-    val dfMap = Map(
+    val dfMap = List(
       "postgres.account" -> sparkSession.createDataFrame(accountsList),
       "postgres.transaction" -> sparkSession.createDataFrame(transactionList)
     )
@@ -81,7 +104,7 @@ class ForeignKeyUtilTest extends SparkSuite {
       Transaction("some_acc9", "rand2", "id125", Date.valueOf(LocalDate.now()), 23.9),
       Transaction("some_acc10", "rand3", "id126", Date.valueOf(LocalDate.now()), 85.1),
     )
-    val dfMap = Map(
+    val dfMap = List(
       "postgres.account" -> sparkSession.createDataFrame(accountsList),
       "postgres.transaction" -> sparkSession.createDataFrame(transactionList)
     )
@@ -123,7 +146,7 @@ class ForeignKeyUtilTest extends SparkSuite {
       Transaction("some_acc10", "rand3", "id127", Date.valueOf(LocalDate.now()), 72.1),
       Transaction("some_acc11", "rand3", "id128", Date.valueOf(LocalDate.now()), 5.9)
     )
-    val dfMap = Map(
+    val dfMap = List(
       "postgres.account" -> sparkSession.createDataFrame(accountsList),
       "postgres.transaction" -> sparkSession.createDataFrame(transactionList)
     )
@@ -263,6 +286,116 @@ class ForeignKeyUtilTest extends SparkSuite {
     assert(ForeignKeyUtil.hasDfContainField("my_json.account_id", fields))
     assert(!ForeignKeyUtil.hasDfContainField("my_json.name", fields))
     assert(!ForeignKeyUtil.hasDfContainField("my_array.name", fields))
+  }
+
+  test("getDataFramesWithForeignKeys should return back list of dataframes in correct order when foreign keys are defined") {
+    val sinkOptions = SinkOptions(None, None,
+      List(
+        ForeignKey(
+          ForeignKeyRelation("sourceDf", "sourceDataSource", List("value")),
+          List(ForeignKeyRelation("targetDf", "targetDataSource", List("value"))),
+          List()
+        )
+      ))
+    val plan = Plan("foreign keys", "simple plan", List(
+      TaskSummary("my_task", "sourceDf"),
+      TaskSummary("my_target_task", "targetDf"),
+      TaskSummary("my_other_task", "otherDf")
+    ), Some(sinkOptions))
+    val generatedDataForeachTask = List(
+      ("otherDf.otherDataSource", sparkSession.createDataFrame(Seq((1, "f"), (2, "g"))).toDF("id", "value")),
+      ("sourceDf.sourceDataSource", sparkSession.createDataFrame(Seq((1, "a"), (2, "b"))).toDF("id", "value")),
+      ("targetDf.targetDataSource", sparkSession.createDataFrame(Seq((1, "x"), (2, "y"))).toDF("id", "value")),
+    )
+
+    val result = ForeignKeyUtil.getDataFramesWithForeignKeys(plan, generatedDataForeachTask)
+    val resultDfNames = result.map(_._1)
+    val expectedDfNamesOrder = List("sourceDf.sourceDataSource", "targetDf.targetDataSource", "otherDf.otherDataSource")
+
+    resultDfNames should contain theSameElementsInOrderAs expectedDfNamesOrder
+  }
+
+  test("getDataFramesWithForeignKeys should return back list of dataframes in correct order when multiple generations are defined") {
+    val sinkOptions = SinkOptions(None, None,
+      List(
+        ForeignKey(
+          ForeignKeyRelation("sourceDf", "sourceDataSource", List("value")),
+          List(
+            ForeignKeyRelation("targetDf1", "targetDataSource1", List("value")),
+            ForeignKeyRelation("targetDf2", "targetDataSource2", List("value")),
+            ForeignKeyRelation("targetDf3", "targetDataSource3", List("value")),
+          ),
+          List()
+        )
+      ))
+    val plan = Plan("foreign keys", "simple plan", List(
+      TaskSummary("my_task", "sourceDf"),
+      TaskSummary("my_target3_task", "targetDf3"),
+      TaskSummary("my_target1_task", "targetDf1"),
+      TaskSummary("my_target2_task", "targetDf2"),
+    ), Some(sinkOptions))
+    val generatedDataForeachTask = List(
+      ("targetDf3.targetDataSource3", sparkSession.createDataFrame(Seq((1, "x"), (2, "y"))).toDF("id", "value")),
+      ("targetDf1.targetDataSource1", sparkSession.createDataFrame(Seq((1, "c"), (2, "d"))).toDF("id", "value")),
+      ("sourceDf.sourceDataSource", sparkSession.createDataFrame(Seq((1, "a"), (2, "b"))).toDF("id", "value")),
+      ("targetDf2.targetDataSource2", sparkSession.createDataFrame(Seq((1, "f"), (2, "g"))).toDF("id", "value")),
+    )
+
+    val result = ForeignKeyUtil.getDataFramesWithForeignKeys(plan, generatedDataForeachTask)
+    val resultDfNames = result.map(_._1)
+    val expectedDfNamesOrder = List("sourceDf.sourceDataSource", "targetDf1.targetDataSource1", "targetDf2.targetDataSource2", "targetDf3.targetDataSource3")
+
+    resultDfNames should contain theSameElementsInOrderAs expectedDfNamesOrder
+  }
+
+  test("getDataFramesWithForeignKeys should throw MissingDataSourceFromForeignKeyException if source dataframe is missing") {
+    val sinkOptions = SinkOptions(None, None,
+      List(
+        ForeignKey(
+          ForeignKeyRelation("sourceDf", "sourceDataSource", List("value")),
+          List(ForeignKeyRelation("targetDf", "targetDataSource", List("value"))),
+          List()
+        )
+      ))
+    val plan = Plan("foreign keys", "simple plan", List(TaskSummary("my_task", "sourceDf"), TaskSummary("my_target_task", "targetDf")), Some(sinkOptions))
+    val generatedDataForeachTask = List(
+      ("targetDf.targetDataSource", sparkSession.createDataFrame(Seq((1, "x"), (2, "y"))).toDF("id", "value"))
+    )
+
+    assertThrows[MissingDataSourceFromForeignKeyException] {
+      ForeignKeyUtil.getDataFramesWithForeignKeys(plan, generatedDataForeachTask)
+    }
+  }
+
+  test("isValidForeignKeyRelation should return true for valid foreign key relation") {
+    val generatedDataForeachTask = Map(
+      "sourceDf.sourceDataSource" -> sparkSession.createDataFrame(Seq((1, "a"), (2, "b"))).toDF("id", "value"),
+      "targetDf.targetDataSource" -> sparkSession.createDataFrame(Seq((1, "a"), (2, "b"))).toDF("id", "value"),
+    )
+    val enabledSources = List("sourceDf", "targetDf")
+    val fkr = ForeignKeyWithGenerateAndDelete(
+      ForeignKeyRelation("sourceDf", "sourceDataSource", List("value")),
+      List(ForeignKeyRelation("targetDf", "targetDataSource", List("value"))),
+      List()
+    )
+
+    val result = ForeignKeyUtil.isValidForeignKeyRelation(generatedDataForeachTask, enabledSources, fkr)
+    result shouldBe true
+  }
+
+  test("isValidForeignKeyRelation should return false if main foreign key source is not enabled") {
+    val generatedDataForeachTask = Map(
+      "sourceDf.sourceDataSource" -> sparkSession.createDataFrame(Seq((1, "a"), (2, "b"))).toDF("id", "value")
+    )
+    val enabledSources = List("targetDataSource")
+    val fkr = ForeignKeyWithGenerateAndDelete(
+      ForeignKeyRelation("sourceDf", "sourceDataSource", List("value")),
+      List(ForeignKeyRelation("targetDf", "targetDataSource", List("value"))),
+      List()
+    )
+
+    val result = ForeignKeyUtil.isValidForeignKeyRelation(generatedDataForeachTask, enabledSources, fkr)
+    result shouldBe false
   }
 
   class ForeignKeyPlanRun extends PlanRun {

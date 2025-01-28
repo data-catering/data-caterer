@@ -10,6 +10,13 @@ object Constants {
   lazy val ADVANCED_APPLICATION = "advanced"
   lazy val TRIAL_APPLICATION = "trial"
 
+  //env vars
+  lazy val DATA_CATERER_MANAGEMENT_TRACK = "DATA_CATERER_MANAGEMENT_TRACK"
+  lazy val DATA_CATERER_MANAGEMENT_URL = "DATA_CATERER_MANAGEMENT_URL"
+  lazy val DATA_CATERER_API_TOKEN = "DATA_CATERER_API_TOKEN"
+  lazy val DATA_CATERER_API_USER = "DATA_CATERER_API_USER"
+  lazy val DATA_CATERER_UI = "DATA_CATERER_UI"
+
   //base config
   lazy val RUNTIME_MASTER = "runtime.master"
 
@@ -35,17 +42,6 @@ object Constants {
   lazy val PER_FIELD_INDEX_FIELD = "_per_field_index"
   lazy val RECORD_COUNT_GENERATOR_FIELD = "record_count_generator"
   lazy val INDEX_INC_FIELD = "__index_inc"
-  lazy val REAL_TIME_BODY_FIELD = "value"
-  lazy val REAL_TIME_BODY_CONTENT_FIELD = "bodyContent"
-  lazy val REAL_TIME_PARTITION_FIELD = "partition"
-  lazy val REAL_TIME_HEADERS_FIELD = "headers"
-  lazy val REAL_TIME_METHOD_FIELD = "method"
-  lazy val REAL_TIME_ENDPOINT = "endpoint"
-  lazy val REAL_TIME_CONTENT_TYPE_FIELD = "content_type"
-  lazy val REAL_TIME_URL_FIELD = "url"
-  lazy val HTTP_HEADER_FIELD_PREFIX = "header"
-  lazy val HTTP_PATH_PARAM_FIELD_PREFIX = "pathParam"
-  lazy val HTTP_QUERY_PARAM_FIELD_PREFIX = "queryParam"
 
   //special table name
   lazy val DATA_CATERER_RANDOM_LENGTH = "data_caterer_random_length"

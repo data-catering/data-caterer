@@ -190,9 +190,9 @@ object MetadataUtil {
         s"$schema/$table"
       case CASSANDRA =>
         s"${step.options(CASSANDRA_KEYSPACE)}/${step.options(CASSANDRA_TABLE)}"
-      case PARQUET | CSV | JSON | DELTA | ORC =>
+      case PARQUET | CSV | JSON | DELTA | ORC | DELTA | ICEBERG =>
         step.options(PATH).replaceAll("s3(a|n?)://|wasb(s?)://|gs://|file://|hdfs://[a-zA-Z0-9]+:[0-9]+", "")
-      case JMS =>
+      case JMS | SOLACE =>
         step.options(JMS_DESTINATION_NAME)
       case KAFKA =>
         step.options(KAFKA_TOPIC)
@@ -233,7 +233,7 @@ object MetadataUtil {
             LOGGER.warn(s"Metadata extraction not supported for JDBC driver type '$driver', connection-name=${connectionConfig._1}")
             None
         }
-      case (_, CSV | JSON | PARQUET | DELTA | ORC) => Some(FileMetadata(connectionConfig._1, format, connectionConfig._2))
+      case (_, CSV | JSON | PARQUET | DELTA | ORC | ICEBERG) => Some(FileMetadata(connectionConfig._1, format, connectionConfig._2))
       case (_, HTTP) => Some(HttpMetadata(connectionConfig._1, format, connectionConfig._2))
       case (_, JMS) => Some(JmsMetadata(connectionConfig._1, format, connectionConfig._2))
       case _ =>

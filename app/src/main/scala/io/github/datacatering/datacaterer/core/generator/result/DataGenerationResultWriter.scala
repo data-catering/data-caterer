@@ -1,7 +1,7 @@
 package io.github.datacatering.datacaterer.core.generator.result
 
 import com.fasterxml.jackson.annotation.JsonInclude.Include
-import io.github.datacatering.datacaterer.api.model.Constants.SPECIFIC_DATA_SOURCE_OPTIONS
+import io.github.datacatering.datacaterer.api.model.Constants.{GENERATION_IS_SUCCESS, GENERATION_NAME, GENERATION_NUM_RECORDS, GENERATION_OPTIONS, SPECIFIC_DATA_SOURCE_OPTIONS}
 import io.github.datacatering.datacaterer.api.model.{DataCatererConfiguration, DataSourceResult, DataSourceResultSummary, Field, Plan, Step, StepResultSummary, Task, TaskResultSummary, ValidationConfigResult}
 import io.github.datacatering.datacaterer.core.listener.SparkRecordListener
 import io.github.datacatering.datacaterer.core.model.Constants.{REPORT_DATA_CATERING_SVG, REPORT_DATA_SOURCES_HTML, REPORT_FIELDS_HTML, REPORT_HOME_HTML, REPORT_MAIN_CSS, REPORT_RESULT_JSON, REPORT_TASK_HTML, REPORT_VALIDATIONS_HTML}
@@ -39,7 +39,8 @@ class DataGenerationResultWriter(val dataCatererConfiguration: DataCatererConfig
     val (stepSummary, taskSummary, dataSourceSummary) = getSummaries(generationResult)
     val fileSystem = FileSystem.get(sparkSession.sparkContext.hadoopConfiguration)
     fileSystem.setWriteChecksum(false)
-    val reportFolder = plan.runId.map(id => s"${foldersConfig.generatedReportsFolderPath}/$id").getOrElse(foldersConfig.generatedReportsFolderPath)
+    val reportFolder = plan.runId.map(id => s"${foldersConfig.generatedReportsFolderPath}/$id")
+      .getOrElse(foldersConfig.generatedReportsFolderPath)
 
     LOGGER.info(s"Writing data generation summary to HTML files, folder-path=$reportFolder")
     val htmlWriter = new ResultHtmlWriter()
@@ -105,7 +106,7 @@ class DataGenerationResultWriter(val dataCatererConfiguration: DataCatererConfig
   private def resultsAsJson(generationResult: List[DataSourceResult], validationResults: List[ValidationConfigResult]): String = {
     val resultMap = Map(
       "generation" -> getGenerationJsonSummary(generationResult),
-      "validation" -> validationResults.map(_.jsonSummary)
+      "validation" -> validationResults.map(_.jsonSummary())
     )
     OBJECT_MAPPER.writeValueAsString(resultMap)
   }
@@ -118,10 +119,10 @@ class DataGenerationResultWriter(val dataCatererConfiguration: DataCatererConfig
       val totalRecords = grpBySubDataSource._2.map(_.sinkResult.count).sum
       val isSuccess = grpBySubDataSource._2.forall(_.sinkResult.isSuccess)
       Map(
-        "name" -> grpBySubDataSource._1._1,
-        "options" -> grpBySubDataSource._1._2,
-        "numRecords" -> totalRecords,
-        "isSuccess" -> isSuccess
+        GENERATION_NAME -> grpBySubDataSource._1._1,
+        GENERATION_OPTIONS -> grpBySubDataSource._1._2,
+        GENERATION_NUM_RECORDS -> totalRecords,
+        GENERATION_IS_SUCCESS -> isSuccess
       )
     }).toList
     generationPerSubDataSource

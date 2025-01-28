@@ -37,7 +37,7 @@ object FileUtil {
   }
 
   def writeStringToFile(fileSystem: FileSystem, filePath: String, fileContent: String): Unit = {
-    val fsOutput = fileSystem.create(new Path(filePath))
+    val fsOutput = fileSystem.create(new Path(filePath), true)
     fsOutput.writeBytes(fileContent)
     fsOutput.flush()
     fsOutput.close()

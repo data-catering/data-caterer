@@ -1,5 +1,76 @@
 # Changelog
 
+## 0.14.5
+
+- Allow for `iceberg` data to be tracked for validation
+- Changed order for `iceberg` connection details in Java to be `name`, `tableName` and `path`
+- Add getting metadata source connection details when generated from UI
+- When capturing relationship from UI, convert override options to step name
+- Fix bug when metadata generated details try to match with user defined details fails when no step options match
+- Replaced deprecated usage of `udf` function call with schema type with `selectExpr` with named struct
+
+## 0.14.4
+
+- Ensure step options are persisted when user defined steps come from YAML combined with generated from metadata steps
+- Catch all exception when running plan, return error message and exit accordingly
+  - Always show how long it took to run the plan
+
+## 0.14.3
+
+- Update Data Contract CLI to capture primary key
+- Capture `map` data type when converting from YAML
+- Ensure foreign key insert order is correct and pushes non-foreign key data sources to the end
+- Update to use insta-integration@v2 github action
+- Add `exponentialDistribution` and `normalDistribution` to data generator
+
+## 0.14.0
+
+- Login via UI to run plans
+- Login via environment variables to run plans
+- Ability to track plan usage and failure
+  - Catch failures at any stage in the pipline
+    - `parsePlan`
+    - `prePlanProcessors`
+    - `extractMetadata`
+    - `generateData`
+    - `validateData`
+    - `deleteData`
+    - `postPlanProcessors`
+    - `planFinish`
+- Ability to stop plan running based on quota for feature usage
+- Add in pre-plan processing
+- Add in helper methods for creating HTTP and message fields
+  - `field.messageHeaders`
+  - `field.messageHeader`
+  - `field.messageBody`
+  - `field.httpHeader`
+  - `field.httpPathParam`
+  - `field.httpQueryParam`
+  - `field.httpUrl`
+  - `field.httpMethod`
+  - `field.httpBody`
+- Add in helper YAML fields for creating HTTP and message fields
+  - `messageBody`
+  - `messageHeaders`
+  - `httpBody`
+    - `url`
+    - `method`
+    - `pathParam`
+    - `queryParam`
+  - `httpHeaders`
+  - `httpUrl`
+- Fix for automatic retrieval of metadata from Postgres and MySQL failing because of `column` renamed to `field`
+- Move more constants to API layer instead of core
+- Convert sample errors to string values instead of keeping as DataFrame to make API layer simpler
+- HTTP calls now use Pekko for controlling rate of messages
+  - DataFrame is collected before being sent to HTTP endpoints
+  - More accurate timing of HTTP request and response
+- Fix bug when field options defined as non-string get ignored by data generator
+- Ensure all tests are run via JUnitRunner
+- Reduce size of planFinish payload, only send generation and validation summary
+- Use apiToken naming convention to keep consistency
+- Don't save real-time responses if schema is empty
+
 ## 0.13.1
 
 - Clear exception message on which validation failed to run when running list of validations

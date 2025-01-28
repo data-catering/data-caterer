@@ -222,6 +222,7 @@ testing {
                 implementation("org.scalatest:scalatest_$scalaVersion:3.2.17")
                 implementation("org.scalatestplus:junit-4-13_$scalaVersion:3.2.17.0")
                 implementation("org.scalamock:scalamock_$scalaVersion:5.2.0")
+                implementation("org.mockito:mockito-scala_$scalaVersion:1.17.37")
                 implementation("org.apache.spark:spark-sql_$scalaVersion:$sparkVersion")
                 implementation("org.apache.spark:spark-avro_$scalaVersion:$sparkVersion")
                 implementation("org.apache.spark:spark-protobuf_$scalaVersion:$sparkVersion")
@@ -265,6 +266,9 @@ tasks.shadowJar {
 
 tasks.test {
     finalizedBy(tasks.reportScoverage)
+    environment("DATA_CATERER_API_USER", "hello")
+    environment("DATA_CATERER_API_TOKEN", "world")
+    environment("DATA_CATERER_MANAGEMENT_TRACK", "data_caterer_is_cool")
 }
 
 configure<ScoverageExtension> {

@@ -11,6 +11,7 @@ import {
     updateAccordionHeaderOnInputAndSelect
 } from "./helper-validation.js";
 import {incFields, numFields} from "./helper-generation.js";
+import {showLoginBox} from "./login.js";
 
 Map.prototype.toJSON = function () {
     let obj = {}
@@ -554,10 +555,11 @@ export function addAccordionCloseButton(accordionItem) {
     header.replaceChildren(divContainer);
 }
 
-export function createToast(header, message, type) {
+export function createToast(header, message, type, delay = 5000) {
     let toast = document.createElement("div");
     toast.setAttribute("class", "toast");
     toast.setAttribute("role", "alert");
+    toast.setAttribute("data-bd-delay", delay);
     toast.setAttribute("aria-live", "assertive");
     toast.setAttribute("aria-atomic", "true");
     let toastHeader = document.createElement("div");
@@ -614,7 +616,7 @@ export function executePlan(requestBody, planName, runId, runType) {
             }
         })
         .then(async r => {
-            createToast(planName, `Started to run plan ${planName}!`);
+            createToast(planName, `Started to run plan ${planName}!`, "start");
             // poll every 1 second for status of plan run
             let currentStatus = "started";
             while (currentStatus !== "finished" && currentStatus !== "failed") {
@@ -623,7 +625,6 @@ export function executePlan(requestBody, planName, runId, runType) {
                     headers: {Accept: "application/json"}
                 })
                     .catch(err => {
-                        console.error(err);
                         createToast(planName, `Plan ${planName} failed! Error: ${err}`, "fail");
                         reject("Plan run failed");
                     })
@@ -632,33 +633,42 @@ export function executePlan(requestBody, planName, runId, runType) {
                             return resp.json();
                         } else {
                             resp.text().then(text => {
-                                createToast(planName, `Plan ${planName} failed! Error: ${text}`, "fail");
+                                createToast(planName, `Plan ${planName} failed! Error: ${text}`, "fail", 10000);
                                 throw new Error(text);
                             });
                         }
                     })
                     .then(respJson => {
-                        if (!respJson.status) {
-                            currentStatus = "failed";
-                            let type = "fail";
-                            let msg = `Failed to run plan ${planName}! Check server logs.`;
-                            createToast(planName, msg, type);
-                        } else {
-                            let latestStatus = respJson.status;
-                            if (latestStatus !== currentStatus) {
-                                currentStatus = latestStatus;
-                                let type = "running";
-                                let msg = `Plan ${planName} update, status: ${latestStatus}`;
-                                if (currentStatus === "finished") {
-                                    type = "success";
-                                    msg = `Successfully completed ${planName}.`;
-                                } else if (currentStatus === "failed") {
-                                    type = "fail";
-                                    let failReason = respJson.failedReason.length > 200 ? respJson.failedReason.substring(0, 200) + "..." : respJson.failedReason;
-                                    msg = `Plan ${planName} failed! Error: ${failReason}`;
-                                }
+                        if (respJson) {
+                            if (!respJson.status) {
+                                currentStatus = "failed";
+                                let type = "fail";
+                                let msg = `Failed to run plan ${planName}! Check server logs.`;
                                 createToast(planName, msg, type);
+                            } else {
+                                let latestStatus = respJson.status;
+                                if (latestStatus !== currentStatus) {
+                                    currentStatus = latestStatus;
+                                    let type = "running";
+                                    let msg = `Plan ${planName} update, status: ${latestStatus}`;
+                                    if (currentStatus === "finished") {
+                                        type = "success";
+                                        msg = `Successfully completed ${planName}.`;
+                                    } else if (currentStatus === "failed") {
+                                        type = "fail";
+                                        let failReason = respJson.failedReason.length > 200 ? respJson.failedReason.substring(0, 200) + "..." : respJson.failedReason;
+                                        if (respJson.failedReason.includes("User not found")) {
+                                            showLoginBox(true);
+                                        } else if (respJson.failedReason.includes("Invalid user credentials")) {
+                                            showLoginBox(true, false);
+                                        }
+                                        msg = `Plan ${planName} failed! Error: ${failReason}`;
+                                    }
+                                    createToast(planName, msg, type, 10000);
+                                }
                             }
+                        } else {
+                            throw Error("No response found");
                         }
                     });
                 await wait(500);
