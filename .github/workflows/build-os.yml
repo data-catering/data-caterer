@@ -20,6 +20,7 @@ jobs:
           overwrite: true
 
   osx:
+    needs: build
     runs-on: [macos-latest]
 
     steps:
