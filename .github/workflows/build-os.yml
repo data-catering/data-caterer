@@ -12,12 +12,6 @@ jobs:
           fetch-depth: 2
       - name: Set version
         run: echo "APP_VERSION=$(grep version gradle.properties | cut -d= -f2)" >> $GITHUB_ENV
-      - uses: actions/setup-java@v4
-        with:
-          java-version: '21'
-          java-package: jdk
-          architecture: x64
-          distribution: oracle
       - name: Gradle build with cache
         uses: burrunan/gradle-cache-action@v2
         with:
@@ -44,12 +38,6 @@ jobs:
           fetch-depth: 2
       - name: Set version
         run: echo "APP_VERSION=$(grep version gradle.properties | cut -d= -f2)" >> $env:GITHUB_ENV
-      - uses: actions/setup-java@v4
-        with:
-          java-version: '21'
-          java-package: jdk
-          architecture: x64
-          distribution: oracle
       - name: Gradle build with cache
         uses: burrunan/gradle-cache-action@v2
         with:
@@ -76,12 +64,6 @@ jobs:
           fetch-depth: 2
       - name: Set version
         run: echo "APP_VERSION=$(grep version gradle.properties | cut -d= -f2)" >> $GITHUB_ENV
-      - uses: actions/setup-java@v4
-        with:
-          java-version: '21'
-          java-package: jdk
-          architecture: x64
-          distribution: oracle
       - name: Gradle build with cache
         uses: burrunan/gradle-cache-action@v2
         with:
