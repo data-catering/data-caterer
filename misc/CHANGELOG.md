@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.14.6
+
+- Fix bug relating to sending API calls to management server
+- Filter out rows that cannot be transposed before sending alert to Slack
+
 ## 0.14.5
 
 - Allow for `iceberg` data to be tracked for validation

@@ -88,8 +88,10 @@ class SlackAlertProcessor(slackAlertConfig: SlackAlertConfig) {
   private def formatTable(table: Seq[Seq[Any]], hasHeader: Boolean = true): String = {
     if (table.isEmpty) ""
     else {
-      val colWidths = table.transpose.map(_.map(cell => if (cell == null) 0 else cell.toString.length).max + 2)
-      val rows = table.map(_.zip(colWidths)
+      val expectedCols = table.head.size
+      val cleanTable = table.filter(_.size == expectedCols)
+      val colWidths = cleanTable.transpose.map(_.map(cell => if (cell == null) 0 else cell.toString.length).max + 2)
+      val rows = cleanTable.map(_.zip(colWidths)
         .map { case (item, size) => {
           val minus = if (item == "✅" || item == "❌") 2 else 1
           (" %-" + (size - minus) + "s").format(item)

@@ -23,7 +23,7 @@ object CredentialsManager {
   def validateCredentials(credentialsRequest: CredentialsRequest): String = {
     val url = s"$dataCatererManagementUrl/user/${credentialsRequest.userId}"
     val prepareRequest = http.prepareGet(url)
-      .setHeader("x-api-key", credentialsRequest.token)
+      .setHeader("x-api-token", credentialsRequest.token)
       .setHeader("x-api-user", credentialsRequest.userId)
     val scalaFuture = prepareRequest.execute().toCompletableFuture.toScala
     Try(Await.result(scalaFuture, 2.seconds)) match {
