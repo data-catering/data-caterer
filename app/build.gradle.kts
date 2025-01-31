@@ -110,7 +110,7 @@ dependencies {
     basicImpl("org.wildfly.openssl:wildfly-openssl-java:1.1.3.Final")
     basicImpl("org.jboss.xnio:xnio-api:3.8.15.Final")
     basicImpl("io.airlift:aircompressor:0.27")
-    basicImpl("org.apache.zookeeper:zookeeper:3.9.2")
+    basicImpl("org.apache.zookeeper:zookeeper:3.9.3")
 //    basicImpl("dnsjava:dnsjava:3.6.2")
     basicImpl("com.amazon.ion:ion-java:1.11.8")
     basicImpl("org.apache.ivy:ivy:2.5.2")
