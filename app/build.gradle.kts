@@ -94,7 +94,7 @@ dependencies {
     basicImpl("commons-io:commons-io:2.17.0")
     basicImpl("commons-net:commons-net:3.9.0")
     basicImpl("io.netty:netty-handler:4.1.109.Final")
-    basicImpl("net.minidev:json-smart:2.4.9")
+    basicImpl("net.minidev:json-smart:2.5.1")
     basicImpl("org.apache.avro:avro:1.11.4")
     basicImpl("org.apache.commons:commons-compress:1.26.0")
     basicImpl("org.apache.commons:commons-configuration2:2.10.1")
