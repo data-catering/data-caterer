@@ -36,8 +36,16 @@ case class DataCatererConfigurationBuilder(build: DataCatererConfiguration = Dat
     connectionConfig(mappedConf)
   }
 
-  def addConnectionConfig(name: String, format: String, connectionConfig: Map[String, String]): DataCatererConfigurationBuilder =
-    this.modify(_.build.connectionConfigByName)(_ ++ Map(name -> (connectionConfig ++ Map(FORMAT -> format))))
+  def addConnectionConfig(name: String, format: String, connectionConfig: Map[String, String]): DataCatererConfigurationBuilder = {
+    if (this.build.connectionConfigByName.contains(name)) {
+      //need to merge the connection config
+      val existingConfig = this.build.connectionConfigByName(name)
+      val mergedConfig = existingConfig ++ connectionConfig
+      this.modify(_.build.connectionConfigByName)(_ ++ Map(name -> mergedConfig))
+    } else {
+      this.modify(_.build.connectionConfigByName)(_ ++ Map(name -> (connectionConfig ++ Map(FORMAT -> format))))
+    }
+  }
 
   def addConnectionConfigJava(name: String, format: String, connectionConfig: java.util.Map[String, String]): DataCatererConfigurationBuilder =
     addConnectionConfig(name, format, toScalaMap(connectionConfig))

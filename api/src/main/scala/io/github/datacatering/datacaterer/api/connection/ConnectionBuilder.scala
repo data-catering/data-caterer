@@ -130,8 +130,13 @@ trait ConnectionTaskBuilder[T] {
     case Some(value) => value
     case None =>
       val baseStep = StepBuilder()
-      this.connectionConfigWithTaskBuilder = this.connectionConfigWithTaskBuilder.option(VALIDATION_IDENTIFIER -> baseStep.step.name)
-      baseStep.option(VALIDATION_IDENTIFIER -> baseStep.step.name)
+      val optValidationIdentifier = this.connectionConfigWithTaskBuilder.options.get(VALIDATION_IDENTIFIER)
+      if (optValidationIdentifier.isDefined) {
+        baseStep.option(VALIDATION_IDENTIFIER -> optValidationIdentifier.get)
+      } else {
+        this.connectionConfigWithTaskBuilder = this.connectionConfigWithTaskBuilder.option(VALIDATION_IDENTIFIER -> baseStep.step.name)
+        baseStep.option(VALIDATION_IDENTIFIER -> baseStep.step.name)
+      }
       baseStep
   }
 

@@ -295,6 +295,9 @@ object Constants {
   lazy val FOREIGN_KEY_PLAN_FILE_DELIMITER = "."
   lazy val FOREIGN_KEY_PLAN_FILE_DELIMITER_REGEX = "\\."
 
+  //plan defaults
+  lazy val DEFAULT_PLAN_NAME = "default_plan"
+
   //task defaults
   def DEFAULT_TASK_NAME: String = UUID.randomUUID().toString
 

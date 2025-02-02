@@ -16,6 +16,7 @@ import io.github.datacatering.datacaterer.core.generator.metadata.datasource.jms
 import io.github.datacatering.datacaterer.core.generator.metadata.datasource.opendatacontractstandard.OpenDataContractStandardDataSourceMetadata
 import io.github.datacatering.datacaterer.core.generator.metadata.datasource.openlineage.OpenLineageMetadata
 import io.github.datacatering.datacaterer.core.generator.metadata.datasource.openmetadata.OpenMetadataDataSourceMetadata
+import io.github.datacatering.datacaterer.core.util.ValidationUtil.cleanValidationIdentifier
 import org.apache.log4j.Logger
 import org.apache.spark.sql.catalyst.TableIdentifier
 import org.apache.spark.sql.catalyst.catalog.CatalogColumnStat
@@ -197,7 +198,7 @@ object MetadataUtil {
       case KAFKA =>
         step.options(KAFKA_TOPIC)
       case HTTP =>
-        step.name
+        cleanValidationIdentifier(step.name)
       case _ =>
         LOGGER.warn(s"Unsupported data format for record tracking, format=$lowerFormat")
         throw UnsupportedDataFormatForTrackingException(lowerFormat)

@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.14.7
+
+- Fix bug when trying to use validations on sub-data source that gets generated from metadata
+- Merge in data source options when multiple are defined via connection task builder
+- Add in extra debug logs when saving real-time responses
+
 ## 0.14.6
 
 - Fix bug relating to sending API calls to management server

@@ -1,6 +1,6 @@
 package io.github.datacatering.datacaterer.api
 
-import io.github.datacatering.datacaterer.api.model.Constants.{DEFAULT_CASSANDRA_PASSWORD, DEFAULT_CASSANDRA_USERNAME, DEFAULT_KAFKA_URL, DEFAULT_MYSQL_PASSWORD, DEFAULT_MYSQL_URL, DEFAULT_MYSQL_USERNAME, DEFAULT_POSTGRES_PASSWORD, DEFAULT_POSTGRES_URL, DEFAULT_POSTGRES_USERNAME, DEFAULT_SOLACE_CONNECTION_FACTORY, DEFAULT_SOLACE_INITIAL_CONTEXT_FACTORY, DEFAULT_SOLACE_PASSWORD, DEFAULT_SOLACE_URL, DEFAULT_SOLACE_USERNAME, DEFAULT_SOLACE_VPN_NAME}
+import io.github.datacatering.datacaterer.api.model.Constants.{DEFAULT_CASSANDRA_PASSWORD, DEFAULT_CASSANDRA_USERNAME, DEFAULT_KAFKA_URL, DEFAULT_MYSQL_PASSWORD, DEFAULT_MYSQL_URL, DEFAULT_MYSQL_USERNAME, DEFAULT_POSTGRES_PASSWORD, DEFAULT_POSTGRES_URL, DEFAULT_POSTGRES_USERNAME, DEFAULT_SOLACE_CONNECTION_FACTORY, DEFAULT_SOLACE_INITIAL_CONTEXT_FACTORY, DEFAULT_SOLACE_PASSWORD, DEFAULT_SOLACE_URL, DEFAULT_SOLACE_USERNAME, DEFAULT_SOLACE_VPN_NAME, VALIDATION_IDENTIFIER}
 import io.github.datacatering.datacaterer.api.model.{FlagsConfig, FoldersConfig, GenerationConfig, MetadataConfig}
 import org.junit.runner.RunWith
 import org.scalatest.funsuite.AnyFunSuite
@@ -199,5 +199,24 @@ class DataCatererConfigurationBuilderTest extends AnyFunSuite {
 
     assertResult(100)(result.numRecordsPerBatch)
     assert(result.numRecordsPerStep.contains(10))
+  }
+
+  test("Can create HTTP connection with validation identifier") {
+    val result = DataCatererConfigurationBuilder()
+      .http("my_http", options = Map(VALIDATION_IDENTIFIER -> "GET/pets/{id}"))
+      .build
+      .connectionConfigByName
+
+    assertResult(1)(result.size)
+    assert(result.contains("my_http"))
+    val config = result("my_http")
+    assertResult("GET/pets/{id}")(config(VALIDATION_IDENTIFIER))
+  }
+
+  test("Can create HTTP connection with connection builder that contains validation identifier") {
+    val result = ConnectionConfigWithTaskBuilder().http("my_http", "", "", options = Map(VALIDATION_IDENTIFIER -> "GET/pets/{id}"))
+      .validations(ValidationBuilder().count().isEqual(10))
+
+    assertResult("GET/pets/{id}")(result.connectionConfigWithTaskBuilder.options(VALIDATION_IDENTIFIER))
   }
 }

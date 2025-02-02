@@ -316,6 +316,7 @@ class SinkFactory(
 
   private def saveRealTimeResponses(step: Step, saveResult: Dataset[Try[RealTimeSinkResult]]): Unit = {
     import sparkSession.implicits._
+    LOGGER.debug(s"Attempting to save real time responses for validation, step-name=${step.name}")
     val resultJson = saveResult.map {
       case Success(value) => value.result
       case Failure(exception) => s"""{"exception": "${exception.getMessage}"}"""
@@ -323,12 +324,15 @@ class SinkFactory(
     val jsonSchema = sparkSession.read.json(resultJson).schema
     val topLevelFieldNames = jsonSchema.fields.map(f => s"result.${f.name}")
     if (jsonSchema.nonEmpty) {
+      LOGGER.debug(s"Schema is non-empty, saving real-time responses for validation, step-name=${step.name}")
       val parsedResult = resultJson.selectExpr(s"FROM_JSON(value, '${jsonSchema.toDDL}') AS result")
         .selectExpr(topLevelFieldNames: _*)
       val cleanStepName = cleanValidationIdentifier(step.name)
+      val filePath = s"${foldersConfig.recordTrackingForValidationFolderPath}/$cleanStepName"
+      LOGGER.debug(s"Saving real-time responses for validation, step-name=$cleanStepName, file-path=$filePath")
       parsedResult.write
         .mode(SaveMode.Overwrite)
-        .json(s"${foldersConfig.recordTrackingForValidationFolderPath}/$cleanStepName")
+        .json(filePath)
     } else {
       LOGGER.warn("Unable to save real-time responses with empty schema")
     }

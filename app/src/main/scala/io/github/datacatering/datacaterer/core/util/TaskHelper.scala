@@ -28,6 +28,7 @@ object TaskHelper {
       planRun._connectionTaskBuilders
         .filter(_.connectionConfigWithTaskBuilder.dataSourceName == name)
         .flatMap(_.step.map(_.step))
+        .filter(step => step.fields.nonEmpty || step.options.nonEmpty)
     ).getOrElse(Seq())
     val hasMultipleSubDataSources = if (structTypes.size > 1) true else false
     val stepsWithAdditionalMetadata = structTypes.map(structType => enrichWithUserDefinedOptions(name, stepType, structType, optPlanRun, hasMultipleSubDataSources))

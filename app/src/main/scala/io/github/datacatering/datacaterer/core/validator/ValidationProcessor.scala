@@ -1,7 +1,7 @@
 package io.github.datacatering.datacaterer.core.validator
 
 import io.github.datacatering.datacaterer.api.ValidationBuilder
-import io.github.datacatering.datacaterer.api.model.Constants.{DEFAULT_ENABLE_VALIDATION, DELTA, DELTA_LAKE_SPARK_CONF, ENABLE_DATA_VALIDATION, FORMAT, HTTP, ICEBERG, ICEBERG_SPARK_CONF, JMS, TABLE, VALIDATION_IDENTIFIER}
+import io.github.datacatering.datacaterer.api.model.Constants.{DEFAULT_ENABLE_VALIDATION, DEFAULT_PLAN_NAME, DELTA, DELTA_LAKE_SPARK_CONF, ENABLE_DATA_VALIDATION, FORMAT, HTTP, ICEBERG, ICEBERG_SPARK_CONF, JMS, TABLE, VALIDATION_IDENTIFIER}
 import io.github.datacatering.datacaterer.api.model.{DataSourceValidation, DataSourceValidationResult, ExpressionValidation, FoldersConfig, GroupByValidation, UpstreamDataSourceValidation, ValidationConfig, ValidationConfigResult, ValidationConfiguration, ValidationResult}
 import io.github.datacatering.datacaterer.core.parser.PlanParser
 import io.github.datacatering.datacaterer.core.util.ObjectMapperUtil
@@ -133,6 +133,7 @@ class ValidationProcessor(
     configWithFormatConfigs.filter(_._1.startsWith("spark.sql"))
       .foreach(conf => sparkSession.sqlContext.setConf(conf._1, conf._2))
 
+    LOGGER.debug(s"Reading data for validation, data-source-name=$dataSourceName, format=$format")
     val df = if (format == JMS) {
       LOGGER.warn("No support for JMS data validations, will skip validations")
       sparkSession.emptyDataFrame

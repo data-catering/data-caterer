@@ -14,42 +14,120 @@ trait PlanRun {
   var _validations: List[ValidationConfiguration] = List()
   var _connectionTaskBuilders: Seq[ConnectionTaskBuilder[_]] = Seq()
 
+  /**
+   * Create new plan builder
+   * @return PlanBuilder
+   */
   def plan: PlanBuilder = PlanBuilder()
 
+  /**
+   * Create new task summary builder
+   * @return TaskSummaryBuilder
+   */
   def taskSummary: TaskSummaryBuilder = TaskSummaryBuilder()
 
+  /**
+   * Create new tasks builder
+   * @return TasksBuilder
+   */
   def tasks: TasksBuilder = TasksBuilder()
 
+  /**
+   * Create new task builder
+   * @return TaskBuilder
+   */
   def task: TaskBuilder = TaskBuilder()
 
+  /**
+   * Create new step builder
+   * @return StepBuilder
+   */
   def step: StepBuilder = StepBuilder()
 
+  /**
+   * Create new field builder
+   * Can create field with regex, range, list, or value
+   * For example, `field.name("id").regex("ID[0-9]{8}")`
+   * @return FieldBuilder
+   */
   def field: FieldBuilder = FieldBuilder()
 
+  /**
+   * Create new generator builder
+   * Used to alter way data is generated, either for fields or records
+   * @return GeneratorBuilder
+   */
   def generator: GeneratorBuilder = GeneratorBuilder()
 
+  /**
+   * Create new count builder
+   * Used to set the number of records to generate
+   * @return CountBuilder
+   */
   def count: CountBuilder = CountBuilder()
 
+  /**
+   * Create new connection task builder
+   * @return ConnectionTaskBuilder
+   */
   def configuration: DataCatererConfigurationBuilder = DataCatererConfigurationBuilder()
 
+  /**
+   * Create new wait condition builder
+   * Used to set conditions for waiting before running a set of validations
+   * @return WaitConditionBuilder
+   */
   def waitCondition: WaitConditionBuilder = WaitConditionBuilder()
 
+  /**
+   * Create new validation builder
+   * Used to set conditions for validating data
+   * @return ValidationBuilder
+   */
   def validation: ValidationBuilder = ValidationBuilder()
 
+  /**
+   * Create new pre-filter builder
+   * Used to set conditions for filtering data before validation
+   * @return PreFilterBuilder
+   */
   def preFilterBuilder(validationBuilder: ValidationBuilder): CombinationPreFilterBuilder = PreFilterBuilder().filter(validationBuilder)
 
-  def fieldPreFilter(field: String): FieldValidationBuilder = ValidationBuilder().field(field)
-
+  /**
+   * Create new data source validation builder
+   * Used to set conditions for validating a data source
+   * @return DataSourceValidationBuilder
+   */
   def dataSourceValidation: DataSourceValidationBuilder = DataSourceValidationBuilder()
 
+  /**
+   * Create new validation configuration builder
+   * Used to set configurations for running validations
+   * @return ValidationConfigurationBuilder
+   */
   def validationConfig: ValidationConfigurationBuilder = ValidationConfigurationBuilder()
 
+  /**
+   * Create new foreign key relation
+   * Used to set relationships between data sources
+   * @return ForeignKeyRelation
+   */
   def foreignField(dataSource: String, step: String, field: String): ForeignKeyRelation =
     new ForeignKeyRelation(dataSource, step, field)
 
+  /**
+   * Create new foreign key relation
+   * Used to set relationships between data sources
+   * @return ForeignKeyRelation
+   */
   def foreignField(dataSource: String, step: String, fields: List[String]): ForeignKeyRelation =
     ForeignKeyRelation(dataSource, step, fields)
 
+  /**
+   * Create new foreign key relation
+   * Used to set relationships between data sources
+   * @return ForeignKeyRelation
+   */
   def foreignField(connectionTask: ConnectionTaskBuilder[_], field: String): ForeignKeyRelation =
     ForeignKeyRelation(
       connectionTask.connectionConfigWithTaskBuilder.dataSourceName,
@@ -57,6 +135,11 @@ trait PlanRun {
       List(field)
     )
 
+  /**
+   * Create new foreign key relation
+   * Used to set relationships between data sources
+   * @return ForeignKeyRelation
+   */
   def foreignField(connectionTask: ConnectionTaskBuilder[_], fields: List[String]): ForeignKeyRelation =
     ForeignKeyRelation(
       connectionTask.connectionConfigWithTaskBuilder.dataSourceName,
@@ -64,9 +147,19 @@ trait PlanRun {
       fields
     )
 
+  /**
+   * Create new foreign key relation
+   * Used to set relationships between data sources
+   * @return ForeignKeyRelation
+   */
   def foreignField(connectionTask: ConnectionTaskBuilder[_], step: String, fields: List[String]): ForeignKeyRelation =
     ForeignKeyRelation(connectionTask.connectionConfigWithTaskBuilder.dataSourceName, step, fields)
 
+  /**
+   * Create new metadata source builder
+   * Used to set metadata for a data source to gather information about schema or validations
+   * @return
+   */
   def metadataSource: MetadataSourceBuilder = MetadataSourceBuilder()
 
   /**
@@ -471,10 +564,11 @@ trait PlanRun {
                         connectionTasks: ConnectionTaskBuilder[_]*
                       ): Unit = {
     val allConnectionTasks = connectionTask +: connectionTasks
-    val connectionConfig = allConnectionTasks.map(x => {
-      val connectionConfigWithTaskBuilder = x.connectionConfigWithTaskBuilder
-      (connectionConfigWithTaskBuilder.dataSourceName, connectionConfigWithTaskBuilder.options)
-    }).toMap
+    //need to merge options of same data source name
+    val connectionConfig = allConnectionTasks.groupBy(_.connectionConfigWithTaskBuilder.dataSourceName).map(x => {
+      val options = x._2.map(_.connectionConfigWithTaskBuilder.options).reduce(_ ++ _)
+      x._1 -> options
+    })
     val withConnectionConfig = baseConfiguration.connectionConfig(connectionConfig)
     val allValidations = validations ++ getValidations(allConnectionTasks)
     val allTasks = allConnectionTasks.map(_.toTasksBuilder).filter(_.isDefined).map(_.get).toList
