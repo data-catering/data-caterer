@@ -114,7 +114,7 @@ dependencies {
 //    basicImpl("dnsjava:dnsjava:3.6.2")
     basicImpl("com.amazon.ion:ion-java:1.11.10")
     basicImpl("org.apache.ivy:ivy:2.5.2")
-    basicImpl("org.xerial.snappy:snappy-java:1.1.10.4")
+    basicImpl("org.xerial.snappy:snappy-java:1.1.10.7")
     //basicImpl("software.amazon.ion:ion-java:1.5.1") //should use: basicImpl("com.amazon.ion:ion-java:1.11.8")
 
     // additional spark
