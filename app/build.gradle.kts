@@ -84,8 +84,8 @@ dependencies {
 
     // vulnerabilities in Spark
 //    basicImpl("com.google.protobuf:protobuf-java:3.25.5") fails with https://github.com/protostuff/protostuff/issues/367
-    basicImpl("io.netty:netty-codec-http:4.1.110.Final")
-    basicImpl("io.netty:netty-codec-http2:4.1.110.Final")
+    basicImpl("io.netty:netty-codec-http:4.1.118.Final")
+    basicImpl("io.netty:netty-codec-http2:4.1.118.Final")
     basicImpl("io.netty:netty-tcnative-boringssl-static:2.0.65.Final:windows-x86_64")
     basicImpl("io.netty:netty-tcnative-boringssl-static:2.0.65.Final:osx-x86_64")
     basicImpl("io.netty:netty-tcnative-boringssl-static:2.0.65.Final:linux-x86_64")
