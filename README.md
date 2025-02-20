@@ -49,6 +49,7 @@ Data Caterer supports the below data sources. [Check here for the full roadmap](
 | Cloud Storage    | AWS S3                             | ✅       |
 | Cloud Storage    | Azure Blob Storage                 | ✅       |
 | Cloud Storage    | GCP Cloud Storage                  | ✅       |
+| Database         | BigQuery                           | ✅       |
 | Database         | Cassandra                          | ✅       |
 | Database         | MySQL                              | ✅       |
 | Database         | Postgres                           | ✅       |
@@ -63,10 +64,10 @@ Data Caterer supports the below data sources. [Check here for the full roadmap](
 | File             | Hudi                               | ❌       |
 | HTTP             | REST API                           | ✅       |
 | Messaging        | Kafka                              | ✅       |
+| Messaging        | RabbitMQ                           | ✅       |
 | Messaging        | Solace                             | ✅       |
 | Messaging        | ActiveMQ                           | ❌       |
 | Messaging        | Pulsar                             | ❌       |
-| Messaging        | RabbitMQ                           | ❌       |
 | Metadata         | Data Contract CLI                  | ✅       |
 | Metadata         | Great Expectations                 | ✅       |
 | Metadata         | Marquez                            | ✅       |
