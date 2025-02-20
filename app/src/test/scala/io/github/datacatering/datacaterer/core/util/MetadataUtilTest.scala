@@ -5,12 +5,9 @@ import io.github.datacatering.datacaterer.api.model.MetadataConfig
 import io.github.datacatering.datacaterer.core.generator.metadata.datasource.database.{FieldMetadata, PostgresMetadata}
 import org.apache.spark.sql.types.MetadataBuilder
 import org.apache.spark.sql.{Encoder, Encoders}
-import org.junit.runner.RunWith
-import org.scalatestplus.junit.JUnitRunner
 
 import java.sql.Date
 
-@RunWith(classOf[JUnitRunner])
 class MetadataUtilTest extends SparkSuite {
 
   test("Can convert metadata to map") {

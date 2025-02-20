@@ -1,11 +1,8 @@
 package io.github.datacatering.datacaterer.api
 
 import io.github.datacatering.datacaterer.api.model.{ForeignKey, ForeignKeyRelation}
-import org.junit.runner.RunWith
 import org.scalatest.funsuite.AnyFunSuite
-import org.scalatestplus.junit.JUnitRunner
 
-@RunWith(classOf[JUnitRunner])
 class SinkOptionsBuilderTest extends AnyFunSuite {
 
   test("Can create sink options with random seed, locale and foreign keys") {

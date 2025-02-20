@@ -1,12 +1,9 @@
 package io.github.datacatering.datacaterer.api
 
-import io.github.datacatering.datacaterer.api.model.Constants.{HTTP_PATH_PARAM_FIELD_PREFIX, HTTP_QUERY_PARAM_FIELD_PREFIX, REAL_TIME_BODY_CONTENT_FIELD, REAL_TIME_BODY_FIELD, REAL_TIME_HEADERS_FIELD, REAL_TIME_METHOD_FIELD, REAL_TIME_URL_FIELD}
-import io.github.datacatering.datacaterer.api.model.{ArrayType, Count, DateType, Field, IntegerType, StringType}
-import org.junit.runner.RunWith
+import io.github.datacatering.datacaterer.api.model.Constants.{HTTP_PATH_PARAM_FIELD_PREFIX, HTTP_QUERY_PARAM_FIELD_PREFIX, INCREMENTAL, REAL_TIME_BODY_CONTENT_FIELD, REAL_TIME_BODY_FIELD, REAL_TIME_HEADERS_FIELD, REAL_TIME_METHOD_FIELD, REAL_TIME_URL_FIELD, SQL_GENERATOR}
+import io.github.datacatering.datacaterer.api.model.{ArrayType, Count, DateType, IntegerType, StringType}
 import org.scalatest.funsuite.AnyFunSuite
-import org.scalatestplus.junit.JUnitRunner
 
-@RunWith(classOf[JUnitRunner])
 class TasksBuilderTest extends AnyFunSuite {
 
   test("Can create a task summary when given a task") {
@@ -196,6 +193,48 @@ class TasksBuilderTest extends AnyFunSuite {
 
     assertResult("txn_list")(result.name)
     assert(result.`type`.contains("array<date>"))
+  }
+
+  test("Can create incremental field") {
+    val result = FieldBuilder().`type`(IntegerType).incremental().field
+
+    assertResult("true")(result.options(INCREMENTAL))
+  }
+
+  test("Can create uuid field") {
+    val result = FieldBuilder().uuid().field
+
+    assertResult("UUID()")(result.options(SQL_GENERATOR))
+  }
+
+  test("Can create incremental uuid field") {
+    val result = FieldBuilder().uuid().incremental().field
+    val result1 = FieldBuilder().incremental().uuid().field
+
+    List(result, result1).foreach(res => {
+      assertResult("true")(res.options(INCREMENTAL))
+      assertResult(
+        """CONCAT(
+          |SUBSTR(MD5(CAST(__index_inc AS STRING)), 1, 8), '-',
+          |SUBSTR(MD5(CAST(__index_inc AS STRING)), 9, 4), '-',
+          |SUBSTR(MD5(CAST(__index_inc AS STRING)), 13, 4), '-',
+          |SUBSTR(MD5(CAST(__index_inc AS STRING)), 17, 4), '-',
+          |SUBSTR(MD5(CAST(__index_inc AS STRING)), 21, 12)
+          |)""".stripMargin)(res.options(SQL_GENERATOR))
+    })
+  }
+
+  test("Can create uuid field based on another fields value") {
+    val result = FieldBuilder().uuid("id").field
+
+    assertResult(
+      """CONCAT(
+        |SUBSTR(MD5(CAST(id AS STRING)), 1, 8), '-',
+        |SUBSTR(MD5(CAST(id AS STRING)), 9, 4), '-',
+        |SUBSTR(MD5(CAST(id AS STRING)), 13, 4), '-',
+        |SUBSTR(MD5(CAST(id AS STRING)), 17, 4), '-',
+        |SUBSTR(MD5(CAST(id AS STRING)), 21, 12)
+        |)""".stripMargin)(result.options(SQL_GENERATOR))
   }
 
   test("Can create message header field") {

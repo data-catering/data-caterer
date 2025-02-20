@@ -4,14 +4,11 @@ import io.github.datacatering.datacaterer.api.model.Constants.{DELTA, DELTA_LAKE
 import io.github.datacatering.datacaterer.api.model.{DataSourceValidation, FoldersConfig, ValidationConfig, ValidationConfigResult, ValidationConfiguration}
 import io.github.datacatering.datacaterer.api.{PreFilterBuilder, ValidationBuilder}
 import io.github.datacatering.datacaterer.core.util.{SparkSuite, Transaction}
-import org.junit.runner.RunWith
-import org.scalatestplus.junit.JUnitRunner
 
 import java.io.File
 import java.sql.Date
 import scala.reflect.io.Directory
 
-@RunWith(classOf[JUnitRunner])
 class ValidationProcessorTest extends SparkSuite {
 
   private val sampleData = Seq(

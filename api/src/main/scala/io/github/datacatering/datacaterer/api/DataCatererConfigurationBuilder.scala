@@ -1,9 +1,9 @@
 package io.github.datacatering.datacaterer.api
 
 import com.softwaremill.quicklens.ModifyPimp
-import io.github.datacatering.datacaterer.api.connection.{CassandraBuilder, ConnectionTaskBuilder, FileBuilder, HttpBuilder, KafkaBuilder, MySqlBuilder, NoopBuilder, PostgresBuilder, SolaceBuilder}
+import io.github.datacatering.datacaterer.api.connection.{BigQueryBuilder, CassandraBuilder, ConnectionTaskBuilder, FileBuilder, HttpBuilder, KafkaBuilder, MySqlBuilder, NoopBuilder, PostgresBuilder, RabbitmqBuilder, SolaceBuilder}
 import io.github.datacatering.datacaterer.api.converter.Converters.toScalaMap
-import io.github.datacatering.datacaterer.api.model.Constants._
+import io.github.datacatering.datacaterer.api.model.Constants.{BIGQUERY_WRITE_METHOD, _}
 import io.github.datacatering.datacaterer.api.model.DataCatererConfiguration
 
 import scala.annotation.varargs
@@ -202,8 +202,41 @@ case class DataCatererConfigurationBuilder(build: DataCatererConfiguration = Dat
                ): DataCatererConfigurationBuilder =
     cassandra(name, url, DEFAULT_CASSANDRA_USERNAME)
 
+  def bigquery(
+                name: String,
+                credentialsFile: String,
+                temporaryGcsBucket: String,
+                options: Map[String, String] = Map()
+              ): DataCatererConfigurationBuilder = {
+    val credentialsMap = if (credentialsFile.nonEmpty) Map(BIGQUERY_CREDENTIALS_FILE -> credentialsFile) else Map()
+    val temporaryGcsBucketMap = if (temporaryGcsBucket.nonEmpty) {
+      Map(
+        BIGQUERY_TEMPORARY_GCS_BUCKET -> temporaryGcsBucket,
+        BIGQUERY_WRITE_METHOD -> DEFAULT_BIGQUERY_WRITE_METHOD,
+      )
+    } else Map(BIGQUERY_WRITE_METHOD -> BIGQUERY_WRITE_METHOD_DIRECT)
+    val allOptions = Map(
+      BIGQUERY_QUERY_JOB_PRIORITY -> DEFAULT_BIGQUERY_QUERY_JOB_PRIORITY,
+    ) ++ options ++ credentialsMap ++ temporaryGcsBucketMap
+    addConnectionConfig(name, BIGQUERY, allOptions)
+  }
+
   def jms(name: String, url: String, username: String, password: String, options: Map[String, String] = Map()): DataCatererConfigurationBuilder =
     addConnection(name, JMS, url, username, password, options)
+
+  def rabbitmq(
+                name: String,
+                url: String = DEFAULT_RABBITMQ_URL,
+                username: String = DEFAULT_RABBITMQ_USERNAME,
+                password: String = DEFAULT_RABBITMQ_PASSWORD,
+                virtualHost: String = DEFAULT_RABBITMQ_VIRTUAL_HOST,
+                connectionFactory: String = DEFAULT_RABBITMQ_CONNECTION_FACTORY,
+                options: Map[String, String] = Map()
+              ): DataCatererConfigurationBuilder =
+    jms(name, url, username, password, Map(
+      JMS_VIRTUAL_HOST -> virtualHost,
+      JMS_CONNECTION_FACTORY -> connectionFactory,
+    ) ++ options)
 
   def solace(
               name: String,
@@ -440,6 +473,29 @@ final case class ConnectionConfigWithTaskBuilder(
                ): CassandraBuilder = {
     val configBuilder = DataCatererConfigurationBuilder().cassandra(name, url, username, password, options)
     setConnectionConfig(name, configBuilder, CassandraBuilder())
+  }
+
+  def bigquery(
+                name: String,
+                credentialsFile: String = "",
+                temporaryGcsBucket: String = "",
+                options: Map[String, String] = Map()
+              ): BigQueryBuilder = {
+    val configBuilder = DataCatererConfigurationBuilder().bigquery(name, credentialsFile, temporaryGcsBucket, options)
+    setConnectionConfig(name, configBuilder, BigQueryBuilder())
+  }
+
+  def rabbitmq(
+                name: String,
+                url: String,
+                username: String,
+                password: String,
+                virtualHost: String,
+                connectionFactory: String,
+                options: Map[String, String] = Map()
+              ): RabbitmqBuilder = {
+    val configBuilder = DataCatererConfigurationBuilder().rabbitmq(name, url, username, password, virtualHost, connectionFactory, options)
+    setConnectionConfig(name, configBuilder, RabbitmqBuilder())
   }
 
   def solace(

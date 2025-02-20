@@ -8,13 +8,10 @@ import io.swagger.v3.oas.models.parameters.Parameter.StyleEnum
 import io.swagger.v3.oas.models.parameters.{Parameter, RequestBody}
 import io.swagger.v3.oas.models.servers.Server
 import io.swagger.v3.oas.models.{Components, OpenAPI, Operation}
-import org.junit.runner.RunWith
 import org.scalatest.funsuite.AnyFunSuite
-import org.scalatestplus.junit.JUnitRunner
 
 import scala.collection.JavaConverters.seqAsJavaListConverter
 
-@RunWith(classOf[JUnitRunner])
 class OpenAPIConverterTest extends AnyFunSuite {
 
   test("Can convert GET request to field metadata") {

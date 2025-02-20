@@ -7,16 +7,11 @@ import io.github.datacatering.datacaterer.core.generator.metadata.datasource.ope
 import io.github.datacatering.datacaterer.core.generator.metadata.datasource.{DataSourceDetail, DataSourceMetadata}
 import io.github.datacatering.datacaterer.core.util.TaskHelper
 import org.apache.spark.sql.types.{IntegerType, MetadataBuilder, StringType, StructField, StructType}
-import org.junit.runner.RunWith
 import org.scalatest.funsuite.AnyFunSuite
 import org.scalatest.matchers.must.Matchers
 import org.scalatest.matchers.must.Matchers.{contain, include}
 import org.scalatest.matchers.should.Matchers.convertToAnyShouldWrapper
-import org.scalatestplus.junit.JUnitRunner
 
-import scala.collection.mutable
-
-@RunWith(classOf[JUnitRunner])
 class TaskHelperTest extends AnyFunSuite {
 
   private val structType = StructType(Array(
@@ -58,16 +53,16 @@ class TaskHelperTest extends AnyFunSuite {
     val result = TaskHelper.fromMetadata(Some(userDefinedPlan), "my_json", "json", List(DataSourceDetail(dataSourceMetadata, Map(), structType, List())))
 
     val resFields = result._1.steps.head.fields
-    assert(resFields.find(_.name == "name").get.options(ONE_OF_GENERATOR).isInstanceOf[mutable.WrappedArray[_]])
-    assert(resFields.find(_.name == "name").get.options(ONE_OF_GENERATOR).asInstanceOf[mutable.WrappedArray[_]] sameElements Array("peter", "john"))
+    assert(resFields.find(_.name == "name").get.options(ONE_OF_GENERATOR).isInstanceOf[List[_]])
+    assertResult(List("peter", "john"))(resFields.find(_.name == "name").get.options(ONE_OF_GENERATOR).asInstanceOf[List[_]])
     assert(resFields.find(_.name == "name").get.options.exists(x => x._1 == "key" && x._2.toString == "value"))
     assert(resFields.find(_.name == "age").get.options.exists(x => x._1 == "key1" && x._2.toString == "value1"))
     assert(resFields.find(_.name == "age").get.options.exists(x => x._1 == MINIMUM && x._2 == "18"))
     assert(resFields.find(_.name == "category").get.options.contains(ONE_OF_GENERATOR))
     assert(resFields.find(_.name == "category").get.options.get(ONE_OF_GENERATOR).contains("person,dog"))
     assert(resFields.find(_.name == "customers").get.fields.exists(_.name == "sex"))
-    assert(resFields.find(_.name == "customers").get.fields.find(_.name == "sex").get.options(ONE_OF_GENERATOR).isInstanceOf[mutable.WrappedArray[_]])
-    assert(resFields.find(_.name == "customers").get.fields.find(_.name == "sex").get.options(ONE_OF_GENERATOR).asInstanceOf[mutable.WrappedArray[_]] sameElements Array("M", "F"))
+    assert(resFields.find(_.name == "customers").get.fields.find(_.name == "sex").get.options(ONE_OF_GENERATOR).isInstanceOf[List[_]])
+    assertResult(List("M", "F"))(resFields.find(_.name == "customers").get.fields.find(_.name == "sex").get.options(ONE_OF_GENERATOR).asInstanceOf[List[_]])
   }
 
   test("TaskHelper.fromMetadata should create task without plan run") {

@@ -1,18 +1,14 @@
 package io.github.datacatering.datacaterer.core.generator.provider
 
-import io.github.datacatering.datacaterer.api.model.Constants.{ARRAY_MINIMUM_LENGTH, DISTINCT_COUNT, DISTRIBUTION, DISTRIBUTION_EXPONENTIAL, DISTRIBUTION_NORMAL, DISTRIBUTION_RATE_PARAMETER, ENABLED_EDGE_CASE, ENABLED_NULL, EXPRESSION, IS_UNIQUE, MAP_MAXIMUM_SIZE, MAP_MINIMUM_SIZE, MAXIMUM, MAXIMUM_LENGTH, MEAN, MINIMUM, MINIMUM_LENGTH, PROBABILITY_OF_EDGE_CASE, PROBABILITY_OF_NULL, ROUND, ROW_COUNT, STANDARD_DEVIATION}
+import io.github.datacatering.datacaterer.api.model.Constants._
 import io.github.datacatering.datacaterer.core.generator.provider.RandomDataGenerator._
-import io.github.datacatering.datacaterer.core.model.Constants.INDEX_INC_FIELD
 import org.apache.spark.sql.types._
-import org.junit.runner.RunWith
 import org.scalatest.funsuite.AnyFunSuite
-import org.scalatestplus.junit.JUnitRunner
 
 import java.sql.{Date, Timestamp}
 import java.time.temporal.ChronoUnit
 import java.time.{Instant, LocalDate}
 
-@RunWith(classOf[JUnitRunner])
 class RandomDataGeneratorTest extends AnyFunSuite {
 
   test("Can get correct data generator based on StructType") {
@@ -402,6 +398,6 @@ class RandomDataGeneratorTest extends AnyFunSuite {
 
   test("Can get min and max value from metadata for int field") {
     val metadata = new MetadataBuilder().putString(MINIMUM, "1").putString(MAXIMUM, "10").build()
-//    RandomDataGenerator.sqlExpressionForNumeric()
+    //    RandomDataGenerator.sqlExpressionForNumeric()
   }
 }

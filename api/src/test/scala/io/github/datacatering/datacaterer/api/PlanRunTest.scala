@@ -2,11 +2,9 @@ package io.github.datacatering.datacaterer.api
 
 import io.github.datacatering.datacaterer.api.model.Constants.{FORMAT, JDBC_TABLE, PATH, URL, VALIDATION_IDENTIFIER}
 import io.github.datacatering.datacaterer.api.model.ExpressionValidation
-import org.junit.runner.RunWith
 import org.scalatest.funsuite.AnyFunSuite
-import org.scalatestplus.junit.JUnitRunner
 
-@RunWith(classOf[JUnitRunner])
+
 class PlanRunTest extends AnyFunSuite {
 
   test("Can create plan with each type of connection") {

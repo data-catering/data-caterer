@@ -54,6 +54,8 @@ class UniqueFieldsUtil(plan: Plan, executableTasks: List[(TaskSummary, Task)])(i
       if (!newFieldValuesDf.storageLevel.useMemory) newFieldValuesDf.cache()
       val combinedValuesDf = if (existingDf.isEmpty) newFieldValuesDf else newFieldValuesDf.union(existingDf)
       if (!combinedValuesDf.storageLevel.useMemory) combinedValuesDf.cache()
+      newFieldValuesDf.unpersist()
+      existingDf.unpersist()
       uniqueFieldsDf = uniqueFieldsDf ++ Map(col._1 -> combinedValuesDf)
     })
     finalDf

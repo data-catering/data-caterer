@@ -2,14 +2,13 @@ services:
   - name: postgres
     data: app/src/test/resources/sample/sql/postgres
 run:
-  - command: java -jar app/build/libs/data-caterer.jar
+  - command: DATA_CATERER_API_USER=$DATA_CATERER_USER DATA_CATERER_API_TOKEN=$DATA_CATERER_TOKEN java $JAVA_OPTS -jar app/build/libs/data-caterer.jar
     env:
       PLAN_FILE_PATH: app/src/test/resources/sample/plan/account-balance-transaction-plan.yaml
       TASK_FOLDER_PATH: app/src/test/resources/sample/task
       APPLICATION_CONFIG_PATH: app/src/main/resources/application.conf
       POSTGRES_URL: jdbc:postgresql://localhost:5432/customer
-      DATA_CATERER_API_USER: ${DATA_CATERER_USER}
-      DATA_CATERER_API_TOKEN: ${DATA_CATERER_TOKEN}
+      JAVA_OPTS: "-Djava.security.manager=allow -Djdk.module.illegalAccess=deny --add-opens=java.base/java.lang=ALL-UNNAMED --add-opens=java.base/java.lang.invoke=ALL-UNNAMED --add-opens=java.base/java.lang.reflect=ALL-UNNAMED --add-opens=java.base/java.io=ALL-UNNAMED --add-opens=java.base/java.net=ALL-UNNAMED --add-opens=java.base/java.nio=ALL-UNNAMED --add-opens=java.base/java.util=ALL-UNNAMED --add-opens=java.base/java.util.concurrent=ALL-UNNAMED --add-opens=java.base/java.util.concurrent.atomic=ALL-UNNAMED --add-opens=java.base/sun.nio.ch=ALL-UNNAMED --add-opens=java.base/sun.nio.cs=ALL-UNNAMED --add-opens=java.base/sun.security.action=ALL-UNNAMED --add-opens=java.base/sun.util.calendar=ALL-UNNAMED --add-opens=java.security.jgss/sun.security.krb5=ALL-UNNAMED"
     generateFirst: false
     commandWaitForFinish: true
     test:

@@ -19,7 +19,7 @@ plugins {
     application
 
     id("org.scoverage") version "8.0.3"
-    id("com.github.johnrengelman.shadow") version "8.1.1"
+    id("com.gradleup.shadow") version "8.3.6"
 }
 
 repositories {
@@ -136,6 +136,13 @@ dependencies {
     basicImpl("com.datastax.spark:spark-cassandra-connector_$scalaVersion:3.5.0") {
         exclude(group = "org.scala-lang")
     }
+    // bigquery
+    basicImpl("org.apache.spark:spark-mllib_$scalaVersion:$sparkVersion") {
+        exclude(group = "org.scala-lang")
+    }
+    basicImpl("com.google.cloud.spark:spark-${sparkMajorVersion}-bigquery:0.42.0") {
+        exclude(group = "org.scala-lang")
+    }
     // cloud file storage
     basicImpl("org.apache.spark:spark-hadoop-cloud_$scalaVersion:$sparkVersion") {
         exclude(group = "org.scala-lang")
@@ -151,18 +158,19 @@ dependencies {
     }
 
     // http
-    basicImpl("org.asynchttpclient:async-http-client:2.12.3")
+    basicImpl("org.asynchttpclient:async-http-client:3.0.1")
     basicImpl("io.swagger.parser.v3:swagger-parser-v3:2.1.16")
     // kafka
     basicImpl("org.apache.spark:spark-sql-kafka-0-10_$scalaVersion:$sparkVersion") {
         exclude(group = "org.scala-lang")
     }
     // jms
-    //TODO implementation("jakarta.jms:jakarta.jms-api:3.1.0") jms 3.x
+    basicImpl("jakarta.jms:jakarta.jms-api:3.1.0")
     basicImpl("javax.jms:javax.jms-api:2.0.1")
-    basicImpl("com.solacesystems:sol-jms:10.21.0")
+    basicImpl("com.solacesystems:sol-jms-jakarta:10.25.2")
+    basicImpl("com.rabbitmq.jms:rabbitmq-jms:3.4.0")
     // open metadata
-    basicImpl("org.open-metadata:openmetadata-java-client:1.1.7") {  //1.2.0 has component reliant on java 17
+    basicImpl("org.open-metadata:openmetadata-java-client:1.6.3") {
         exclude(group = "org.antlr")
         exclude(module = "logback-core")
         exclude(module = "logback-classic")
@@ -171,7 +179,7 @@ dependencies {
     basicImpl("io.protostuff:protostuff-parser:3.1.40")
 
     // data generation helpers
-    basicImpl("net.datafaker:datafaker:1.9.0")
+    basicImpl("net.datafaker:datafaker:2.4.2")
     basicImpl("org.reflections:reflections:0.10.2")
 
     // alert
@@ -197,12 +205,27 @@ dependencies {
             strictly("2.15.3")
         }
     }
-    basicImpl("com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.15.3")
+    basicImpl("com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.15.3") {
+        version {
+            strictly("2.15.3")
+        }
+    }
     basicImpl("com.fasterxml.jackson.module:jackson-module-scala_$scalaVersion:2.15.3") {
+        version {
+            strictly("2.15.3")
+        }
         exclude(group = "org.scala-lang")
     }
-    basicImpl("com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.15.3")
-    basicImpl("com.fasterxml.jackson.datatype:jackson-datatype-joda:2.15.3")
+    basicImpl("com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.15.3") {
+        version {
+            strictly("2.15.3")
+        }
+    }
+    basicImpl("com.fasterxml.jackson.datatype:jackson-datatype-joda:2.15.3") {
+        version {
+            strictly("2.15.3")
+        }
+    }
     //NoClassDefFoundError: shaded/parquet/com/fasterxml/jackson/databind/ObjectMapper
     basicImpl("org.apache.parquet:parquet-jackson:1.13.1")  //new versions contain transitive deps that use java 21, shadowJar fails
     basicImpl("org.scala-lang.modules:scala-xml_$scalaVersion:2.2.0") {
@@ -214,26 +237,33 @@ testing {
     suites {
         // Configure the built-in test suite
         val test by getting(JvmTestSuite::class) {
-            // Use JUnit4 test framework
-            useJUnit("4.13.2")
+            // Use JUnit5 test framework
+            useJUnitJupiter()
 
             dependencies {
                 // Use Scalatest for testing our library
-                implementation("org.scalatest:scalatest_$scalaVersion:3.2.17")
-                implementation("org.scalatestplus:junit-4-13_$scalaVersion:3.2.17.0")
+                implementation("org.scalatest:scalatest_$scalaVersion:3.2.19")
+                implementation("org.scalatestplus:junit-5-11_$scalaVersion:3.2.19.0")
                 implementation("org.scalamock:scalamock_$scalaVersion:5.2.0")
                 implementation("org.mockito:mockito-scala_$scalaVersion:1.17.37")
                 implementation("org.apache.spark:spark-sql_$scalaVersion:$sparkVersion")
                 implementation("org.apache.spark:spark-avro_$scalaVersion:$sparkVersion")
                 implementation("org.apache.spark:spark-protobuf_$scalaVersion:$sparkVersion")
                 implementation("com.dimafeng:testcontainers-scala_$scalaVersion:0.41.3")
+                implementation("org.apache.pekko:pekko-actor-testkit-typed_$scalaVersion:1.0.1")
                 implementation(project(":api"))
 
                 // Need scala-xml at test runtime
                 runtimeOnly("org.scala-lang.modules:scala-xml_$scalaVersion:1.3.1")
+                runtimeOnly("org.junit.platform:junit-platform-engine:1.11.3")
+                runtimeOnly("org.junit.platform:junit-platform-launcher:1.11.3")
             }
         }
     }
+}
+
+tasks.test {
+    jvmArgs("-Djava.security.manager=allow", "-Djdk.module.illegalAccess=deny", "--add-opens=java.base/java.lang=ALL-UNNAMED", "--add-opens=java.base/java.lang.invoke=ALL-UNNAMED", "--add-opens=java.base/java.lang.reflect=ALL-UNNAMED", "--add-opens=java.base/java.io=ALL-UNNAMED", "--add-opens=java.base/java.net=ALL-UNNAMED", "--add-opens=java.base/java.nio=ALL-UNNAMED", "--add-opens=java.base/java.util=ALL-UNNAMED", "--add-opens=java.base/java.util.concurrent=ALL-UNNAMED", "--add-opens=java.base/java.util.concurrent.atomic=ALL-UNNAMED", "--add-opens=java.base/sun.nio.ch=ALL-UNNAMED", "--add-opens=java.base/sun.nio.cs=ALL-UNNAMED", "--add-opens=java.base/sun.security.action=ALL-UNNAMED", "--add-opens=java.base/sun.util.calendar=ALL-UNNAMED", "--add-opens=java.security.jgss/sun.security.krb5=ALL-UNNAMED")
 }
 
 application {
@@ -269,6 +299,17 @@ tasks.test {
     environment("DATA_CATERER_API_USER", "hello")
     environment("DATA_CATERER_API_TOKEN", "world")
     environment("DATA_CATERER_MANAGEMENT_TRACK", "data_caterer_is_cool")
+}
+
+tasks {
+    test{
+        useJUnitPlatform {
+            includeEngines("scalatest")
+            testLogging {
+                events("failed")
+            }
+        }
+    }
 }
 
 configure<ScoverageExtension> {

@@ -1,25 +1,27 @@
 package io.github.datacatering.datacaterer.core.generator
 
-import io.github.datacatering.datacaterer.api.model.Constants.{ALL_COMBINATIONS, MAXIMUM_LENGTH, MINIMUM_LENGTH, OMIT, ONE_OF_GENERATOR, REGEX_GENERATOR}
-import io.github.datacatering.datacaterer.api.model.{Count, Field, PerFieldCount, Step}
+import io.github.datacatering.datacaterer.api.FieldBuilder
+import io.github.datacatering.datacaterer.api.model.Constants.{ALL_COMBINATIONS, OMIT, ONE_OF_GENERATOR, REGEX_GENERATOR}
+import io.github.datacatering.datacaterer.api.model.{Count, DoubleType, Field, IntegerType, PerFieldCount, Step}
 import io.github.datacatering.datacaterer.core.util.{Account, SparkSuite}
 import net.datafaker.Faker
-import org.apache.spark.sql.types.{DoubleType, IntegerType, StringType}
+import org.apache.spark
 import org.apache.spark.sql.{Dataset, Encoder, Encoders, Row}
-import org.junit.runner.RunWith
-import org.scalatestplus.junit.JUnitRunner
 
-@RunWith(classOf[JUnitRunner])
 class DataGeneratorFactoryTest extends SparkSuite {
 
   private val dataGeneratorFactory = new DataGeneratorFactory(new Faker() with Serializable)
   private val fields = List(
-    Field("id", Some("string"), Map(MINIMUM_LENGTH -> "20", MAXIMUM_LENGTH -> "25")),
-    Field("amount", Some("double")),
-    Field("debit_credit", Some("string"), Map(ONE_OF_GENERATOR -> List("D", "C"))),
-    Field("name", Some("string"), Map(REGEX_GENERATOR -> "[A-Z][a-z]{2,6} [A-Z][a-z]{2,8}")),
-    Field("code", Some("int"), Map("sql" -> "CASE WHEN debit_credit == 'D' THEN 1 ELSE 0 END")),
-  )
+    FieldBuilder().name("id").minLength(20).maxLength(25),
+    FieldBuilder().name("amount").`type`(DoubleType).min(0.0).max(1000.0),
+    FieldBuilder().name("debit_credit").oneOf(List("D", "C")),
+    FieldBuilder().name("name").regex("[A-Z][a-z]{2,6} [A-Z][a-z]{2,8}"),
+    FieldBuilder().name("code").`type`(IntegerType).sql("CASE WHEN debit_credit == 'D' THEN 1 ELSE 0 END"),
+    FieldBuilder().name("party_id").uuid().incremental(),
+    FieldBuilder().name("customer_id").`type`(IntegerType).incremental(),
+  ).map(_.field) ++
+    FieldBuilder().name("rank").oneOfWeighted((1, 0.8), (2, 0.1), (3, 0.1)).map(_.field) ++
+    FieldBuilder().name("rating").oneOfWeighted(("A", 1), ("B", 2), ("C", 3)).map(_.field)
 
   private val simpleFields = List(Field("id"), Field("name"))
 
@@ -36,14 +38,21 @@ class DataGeneratorFactoryTest extends SparkSuite {
     df.cache()
 
     assertResult(10L)(df.count())
-    assert(df.columns sameElements Array("id", "amount", "debit_credit", "name", "code"))
-    assert(df.schema.fields.map(x => (x.name, x.dataType)) sameElements Array(
-      ("id", StringType),
-      ("amount", DoubleType),
-      ("debit_credit", StringType),
-      ("name", StringType),
-      ("code", IntegerType),
-    ))
+    assertResult(Array("id", "amount", "debit_credit", "name", "code", "party_id", "customer_id", "rank_weight", "rank", "rating_weight", "rating"))(df.columns)
+    assertResult(Array(
+      ("id", spark.sql.types.StringType),
+      ("amount", spark.sql.types.DoubleType),
+      ("debit_credit", spark.sql.types.StringType),
+      ("name", spark.sql.types.StringType),
+      ("code", spark.sql.types.IntegerType),
+      ("party_id", spark.sql.types.StringType),
+      ("customer_id", spark.sql.types.IntegerType),
+      ("rank_weight", spark.sql.types.DoubleType),
+      ("rank", spark.sql.types.IntegerType),
+      ("rating_weight", spark.sql.types.DoubleType),
+      ("rating", spark.sql.types.StringType),
+    ))(df.schema.fields.map(x => (x.name, x.dataType)))
+    val rows = df.collect()
     val sampleRow = df.head()
     assert(sampleRow.getString(0).nonEmpty && sampleRow.getString(0).length >= 20)
     assert(sampleRow.getDouble(1) >= 0.0)
@@ -51,6 +60,15 @@ class DataGeneratorFactoryTest extends SparkSuite {
     assert(debitCredit == "D" || debitCredit == "C")
     assert(sampleRow.getString(3).matches("[A-Z][a-z]{2,6} [A-Z][a-z]{2,8}"))
     if (debitCredit == "D") assert(sampleRow.getInt(4) == 1) else assert(sampleRow.getInt(4) == 0)
+    assertResult("cfcd2084-95d5-65ef-66e7-dff9f98764da")(sampleRow.getString(5))
+    rows.foreach(row => {
+      val customerId = row.getInt(6)
+      assert(customerId > 0 && customerId <= 10)
+      val rank = row.getInt(8)
+      assert(rank == 1 || rank == 2 || rank == 3)
+      val rating = row.getString(10)
+      assert(rating == "A" || rating == "B" || rating == "C")
+    })
   }
 
   test("Can generate data when number of rows per field is defined") {

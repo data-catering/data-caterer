@@ -12,9 +12,11 @@ object Constants {
   lazy val JDBC = "jdbc"
   lazy val POSTGRES = "postgres"
   lazy val MYSQL = "mysql"
+  lazy val BIGQUERY = "bigquery"
   lazy val HTTP = "http"
   lazy val JMS = "jms"
   lazy val KAFKA = "kafka"
+  lazy val RABBITMQ = "rabbitmq"
   lazy val SOLACE = "solace"
   lazy val RATE = "rate"
   //file formats
@@ -52,6 +54,7 @@ object Constants {
   lazy val JMS_INITIAL_CONTEXT_FACTORY = "initialContextFactory"
   lazy val JMS_CONNECTION_FACTORY = "connectionFactory"
   lazy val JMS_VPN_NAME = "vpnName"
+  lazy val JMS_VIRTUAL_HOST = "virtualHost"
   lazy val SCHEMA_LOCATION = "schemaLocation"
   lazy val GREAT_EXPECTATIONS_FILE = "expectationsFile"
   lazy val DATA_CONTRACT_FILE = "dataContractFile"
@@ -61,6 +64,10 @@ object Constants {
   lazy val ICEBERG_CATALOG_TYPE = "catalogType"
   lazy val ICEBERG_CATALOG_URI = "catalogUri"
   lazy val ICEBERG_CATALOG_DEFAULT_NAMESPACE = "catalogDefaultNamespace"
+  lazy val BIGQUERY_WRITE_METHOD = "writeMethod"
+  lazy val BIGQUERY_CREDENTIALS_FILE = "credentialsFile"
+  lazy val BIGQUERY_QUERY_JOB_PRIORITY = "queryJobPriority"
+  lazy val BIGQUERY_TEMPORARY_GCS_BUCKET = "temporaryGcsBucket"
   lazy val SPECIFIC_DATA_SOURCE_OPTIONS = List(PATH, CASSANDRA_KEYSPACE, CASSANDRA_TABLE, JDBC_TABLE, JDBC_QUERY,
     SCHEMA, TABLE, URL, DRIVER, PARTITIONS, PARTITION_BY, KAFKA_TOPIC, JMS_DESTINATION_NAME, JMS_VPN_NAME, SCHEMA_LOCATION,
     GREAT_EXPECTATIONS_FILE, DATA_CONTRACT_FILE, ROWS_PER_SECOND, HUDI_TABLE_NAME, ICEBERG_CATALOG_TYPE, ICEBERG_CATALOG_URI)
@@ -116,6 +123,10 @@ object Constants {
   lazy val IS_PII = "isPII"
   lazy val HTTP_PARAMETER_TYPE = "httpParamType"
   lazy val POST_SQL_EXPRESSION = "postSqlExpression"
+  lazy val INCREMENTAL = "incremental"
+
+  //special field names
+  lazy val INDEX_INC_FIELD = "__index_inc"
 
   //step options
   lazy val ALL_COMBINATIONS = "allCombinations"
@@ -266,6 +277,19 @@ object Constants {
   lazy val DEFAULT_CASSANDRA_URL = "cassandraserver:9042"
   lazy val DEFAULT_CASSANDRA_USERNAME = "cassandra"
   lazy val DEFAULT_CASSANDRA_PASSWORD = "cassandra"
+
+  //bigquery defaults
+  lazy val DEFAULT_BIGQUERY_WRITE_METHOD = "indirect"
+  lazy val BIGQUERY_WRITE_METHOD_DIRECT = "direct"
+  lazy val DEFAULT_BIGQUERY_QUERY_JOB_PRIORITY = "batch"
+
+  //rabbitmq defaults
+  lazy val DEFAULT_RABBITMQ_URL = "localhost:5672"
+  lazy val DEFAULT_RABBITMQ_USERNAME = "guest"
+  lazy val DEFAULT_RABBITMQ_PASSWORD = "guest"
+  lazy val DEFAULT_RABBITMQ_VIRTUAL_HOST = "/"
+  lazy val DEFAULT_RABBITMQ_CONNECTION_FACTORY = "com.rabbitmq.jms.admin.RMQConnectionFactory"
+  lazy val DEFAULT_RABBITMQ_INITIAL_CONTEXT_FACTORY = ""
 
   //solace defaults
   lazy val DEFAULT_SOLACE_URL = "smf://solaceserver:55554"

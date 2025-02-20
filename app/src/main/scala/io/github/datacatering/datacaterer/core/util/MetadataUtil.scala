@@ -82,6 +82,7 @@ object MetadataUtil {
     if (sparkSession.catalog.tableExists(TEMP_CACHED_TABLE_NAME)) {
       sparkSession.catalog.uncacheTable(TEMP_CACHED_TABLE_NAME)
     }
+    additionalFieldMetadata.unpersist()
     fieldsWithMetadata
   }
 
@@ -193,7 +194,7 @@ object MetadataUtil {
         s"${step.options(CASSANDRA_KEYSPACE)}/${step.options(CASSANDRA_TABLE)}"
       case PARQUET | CSV | JSON | DELTA | ORC | DELTA | ICEBERG =>
         step.options(PATH).replaceAll("s3(a|n?)://|wasb(s?)://|gs://|file://|hdfs://[a-zA-Z0-9]+:[0-9]+", "")
-      case JMS | SOLACE =>
+      case JMS | RABBITMQ | SOLACE =>
         step.options(JMS_DESTINATION_NAME)
       case KAFKA =>
         step.options(KAFKA_TOPIC)

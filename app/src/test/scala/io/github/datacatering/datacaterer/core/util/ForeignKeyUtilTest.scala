@@ -7,15 +7,12 @@ import io.github.datacatering.datacaterer.core.exception.MissingDataSourceFromFo
 import io.github.datacatering.datacaterer.core.model.{ForeignKeyRelationship, ForeignKeyWithGenerateAndDelete}
 import org.apache.spark.sql.Encoders
 import org.apache.spark.sql.types.{ArrayType, StringType, StructField, StructType}
-import org.junit.runner.RunWith
 import org.scalatest.matchers.must.Matchers.contain
 import org.scalatest.matchers.should.Matchers.convertToAnyShouldWrapper
-import org.scalatestplus.junit.JUnitRunner
 
 import java.sql.Date
 import java.time.LocalDate
 
-@RunWith(classOf[JUnitRunner])
 class ForeignKeyUtilTest extends SparkSuite {
 
   test("When no foreign keys defined, return back same dataframes") {

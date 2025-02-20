@@ -3,10 +3,7 @@ package io.github.datacatering.datacaterer.core.generator.metadata.datasource.op
 import io.github.datacatering.datacaterer.api.model.Constants.FIELD_DATA_TYPE
 import io.github.datacatering.datacaterer.core.generator.metadata.datasource.opendatacontractstandard.model.{ApiVersionEnum, KindEnum, LogicalTypeEnum, OpenDataContractStandardDescription, OpenDataContractStandardElementV3, OpenDataContractStandardSchemaV3, OpenDataContractStandardV3}
 import io.github.datacatering.datacaterer.core.util.SparkSuite
-import org.junit.runner.RunWith
-import org.scalatestplus.junit.JUnitRunner
 
-@RunWith(classOf[JUnitRunner])
 class OpenDataContractStandardV3MapperTest extends SparkSuite {
 
   private val mapper = OpenDataContractStandardV3Mapper

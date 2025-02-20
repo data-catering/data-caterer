@@ -3,11 +3,8 @@ package io.github.datacatering.datacaterer.core.util
 import io.github.datacatering.datacaterer.api.FieldBuilder
 import io.github.datacatering.datacaterer.api.model.IntegerType
 import io.github.datacatering.datacaterer.core.util.PlanImplicits.FieldOps
-import org.junit.runner.RunWith
 import org.scalatest.funsuite.AnyFunSuiteLike
-import org.scalatestplus.junit.JUnitRunner
 
-@RunWith(classOf[JUnitRunner])
 class SchemaHelperTest extends AnyFunSuiteLike {
 
   test("Can convert field to StructField") {

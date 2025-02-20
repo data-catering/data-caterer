@@ -7,8 +7,6 @@ import io.github.datacatering.datacaterer.core.model.Constants.{DATA_CATERER_API
 import io.github.datacatering.datacaterer.core.util.{ObjectMapperUtil, SparkSuite}
 import org.asynchttpclient.DefaultAsyncHttpClientConfig
 import org.asynchttpclient.Dsl.asyncHttpClient
-import org.junit.runner.RunWith
-import org.scalatestplus.junit.JUnitRunner
 
 import java.sql.{Date, Timestamp}
 import java.time.{Instant, LocalDate}
@@ -17,7 +15,6 @@ import scala.concurrent.Await
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.Duration
 
-@RunWith(classOf[JUnitRunner])
 class PlanProcessorTest extends SparkSuite {
 
   private val scalaBaseFolder = "src/test/resources/sample/documentation"
@@ -32,14 +29,14 @@ class PlanProcessorTest extends SparkSuite {
           field.name("year").`type`(IntegerType).sql("YEAR(date)"),
           field.name("balance").`type`(DoubleType).min(10).max(1000).round(2),
           field.name("date").`type`(DateType).min(Date.valueOf("2022-01-01")),
-          field.name("status").oneOf(accountStatus: _*),
+          field.name("status").oneOf(accountStatus),
           field.name("rand_map").`type`(MapType),
           field.name("update_history")
             .`type`(ArrayType)
             .fields(
               field.name("updated_time").`type`(TimestampType).min(Timestamp.valueOf("2022-01-01 00:00:00")),
-              field.name("prev_status").oneOf(accountStatus: _*),
-              field.name("new_status").oneOf(accountStatus: _*)
+              field.name("prev_status").oneOf(accountStatus),
+              field.name("new_status").oneOf(accountStatus)
             ),
           field.name("customer_details")
             .fields(
@@ -120,7 +117,7 @@ class PlanProcessorTest extends SparkSuite {
   }
 
   ignore("Can run Postgres plan run") {
-    PlanProcessor.determineAndExecutePlan(Some(new TestHttp), apiCheck = false)
+    PlanProcessor.determineAndExecutePlan(Some(new TestBigQuery), apiCheck = false)
   }
 
   class TestPostgres extends PlanRun {
@@ -662,6 +659,47 @@ class PlanProcessorTest extends SparkSuite {
     execute(conf, accounts)
   }
 
+  class TestRabbitmq extends PlanRun {
+    val accounts = rabbitmq("customer_rabbitmq", "amqp://localhost:5672")
+      .destination("accounts")
+      .fields(
+        field.name("key").sql("body.account_id"),
+        field.name("tmp_acc").regex("ACC[0-9]{8}").omit(true)
+      )
+      .fields(
+        field.messageBody(
+          field.name("account_id").regex("ACC[0-9]{8}"),
+          field.name("account_status").oneOf("open", "closed", "suspended", "pending"),
+          field.name("balance").`type`(DoubleType).round(2),
+          field.name("details")
+            .fields(
+              field.name("name").expression("#{Name.name}"),
+              field.name("first_txn_date").`type`(DateType).min(LocalDate.now().minusDays(10))
+            )
+        )
+      )
+      .count(count.records(2))
+
+    val conf = configuration.generatedReportsFolderPath("/tmp/report")
+
+    execute(conf, accounts)
+  }
+
+  class TestBigQuery extends PlanRun {
+    val accounts = bigquery("customer_bigquery", "gs://data-caterer-test/temp-data-gen")
+      .table("serene-bazaar-419907.data_caterer_test.accounts")
+      .fields(
+        field.name("account_id").regex("ACC[0-9]{8}"),
+        field.name("account_status").oneOf("open", "closed", "suspended", "pending"),
+        field.name("balance").`type`(DoubleType).round(2),
+      )
+      .count(count.records(10))
+
+    val conf = configuration.generatedReportsFolderPath("/tmp/report")
+
+    execute(conf, accounts)
+  }
+
   ignore("Check fail status") {
     System.setProperty(DATA_CATERER_API_USER, "")
     System.setProperty(DATA_CATERER_API_TOKEN, "")
@@ -714,9 +752,47 @@ class PlanProcessorTest extends SparkSuite {
     execute(config, validationTask)
   }
 
+  class ParquetMultipleRelationshipsPlan extends PlanRun {
+    val numCustomers = 10
+    val numAccounts = 20
+    val maxNumRolesPerCustomer = 2
+
+    val customerTask = csv("customers", "/tmp/data/customer/csv/customers", Map("saveMode" -> "overwrite"))
+      .numPartitions(1)
+      .fields(field.name("ids").oneOfWeighted(("1", 0.5), ("2", 0.3), ("3", 0.2)))
+      .fields(
+        field.name("customer_id").uuid().incremental(),
+        field.name("first_name").expression("#{Name.firstName}"),
+      )
+      .count(count.records(numCustomers))
+
+    val accountTask = csv("customer_accounts", "/tmp/data/customer/csv/accounts", Map("saveMode" -> "overwrite"))
+      .numPartitions(1)
+      .fields(
+        field.name("products_id").uuid().incremental(),
+        field.name("source_id").sql("UUID()")
+      )
+      .count(count.records(numAccounts))
+
+    val customerAccessTask = csv("customer_access", "/tmp/data/customer/csv/access", Map("saveMode" -> "overwrite"))
+      .numPartitions(1)
+      .fields(
+        field.name("customer_products_id").uuid().incremental(),
+        field.name("products_id_int").`type`(IntegerType).min(1).max(numAccounts).omit(true),
+        field.name("products_id").uuid("products_id_int"),
+        field.name("party_id").uuid()
+      )
+      .count(count.recordsPerFieldGenerator(numCustomers, generator.min(0).max(maxNumRolesPerCustomer), "customer_products_id"))
+
+    val config = configuration
+      .generatedReportsFolderPath("/tmp/data/report")
+
+    execute(config, customerTask, accountTask, customerAccessTask)
+  }
+
   ignore("Timing of http calls") {
     val config = new DefaultAsyncHttpClientConfig.Builder()
-      .setRequestTimeout(5000).build()
+      .setRequestTimeout(java.time.Duration.ofMillis(5000)).build()
     val client = asyncHttpClient(config)
     (0 to 10).foreach(i => {
       val req = client.prepare("GET", s"http://localhost:80/anything/pets/LRCnF8780Ie563kPzOj/$i").build()

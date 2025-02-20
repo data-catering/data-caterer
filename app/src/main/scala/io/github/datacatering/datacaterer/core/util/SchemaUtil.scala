@@ -1,7 +1,7 @@
 package io.github.datacatering.datacaterer.core.util
 
-import io.github.datacatering.datacaterer.api.model.Constants.{DEFAULT_FIELD_NULLABLE, FOREIGN_KEY_DELIMITER, FOREIGN_KEY_DELIMITER_REGEX, FOREIGN_KEY_PLAN_FILE_DELIMITER_REGEX, IS_PRIMARY_KEY, IS_UNIQUE, MAXIMUM, MINIMUM, PRIMARY_KEY_POSITION, STATIC}
-import io.github.datacatering.datacaterer.api.model.{Count, Field, ForeignKeyRelation, PerFieldCount, SinkOptions, Step, Task}
+import io.github.datacatering.datacaterer.api.model.Constants.{DEFAULT_FIELD_NULLABLE, DEFAULT_PER_FIELD_COUNT_RECORDS, FOREIGN_KEY_DELIMITER, FOREIGN_KEY_DELIMITER_REGEX, FOREIGN_KEY_PLAN_FILE_DELIMITER_REGEX, IS_PRIMARY_KEY, IS_UNIQUE, MAXIMUM, MINIMUM, PRIMARY_KEY_POSITION, STATIC}
+import io.github.datacatering.datacaterer.api.model.{Count, Field, ForeignKeyRelation, IntegerType, PerFieldCount, SinkOptions, Step, Task}
 import io.github.datacatering.datacaterer.core.exception.{InvalidFieldConfigurationException, InvalidForeignKeyFormatException}
 import io.github.datacatering.datacaterer.core.model.Constants.{COUNT_BASIC, COUNT_FIELDS, COUNT_GENERATED, COUNT_GENERATED_PER_FIELD, COUNT_NUM_RECORDS, COUNT_PER_FIELD, COUNT_TYPE}
 import io.github.datacatering.datacaterer.core.model.ForeignKeyWithGenerateAndDelete
@@ -221,14 +221,24 @@ object PlanImplicits {
 
     def gatherUniqueFields: List[String] = {
       step.fields.filter(field => {
-        field.options.get(IS_UNIQUE).exists(_.toString.toBoolean)
+        field.options.get(IS_UNIQUE).exists(_.toString.toBoolean) && !field.`type`.contains(IntegerType.toString)
       }).map(_.name)
     }
   }
 
   implicit class CountOps(count: Count) {
+
+    private def hasRecordsAndPerFieldDefined: Boolean = count.records.isDefined && count.perField.isDefined
+
+    private def hasPerFieldDefined: Boolean = count.perField.isDefined && count.perField.get.count.isDefined
+
+    private def hasPerFieldCountDefinedNoOptions: Boolean = hasPerFieldDefined && count.perField.get.options.isEmpty
+
+    private def hasPerFieldCountDefinedWithOptions: Boolean = hasPerFieldDefined && count.perField.get.options.nonEmpty
+
     def numRecordsString: (String, List[List[String]]) = {
-      if (count.records.isDefined && count.perField.isDefined && count.perField.get.count.isDefined && count.perField.get.options.isEmpty) {
+      //per field count defined => 2 records per account_id
+      if (hasRecordsAndPerFieldDefined && hasPerFieldCountDefinedNoOptions) {
         val records = (count.records.get * count.perField.get.count.get).toString
         val fields = count.perField.get.fieldNames.mkString(",")
         val str = s"per-field-count: fields=$fields, num-records=$records"
@@ -238,7 +248,7 @@ object PlanImplicits {
           List(COUNT_NUM_RECORDS, records)
         )
         (str, list)
-      } else if (count.perField.isDefined && count.perField.get.options.nonEmpty) {
+      } else if (hasPerFieldCountDefinedWithOptions) {
         val records = (count.records.get * count.perField.get.count.get).toString
         val fields = count.perField.get.fieldNames.mkString(",")
         val str = s"per-field-count: fields=$fields, num-records-via-generator=$records"
@@ -271,7 +281,12 @@ object PlanImplicits {
     }
 
     def numRecords: Long = {
-      (count.records, count.options.isEmpty, count.perField, count.perField.map(_.options).getOrElse(Map()).isEmpty) match {
+      val countOptionsEmpty = count.options.isEmpty
+      val countPerFieldOptionsEmpty = count.perField.map(_.options).getOrElse(Map.empty).isEmpty
+
+      (count.records, countOptionsEmpty, count.perField, countPerFieldOptionsEmpty) match {
+        case (_, false, Some(perCol), false) =>
+          perCol.averageCountPerField * averageCount(count.options)
         case (Some(t), true, Some(perCol), false) =>
           perCol.averageCountPerField * t
         case (Some(t), true, Some(perCol), true) =>
@@ -289,7 +304,11 @@ object PlanImplicits {
 
   implicit class PerFieldCountOps(perFieldCount: PerFieldCount) {
     def averageCountPerField: Long = {
-      perFieldCount.count.getOrElse(averageCount(perFieldCount.options))
+      if (perFieldCount.options.nonEmpty) {
+        averageCount(perFieldCount.options)
+      } else {
+        perFieldCount.count.getOrElse(DEFAULT_PER_FIELD_COUNT_RECORDS)
+      }
     }
 
     def maxCountPerField: Long = {

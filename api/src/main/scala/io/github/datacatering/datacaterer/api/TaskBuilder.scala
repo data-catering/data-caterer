@@ -5,7 +5,7 @@ import io.github.datacatering.datacaterer.api.HttpMethodEnum.HttpMethodEnum
 import io.github.datacatering.datacaterer.api.HttpQueryParameterStyleEnum.HttpQueryParameterStyleEnum
 import io.github.datacatering.datacaterer.api.converter.Converters.{toScalaList, toScalaMap}
 import io.github.datacatering.datacaterer.api.model.Constants._
-import io.github.datacatering.datacaterer.api.model.{ArrayType, Count, DataType, Field, HeaderType, PerFieldCount, Step, StringType, Task, TaskSummary}
+import io.github.datacatering.datacaterer.api.model.{ArrayType, Count, DataType, DoubleType, Field, HeaderType, PerFieldCount, Step, StringType, Task, TaskSummary}
 
 import scala.annotation.varargs
 
@@ -237,6 +237,15 @@ case class StepBuilder(step: Step = Step(), optValidation: Option[DataSourceVali
    */
   def cassandraTable(keyspace: String, table: String): StepBuilder =
     this.modify(_.step.options)(_ ++ Map(CASSANDRA_KEYSPACE -> keyspace, CASSANDRA_TABLE -> table))
+
+  /**
+   * Table name for data source
+   *
+   * @param table Table name
+   * @return StepBuilder
+   */
+  def table(table: String): StepBuilder =
+    this.modify(_.step.options)(_ ++ Map(TABLE -> table))
 
   /**
    * The queue/topic name for a JMS data source.
@@ -646,19 +655,50 @@ case class FieldBuilder(field: Field = Field()) {
    * @param values The values that the field can take on.
    * @return A FieldBuilder that has been modified to use the provided values.
    */
-  @varargs def oneOf(values: Any*): FieldBuilder =
-    this.modify(_.field.options).setTo(getGenBuilder.oneOf(values: _*).options)
+  @varargs def oneOf(value: Any, values: Any*): FieldBuilder =
+    this.modify(_.field.options).setTo(getGenBuilder.oneOf(value, values: _*).options)
       .modify(_.field.`type`)
       .setTo(
-        values match {
-          case Seq(_: Double, _*) => Some("double")
-          case Seq(_: String, _*) => Some("string")
-          case Seq(_: Int, _*) => Some("integer")
-          case Seq(_: Long, _*) => Some("long")
-          case Seq(_: Boolean, _*) => Some("boolean")
+        value match {
+          case _: Double => Some("double")
+          case _: String => Some("string")
+          case _: Int => Some("integer")
+          case _: Long => Some("long")
+          case _: Boolean => Some("boolean")
           case _ => None
         }
       )
+
+  def oneOf(values: List[Any]): FieldBuilder =
+    if (values.nonEmpty) oneOf(values.head, values.tail: _*) else this
+
+  /**
+   * Builds a field that can take on one of the provided values. Each value is associated with a weight.
+   * The weight is used to determine the probability of selecting a particular value.
+   * Higher weights increase the likelihood of selecting a value.
+   *
+   * @param values The values that the field can take on with associated weight.
+   * @return A FieldBuilder that has been modified to use the provided values.
+   */
+  @varargs def oneOfWeighted(value: (Any, Double), values: (Any, Double)*): List[FieldBuilder] = {
+    val oneOfWeightedField = this.modify(_.field.options).setTo(getGenBuilder.oneOfWeighted(value, values: _*).options)
+      .modify(_.field.`type`)
+      .setTo(
+        value._1 match {
+          case _: Double => Some("double")
+          case _: String => Some("string")
+          case _: Int => Some("integer")
+          case _: Long => Some("long")
+          case _: Boolean => Some("boolean")
+          case _ => None
+        }
+      )
+    val randomWeight = FieldBuilder().`type`(DoubleType).name(s"${field.name}_weight").sql("RAND()").omit(true)
+    List(randomWeight, oneOfWeightedField)
+  }
+
+  def oneOfWeighted(values: List[(Any, Double)]): List[FieldBuilder] =
+    if (values.nonEmpty) oneOfWeighted(values.head, values.tail: _*) else List(this)
 
   /**
    * Sets the options for the field generator.
@@ -914,18 +954,51 @@ case class FieldBuilder(field: Field = Field()) {
    * The distribution of the data is exponential.
    *
    * @param rate Rate parameter to control skewness of distribution.
-   * @return GeneratorBuilder
+   * @return FieldBuilder
    */
   def exponentialDistribution(rate: Double): FieldBuilder =
-    this.modify(_.field.options)(_ ++ Map(DISTRIBUTION -> DISTRIBUTION_EXPONENTIAL, DISTRIBUTION_RATE_PARAMETER -> rate.toString))
+    this.modify(_.field.options).setTo(getGenBuilder.exponentialDistribution(rate).options)
 
   /**
    * The distribution of the data is normal.
    *
-   * @return GeneratorBuilder
+   * @return FieldBuilder
    */
   def normalDistribution(): FieldBuilder =
-    this.modify(_.field.options)(_ ++ Map(DISTRIBUTION -> DISTRIBUTION_NORMAL))
+    this.modify(_.field.options).setTo(getGenBuilder.normalDistribution().options)
+
+  /**
+   * Field value is generated incrementally. Starts at 1 and increments by 1 til max number of records.
+   *
+   * @return FieldBuilder
+   */
+  def incremental(): FieldBuilder = {
+    val incrementalOpts = if (field.`type`.contains(StringType.toString) && field.options.contains(SQL_GENERATOR) && field.options(SQL_GENERATOR).toString.equalsIgnoreCase("UUID()")) {
+      //then it is a UUID field that is generated consistently and incrementally via the __index_inc field
+      getGenBuilder.sql(toUuidFromCol(INDEX_INC_FIELD)).incremental().options
+    } else {
+      getGenBuilder.incremental().options
+    }
+    this.modify(_.field.options).setTo(incrementalOpts)
+  }
+
+  /**
+   * Field values are UUID strings.
+   *
+   * @param fieldName Name of the field to generate UUIDs from. Used to create consistent UUIDs.
+   * @return FieldBuilder
+   */
+  def uuid(fieldName: String = INDEX_INC_FIELD): FieldBuilder = {
+    val uuidOpts = if (field.`type`.contains(StringType.toString) && field.options.contains(INCREMENTAL) && field.options(INCREMENTAL).toString.equalsIgnoreCase("true")) {
+      //then it is an incremental field that is generated consistently and incrementally via the __index_inc field
+      getGenBuilder.sql(toUuidFromCol(INDEX_INC_FIELD)).options
+    } else if (!fieldName.equalsIgnoreCase(INDEX_INC_FIELD)) {
+      getGenBuilder.sql(toUuidFromCol(fieldName)).options
+    } else {
+      getGenBuilder.uuid().options
+    }
+    this.modify(_.field.options).setTo(uuidOpts)
+  }
 
   /**
    * Create message header fields. Can be used for data sources such as Kafka or Solace.
@@ -1111,6 +1184,17 @@ case class FieldBuilder(field: Field = Field()) {
     List(jsonContent, bodyContent)
   }
 
+  private def toUuidFromCol(col: String): String = {
+    val castStr = s"CAST($col AS STRING)"
+    s"""CONCAT(
+       |SUBSTR(MD5($castStr), 1, 8), '-',
+       |SUBSTR(MD5($castStr), 9, 4), '-',
+       |SUBSTR(MD5($castStr), 13, 4), '-',
+       |SUBSTR(MD5($castStr), 17, 4), '-',
+       |SUBSTR(MD5($castStr), 21, 12)
+       |)""".stripMargin
+  }
+
   private def getGenBuilder: GeneratorBuilder = {
     GeneratorBuilder(field.options)
   }
@@ -1147,7 +1231,21 @@ case class GeneratorBuilder(options: Map[String, Any] = Map()) {
    * @param values Set of valid values
    * @return GeneratorBuilder
    */
-  @varargs def oneOf(values: Any*): GeneratorBuilder = this.modify(_.options)(_ ++ Map(ONE_OF_GENERATOR -> values))
+  @varargs def oneOf(value: Any, values: Any*): GeneratorBuilder = {
+    val allValues = Seq(value) ++ values
+    this.modify(_.options)(_ ++ Map(ONE_OF_GENERATOR -> allValues))
+  }
+
+  /**
+   * Create a generator that can only generate values from a set of weighted values defined.
+   *
+   * @param values Set of valid values
+   * @return GeneratorBuilder
+   */
+  @varargs def oneOfWeighted(value: (Any, Double), values: (Any, Double)*): GeneratorBuilder = {
+    val valuesAsStringSeq = (Seq(value) ++ values).map(v => s"${v._1}->${v._2}")
+    this.modify(_.options)(_ ++ Map(ONE_OF_GENERATOR -> valuesAsStringSeq))
+  }
 
   /**
    * Define metadata map for your generator. Add/overwrites existing metadata
@@ -1437,6 +1535,23 @@ case class GeneratorBuilder(options: Map[String, Any] = Map()) {
    */
   def normalDistribution(): GeneratorBuilder =
     this.modify(_.options)(_ ++ Map(DISTRIBUTION -> DISTRIBUTION_NORMAL))
+
+  /**
+   * Field values are incremented by 1 for each record generated. This is useful for primary keys or unique fields.
+   * Starts at 1 and increments by 1 til the max number of records generated.
+   *
+   * @return GeneratorBuilder
+   */
+  def incremental(): GeneratorBuilder =
+    this.modify(_.options)(_ ++ Map(INCREMENTAL -> "true"))
+
+  /**
+   * Field values are UUID strings.
+   *
+   * @return GeneratorBuilder
+   */
+  def uuid(): GeneratorBuilder =
+    this.modify(_.options)(_ ++ Map(SQL_GENERATOR -> "UUID()"))
 }
 
 object HttpMethodEnum extends Enumeration {

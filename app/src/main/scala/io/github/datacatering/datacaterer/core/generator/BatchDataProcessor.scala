@@ -32,8 +32,8 @@ class BatchDataProcessor(connectionConfigsByName: Map[String, Map[String, String
     val faker = getDataFaker(plan)
     val dataGeneratorFactory = new DataGeneratorFactory(faker)
     val uniqueFieldUtil = new UniqueFieldsUtil(plan, executableTasks)
-    val tasks = executableTasks.map(_._2)
-    var (numBatches, trackRecordsPerStep) = calculateNumBatches(tasks, generationConfig)
+    val foreignKeys = plan.sinkOptions.map(_.foreignKeys).getOrElse(List())
+    var (numBatches, trackRecordsPerStep) = calculateNumBatches(foreignKeys, executableTasks, generationConfig)
 
     def generateDataForStep(batch: Int, task: (TaskSummary, Task), s: Step): (String, DataFrame) = {
       val isStepEnabledGenerateData = s.options.get(ENABLE_DATA_GENERATION).map(_.toBoolean).getOrElse(DEFAULT_ENABLE_GENERATE_DATA)
@@ -99,7 +99,7 @@ class BatchDataProcessor(connectionConfigsByName: Map[String, Map[String, String
 
       val sinkDf = plan.sinkOptions
         .map(_ => ForeignKeyUtil.getDataFramesWithForeignKeys(plan, generatedDataForeachTask))
-        .getOrElse(generatedDataForeachTask.toList)
+        .getOrElse(generatedDataForeachTask)
       val sinkResults = pushDataToSinks(plan, executableTasks, sinkDf, batch, startTime, optValidations)
       sinkDf.foreach(_._2.unpersist())
       LOGGER.info(s"Finished batch, batch=$batch, num-batches=$numBatches")

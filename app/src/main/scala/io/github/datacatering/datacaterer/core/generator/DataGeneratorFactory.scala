@@ -1,10 +1,11 @@
 package io.github.datacatering.datacaterer.core.generator
 
-import io.github.datacatering.datacaterer.api.model.Constants.{ALL_COMBINATIONS, ONE_OF_GENERATOR, STATIC}
+import io.github.datacatering.datacaterer.api.model.Constants.{ALL_COMBINATIONS, INDEX_INC_FIELD, ONE_OF_GENERATOR, SQL_GENERATOR, STATIC}
 import io.github.datacatering.datacaterer.api.model.{Field, PerFieldCount, Step}
 import io.github.datacatering.datacaterer.core.exception.InvalidStepCountGeneratorConfigurationException
 import io.github.datacatering.datacaterer.core.generator.provider.DataGenerator
 import io.github.datacatering.datacaterer.core.generator.provider.OneOfDataGenerator.RandomOneOfDataGenerator
+import io.github.datacatering.datacaterer.core.generator.provider.RandomDataGenerator.RandomLongDataGenerator
 import io.github.datacatering.datacaterer.core.model.Constants._
 import io.github.datacatering.datacaterer.core.sink.SinkProcessor
 import io.github.datacatering.datacaterer.core.util.GeneratorUtil.{applySqlExpressions, getDataGenerator}
@@ -46,16 +47,19 @@ class DataGeneratorFactory(faker: Faker)(implicit val sparkSession: SparkSession
       val df = indexedDf.selectExpr(genSqlExpression: _*)
 
       if (!df.storageLevel.useMemory) df.cache()
-      step.count.perField
+      val dfWithCount = step.count.perField
         .map(perCol => generateRecordsPerField(dataGenerators, step, perCol, df))
         .getOrElse(df)
+      df.unpersist()
+      dfWithCount
     }
 
     if (!allRecordsDf.storageLevel.useMemory) allRecordsDf.cache()
     val dfWithMetadata = attachMetadata(allRecordsDf, structType)
     val dfAllFields = attachMetadata(applySqlExpressions(dfWithMetadata), structType)
+    allRecordsDf.unpersist()
     if (!dfAllFields.storageLevel.useMemory) dfAllFields.cache()
-    dfAllFields
+    dfAllFields.drop(INDEX_INC_FIELD)
   }
 
   private def generateRecordsPerField(dataGenerators: List[DataGenerator[_]], step: Step,
@@ -95,7 +99,10 @@ class DataGeneratorFactory(faker: Faker)(implicit val sparkSession: SparkSession
       sparkSession.createDataFrame(Seq(1L).map(Holder))
         .selectExpr(explode(typedlit(fieldValues)).as(field.structField.name).expr.sql)
     })
-    val nonOneOfFieldsSql = nonOneOfFields.map(dg => s"${dg.generateSqlExpressionWrapper} AS `${dg.structField.name}`")
+    val nonOneOfFieldsSql = nonOneOfFields.map(dg => {
+      if (dg.structField.name == INDEX_INC_FIELD) s"CAST(ROW_NUMBER() OVER (ORDER BY 1) AS long) AS `${dg.structField.name}`"
+      else s"${dg.generateSqlExpressionWrapper} AS `${dg.structField.name}`"
+    })
 
     if (oneOfFields.nonEmpty) {
       LOGGER.debug("Found fields defined with 'oneOf', attempting to create all combinations of possible values")
@@ -110,16 +117,24 @@ class DataGeneratorFactory(faker: Faker)(implicit val sparkSession: SparkSession
 
   private def generateDataWithSchemaSql(df: DataFrame, countGenerator: DataGenerator[_], dataGenerators: List[DataGenerator[_]]): DataFrame = {
     val namedStruct = dataGenerators.map(dg => s"'${dg.structField.name}', CAST(${dg.generateSqlExpressionWrapper} AS ${dg.structField.dataType.sql})").mkString(",")
-    val perCountGeneratedExpr = df.columns ++ Array(s"SEQUENCE(1, CAST(${countGenerator.generateSqlExpressionWrapper} AS INT)) AS $PER_FIELD_COUNT_GENERATED")
+    //if it is using a weighted oneOf generator, it will have a weight column
+    val countGeneratorSql = countGenerator.generateSqlExpressionWrapper
+    val optWeightCol = if (countGeneratorSql.contains(RECORD_COUNT_GENERATOR_WEIGHT_FIELD)) Array(s"RAND() AS $RECORD_COUNT_GENERATOR_WEIGHT_FIELD") else Array[String]()
+    val perCountGeneratedExpr = df.columns ++ optWeightCol ++ Array(
+      s"CAST($countGeneratorSql AS INT) AS $PER_FIELD_COUNT_GENERATED_NUM",
+      s"CASE WHEN $PER_FIELD_COUNT_GENERATED_NUM = 0 THEN ARRAY() ELSE SEQUENCE(1, $PER_FIELD_COUNT_GENERATED_NUM) END AS $PER_FIELD_COUNT_GENERATED"
+    )
     val transformPerCountExpr = df.columns ++ Array(s"TRANSFORM($PER_FIELD_COUNT_GENERATED, x -> NAMED_STRUCT($namedStruct)) AS $PER_FIELD_COUNT")
 
     df.selectExpr(perCountGeneratedExpr: _*)
       .selectExpr(transformPerCountExpr: _*)
-      .drop(PER_FIELD_COUNT_GENERATED)
+      .drop(PER_FIELD_COUNT_GENERATED, PER_FIELD_COUNT_GENERATED_NUM, RECORD_COUNT_GENERATOR_WEIGHT_FIELD)
   }
 
   private def getStructWithGenerators(fields: List[Field]): List[DataGenerator[_]] = {
-    fields.map(field => getDataGenerator(field.options, field.toStructField, faker))
+    val indexIncMetadata = new MetadataBuilder().putString(SQL_GENERATOR, INDEX_INC_FIELD).build()
+    val indexIncField = new RandomLongDataGenerator(StructField(INDEX_INC_FIELD, LongType, false, indexIncMetadata), faker)
+    List(indexIncField) ++ fields.map(field => getDataGenerator(field.options, field.toStructField, faker))
   }
 
   private def registerSparkFunctions(): Unit = {

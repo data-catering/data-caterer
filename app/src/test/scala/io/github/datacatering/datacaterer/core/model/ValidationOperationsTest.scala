@@ -1,15 +1,12 @@
 package io.github.datacatering.datacaterer.core.model
 
 import io.github.datacatering.datacaterer.api.ValidationBuilder
-import io.github.datacatering.datacaterer.api.model.{DistinctContainsSetFieldValidation, DistinctEqualFieldValidation, DistinctInSetFieldValidation, ExpressionValidation, FieldNamesValidation, FieldValidations, IsDecreasingFieldValidation, IsIncreasingFieldValidation, IsJsonParsableFieldValidation, LengthBetweenFieldValidation, LengthEqualFieldValidation, MatchDateTimeFormatFieldValidation, MatchJsonSchemaFieldValidation, MatchesListFieldValidation, MaxBetweenFieldValidation, MeanBetweenFieldValidation, MedianBetweenFieldValidation, MinBetweenFieldValidation, MostCommonValueInSetFieldValidation, QuantileValuesBetweenFieldValidation, StdDevBetweenFieldValidation, SumBetweenFieldValidation, UniqueValuesProportionBetweenFieldValidation}
+import io.github.datacatering.datacaterer.api.model._
 import io.github.datacatering.datacaterer.core.util.{SparkSuite, Transaction}
 import io.github.datacatering.datacaterer.core.validator.{ExpressionValidationOps, FieldNamesValidationOps, FieldValidationsOps}
-import org.junit.runner.RunWith
-import org.scalatestplus.junit.JUnitRunner
 
 import java.sql.Date
 
-@RunWith(classOf[JUnitRunner])
 class ValidationOperationsTest extends SparkSuite {
 
   private val sampleData = Seq(

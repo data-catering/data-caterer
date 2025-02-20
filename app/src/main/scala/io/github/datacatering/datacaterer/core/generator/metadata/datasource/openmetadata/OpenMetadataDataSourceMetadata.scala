@@ -8,6 +8,8 @@ import io.github.datacatering.datacaterer.core.generator.metadata.datasource.dat
 import io.github.datacatering.datacaterer.core.generator.metadata.datasource.{DataSourceMetadata, SubDataSourceMetadata}
 import org.apache.log4j.Logger
 import org.apache.spark.sql.SparkSession
+import org.openmetadata.client.api.TablesApi.ListTablesQueryParams
+import org.openmetadata.client.api.TestCasesApi.ListTestCasesQueryParams
 import org.openmetadata.client.api.{TablesApi, TestCasesApi}
 import org.openmetadata.client.gateway.OpenMetadata
 import org.openmetadata.client.model.Column.DataTypeEnum
@@ -16,7 +18,8 @@ import org.openmetadata.schema.security.client.{Auth0SSOClientConfig, AzureSSOCl
 import org.openmetadata.schema.security.credentials.BasicAuth
 import org.openmetadata.schema.services.connections.metadata.{AuthProvider, OpenMetadataConnection}
 
-import scala.collection.JavaConverters.{asScalaBufferConverter, mapAsJavaMapConverter, seqAsJavaListConverter}
+import scala.collection.JavaConverters.{mapAsJavaMapConverter, seqAsJavaListConverter}
+import scala.jdk.CollectionConverters.asScalaBufferConverter
 
 case class OpenMetadataDataSourceMetadata(
                                            name: String,
@@ -60,9 +63,10 @@ case class OpenMetadataDataSourceMetadata(
     val configWithoutAuth = connectionConfig.filter(c => !AUTH_CONFIGURATION.contains(c._1))
       .map(x => (x._1, x._2.asInstanceOf[Object])).asJava
     val allTables = if (connectionConfig.contains(OPEN_METADATA_TABLE_FQN)) {
-      List(tablesApi.getTableByFQN(connectionConfig(OPEN_METADATA_TABLE_FQN), configWithoutAuth))
+      List(tablesApi.getTableByFQN(connectionConfig(OPEN_METADATA_TABLE_FQN), "", ""))
     } else {
-      tablesApi.listTables(configWithoutAuth).getData.asScala
+      val listTablesQueryParams = new ListTablesQueryParams()
+      tablesApi.listTables(listTablesQueryParams).getData.asScala
     }
 
     allTables.map(table => {
@@ -104,11 +108,12 @@ case class OpenMetadataDataSourceMetadata(
   override def getDataSourceValidations(dataSourceReadOptions: Map[String, String]): List[ValidationBuilder] = {
     val entityNameWithFieldPattern = "^(.+?)\\.(.+?)\\.(.+?)\\.(.+?)\\.(.+?)$".r
     val testCasesApi = gateway.buildClient(classOf[TestCasesApi])
-    val listTestCases = testCasesApi.listTestCases(Map.empty[String, Object].asJava)
+    val listTestCasesQueryParams = new ListTestCasesQueryParams()
+    val listTestCases = testCasesApi.listTestCases(listTestCasesQueryParams)
 
     if (listTestCases.getErrors != null && listTestCases.getErrors.size() > 0) {
       LOGGER.error("Failed to retrieve test cases from OpenMetadata")
-      throw FailedRetrieveOpenMetadataTestCasesException(listTestCases.getErrors.asScala.toList)
+      throw FailedRetrieveOpenMetadataTestCasesException(listTestCases.getErrors.asScala.toList.map(_.toString))
     } else {
       listTestCases.getData.asScala
         .filter(t => t.getEntityFQN.startsWith(dataSourceReadOptions(METADATA_IDENTIFIER)) && !t.getDeleted)
@@ -209,11 +214,10 @@ case class OpenMetadataDataSourceMetadata(
   }
 
   private def authenticate(server: OpenMetadataConnection): OpenMetadataConnection = {
-    val authTypeConfig = connectionConfig.getOrElse(OPEN_METADATA_AUTH_TYPE, AuthProvider.NO_AUTH.value())
+    val authTypeConfig = connectionConfig.getOrElse(OPEN_METADATA_AUTH_TYPE, AuthProvider.BASIC.value())
     val authType = AuthProvider.fromValue(authTypeConfig)
     server.setAuthProvider(authType)
-    val securityConfig = authType match {
-      case AuthProvider.NO_AUTH => return server
+    authType match {
       case AuthProvider.BASIC =>
         val basicAuth = new BasicAuth
         basicAuth.setUsername(getConfig(OPEN_METADATA_BASIC_AUTH_USERNAME))
@@ -263,9 +267,8 @@ case class OpenMetadataDataSourceMetadata(
       case AuthProvider.OPENMETADATA =>
         val openMetadataConf = new OpenMetadataJWTClientConfig
         openMetadataConf.setJwtToken(getConfig(OPEN_METADATA_JWT_TOKEN))
-        openMetadataConf
+        server.setSecurityConfig(openMetadataConf)
     }
-    server.setSecurityConfig(securityConfig)
     server
   }
 

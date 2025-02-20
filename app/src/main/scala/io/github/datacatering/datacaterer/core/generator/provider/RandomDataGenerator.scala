@@ -113,7 +113,10 @@ object RandomDataGenerator {
       faker.random().nextLong(min, max)
     }
 
-    override def generateSqlExpression: String = sqlExpressionForNumeric(structField.metadata, "LONG", sqlRandom)
+    override def generateSqlExpression: String = {
+      if (structField.name == INDEX_INC_FIELD) structField.metadata.getString(SQL_GENERATOR)
+      else sqlExpressionForNumeric(structField.metadata, "LONG", sqlRandom)
+    }
   }
 
   class RandomDecimalDataGenerator(val structField: StructField, val faker: Faker = new Faker()) extends DataGenerator[BigDecimal] {
@@ -318,7 +321,6 @@ object RandomDataGenerator {
 
     override def valueGenerator: DataGenerator[K] = getGeneratorForDataType(valueDataType).asInstanceOf[DataGenerator[K]]
 
-    //generate two arrays, key array and value array, then use map_from_arrays(col(keyArr), col(valueArr))
     //how to make it empty map when size is 0
     override def generateSqlExpression: String = {
       val keyDataGenerator = getGeneratorForDataType(keyDataType)
@@ -398,6 +400,7 @@ object RandomDataGenerator {
         (min, max, diff, mean)
     }
     val defaultValue = tryGetValue(metadata, DEFAULT_VALUE, "")
+    val incremental = tryGetValue(metadata, INCREMENTAL, false)
     val standardDeviation = tryGetValue(metadata, STANDARD_DEVIATION, 1.0)
     val distinctCount = tryGetValue(metadata, DISTINCT_COUNT, 0)
     val count = tryGetValue(metadata, ROW_COUNT, 0)
@@ -406,7 +409,7 @@ object RandomDataGenerator {
     val distribution = tryGetValue(metadata, DISTRIBUTION, "")
     val rateParameter = tryGetValue(metadata, DISTRIBUTION_RATE_PARAMETER, 1.0)
 
-    val baseFormula = if (isIncrementalNumber(defaultValue, distinctCount, count, isUnique)) {
+    val baseFormula = if (isIncrementalNumber(incremental, defaultValue, distinctCount, count, isUnique)) {
       if (metadata.contains(MAXIMUM)) {
         s"$max + $INDEX_INC_FIELD + 1" //index col starts at 0
       } else {
@@ -436,8 +439,8 @@ object RandomDataGenerator {
     }
   }
 
-  private def isIncrementalNumber(defaultValue: String, distinctCount: Int, count: Int, isUnique: String) = {
-    defaultValue.toLowerCase.startsWith("nextval") || (distinctCount == count && distinctCount > 0) || isUnique == "true"
+  private def isIncrementalNumber(incremental: Boolean, defaultValue: String, distinctCount: Int, count: Int, isUnique: String) = {
+    incremental || defaultValue.toLowerCase.startsWith("nextval") || (distinctCount == count && distinctCount > 0) || isUnique == "true"
   }
 
   def tryGetValue[T](metadata: Metadata, key: String, default: T)(implicit converter: Converter[T]): T = {
@@ -464,6 +467,8 @@ object RandomDataGenerator {
     implicit val floatLoader: Converter[Float] = (v: String) => v.toFloat
 
     implicit val decimalLoader: Converter[BigDecimal] = (v: String) => BigDecimal(v)
+
+    implicit val booleanLoader: Converter[Boolean] = (v: String) => v.toBoolean
   }
 }
 

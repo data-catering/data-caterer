@@ -1,6 +1,7 @@
 import {
     dataSourcePropertiesMap,
-    dataTypeOptionsMap, subDataSourceConfigMap,
+    dataTypeOptionsMap,
+    subDataSourceConfigMap,
     validationTypeDisplayNameMap,
     validationTypeOptionsMap
 } from "./configuration-data.js";

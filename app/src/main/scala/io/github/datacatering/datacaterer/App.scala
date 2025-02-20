@@ -18,8 +18,8 @@ object App {
     try {
       PlanProcessor.determineAndExecutePlan()
     } catch {
-      case e: Exception =>
-        LOGGER.error("An error occurred while processing the plan", e)
+      case t: Throwable =>
+        LOGGER.error("An error occurred while processing the plan", t)
         System.exit(1)
     } finally {
       val endTime = LocalDateTime.now()

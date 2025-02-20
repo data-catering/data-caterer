@@ -162,7 +162,7 @@ object HttpSinkProcessor extends RealTimeSinkProcessor[Unit] with Serializable {
     }
     val sslContext = SslContextBuilder.forClient().trustManager(trustManager).build()
     val config = new DefaultAsyncHttpClientConfig.Builder().setSslContext(sslContext)
-      .setRequestTimeout(5000).build()
+      .setRequestTimeout(java.time.Duration.ofMillis(5000)).build()
     asyncHttpClient(config)
   }
 }

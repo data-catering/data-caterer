@@ -2,13 +2,10 @@ package io.github.datacatering.datacaterer.core.generator.metadata
 
 import io.github.datacatering.datacaterer.api.model.{Count, Field, FoldersConfig, ForeignKey, ForeignKeyRelation, Step, Task}
 import io.github.datacatering.datacaterer.core.util.SparkSuite
-import org.junit.runner.RunWith
-import org.scalatestplus.junit.JUnitRunner
 
 import java.io.File
 import scala.reflect.io.Directory
 
-@RunWith(classOf[JUnitRunner])
 class PlanGeneratorTest extends SparkSuite {
 
   test("Write plan and tasks to file system") {

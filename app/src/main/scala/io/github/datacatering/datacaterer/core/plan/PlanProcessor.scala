@@ -5,7 +5,7 @@ import io.github.datacatering.datacaterer.api.model.Constants.{DATA_CATERER_INTE
 import io.github.datacatering.datacaterer.api.model.{DataCatererConfiguration, Plan, Task, ValidationConfiguration}
 import io.github.datacatering.datacaterer.core.activity.{PlanRunPostPlanProcessor, PlanRunPrePlanProcessor}
 import io.github.datacatering.datacaterer.core.config.ConfigParser
-import io.github.datacatering.datacaterer.core.exception.{ManagementApiException, PlanRunClassNotFoundException}
+import io.github.datacatering.datacaterer.core.exception.PlanRunClassNotFoundException
 import io.github.datacatering.datacaterer.core.generator.DataGeneratorProcessor
 import io.github.datacatering.datacaterer.core.generator.metadata.datasource.DataSourceMetadataFactory
 import io.github.datacatering.datacaterer.core.model.Constants.METADATA_CONNECTION_OPTIONS

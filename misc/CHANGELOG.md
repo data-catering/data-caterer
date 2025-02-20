@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.15.0
+
+- Allow for empty sequences to be generated for per field counts
+- Allow users to use field `__index_inc` for generating unique values
+- Calculate number of records generated based on foreign key definitions
+- Unpersist DataFrame after generating data to avoid OOM errors
+- Update to use `jakarta.jms` v3.1.x
+  - Use `sol-jms-jakarta` for JMS messaging to Solace
+- Add in `rabbitmq` as a data source
+- Add in `bigquery` as a data source
+- Introduce `oneOfWeighted` data generation for weighted random selection from set of values. Can be used for fields or record count
+- Update to use Java 17 across all modules and libraries
+- Update to Gradle 8.12
+
 ## 0.14.7
 
 - Fix bug when trying to use validations on sub-data source that gets generated from metadata

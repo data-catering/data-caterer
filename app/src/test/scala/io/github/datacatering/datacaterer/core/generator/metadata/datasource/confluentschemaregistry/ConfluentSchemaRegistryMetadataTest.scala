@@ -5,14 +5,10 @@ import io.github.datacatering.datacaterer.core.exception.InvalidConfluentSchemaR
 import io.github.datacatering.datacaterer.core.generator.metadata.datasource.SubDataSourceMetadata
 import io.github.datacatering.datacaterer.core.util.SparkSuite
 import org.asynchttpclient.{AsyncHttpClient, BoundRequestBuilder, ListenableFuture, Response}
-import org.asynchttpclient.netty.NettyResponse
-import org.junit.runner.RunWith
 import org.scalamock.scalatest.MockFactory
-import org.scalatestplus.junit.JUnitRunner
 
 import java.nio.file.{Files, Path}
 
-@RunWith(classOf[JUnitRunner])
 class ConfluentSchemaRegistryMetadataTest extends SparkSuite with MockFactory {
 
   test("Can get protobuf schema from Confluent Schema Registry by schema id") {

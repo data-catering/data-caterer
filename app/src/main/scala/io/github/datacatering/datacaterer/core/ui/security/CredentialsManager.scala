@@ -3,7 +3,6 @@ package io.github.datacatering.datacaterer.core.ui.security
 import io.github.datacatering.datacaterer.core.exception.{InvalidCredentialsException, ManagementApiException, UserNotFoundException}
 import io.github.datacatering.datacaterer.core.model.Constants.{DATA_CATERER_API_TOKEN, DATA_CATERER_API_USER}
 import io.github.datacatering.datacaterer.core.ui.model.CredentialsRequest
-import io.github.datacatering.datacaterer.core.ui.plan.PlanRepository.getClass
 import io.github.datacatering.datacaterer.core.util.ManagementUtil.getDataCatererManagementUrl
 import org.apache.log4j.Logger
 import org.asynchttpclient.AsyncHttpClient

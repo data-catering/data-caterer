@@ -1,9 +1,10 @@
 package io.github.datacatering.datacaterer.core.parser
 
-import io.github.datacatering.datacaterer.api.model.Constants.{HTTP_PATH_PARAM_FIELD_PREFIX, HTTP_QUERY_PARAM_FIELD_PREFIX, REAL_TIME_METHOD_FIELD, REAL_TIME_URL_FIELD, YAML_HTTP_BODY_FIELD, YAML_HTTP_HEADERS_FIELD, YAML_HTTP_URL_FIELD, YAML_REAL_TIME_BODY_FIELD, YAML_REAL_TIME_HEADERS_FIELD}
-import io.github.datacatering.datacaterer.api.model.{DataCatererConfiguration, DataSourceValidation, DataType, Field, Plan, Task, UpstreamDataSourceValidation, ValidationConfiguration, YamlUpstreamDataSourceValidation, YamlValidationConfiguration}
+import io.github.datacatering.datacaterer.api.model.Constants.{HTTP_PATH_PARAM_FIELD_PREFIX, HTTP_QUERY_PARAM_FIELD_PREFIX, ONE_OF_GENERATOR, REAL_TIME_METHOD_FIELD, REAL_TIME_URL_FIELD, YAML_HTTP_BODY_FIELD, YAML_HTTP_HEADERS_FIELD, YAML_HTTP_URL_FIELD, YAML_REAL_TIME_BODY_FIELD, YAML_REAL_TIME_HEADERS_FIELD}
+import io.github.datacatering.datacaterer.api.model.{DataCatererConfiguration, DataSourceValidation, DataType, Plan, Task, UpstreamDataSourceValidation, ValidationConfiguration, YamlUpstreamDataSourceValidation, YamlValidationConfiguration}
 import io.github.datacatering.datacaterer.api.{ConnectionConfigWithTaskBuilder, FieldBuilder, HttpMethodEnum, HttpQueryParameterStyleEnum, ValidationBuilder}
 import io.github.datacatering.datacaterer.core.exception.DataValidationMissingUpstreamDataSourceException
+import io.github.datacatering.datacaterer.core.generator.provider.OneOfDataGenerator
 import io.github.datacatering.datacaterer.core.util.FileUtil.{getFileContentFromFileSystem, isCloudStoragePath}
 import io.github.datacatering.datacaterer.core.util.PlanImplicits.FieldOps
 import io.github.datacatering.datacaterer.core.util.{FileUtil, ObjectMapperUtil}
@@ -110,16 +111,16 @@ object PlanParser {
   private def convertToSpecificFields(task: Task): Task = {
     val specificFields = task.steps.map(step => {
       val mappedFields = step.fields.flatMap(field => {
-        field.name match {
-          case YAML_REAL_TIME_HEADERS_FIELD =>
+        (field.name, field.fields.nonEmpty) match {
+          case (YAML_REAL_TIME_HEADERS_FIELD, true) =>
             val headerFields = field.fields.map(innerField => FieldBuilder(innerField))
             val messageHeaders = FieldBuilder().messageHeaders(headerFields: _*)
             List(messageHeaders.field)
-          case YAML_REAL_TIME_BODY_FIELD =>
+          case (YAML_REAL_TIME_BODY_FIELD, true) =>
             val innerFields = field.fields.map(innerField => FieldBuilder(innerField))
             val messageBodyBuilder = FieldBuilder().messageBody(innerFields: _*)
             messageBodyBuilder.map(_.field)
-          case YAML_HTTP_URL_FIELD =>
+          case (YAML_HTTP_URL_FIELD, true) =>
             val innerFields = field.fields.map(innerField => FieldBuilder(innerField))
             val urlField = innerFields.find(f => f.field.name == REAL_TIME_URL_FIELD).flatMap(f => f.field.static)
             val methodField = innerFields.find(f => f.field.name == REAL_TIME_METHOD_FIELD).flatMap(f => f.field.static)
@@ -142,13 +143,28 @@ object PlanParser {
               pathParams,
               queryParams
             ).map(_.field)
-          case YAML_HTTP_HEADERS_FIELD =>
+          case (YAML_HTTP_HEADERS_FIELD, true) =>
             val headerFields = field.fields.map(innerField => FieldBuilder(innerField).httpHeader(innerField.name))
             headerFields.map(_.field)
-          case YAML_HTTP_BODY_FIELD =>
+          case (YAML_HTTP_BODY_FIELD, true) =>
             val innerFields = field.fields.map(innerField => FieldBuilder(innerField))
             val httpBody = FieldBuilder().httpBody(innerFields: _*)
             httpBody.map(_.field)
+          case (_, false) =>
+            if (field.options.contains(ONE_OF_GENERATOR)) {
+              val baseArray = field.options(ONE_OF_GENERATOR).asInstanceOf[List[Any]].map(_.toString)
+              if (OneOfDataGenerator.isWeightedOneOf(baseArray.toArray)) {
+                val valuesWithWeights = baseArray.map(value => {
+                  val split = value.split("->")
+                  (split(0), split(1).toDouble)
+                })
+                FieldBuilder().name(field.name).oneOfWeighted(valuesWithWeights).map(_.field)
+              } else {
+                List(field)
+              }
+            } else {
+              List(field)
+            }
           case _ => List(field)
         }
       })
@@ -158,6 +174,11 @@ object PlanParser {
   }
 
   private def toStringValues(options: Map[String, Any]): Map[String, String] = {
-    options.map(x => (x._1, x._2.toString))
+    options.map(x => {
+      x._2 match {
+        case list: List[_] => (x._1, list.mkString(","))
+        case _ => (x._1, x._2.toString)
+      }
+    })
   }
 }

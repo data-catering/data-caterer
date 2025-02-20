@@ -21,7 +21,7 @@ plugins {
     signing
 
     id("org.scoverage") version "8.0.3"
-    id("com.github.johnrengelman.shadow") version "8.1.1"
+    id("com.gradleup.shadow") version "8.3.6"
 }
 
 repositories {
@@ -56,13 +56,13 @@ testing {
     suites {
         // Configure the built-in test suite
         val test by getting(JvmTestSuite::class) {
-            // Use JUnit4 test framework
-            useJUnit("4.13.2")
+            // Use JUnit5 test framework
+            useJUnitJupiter()
 
             dependencies {
                 // Use Scalatest for testing our library
-                implementation("org.scalatest:scalatest_$scalaVersion:3.2.10")
-                implementation("org.scalatestplus:junit-4-13_$scalaVersion:3.2.2.0")
+                implementation("org.scalatest:scalatest_$scalaVersion:3.2.19")
+                implementation("org.scalatestplus:junit-5-11_$scalaVersion:3.2.19.0")
                 implementation("org.scalamock:scalamock_$scalaVersion:5.2.0")
 
                 // Need scala-xml at test runtime
@@ -70,6 +70,10 @@ testing {
             }
         }
     }
+}
+
+tasks.test {
+    jvmArgs("-Djava.security.manager=allow", "-Djdk.module.illegalAccess=deny", "--add-opens=java.base/java.lang=ALL-UNNAMED", "--add-opens=java.base/java.lang.invoke=ALL-UNNAMED", "--add-opens=java.base/java.lang.reflect=ALL-UNNAMED", "--add-opens=java.base/java.io=ALL-UNNAMED", "--add-opens=java.base/java.net=ALL-UNNAMED", "--add-opens=java.base/java.nio=ALL-UNNAMED", "--add-opens=java.base/java.util=ALL-UNNAMED", "--add-opens=java.base/java.util.concurrent=ALL-UNNAMED", "--add-opens=java.base/java.util.concurrent.atomic=ALL-UNNAMED", "--add-opens=java.base/sun.nio.ch=ALL-UNNAMED", "--add-opens=java.base/sun.nio.cs=ALL-UNNAMED", "--add-opens=java.base/sun.security.action=ALL-UNNAMED", "--add-opens=java.base/sun.util.calendar=ALL-UNNAMED", "--add-opens=java.security.jgss/sun.security.krb5=ALL-UNNAMED")
 }
 
 sourceSets {
@@ -172,4 +176,15 @@ signing {
     val signingPassword: String? by project
     useInMemoryPgpKeys(signingKeyId, signingKey, signingPassword)
     sign(publishing.publications["mavenScala"])
+}
+
+tasks {
+    test{
+        useJUnitPlatform {
+            includeEngines("scalatest")
+            testLogging {
+                events("failed")
+            }
+        }
+    }
 }

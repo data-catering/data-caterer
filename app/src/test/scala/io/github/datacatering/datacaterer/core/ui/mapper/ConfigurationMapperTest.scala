@@ -3,11 +3,8 @@ package io.github.datacatering.datacaterer.core.ui.mapper
 import io.github.datacatering.datacaterer.api.DataCatererConfigurationBuilder
 import io.github.datacatering.datacaterer.api.model.Constants._
 import io.github.datacatering.datacaterer.core.ui.model.ConfigurationRequest
-import org.junit.runner.RunWith
 import org.scalatest.funsuite.AnyFunSuite
-import org.scalatestplus.junit.JUnitRunner
 
-@RunWith(classOf[JUnitRunner])
 class ConfigurationMapperTest extends AnyFunSuite {
 
   test("Can convert UI flag config") {

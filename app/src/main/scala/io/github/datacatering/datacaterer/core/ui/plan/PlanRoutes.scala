@@ -2,9 +2,7 @@ package io.github.datacatering.datacaterer.core.ui.plan
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.github.pjfanning.pekkohttpjackson.JacksonSupport
-import io.github.datacatering.datacaterer.core.exception.{InvalidCredentialsException, UserNotFoundException}
 import io.github.datacatering.datacaterer.core.ui.model.{CredentialsRequest, PlanRunRequest, SaveConnectionsRequest}
-import io.github.datacatering.datacaterer.core.ui.plan.CredentialRepository.SaveCredentials
 import io.github.datacatering.datacaterer.core.util.ObjectMapperUtil
 import org.apache.log4j.Logger
 import org.apache.pekko.actor.typed.scaladsl.AskPattern.{Askable, schedulerFromActorSystem}

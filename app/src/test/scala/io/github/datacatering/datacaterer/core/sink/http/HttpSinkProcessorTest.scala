@@ -2,12 +2,9 @@ package io.github.datacatering.datacaterer.core.sink.http
 
 import io.github.datacatering.datacaterer.api.model.Constants.{PASSWORD, USERNAME}
 import org.apache.spark.sql.types.{StringType, StructField, StructType}
-import org.junit.runner.RunWith
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.funsuite.AnyFunSuite
-import org.scalatestplus.junit.JUnitRunner
 
-@RunWith(classOf[JUnitRunner])
 class HttpSinkProcessorTest extends AnyFunSuite with MockFactory {
 
   private val headerStruct = StructType(Seq(StructField("key", StringType), StructField("value", StringType)))

@@ -2,12 +2,9 @@ package io.github.datacatering.datacaterer.core.util
 
 import io.github.datacatering.datacaterer.api.model.Constants.IS_UNIQUE
 import io.github.datacatering.datacaterer.api.model.{Count, Field, PerFieldCount, Plan, Step, Task, TaskSummary}
-import org.junit.runner.RunWith
-import org.scalatestplus.junit.JUnitRunner
 
 import java.sql.Date
 
-@RunWith(classOf[JUnitRunner])
 class UniqueFieldsUtilTest extends SparkSuite {
 
   private val FIELDS = List(

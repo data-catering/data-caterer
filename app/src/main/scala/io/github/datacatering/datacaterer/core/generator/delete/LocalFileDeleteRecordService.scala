@@ -23,6 +23,7 @@ class LocalFileDeleteRecordService extends DeleteRecordService {
       .format(format)
       .options(options)
       .save()
+    df.unpersist()
   }
 
 }

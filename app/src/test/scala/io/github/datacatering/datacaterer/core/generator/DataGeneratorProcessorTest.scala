@@ -3,13 +3,10 @@ package io.github.datacatering.datacaterer.core.generator
 import io.github.datacatering.datacaterer.api.model.Constants.FORMAT
 import io.github.datacatering.datacaterer.api.model.{DataCatererConfiguration, FlagsConfig, FoldersConfig}
 import io.github.datacatering.datacaterer.core.util.SparkSuite
-import org.junit.runner.RunWith
-import org.scalatestplus.junit.JUnitRunner
 
 import java.io.File
 import scala.reflect.io.Directory
 
-@RunWith(classOf[JUnitRunner])
 class DataGeneratorProcessorTest extends SparkSuite {
 
   test("Can parse plan and tasks, then execute data generation") {

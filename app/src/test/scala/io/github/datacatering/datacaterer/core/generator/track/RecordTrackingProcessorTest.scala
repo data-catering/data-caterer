@@ -4,10 +4,7 @@ import io.github.datacatering.datacaterer.api.model.Constants.{IS_PRIMARY_KEY, P
 import io.github.datacatering.datacaterer.api.model.{Count, Field, Step}
 import io.github.datacatering.datacaterer.core.util.PlanImplicits.StepOps
 import io.github.datacatering.datacaterer.core.util.SparkSuite
-import org.junit.runner.RunWith
-import org.scalatestplus.junit.JUnitRunner
 
-@RunWith(classOf[JUnitRunner])
 class RecordTrackingProcessorTest extends SparkSuite {
 
   test("Can get all primary keys in order") {

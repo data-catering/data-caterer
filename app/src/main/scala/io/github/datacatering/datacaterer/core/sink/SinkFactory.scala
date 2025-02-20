@@ -5,7 +5,6 @@ import io.github.datacatering.datacaterer.api.model.Constants.{DELTA, DELTA_LAKE
 import io.github.datacatering.datacaterer.api.model.{FlagsConfig, FoldersConfig, MetadataConfig, SinkResult, Step}
 import io.github.datacatering.datacaterer.api.util.ConfigUtil
 import io.github.datacatering.datacaterer.core.exception.{FailedSaveDataDataFrameV2Exception, FailedSaveDataException}
-import io.github.datacatering.datacaterer.core.generator.metadata.datasource.LogHolder
 import io.github.datacatering.datacaterer.core.model.Constants.{BATCH, DEFAULT_ROWS_PER_SECOND, FAILED, FINISHED, PER_FIELD_INDEX_FIELD, STARTED}
 import io.github.datacatering.datacaterer.core.model.RealTimeSinkResult
 import io.github.datacatering.datacaterer.core.util.GeneratorUtil.determineSaveTiming
@@ -296,13 +295,15 @@ class SinkFactory(
     val cleansedOptions = ConfigUtil.cleanseOptions(connectionConfig)
     val sinkResult = SinkResult(dataSourceName, format, saveMode.name(), cleansedOptions, count.toLong, isSuccess, Array(), startTime, exception = optException)
 
-    if (flagsConfig.enableSinkMetadata) {
+    val result = if (flagsConfig.enableSinkMetadata) {
       val sample = df.take(metadataConfig.numGeneratedSamples).map(_.json)
       val fields = getFieldMetadata(dataSourceName, df, connectionConfig, metadataConfig)
       sinkResult.copy(generatedMetadata = fields, sample = sample)
     } else {
       sinkResult
     }
+    df.unpersist()
+    result
   }
 
   private def removeOmitFields(df: DataFrame): DataFrame = {

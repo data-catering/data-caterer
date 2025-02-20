@@ -2,13 +2,10 @@ package io.github.datacatering.datacaterer.core.generator.metadata
 
 import io.github.datacatering.datacaterer.api.model.Constants.{EXPRESSION, FIELD_LABEL, IS_PII, LABEL_ADDRESS, LABEL_APP, LABEL_FOOD, LABEL_INTERNET, LABEL_JOB, LABEL_MONEY, LABEL_NAME, LABEL_NATION, LABEL_PHONE, LABEL_RELATIONSHIP, LABEL_USERNAME, LABEL_WEATHER}
 import org.apache.spark.sql.types.{StringType, StructField, StructType}
-import org.junit.runner.RunWith
 import org.scalatest.funsuite.AnyFunSuite
-import org.scalatestplus.junit.JUnitRunner
 
 import java.nio.file.{Files, Paths, StandardOpenOption}
 
-@RunWith(classOf[JUnitRunner])
 class ExpressionPredictorTest extends AnyFunSuite {
 
   test("Can get all data faker expressions and write to file") {

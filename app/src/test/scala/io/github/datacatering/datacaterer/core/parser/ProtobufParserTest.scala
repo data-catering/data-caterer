@@ -1,13 +1,10 @@
 package io.github.datacatering.datacaterer.core.parser
 
-import org.junit.runner.RunWith
 import org.scalatest.funsuite.AnyFunSuiteLike
-import org.scalatestplus.junit.JUnitRunner
 
 import java.io.File
 import java.nio.file.Paths
 
-@RunWith(classOf[JUnitRunner])
 class ProtobufParserTest extends AnyFunSuiteLike {
 
   test("Can read all structs from proto file") {

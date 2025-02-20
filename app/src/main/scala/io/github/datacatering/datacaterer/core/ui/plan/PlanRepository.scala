@@ -10,9 +10,8 @@ import io.github.datacatering.datacaterer.core.parser.PlanParser
 import io.github.datacatering.datacaterer.core.plan.{PlanProcessor, YamlPlanRun}
 import io.github.datacatering.datacaterer.core.ui.config.UiConfiguration.INSTALL_DIRECTORY
 import io.github.datacatering.datacaterer.core.ui.mapper.ConfigurationMapper.configurationMapping
-import io.github.datacatering.datacaterer.core.ui.model.{Connection, CredentialsRequest, PlanRunExecution, PlanRunRequest, PlanRunRequests}
+import io.github.datacatering.datacaterer.core.ui.model.{Connection, PlanRunExecution, PlanRunRequest, PlanRunRequests}
 import io.github.datacatering.datacaterer.core.ui.plan.PlanResponseHandler.{KO, OK, Response}
-import io.github.datacatering.datacaterer.core.ui.security.CredentialsManager
 import io.github.datacatering.datacaterer.core.util.{ObjectMapperUtil, SparkProvider}
 import org.apache.log4j.Logger
 import org.apache.pekko.actor.typed.scaladsl.Behaviors
