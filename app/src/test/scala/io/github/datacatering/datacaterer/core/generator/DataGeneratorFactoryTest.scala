@@ -60,7 +60,7 @@ class DataGeneratorFactoryTest extends SparkSuite {
     assert(debitCredit == "D" || debitCredit == "C")
     assert(sampleRow.getString(3).matches("[A-Z][a-z]{2,6} [A-Z][a-z]{2,8}"))
     if (debitCredit == "D") assert(sampleRow.getInt(4) == 1) else assert(sampleRow.getInt(4) == 0)
-    assertResult("cfcd2084-95d5-65ef-66e7-dff9f98764da")(sampleRow.getString(5))
+    assertResult("c4ca4238-a0b9-2382-0dcc-509a6f75849b")(sampleRow.getString(5))
     rows.foreach(row => {
       val customerId = row.getInt(6)
       assert(customerId > 0 && customerId <= 10)

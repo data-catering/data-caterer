@@ -14,7 +14,8 @@ case class FlagsConfig(
                         enableSaveReports: Boolean = DEFAULT_ENABLE_SAVE_REPORTS,
                         enableValidation: Boolean = DEFAULT_ENABLE_VALIDATION,
                         enableGenerateValidations: Boolean = DEFAULT_ENABLE_SUGGEST_VALIDATIONS,
-                        enableAlerts: Boolean = DEFAULT_ENABLE_ALERTS
+                        enableAlerts: Boolean = DEFAULT_ENABLE_ALERTS,
+                        enableUniqueCheckOnlyInBatch: Boolean = DEFAULT_ENABLE_UNIQUE_CHECK_ONLY_WITHIN_BATCH
                       )
 
 case class FoldersConfig(

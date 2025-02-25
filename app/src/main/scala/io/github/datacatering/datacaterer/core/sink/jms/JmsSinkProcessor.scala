@@ -103,8 +103,9 @@ object JmsSinkProcessor extends RealTimeSinkProcessor[(MessageProducer, Session,
       case _ => throw new IllegalArgumentException(s"Unsupported JMS connection factory, factory=${connectionConfig(JMS_CONNECTION_FACTORY)}")
     }
     val connection = jmsConnection.createConnection()
-    val messageProducer = jmsConnection.createMessageProducer(connection, step)
-    (messageProducer, jmsConnection.session, connection)
+    val session = jmsConnection.createSession(connection)
+    val messageProducer = jmsConnection.createMessageProducer(connection, session, step)
+    (messageProducer, session, connection)
   }
 
   def close: Unit = {

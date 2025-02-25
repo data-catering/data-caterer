@@ -110,9 +110,9 @@ class PlanProcessorTest extends SparkSuite {
     assert(csvData.forall(r => r.getAs[String]("time").substring(0, 10) == r.getAs[String]("date")))
   }
 
-  ignore("Write YAML for plan") {
-    val docPlanRun = new TestValidation()
-    val planWrite = ObjectMapperUtil.yamlObjectMapper.writeValueAsString(docPlanRun._validations)
+  test("Write YAML for plan") {
+    val docPlanRun = new ParquetMultipleRelationshipsPlan()
+    val planWrite = ObjectMapperUtil.yamlObjectMapper.writeValueAsString(docPlanRun._tasks)
     println(planWrite)
   }
 

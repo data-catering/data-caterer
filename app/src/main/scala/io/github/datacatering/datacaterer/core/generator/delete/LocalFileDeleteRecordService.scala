@@ -9,6 +9,8 @@ class LocalFileDeleteRecordService extends DeleteRecordService {
   private val LOGGER = Logger.getLogger(getClass.getName)
 
   override def deleteRecords(dataSourceName: String, trackedRecords: DataFrame, options: Map[String, String])(implicit sparkSession: SparkSession): Unit = {
+    validateOption(dataSourceName, options, PATH)
+    validateOption(dataSourceName, options, FORMAT)
     val path = options(PATH)
     val format = options(FORMAT)
     LOGGER.warn(s"Deleting tracked generated records from local file, data-source-name=$dataSourceName, path=$path")
@@ -26,4 +28,9 @@ class LocalFileDeleteRecordService extends DeleteRecordService {
     df.unpersist()
   }
 
+  private def validateOption(dataSourceName: String, options: Map[String, String], key: String): Unit = {
+    if (!options.contains(key)) {
+      throw new IllegalArgumentException(s"Missing $key option, data-source-name=$dataSourceName")
+    }
+  }
 }

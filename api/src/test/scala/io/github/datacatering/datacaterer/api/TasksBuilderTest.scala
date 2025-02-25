@@ -198,7 +198,7 @@ class TasksBuilderTest extends AnyFunSuite {
   test("Can create incremental field") {
     val result = FieldBuilder().`type`(IntegerType).incremental().field
 
-    assertResult("true")(result.options(INCREMENTAL))
+    assertResult(1)(result.options(INCREMENTAL))
   }
 
   test("Can create uuid field") {
@@ -212,14 +212,14 @@ class TasksBuilderTest extends AnyFunSuite {
     val result1 = FieldBuilder().incremental().uuid().field
 
     List(result, result1).foreach(res => {
-      assertResult("true")(res.options(INCREMENTAL))
+      assertResult(1)(res.options(INCREMENTAL))
       assertResult(
         """CONCAT(
-          |SUBSTR(MD5(CAST(__index_inc AS STRING)), 1, 8), '-',
-          |SUBSTR(MD5(CAST(__index_inc AS STRING)), 9, 4), '-',
-          |SUBSTR(MD5(CAST(__index_inc AS STRING)), 13, 4), '-',
-          |SUBSTR(MD5(CAST(__index_inc AS STRING)), 17, 4), '-',
-          |SUBSTR(MD5(CAST(__index_inc AS STRING)), 21, 12)
+          |SUBSTR(MD5(CAST(1 + __index_inc AS STRING)), 1, 8), '-',
+          |SUBSTR(MD5(CAST(1 + __index_inc AS STRING)), 9, 4), '-',
+          |SUBSTR(MD5(CAST(1 + __index_inc AS STRING)), 13, 4), '-',
+          |SUBSTR(MD5(CAST(1 + __index_inc AS STRING)), 17, 4), '-',
+          |SUBSTR(MD5(CAST(1 + __index_inc AS STRING)), 21, 12)
           |)""".stripMargin)(res.options(SQL_GENERATOR))
     })
   }

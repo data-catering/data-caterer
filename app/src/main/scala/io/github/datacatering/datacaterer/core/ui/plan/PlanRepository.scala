@@ -3,7 +3,7 @@ package io.github.datacatering.datacaterer.core.ui.plan
 import io.github.datacatering.datacaterer.api.model.Constants.{CONFIG_FLAGS_DELETE_GENERATED_RECORDS, CONFIG_FLAGS_GENERATE_DATA, CONFIG_FLAGS_GENERATE_VALIDATIONS, DATA_CATERER_INTERFACE_UI, DEFAULT_MASTER, DEFAULT_RUNTIME_CONFIG, DRIVER, FORMAT, JDBC, METADATA_SOURCE_NAME, METADATA_SOURCE_TYPE, MYSQL, MYSQL_DRIVER, POSTGRES, POSTGRES_DRIVER}
 import io.github.datacatering.datacaterer.api.model.{DataSourceValidation, Task, ValidationConfiguration, YamlUpstreamDataSourceValidation}
 import io.github.datacatering.datacaterer.api.{DataCatererConfigurationBuilder, ValidationBuilder}
-import io.github.datacatering.datacaterer.core.exception.SaveFileException
+import io.github.datacatering.datacaterer.core.exception.{GetPlanRunStatusException, SaveFileException}
 import io.github.datacatering.datacaterer.core.model.Constants.{DATA_CATERER_UI, FAILED, FINISHED, PARSED_PLAN, STARTED}
 import io.github.datacatering.datacaterer.core.model.PlanRunResults
 import io.github.datacatering.datacaterer.core.parser.PlanParser
@@ -214,6 +214,9 @@ object PlanRepository {
                                      ): List[Task] = {
     val updatedTasks = parsedRequest.tasks.map(s => {
       val taskName = s.name
+      if (!taskToDataSourceMap.contains(taskName)) {
+        throw new IllegalArgumentException(s"Task name not found in data source map, task-name=$taskName")
+      }
       val dataSourceName = taskToDataSourceMap(taskName)
       val connectionInfo = dataSourceConnectionInfo(dataSourceName)
       val metadataOpts = getMetadataSourceInfo(dataSourceConnectionInfo, s.options)
@@ -255,7 +258,7 @@ object PlanRepository {
       Files.writeString(
         executionFile,
         planRunExecution.toString,
-        StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE
+        StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING
       )
     } catch {
       case ex: Exception => throw SaveFileException(filePath, ex)
@@ -333,15 +336,21 @@ object PlanRepository {
 
   private def getPlanRunStatus(id: String): PlanRunExecution = {
     LOGGER.debug(s"Getting current plan status, plan-run-id=$id")
-    val executionFile = Path.of(s"$executionSaveFolder/$id.csv")
-    val latestUpdate = Files.readAllLines(executionFile).asScala.last
-    PlanRunExecution.fromString(latestUpdate)
+    try {
+      val executionFile = Path.of(s"$executionSaveFolder/$id.csv")
+      val latestUpdate = Files.readAllLines(executionFile).asScala.last
+      PlanRunExecution.fromString(latestUpdate)
+    } catch {
+      case ex: Exception =>
+        LOGGER.error(s"Failed to get plan run status, plan-run-id=$id, exception=${ex.getMessage}")
+        throw GetPlanRunStatusException(id, ex)
+    }
   }
 
   private def getPlanRunReportPath(id: String): String = {
     val planRunExecution = getPlanRunStatus(id)
     LOGGER.debug(s"Report link pathway, id=$id, path=${planRunExecution.reportLink.getOrElse("")}")
-    planRunExecution.reportLink.getOrElse(s"/tmp/report/blah")
+    planRunExecution.reportLink.getOrElse(s"/tmp/report/$id")
   }
 
   private def getAllPlanExecutions: PlanRunExecutionDetails = {

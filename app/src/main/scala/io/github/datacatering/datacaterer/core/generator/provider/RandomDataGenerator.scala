@@ -2,6 +2,7 @@ package io.github.datacatering.datacaterer.core.generator.provider
 
 import io.github.datacatering.datacaterer.api.model.Constants._
 import io.github.datacatering.datacaterer.core.exception.UnsupportedDataGeneratorType
+import io.github.datacatering.datacaterer.core.generator.provider.RandomDataGenerator.tryGetValue
 import io.github.datacatering.datacaterer.core.model.Constants._
 import io.github.datacatering.datacaterer.core.util.GeneratorUtil
 import net.datafaker.Faker
@@ -400,7 +401,7 @@ object RandomDataGenerator {
         (min, max, diff, mean)
     }
     val defaultValue = tryGetValue(metadata, DEFAULT_VALUE, "")
-    val incremental = tryGetValue(metadata, INCREMENTAL, false)
+    val isIncremental = metadata.contains(INCREMENTAL)
     val standardDeviation = tryGetValue(metadata, STANDARD_DEVIATION, 1.0)
     val distinctCount = tryGetValue(metadata, DISTINCT_COUNT, 0)
     val count = tryGetValue(metadata, ROW_COUNT, 0)
@@ -409,9 +410,12 @@ object RandomDataGenerator {
     val distribution = tryGetValue(metadata, DISTRIBUTION, "")
     val rateParameter = tryGetValue(metadata, DISTRIBUTION_RATE_PARAMETER, 1.0)
 
-    val baseFormula = if (isIncrementalNumber(incremental, defaultValue, distinctCount, count, isUnique)) {
+    val baseFormula = if (isIncrementalNumber(isIncremental, defaultValue, distinctCount, count, isUnique)) {
       if (metadata.contains(MAXIMUM)) {
         s"$max + $INDEX_INC_FIELD + 1" //index col starts at 0
+      } else if (isIncremental) {
+        val incrementStartValue = tryGetValue(metadata, INCREMENTAL, 1)
+        s"$incrementStartValue + $INDEX_INC_FIELD"
       } else {
         s"$INDEX_INC_FIELD + 1"
       }
@@ -439,8 +443,8 @@ object RandomDataGenerator {
     }
   }
 
-  private def isIncrementalNumber(incremental: Boolean, defaultValue: String, distinctCount: Int, count: Int, isUnique: String) = {
-    incremental || defaultValue.toLowerCase.startsWith("nextval") || (distinctCount == count && distinctCount > 0) || isUnique == "true"
+  private def isIncrementalNumber(isIncremental: Boolean, defaultValue: String, distinctCount: Int, count: Int, isUnique: String) = {
+    isIncremental || defaultValue.toLowerCase.startsWith("nextval") || (distinctCount == count && distinctCount > 0) || isUnique == "true"
   }
 
   def tryGetValue[T](metadata: Metadata, key: String, default: T)(implicit converter: Converter[T]): T = {

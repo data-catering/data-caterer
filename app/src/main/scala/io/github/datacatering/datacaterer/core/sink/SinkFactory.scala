@@ -302,7 +302,6 @@ class SinkFactory(
     } else {
       sinkResult
     }
-    df.unpersist()
     result
   }
 

@@ -396,8 +396,19 @@ class RandomDataGeneratorTest extends AnyFunSuite {
     assertResult(3)(res.size)
   }
 
-  test("Can get min and max value from metadata for int field") {
-    val metadata = new MetadataBuilder().putString(MINIMUM, "1").putString(MAXIMUM, "10").build()
-    //    RandomDataGenerator.sqlExpressionForNumeric()
+  test("Can create random int generator with incremental value starting at 1") {
+    val metadata = new MetadataBuilder().putString(INCREMENTAL, "1").build()
+    val intGenerator = new RandomIntDataGenerator(StructField("random_int", IntegerType, false, metadata))
+
+    assert(intGenerator.edgeCases.nonEmpty)
+    assertResult("CAST(1 + __index_inc AS INT)")(intGenerator.generateSqlExpression)
+  }
+
+  test("Can create random int generator with incremental value starting at 10") {
+    val metadata = new MetadataBuilder().putString(INCREMENTAL, "10").build()
+    val intGenerator = new RandomIntDataGenerator(StructField("random_int", IntegerType, false, metadata))
+
+    assert(intGenerator.edgeCases.nonEmpty)
+    assertResult("CAST(10 + __index_inc AS INT)")(intGenerator.generateSqlExpression)
   }
 }

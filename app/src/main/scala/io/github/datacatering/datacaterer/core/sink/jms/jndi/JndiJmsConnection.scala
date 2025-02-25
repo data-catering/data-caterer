@@ -10,9 +10,6 @@ import javax.naming.{Context, InitialContext}
 
 class JndiJmsConnection(override val connectionConfig: Map[String, String]) extends JmsConnection {
 
-  override lazy val connection: Connection = createConnection()
-  override lazy val session: Session = connection.createSession(false, Session.AUTO_ACKNOWLEDGE)
-
   private var context: InitialContext = _
 
   override def createConnection(): Connection = {
@@ -22,7 +19,7 @@ class JndiJmsConnection(override val connectionConfig: Map[String, String]) exte
     connection
   }
 
-  override def createMessageProducer(connection: Connection, step: Step): MessageProducer = {
+  override def createMessageProducer(connection: Connection, session: Session, step: Step): MessageProducer = {
     val destination = context.lookup(step.options(JMS_DESTINATION_NAME)).asInstanceOf[Destination]
     session.createProducer(destination)
   }

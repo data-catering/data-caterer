@@ -57,8 +57,8 @@ class DataGeneratorFactory(faker: Faker)(implicit val sparkSession: SparkSession
     if (!allRecordsDf.storageLevel.useMemory) allRecordsDf.cache()
     val dfWithMetadata = attachMetadata(allRecordsDf, structType)
     val dfAllFields = attachMetadata(applySqlExpressions(dfWithMetadata), structType)
-    allRecordsDf.unpersist()
     if (!dfAllFields.storageLevel.useMemory) dfAllFields.cache()
+    allRecordsDf.unpersist()
     dfAllFields.drop(INDEX_INC_FIELD)
   }
 
@@ -145,7 +145,11 @@ class DataGeneratorFactory(faker: Faker)(implicit val sparkSession: SparkSession
   }
 
   private def attachMetadata(df: DataFrame, structType: StructType): DataFrame = {
-    sparkSession.createDataFrame(df.selectExpr(structType.fieldNames: _*).rdd, structType)
+    val rdd = df.selectExpr(structType.fieldNames: _*).rdd
+    if (!rdd.getStorageLevel.useMemory) rdd.cache()
+    val updatedDf = sparkSession.createDataFrame(rdd, structType)
+    rdd.unpersist()
+    updatedDf
   }
 
   private def defineRandomLengthView(): Unit = {

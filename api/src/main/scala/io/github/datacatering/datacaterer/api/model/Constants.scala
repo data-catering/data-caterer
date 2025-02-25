@@ -124,6 +124,7 @@ object Constants {
   lazy val HTTP_PARAMETER_TYPE = "httpParamType"
   lazy val POST_SQL_EXPRESSION = "postSqlExpression"
   lazy val INCREMENTAL = "incremental"
+  lazy val UUID = "uuid"
 
   //special field names
   lazy val INDEX_INC_FIELD = "__index_inc"
@@ -219,6 +220,7 @@ object Constants {
   lazy val DEFAULT_ENABLE_SUGGEST_VALIDATIONS = false
   lazy val DEFAULT_ENABLE_ALERTS = true
   lazy val DEFAULT_ENABLE_TRACK_ACTIVITY = true
+  lazy val DEFAULT_ENABLE_UNIQUE_CHECK_ONLY_WITHIN_BATCH = false
 
   //folders defaults
   lazy val DEFAULT_PLAN_FILE_PATH = "/opt/app/plan/customer-create-plan.yaml"
@@ -323,19 +325,19 @@ object Constants {
   lazy val DEFAULT_PLAN_NAME = "default_plan"
 
   //task defaults
-  def DEFAULT_TASK_NAME: String = UUID.randomUUID().toString
+  def DEFAULT_TASK_NAME: String = java.util.UUID.randomUUID().toString
 
   lazy val DEFAULT_DATA_SOURCE_NAME = "json"
   lazy val DEFAULT_TASK_SUMMARY_ENABLE = true
 
   //step defaults
-  def DEFAULT_STEP_NAME: String = UUID.randomUUID().toString
+  def DEFAULT_STEP_NAME: String = java.util.UUID.randomUUID().toString
 
   lazy val DEFAULT_STEP_TYPE = "json"
   lazy val DEFAULT_STEP_ENABLED = true
 
   //field defaults
-  def DEFAULT_FIELD_NAME: String = UUID.randomUUID().toString
+  def DEFAULT_FIELD_NAME: String = java.util.UUID.randomUUID().toString
 
   lazy val DEFAULT_FIELD_TYPE = "string"
   lazy val DEFAULT_FIELD_NULLABLE = true

@@ -15,6 +15,11 @@ case class SaveFileException(filePath: String, throwable: Throwable) extends Run
   throwable
 )
 
+case class GetPlanRunStatusException(planId: String, throwable: Throwable) extends RuntimeException(
+  s"Failed to get plan run status from file system, plan-id=$planId",
+  throwable
+)
+
 //Foreign key
 case class InvalidForeignKeyFormatException(foreignKey: String) extends RuntimeException(
   s"Unexpected foreign key relation format. Should have at least 2 or 3 parts delimited " +

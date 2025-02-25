@@ -83,13 +83,18 @@ class DeleteRecordProcessor(connectionConfigsByName: Map[String, Map[String, Str
 
   private def deleteRecords(dataSourceName: String, plan: Plan, step: Step, stepsByName: Map[String, Step] = Map(),
                             optSourceForeignKey: Option[String] = None, optFullForeignKey: Option[(ForeignKeyRelation, String)] = None): Unit = {
+    val cleansedOptions = cleanseOptions(step.options)
+    if (!step.options.contains(FORMAT)) {
+      LOGGER.error(s"Format not defined for data source, unable to delete data, data-source-name=$dataSourceName, details=$cleansedOptions")
+      return
+    }
     val format = step.options(FORMAT)
     val subDataSourcePath = getSubDataSourcePath(dataSourceName, plan.name, step, recordTrackingFolderPath)
     val optDeleteRecordService = getDeleteRecordService(format)
 
     optDeleteRecordService.foreach(deleteRecordService => {
       LOGGER.warn(s"Attempting to delete generated records, all generated records for this data source will be deleted, " +
-        s"data-source-name=$dataSourceName, format=$format, details=${cleanseOptions(step.options)}")
+        s"data-source-name=$dataSourceName, format=$format, details=$cleansedOptions")
       val tryTrackedRecords = Try(getTrackedRecords(subDataSourcePath))
 
       tryTrackedRecords match {
@@ -100,7 +105,7 @@ class DeleteRecordProcessor(connectionConfigsByName: Map[String, Map[String, Str
           }).getOrElse(
             LOGGER.error(s"Failed to get tracked records for data source, unable to delete data, will continue to try delete other data sources, " +
               s"data-source-name=$dataSourceName, format=$format, tracked-records-path=$subDataSourcePath, " +
-              s"details=${cleanseOptions(step.options)}, exception=${exception.getMessage}")
+              s"details=$cleansedOptions, exception=${exception.getMessage}")
           )
         case Success(trackedRecords) =>
           deleteRecordsAndTrackingFile(dataSourceName, step, subDataSourcePath, deleteRecordService, trackedRecords)

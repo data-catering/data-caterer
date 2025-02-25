@@ -1,7 +1,7 @@
 package io.github.datacatering.datacaterer.core.parser
 
-import io.github.datacatering.datacaterer.api.model.Constants.{HTTP_PATH_PARAM_FIELD_PREFIX, HTTP_QUERY_PARAM_FIELD_PREFIX, ONE_OF_GENERATOR, REAL_TIME_METHOD_FIELD, REAL_TIME_URL_FIELD, YAML_HTTP_BODY_FIELD, YAML_HTTP_HEADERS_FIELD, YAML_HTTP_URL_FIELD, YAML_REAL_TIME_BODY_FIELD, YAML_REAL_TIME_HEADERS_FIELD}
-import io.github.datacatering.datacaterer.api.model.{DataCatererConfiguration, DataSourceValidation, DataType, Plan, Task, UpstreamDataSourceValidation, ValidationConfiguration, YamlUpstreamDataSourceValidation, YamlValidationConfiguration}
+import io.github.datacatering.datacaterer.api.model.Constants.{HTTP_PATH_PARAM_FIELD_PREFIX, HTTP_QUERY_PARAM_FIELD_PREFIX, INCREMENTAL, ONE_OF_GENERATOR, REAL_TIME_METHOD_FIELD, REAL_TIME_URL_FIELD, UUID, YAML_HTTP_BODY_FIELD, YAML_HTTP_HEADERS_FIELD, YAML_HTTP_URL_FIELD, YAML_REAL_TIME_BODY_FIELD, YAML_REAL_TIME_HEADERS_FIELD}
+import io.github.datacatering.datacaterer.api.model.{DataCatererConfiguration, DataSourceValidation, DataType, IntegerType, Plan, Task, UpstreamDataSourceValidation, ValidationConfiguration, YamlUpstreamDataSourceValidation, YamlValidationConfiguration}
 import io.github.datacatering.datacaterer.api.{ConnectionConfigWithTaskBuilder, FieldBuilder, HttpMethodEnum, HttpQueryParameterStyleEnum, ValidationBuilder}
 import io.github.datacatering.datacaterer.core.exception.DataValidationMissingUpstreamDataSourceException
 import io.github.datacatering.datacaterer.core.generator.provider.OneOfDataGenerator
@@ -108,7 +108,7 @@ object PlanParser {
     task.copy(steps = stringSteps)
   }
 
-  private def convertToSpecificFields(task: Task): Task = {
+  def convertToSpecificFields(task: Task): Task = {
     val specificFields = task.steps.map(step => {
       val mappedFields = step.fields.flatMap(field => {
         (field.name, field.fields.nonEmpty) match {
@@ -162,6 +162,16 @@ object PlanParser {
               } else {
                 List(field)
               }
+            } else if (field.options.contains(UUID) && field.options.contains(INCREMENTAL)) {
+              val incrementalStartNumber = field.options(INCREMENTAL).toString.toLong
+              List(FieldBuilder().name(field.name).uuid().incremental(incrementalStartNumber).options(field.options).field)
+            } else if (field.options.contains(UUID)) {
+              val uuidFieldName = field.options(UUID).toString
+              if (uuidFieldName.nonEmpty) List(FieldBuilder().name(field.name).uuid(uuidFieldName).options(field.options).field)
+              else List(FieldBuilder().name(field.name).uuid().options(field.options).field)
+            } else if (field.options.contains(INCREMENTAL)) {
+              val incrementalStartNumber = field.options(INCREMENTAL).toString.toLong
+              List(FieldBuilder().name(field.name).`type`(IntegerType).incremental(incrementalStartNumber).options(field.options).field)
             } else {
               List(field)
             }

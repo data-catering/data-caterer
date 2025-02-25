@@ -8,10 +8,19 @@ import jakarta.jms.{Connection, MessageProducer, Session}
 
 class RabbitmqJmsConnection(override val connectionConfig: Map[String, String]) extends JmsConnection {
 
-  override val connection: Connection = createConnection()
-  override val session: Session = connection.createSession(false, Session.AUTO_ACKNOWLEDGE)
-
   override def createConnection(): Connection = {
+    val factory = createFactory
+    val connection = factory.createConnection()
+    connection.start()
+    connection
+  }
+
+  override def createMessageProducer(connection: Connection, session: Session, step: Step): MessageProducer = {
+    val jmsDestination = session.createQueue(step.options(JMS_DESTINATION_NAME))
+    session.createProducer(jmsDestination)
+  }
+
+  def createFactory: RMQConnectionFactory = {
     val factory = new RMQConnectionFactory()
     factory.setUsername(connectionConfig(USERNAME))
     factory.setPassword(connectionConfig(PASSWORD))
@@ -26,13 +35,6 @@ class RabbitmqJmsConnection(override val connectionConfig: Map[String, String]) 
     val port = splitUrl(2)
     factory.setHost(host)
     factory.setPort(port.toInt)
-    val connection = factory.createConnection()
-    connection.start()
-    connection
-  }
-
-  override def createMessageProducer(connection: Connection, step: Step): MessageProducer = {
-    val jmsDestination = session.createQueue(step.options(JMS_DESTINATION_NAME))
-    session.createProducer(jmsDestination)
+    factory
   }
 }

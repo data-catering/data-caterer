@@ -1,6 +1,6 @@
 package io.github.datacatering.datacaterer.core.util
 
-import io.github.datacatering.datacaterer.api.model.Constants.IS_UNIQUE
+import io.github.datacatering.datacaterer.api.model.Constants.{IS_PRIMARY_KEY, IS_UNIQUE}
 import io.github.datacatering.datacaterer.api.model.{Count, Field, PerFieldCount, Plan, Step, Task, TaskSummary}
 
 import java.sql.Date
@@ -83,18 +83,63 @@ class UniqueFieldsUtilTest extends SparkSuite {
     val generatedData = sparkSession.createDataFrame(Seq(
       Account("acc1", open_date = firstDate), Account("acc1", open_date = secDate),
       Account("acc2", "jack", firstDate), Account("acc2", "jack", secDate),
-      Account("acc3", "susie", firstDate), Account("acc3", "susie", secDate), Account("acc3", "susie", Date.valueOf("2020-01-03"))
+      Account("acc3", "susie", firstDate), Account("acc3", "susie", secDate), Account("acc3", "susie", Date.valueOf("2020-01-03")),
+      Account("acc3", "blah", firstDate)
     ))
     val result = uniqueFieldUtil.getUniqueFieldsValues("postgresAccount.accounts", generatedData, step)
 
     val data = result.select("account_id").collect().map(_.getString(0))
-    val expectedUniqueAccounts = Array("acc1", "acc2")
-    assertResult(4)(data.length)
+    val expectedUniqueAccounts = Array("acc1", "acc2", "acc3")
+    assertResult(3)(data.length)
     data.foreach(a => assert(expectedUniqueAccounts.contains(a)))
     assertResult(2)(uniqueFieldUtil.uniqueFieldsDf.size)
-    assertResult(4)(uniqueFieldUtil.uniqueFieldsDf.head._2.count())
-    assertResult(4)(uniqueFieldUtil.uniqueFieldsDf.last._2.count())
+    assertResult(3)(uniqueFieldUtil.uniqueFieldsDf.head._2.count())
+    assertResult(3)(uniqueFieldUtil.uniqueFieldsDf.last._2.count())
     val currentUniqueAcc = uniqueFieldUtil.uniqueFieldsDf.filter(_._1.fields == List("account_id")).head._2.collect().map(_.getString(0))
     currentUniqueAcc.foreach(a => assert(expectedUniqueAccounts.contains(a)))
+  }
+
+  test("Can identify the primary key fields, create a data frame with per field count defined, create unique values for the primary key fields and don't track globally unique values") {
+    val step = Step(
+      "accounts",
+      "postgres",
+      Count(perField = Some(PerFieldCount(List("account_id"), Some(2)))),
+      Map(),
+      List(
+        Field("account_id", Some("string"), Map(IS_PRIMARY_KEY -> "true")),
+        Field("name", Some("string"), Map(IS_PRIMARY_KEY -> "true")),
+        Field("open_date", Some("date")),
+        Field("age", Some("int")),
+      )
+    )
+    val tasks = List((
+      TaskSummary("gen data", "postgresAccount"),
+      Task("account_postgres", List(step))
+    ))
+    val uniqueFieldUtil = new UniqueFieldsUtil(Plan(), tasks, true)
+
+    val firstDate = Date.valueOf("2020-01-01")
+    val secDate = Date.valueOf("2020-01-02")
+    val generatedData = sparkSession.createDataFrame(Seq(
+      Account("acc1", open_date = firstDate), Account("acc1", open_date = secDate),
+      Account("acc2", "jack", firstDate), Account("acc2", "john", secDate),
+      Account("acc3", "susie", firstDate), Account("acc3", "susie", secDate), Account("acc3", "susie", Date.valueOf("2020-01-03")),
+      Account("acc3", "blah", firstDate)
+    ))
+    val result = uniqueFieldUtil.getUniqueFieldsValues("postgresAccount.accounts", generatedData, step)
+
+    val accountIdData = result.select("account_id").collect().map(_.getString(0))
+    val expectedUniqueAccounts = Array("acc1", "acc2", "acc3")
+    assertResult(5)(accountIdData.length)
+    accountIdData.foreach(a => assert(expectedUniqueAccounts.contains(a)))
+    val nameData = result.select("name").collect().map(_.getString(0))
+    val expectedUniqueNames = Array("peter", "jack", "john", "susie", "blah")
+    assertResult(5)(nameData.length)
+    nameData.foreach(a => assert(expectedUniqueNames.contains(a)))
+    assertResult(1)(uniqueFieldUtil.uniqueFieldsDf.size)
+    assertResult(0)(uniqueFieldUtil.uniqueFieldsDf.head._2.count())
+    assertResult(0)(uniqueFieldUtil.uniqueFieldsDf.last._2.count())
+    val trackingDf = uniqueFieldUtil.uniqueFieldsDf.filter(_._1.fields == List("account_id", "name")).head._2.collect()
+    assert(trackingDf.isEmpty)
   }
 }

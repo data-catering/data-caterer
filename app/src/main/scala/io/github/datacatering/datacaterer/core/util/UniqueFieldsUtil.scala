@@ -1,12 +1,17 @@
 package io.github.datacatering.datacaterer.core.util
 
+import io.github.datacatering.datacaterer.api.model.Constants.DEFAULT_ENABLE_UNIQUE_CHECK_ONLY_WITHIN_BATCH
 import io.github.datacatering.datacaterer.api.model.{ForeignKeyRelation, Plan, Step, Task, TaskSummary}
 import io.github.datacatering.datacaterer.core.util.PlanImplicits.{PerFieldCountOps, StepOps}
 import org.apache.log4j.Logger
 import org.apache.spark.sql.functions.col
 import org.apache.spark.sql.{DataFrame, Dataset, Row, SparkSession}
 
-class UniqueFieldsUtil(plan: Plan, executableTasks: List[(TaskSummary, Task)])(implicit sparkSession: SparkSession) {
+class UniqueFieldsUtil(
+                        plan: Plan,
+                        executableTasks: List[(TaskSummary, Task)],
+                        enableUniqueCheckOnlyInBatch: Boolean = DEFAULT_ENABLE_UNIQUE_CHECK_ONLY_WITHIN_BATCH
+                      )(implicit sparkSession: SparkSession) {
 
   private val LOGGER = Logger.getLogger(getClass.getName)
 
@@ -35,39 +40,44 @@ class UniqueFieldsUtil(plan: Plan, executableTasks: List[(TaskSummary, Task)])(i
       } else {
         finalDf.dropDuplicates(fields)
       }
+      if (!dfWithUnique.storageLevel.useMemory) dfWithUnique.cache()
       //if there is a perField count, then need to create unique set of values, then run a left semi join with original dataset
       finalDf = if (step.count.perField.isDefined) {
-        getUniqueWithPerFieldCount(step, finalDf, previouslyGenerated, fields, dfWithUnique)
+        getUniqueWithPerFieldCount(step, previouslyGenerated, fields, dfWithUnique)
       } else if (previouslyGenerated._2.columns.nonEmpty) {
         dfWithUnique.join(previouslyGenerated._2, fields, "left_anti")
       } else {
         dfWithUnique
       }
+      dfWithUnique.unpersist()
     })
 
-    //update the map with the latest values
-    existingFieldValues.foreach(col => {
-      LOGGER.debug("Updating list of existing generated record value to ensure uniqueness")
-      val existingDf = uniqueFieldsDf(col._1)
-      val newFieldValuesDf = finalDf.selectExpr(col._1.fields: _*)
-      if (!existingDf.storageLevel.useMemory) existingDf.cache()
-      if (!newFieldValuesDf.storageLevel.useMemory) newFieldValuesDf.cache()
-      val combinedValuesDf = if (existingDf.isEmpty) newFieldValuesDf else newFieldValuesDf.union(existingDf)
-      if (!combinedValuesDf.storageLevel.useMemory) combinedValuesDf.cache()
-      newFieldValuesDf.unpersist()
-      existingDf.unpersist()
-      uniqueFieldsDf = uniqueFieldsDf ++ Map(col._1 -> combinedValuesDf)
-    })
+    //update the map with the latest values, only if enableUniqueCheckOnlyInBatch is false
+    if (!enableUniqueCheckOnlyInBatch) {
+      LOGGER.debug("Enable unique check only in batch is false, checking global unique values")
+      existingFieldValues.foreach(col => {
+        LOGGER.debug("Updating list of existing generated record value to ensure uniqueness")
+        val existingDf = uniqueFieldsDf(col._1)
+        val newFieldValuesDf = finalDf.selectExpr(col._1.fields: _*)
+        if (!existingDf.storageLevel.useMemory) existingDf.cache()
+        if (!newFieldValuesDf.storageLevel.useMemory) newFieldValuesDf.cache()
+        val combinedValuesDf = if (existingDf.isEmpty) newFieldValuesDf else newFieldValuesDf.union(existingDf)
+        if (!combinedValuesDf.storageLevel.useMemory) combinedValuesDf.cache()
+        newFieldValuesDf.unpersist()
+        existingDf.unpersist()
+        uniqueFieldsDf = uniqueFieldsDf ++ Map(col._1 -> combinedValuesDf)
+      })
+    }
+    finalDf.unpersist()
     finalDf
   }
 
   private def getUniqueWithPerFieldCount(
-                                           step: Step,
-                                           finalDf: DataFrame,
-                                           previouslyGenerated: (UniqueFields, DataFrame),
-                                           fields: List[String],
-                                           dfWithUnique: Dataset[Row]
-                                         ): DataFrame = {
+                                          step: Step,
+                                          previouslyGenerated: (UniqueFields, DataFrame),
+                                          fields: List[String],
+                                          dfWithUnique: Dataset[Row]
+                                        ): DataFrame = {
     LOGGER.debug(s"Per field count is defined, removing any records with number of rows greater than max, " +
       s"data-source-name=${previouslyGenerated._1.dataSource} step=${previouslyGenerated._1.step}")
     val perFieldCount = step.count.perField.get
@@ -79,12 +89,11 @@ class UniqueFieldsUtil(plan: Plan, executableTasks: List[(TaskSummary, Task)])(i
 
     //filter out those who have num records greater than max per field
     val maxPerField = perFieldCount.maxCountPerField
-    val rowsAboveMaxPerField = finalDf
+    val rowsAboveMaxPerField = dfUnique
       .groupBy(perFieldCount.fieldNames.map(col): _*)
       .count()
       .filter(s"count > $maxPerField")
-    val dfWithoutRowsAboveMaxPerField = finalDf.join(rowsAboveMaxPerField, perFieldCount.fieldNames, "left_anti")
-    dfWithoutRowsAboveMaxPerField.join(dfUnique, fields, "left_semi")
+    dfUnique.join(rowsAboveMaxPerField, perFieldCount.fieldNames, "left_anti")
   }
 
   private def getUniqueFields: Map[UniqueFields, DataFrame] = {

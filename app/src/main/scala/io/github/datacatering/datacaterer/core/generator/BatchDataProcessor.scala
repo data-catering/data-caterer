@@ -31,7 +31,7 @@ class BatchDataProcessor(connectionConfigsByName: Map[String, Map[String, String
                      (implicit sparkSession: SparkSession): List[DataSourceResult] = {
     val faker = getDataFaker(plan)
     val dataGeneratorFactory = new DataGeneratorFactory(faker)
-    val uniqueFieldUtil = new UniqueFieldsUtil(plan, executableTasks)
+    val uniqueFieldUtil = new UniqueFieldsUtil(plan, executableTasks, flagsConfig.enableUniqueCheckOnlyInBatch)
     val foreignKeys = plan.sinkOptions.map(_.foreignKeys).getOrElse(List())
     var (numBatches, trackRecordsPerStep) = calculateNumBatches(foreignKeys, executableTasks, generationConfig)
 
@@ -48,6 +48,7 @@ class BatchDataProcessor(connectionConfigsByName: Map[String, Map[String, String
         var df = getUniqueGeneratedRecords(uniqueFieldUtil, dataSourceStepName, genDf, s)
 
         if (!df.storageLevel.useMemory) df.cache()
+        genDf.unpersist()
         var dfRecordCount = if (flagsConfig.enableCount) df.count() else stepRecords.numRecordsPerBatch
         var retries = 0
         val targetNumRecords = stepRecords.numRecordsPerBatch * s.count.perField.map(_.averageCountPerField).getOrElse(1L)
@@ -61,10 +62,13 @@ class BatchDataProcessor(connectionConfigsByName: Map[String, Map[String, String
           val additionalGenDf = dataGeneratorFactory
             .generateDataForStep(s, task._1.dataSourceName, stepRecords.currentNumRecords + dfRecordCount, endIndex)
           val additionalDf = getUniqueGeneratedRecords(uniqueFieldUtil, dataSourceStepName, additionalGenDf, s)
+          if (!additionalDf.storageLevel.useMemory) additionalDf.cache()
+          additionalGenDf.unpersist()
           df = df.union(additionalDf)
           dfRecordCount = df.count()
           LOGGER.debug(s"Generated more records for step, batch=$batch, step-name=${s.name}, " +
             s"new-num-records=${additionalDf.count()}, actual-num-records=$dfRecordCount")
+          additionalDf.unpersist()
         }
 
         //if random amount of records, don't try to regenerate more records
@@ -102,6 +106,9 @@ class BatchDataProcessor(connectionConfigsByName: Map[String, Map[String, String
         .getOrElse(generatedDataForeachTask)
       val sinkResults = pushDataToSinks(plan, executableTasks, sinkDf, batch, startTime, optValidations)
       sinkDf.foreach(_._2.unpersist())
+      sparkSession.sparkContext.getPersistentRDDs.foreach { case (_, rdd) =>
+        rdd.unpersist()
+      }
       LOGGER.info(s"Finished batch, batch=$batch, num-batches=$numBatches")
       sinkResults
     }).toList
@@ -123,7 +130,8 @@ class BatchDataProcessor(connectionConfigsByName: Map[String, Map[String, String
     ).toMap
     val dataSourcesUsedInValidation = getDataSourcesUsedInValidation(optValidations)
 
-    sinkDf.filter(s => !s._2.isEmpty).map(df => {
+    val nonEmptyDfs = if (flagsConfig.enableCount) sinkDf.filter(s => !s._2.isEmpty) else sinkDf
+    nonEmptyDfs.map(df => {
       val dataSourceName = df._1.split("\\.").head
       val (step, task) = stepAndTaskByDataSourceName(df._1)
       val dataSourceConfig = connectionConfigsByName.getOrElse(dataSourceName, Map())

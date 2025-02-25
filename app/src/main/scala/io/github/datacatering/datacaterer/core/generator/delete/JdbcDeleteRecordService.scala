@@ -6,47 +6,23 @@ import org.apache.spark.sql.types.{ArrayType, BinaryType, BooleanType, ByteType,
 import org.apache.spark.sql.{DataFrame, Row, SparkSession}
 
 import java.io.ByteArrayInputStream
-import java.sql.{DriverManager, Timestamp}
+import java.sql.{Connection, DriverManager, PreparedStatement, Timestamp}
 
-class JdbcDeleteRecordService extends DeleteRecordService {
+class JdbcDeleteRecordService(connectionProvider: JdbcConnectionProvider = DefaultJdbcConnectionProvider) extends DeleteRecordService {
 
   override def deleteRecords(dataSourceName: String, trackedRecords: DataFrame, options: Map[String, String])(implicit sparkSession: SparkSession): Unit = {
     val table = options.getOrElse(JDBC_TABLE, throw InvalidDataSourceOptions(dataSourceName, JDBC_TABLE))
     val whereClauseFields = trackedRecords.columns.map(c => s"$c = ?").mkString(" AND ")
 
     trackedRecords.rdd.foreachPartition(partition => {
-      val url = options.getOrElse(URL, throw InvalidDataSourceOptions(dataSourceName, URL))
-      val username = options.getOrElse(USERNAME, throw InvalidDataSourceOptions(dataSourceName, USERNAME))
-      val password = options.getOrElse(PASSWORD, throw InvalidDataSourceOptions(dataSourceName, PASSWORD))
-      val connection = DriverManager.getConnection(url, username, password)
+      @transient val connection = connectionProvider.getDbConnection(dataSourceName, options)
       val preparedStatement = connection.prepareStatement(s"DELETE FROM $table WHERE $whereClauseFields")
 
       partition.grouped(BATCH_SIZE).foreach(batch => {
         batch.foreach(r => {
           r.schema.fields.zipWithIndex.foreach(field => {
             val preparedIndex = field._2 + 1
-            field._1.dataType match {
-              case StringType => preparedStatement.setString(preparedIndex, r.getString(field._2))
-              case ShortType => preparedStatement.setShort(preparedIndex, r.getShort(field._2))
-              case IntegerType => preparedStatement.setInt(preparedIndex, r.getInt(field._2))
-              case LongType => preparedStatement.setLong(preparedIndex, r.getLong(field._2))
-              case DecimalType() => preparedStatement.setBigDecimal(preparedIndex, r.getDecimal(field._2))
-              case DoubleType => preparedStatement.setDouble(preparedIndex, r.getDouble(field._2))
-              case FloatType => preparedStatement.setFloat(preparedIndex, r.getFloat(field._2))
-              case BooleanType => preparedStatement.setBoolean(preparedIndex, r.getBoolean(field._2))
-              case ByteType => preparedStatement.setByte(preparedIndex, r.getByte(field._2))
-              case TimestampType => preparedStatement.setTimestamp(preparedIndex, getTimestamp(r, field, options(DRIVER)))
-              case DateType => preparedStatement.setDate(preparedIndex, r.getDate(field._2))
-              case BinaryType =>
-                val byteArray = new ByteArrayInputStream(r.get(field._2).asInstanceOf[Array[Byte]])
-                preparedStatement.setBinaryStream(preparedIndex, byteArray)
-              case ArrayType(elementType, _) =>
-                val array = connection.createArrayOf(elementType.sql, r.getList[Any](field._2).toArray)
-                preparedStatement.setArray(preparedIndex, array)
-              case MapType(_, _, _) => preparedStatement.setObject(preparedIndex, r.getJavaMap(field._2))
-              case StructType(_) => preparedStatement.setObject(preparedIndex, r.getStruct(field._2))
-              case x => throw UnsupportedJdbcDeleteDataType(x, table)
-            }
+            dataTypeMapping(options, table, connection, preparedStatement, r, field, preparedIndex)
           })
           preparedStatement.addBatch()
         })
@@ -55,6 +31,33 @@ class JdbcDeleteRecordService extends DeleteRecordService {
       })
       connection.close()
     })
+  }
+
+  def dataTypeMapping(options: Map[String, String], table: String, connection: Connection,
+                      preparedStatement: PreparedStatement, r: Row, field: (StructField, Int),
+                      preparedIndex: Int): Unit = {
+    field._1.dataType match {
+      case StringType => preparedStatement.setString(preparedIndex, r.getString(field._2))
+      case ShortType => preparedStatement.setShort(preparedIndex, r.getShort(field._2))
+      case IntegerType => preparedStatement.setInt(preparedIndex, r.getInt(field._2))
+      case LongType => preparedStatement.setLong(preparedIndex, r.getLong(field._2))
+      case DecimalType() => preparedStatement.setBigDecimal(preparedIndex, r.getDecimal(field._2))
+      case DoubleType => preparedStatement.setDouble(preparedIndex, r.getDouble(field._2))
+      case FloatType => preparedStatement.setFloat(preparedIndex, r.getFloat(field._2))
+      case BooleanType => preparedStatement.setBoolean(preparedIndex, r.getBoolean(field._2))
+      case ByteType => preparedStatement.setByte(preparedIndex, r.getByte(field._2))
+      case TimestampType => preparedStatement.setTimestamp(preparedIndex, getTimestamp(r, field, options(DRIVER)))
+      case DateType => preparedStatement.setDate(preparedIndex, r.getDate(field._2))
+      case BinaryType =>
+        val byteArray = new ByteArrayInputStream(r.get(field._2).asInstanceOf[Array[Byte]])
+        preparedStatement.setBinaryStream(preparedIndex, byteArray)
+      case ArrayType(elementType, _) =>
+        val array = connection.createArrayOf(elementType.sql, r.getList[Any](field._2).toArray)
+        preparedStatement.setArray(preparedIndex, array)
+      case MapType(_, _, _) => preparedStatement.setObject(preparedIndex, r.getJavaMap(field._2))
+      case StructType(_) => preparedStatement.setObject(preparedIndex, r.getStruct(field._2))
+      case x => throw UnsupportedJdbcDeleteDataType(x, table)
+    }
   }
 
   private def getTimestamp(r: Row, field: (StructField, Int), driver: String) = {
@@ -69,5 +72,18 @@ class JdbcDeleteRecordService extends DeleteRecordService {
     } else {
       r.getTimestamp(field._2)
     }
+  }
+}
+
+trait JdbcConnectionProvider extends Serializable {
+  def getDbConnection(dataSourceName: String, options: Map[String, String]): Connection
+}
+
+object DefaultJdbcConnectionProvider extends JdbcConnectionProvider {
+  override def getDbConnection(dataSourceName: String, options: Map[String, String]): Connection = {
+    val url = options.getOrElse(URL, throw InvalidDataSourceOptions(dataSourceName, URL))
+    val username = options.getOrElse(USERNAME, throw InvalidDataSourceOptions(dataSourceName, USERNAME))
+    val password = options.getOrElse(PASSWORD, throw InvalidDataSourceOptions(dataSourceName, PASSWORD))
+    DriverManager.getConnection(url, username, password)
   }
 }

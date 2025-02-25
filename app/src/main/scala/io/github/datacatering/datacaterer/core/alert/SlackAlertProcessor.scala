@@ -11,7 +11,7 @@ import scala.util.{Failure, Success, Try}
 
 class SlackAlertProcessor(slackAlertConfig: SlackAlertConfig) {
 
-  private lazy val LOGGER = Logger.getLogger(getClass.getName)
+  protected lazy val LOGGER = Logger.getLogger(getClass.getName)
 
   def sendAlerts(
                   generationResult: List[DataSourceResult],
@@ -19,7 +19,7 @@ class SlackAlertProcessor(slackAlertConfig: SlackAlertConfig) {
                   optReportFolderPath: Option[String] = None
                 ): Unit = {
     if (slackAlertConfig.token.nonEmpty && slackAlertConfig.channels.nonEmpty) {
-      val slack = Slack.getInstance()
+      val slack = getSlackInstance
       val methods = slack.methods(slackAlertConfig.token)
 
       slackAlertConfig.channels.foreach(channel => {
@@ -36,6 +36,10 @@ class SlackAlertProcessor(slackAlertConfig: SlackAlertConfig) {
     } else {
       LOGGER.debug("Slack token and/or channels are empty, unable to send any Slack alerts")
     }
+  }
+
+  protected def getSlackInstance: Slack = {
+    Slack.getInstance()
   }
 
   private def sendMessage(methods: MethodsClient, channel: String, messageText: String): Unit = {
@@ -79,10 +83,6 @@ class SlackAlertProcessor(slackAlertConfig: SlackAlertConfig) {
     } else {
       "*No data validations*"
     }
-  }
-
-  private def getSuccessSymbol(isSuccess: Boolean): String = {
-    if (isSuccess) "✅" else "❌"
   }
 
   private def formatTable(table: Seq[Seq[Any]], hasHeader: Boolean = true): String = {

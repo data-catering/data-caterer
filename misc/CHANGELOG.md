@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.15.1
+
+- Ensure increment starting number uses `long` data type
+- Ensure all rdds are cleared from memory after each batch
+- Fix unique data logic
+- Add in additional flag to enable/disable unique check only per batch
+- Add additional tests
+
 ## 0.15.0
 
 - Allow for empty sequences to be generated for per field counts

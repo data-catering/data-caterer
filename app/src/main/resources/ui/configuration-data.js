@@ -51,6 +51,13 @@ const defaultDataTypeOptions = {
         help: "Generated values will be one of the defined values. Comma separated.",
         required: ""
     },
+    oneOfWeighted: {
+        displayName: "One Of Weighted",
+        default: [],
+        type: "text",
+        help: "Generated values will be one of the defined values by weight (i.e. open->0.8, closed->0.1, suspended->0.1). Comma separated.",
+        required: ""
+    },
     omit: {
         displayName: "Omit",
         default: "false",
@@ -107,6 +114,14 @@ function getNumberOptions(min, max) {
             choice: ["normal", "exponential"],
             help: "Type of distribution values should follow.",
             required: ""
+        },
+        incremental: {
+            displayName: "Incremental",
+            default: "",
+            type: "text",
+            disabled: "",
+            help: "Create incremental integer values. Starts from 1 until number of records generated.",
+            required: ""
         }
     };
 }
@@ -155,7 +170,14 @@ dataTypeOptionsMap.set("string", {
         help: "Probability of generating null values. Range from 0-1.",
         required: ""
     },
-    regex: {displayName: "Regex", default: "", type: "text", help: "Regex for generating values.", required: ""}
+    regex: {displayName: "Regex", default: "", type: "text", help: "Regex for generating values.", required: ""},
+    uuid: {
+        displayName: "UUID",
+        default: "",
+        type: "text",
+        help: "Generate UUID values. Optionally, define a field name to generate consistent UUID values from",
+        required: ""
+    }
 });
 dataTypeOptionsMap.set("integer", {...defaultDataTypeOptions, ...getNumberOptions(-2147483648, 2147483647)});
 dataTypeOptionsMap.set("long", {...defaultDataTypeOptions, ...getNumberOptions(-9223372036854775808, 9223372036854775807)});
@@ -843,6 +865,25 @@ reportConfigKeys.forEach(key => reportOptionsMap.set(key[1], configurationOption
 
 export const dataSourcePropertiesMap = new Map();
 // Data Source
+dataSourcePropertiesMap.set("bigquery", {
+    optGroupLabel: "Data Source",
+    Name: "BigQuery",
+    properties: {
+        temporaryGcsBucket: {
+            displayName: "Temporary GCS Bucket",
+            default: "",
+            type: "text",
+            help: "Temporary Google Cloud Storage bucket to store data."
+        },
+        table: {
+            displayName: "Table",
+            default: "",
+            type: "text",
+            help: "Table to generate/validate data to/from. Format: [project name].[dataset name].[table name].",
+            override: "true",
+        }
+    }
+})
 dataSourcePropertiesMap.set("cassandra", {
     optGroupLabel: "Data Source",
     Name: "Cassandra",
@@ -1187,6 +1228,41 @@ dataSourcePropertiesMap.set("postgres", {
         }
     }
 });
+dataSourcePropertiesMap.set("rabbitmq", {
+    optGroupLabel: "Data Source",
+    Name: "RabbitMQ",
+    properties: {
+        url: {
+            displayName: "URL",
+            default: "ampq://host.docker.internal:5672",
+            type: "text",
+            help: "URL to connect to RabbitMQ.",
+            required: ""
+        },
+        user: {
+            displayName: "Username",
+            default: "guest",
+            type: "text",
+            help: "Username to connect to RabbitMQ.",
+            required: ""
+        },
+        password: {
+            displayName: "Password",
+            default: "guest",
+            type: "password",
+            help: "Password to connect to RabbitMQ.",
+            required: ""
+        },
+        destination: {
+            displayName: "Destination",
+            default: "accounts",
+            type: "text",
+            help: "JMS destination (queue or topic) to generate data to.",
+            required: "",
+            override: "true",
+        }
+    }
+});
 dataSourcePropertiesMap.set("solace", {
     optGroupLabel: "Data Source",
     Name: "Solace",
@@ -1202,7 +1278,7 @@ dataSourcePropertiesMap.set("solace", {
             displayName: "Destination",
             default: "/JNDI/Q/test_queue",
             type: "text",
-            help: "JNDI destination to generate/validate data to/from.",
+            help: "JNDI JMS destination to generate data to.",
             required: "",
             override: "true",
         }

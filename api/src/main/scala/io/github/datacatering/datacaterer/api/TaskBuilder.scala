@@ -970,14 +970,15 @@ case class FieldBuilder(field: Field = Field()) {
   /**
    * Field value is generated incrementally. Starts at 1 and increments by 1 til max number of records.
    *
+   * @param startNumber Starting number for incremental field
    * @return FieldBuilder
    */
-  def incremental(): FieldBuilder = {
+  def incremental(startNumber: Long = 1): FieldBuilder = {
     val incrementalOpts = if (field.`type`.contains(StringType.toString) && field.options.contains(SQL_GENERATOR) && field.options(SQL_GENERATOR).toString.equalsIgnoreCase("UUID()")) {
       //then it is a UUID field that is generated consistently and incrementally via the __index_inc field
-      getGenBuilder.sql(toUuidFromCol(INDEX_INC_FIELD)).incremental().options
+      getGenBuilder.sql(toUuidFromCol(s"$startNumber + $INDEX_INC_FIELD")).incremental(startNumber).options
     } else {
-      getGenBuilder.incremental().options
+      getGenBuilder.incremental(startNumber).options
     }
     this.modify(_.field.options).setTo(incrementalOpts)
   }
@@ -989,9 +990,10 @@ case class FieldBuilder(field: Field = Field()) {
    * @return FieldBuilder
    */
   def uuid(fieldName: String = INDEX_INC_FIELD): FieldBuilder = {
-    val uuidOpts = if (field.`type`.contains(StringType.toString) && field.options.contains(INCREMENTAL) && field.options(INCREMENTAL).toString.equalsIgnoreCase("true")) {
+    val uuidOpts = if (field.`type`.contains(StringType.toString) && field.options.contains(INCREMENTAL)) {
       //then it is an incremental field that is generated consistently and incrementally via the __index_inc field
-      getGenBuilder.sql(toUuidFromCol(INDEX_INC_FIELD)).options
+      val startingNumber = field.options(INCREMENTAL).toString.toLong
+      getGenBuilder.sql(toUuidFromCol(s"$startingNumber + $INDEX_INC_FIELD")).options
     } else if (!fieldName.equalsIgnoreCase(INDEX_INC_FIELD)) {
       getGenBuilder.sql(toUuidFromCol(fieldName)).options
     } else {
@@ -1540,10 +1542,11 @@ case class GeneratorBuilder(options: Map[String, Any] = Map()) {
    * Field values are incremented by 1 for each record generated. This is useful for primary keys or unique fields.
    * Starts at 1 and increments by 1 til the max number of records generated.
    *
+   * @param startNumber Starting number for incremental field
    * @return GeneratorBuilder
    */
-  def incremental(): GeneratorBuilder =
-    this.modify(_.options)(_ ++ Map(INCREMENTAL -> "true"))
+  def incremental(startNumber: Long = 1): GeneratorBuilder =
+    this.modify(_.options)(_ ++ Map(INCREMENTAL -> startNumber))
 
   /**
    * Field values are UUID strings.

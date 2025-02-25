@@ -2,7 +2,7 @@ package io.github.datacatering.datacaterer.core.ui.plan
 
 import io.github.datacatering.datacaterer.core.exception.{InvalidCredentialsException, UserNotFoundException}
 import io.github.datacatering.datacaterer.core.ui.model.CredentialsRequest
-import io.github.datacatering.datacaterer.core.ui.security.CredentialsManager
+import io.github.datacatering.datacaterer.core.ui.security.{CredentialsManager, DefaultCredentialsManager}
 import org.apache.log4j.Logger
 import org.apache.pekko.actor.typed.scaladsl.Behaviors
 import org.apache.pekko.actor.typed.{ActorRef, Behavior, SupervisorStrategy}
@@ -13,6 +13,7 @@ import scala.util.{Failure, Success, Try}
 object CredentialRepository {
 
   private val LOGGER = Logger.getLogger(getClass.getName)
+  var credentialsManager: CredentialsManager = DefaultCredentialsManager
 
   sealed trait CredentialsCommand
 
@@ -46,6 +47,6 @@ object CredentialRepository {
 
   private def saveCredentials(credentialsRequest: CredentialsRequest): String = {
     LOGGER.debug("Checking if credentials are valid")
-    CredentialsManager.validateCredentials(credentialsRequest)
+    credentialsManager.validateCredentials(credentialsRequest)
   }
 }
