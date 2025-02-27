@@ -1,7 +1,7 @@
 package io.github.datacatering.datacaterer.core.validator
 
 import io.github.datacatering.datacaterer.api.ValidationBuilder
-import io.github.datacatering.datacaterer.api.model.Constants.{DEFAULT_ENABLE_VALIDATION, DEFAULT_PLAN_NAME, DELTA, DELTA_LAKE_SPARK_CONF, ENABLE_DATA_VALIDATION, FORMAT, HTTP, ICEBERG, ICEBERG_SPARK_CONF, JMS, TABLE, VALIDATION_IDENTIFIER}
+import io.github.datacatering.datacaterer.api.model.Constants.{DEFAULT_ENABLE_VALIDATION, DELTA, DELTA_LAKE_SPARK_CONF, ENABLE_DATA_VALIDATION, FORMAT, HTTP, ICEBERG, ICEBERG_SPARK_CONF, JMS, TABLE, VALIDATION_IDENTIFIER}
 import io.github.datacatering.datacaterer.api.model.{DataSourceValidation, DataSourceValidationResult, ExpressionValidation, FoldersConfig, GroupByValidation, UpstreamDataSourceValidation, ValidationConfig, ValidationConfigResult, ValidationConfiguration, ValidationResult}
 import io.github.datacatering.datacaterer.core.parser.PlanParser
 import io.github.datacatering.datacaterer.core.util.ObjectMapperUtil
@@ -77,18 +77,13 @@ class ValidationProcessor(
         dataSourceValidation.waitCondition.waitBeforeValidation(connectionConfigsByName)
 
         val df = getDataFrame(dataSourceName, dataSourceValidation.options)
-        if (df.isEmpty) {
-          LOGGER.info("No data found to run validations")
-          DataSourceValidationResult(dataSourceName, dataSourceValidation.options, List())
-        } else {
-          if (!df.storageLevel.useMemory) df.cache()
-          val results = dataSourceValidation.validations.flatMap(validBuilder => tryValidate(df, validBuilder))
-          df.unpersist()
-          LOGGER.debug(s"Finished data validations, name=${vc.name}," +
-            s"data-source-name=$dataSourceName, details=${dataSourceValidation.options}, num-validations=${dataSourceValidation.validations.size}")
-          cleanRecordTrackingFiles()
-          DataSourceValidationResult(dataSourceName, dataSourceValidation.options, results)
-        }
+        if (!df.storageLevel.useMemory) df.cache()
+        val results = dataSourceValidation.validations.flatMap(validBuilder => tryValidate(df, validBuilder))
+        df.unpersist()
+        LOGGER.debug(s"Finished data validations, name=${vc.name}," +
+          s"data-source-name=$dataSourceName, details=${dataSourceValidation.options}, num-validations=${dataSourceValidation.validations.size}")
+        cleanRecordTrackingFiles()
+        DataSourceValidationResult(dataSourceName, dataSourceValidation.options, results)
       }
     } else {
       LOGGER.debug(s"Data validations are disabled, data-source-name=$dataSourceName, details=${dataSourceValidation.options}")

@@ -145,11 +145,58 @@ class DataGeneratorFactory(faker: Faker)(implicit val sparkSession: SparkSession
   }
 
   private def attachMetadata(df: DataFrame, structType: StructType): DataFrame = {
-    val rdd = df.selectExpr(structType.fieldNames: _*).rdd
-    if (!rdd.getStorageLevel.useMemory) rdd.cache()
-    val updatedDf = sparkSession.createDataFrame(rdd, structType)
-    rdd.unpersist()
-    updatedDf
+    def updateStructColumn(df: DataFrame, fieldName: String, updatedStructType: StructType): DataFrame = {
+      val originalStructType = df.schema(fieldName).dataType.asInstanceOf[StructType]
+
+      // Recursively update nested fields
+      val updatedFields = originalStructType.fields.map { originalField =>
+        updatedStructType.find(_.name == originalField.name) match {
+          case Some(updatedField) =>
+            // If it's another StructType, recursively update it
+            if (originalField.dataType.isInstanceOf[StructType]) {
+              val updatedNestedStructType = updatedField.dataType.asInstanceOf[StructType]
+              val updatedSchema = attachMetadata(df.select(s"$fieldName.${originalField.name}"), updatedNestedStructType).schema
+              updatedSchema.fields.find(_.name == originalField.name) match {
+                case Some(newSchema) =>
+                  StructField(
+                    originalField.name,
+                    newSchema.dataType,
+                    originalField.nullable,
+                    updatedField.metadata
+                  )
+                case None => originalField
+              }
+            } else {
+              // Update metadata for non-struct fields
+              StructField(originalField.name, originalField.dataType, originalField.nullable, updatedField.metadata)
+            }
+          case None => originalField // Keep original if not in updated schema
+        }
+      }
+
+      val finalStructType = StructType(updatedFields)
+
+      df.withColumn(
+        fieldName,
+        col(fieldName).cast(finalStructType)
+          .as(fieldName, new MetadataBuilder().build())
+      )
+    }
+
+    df.schema.fields.foldLeft(df) { (tempDF, field) =>
+      structType.find(_.name == field.name) match {
+        case Some(updatedField) if field.dataType.isInstanceOf[StructType] =>
+          updateStructColumn(tempDF, field.name, updatedField.dataType.asInstanceOf[StructType])
+
+        case Some(updatedField) =>
+          tempDF.withColumn(
+            field.name,
+            col(field.name).as(field.name, new MetadataBuilder().withMetadata(updatedField.metadata).build())
+          )
+
+        case None => tempDF // If field is not in updated schema, leave it unchanged
+      }
+    }
   }
 
   private def defineRandomLengthView(): Unit = {

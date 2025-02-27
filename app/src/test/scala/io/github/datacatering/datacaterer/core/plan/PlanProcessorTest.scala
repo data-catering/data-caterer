@@ -106,8 +106,8 @@ class PlanProcessorTest extends SparkSuite {
     val csvMatchAccount = csvData.filter(r => r.getString(0).equalsIgnoreCase(jsonAccountId))
     val csvMatchCount = csvMatchAccount.length
     assert(csvMatchCount >= 1 && csvMatchCount <= 2)
-    assert(csvMatchAccount.forall(r => r.getAs[String]("name").equalsIgnoreCase(jsonRecord.getAs[String]("name"))))
-    assert(csvData.forall(r => r.getAs[String]("time").substring(0, 10) == r.getAs[String]("date")))
+    csvMatchAccount.foreach(r => assert(r.getAs[String]("name").equalsIgnoreCase(jsonRecord.getAs[String]("name"))))
+    csvData.foreach(r => assert(r.getAs[String]("time").substring(0, 10) == r.getAs[String]("date")))
   }
 
   test("Write YAML for plan") {
@@ -117,7 +117,7 @@ class PlanProcessorTest extends SparkSuite {
   }
 
   ignore("Can run Postgres plan run") {
-    PlanProcessor.determineAndExecutePlan(Some(new TestBigQuery), apiCheck = false)
+    PlanProcessor.determineAndExecutePlan(Some(new BenchmarkForeignKeyPlanRun), apiCheck = false)
   }
 
   class TestPostgres extends PlanRun {
@@ -788,6 +788,62 @@ class PlanProcessorTest extends SparkSuite {
       .generatedReportsFolderPath("/tmp/data/report")
 
     execute(config, customerTask, accountTask, customerAccessTask)
+  }
+
+  class BenchmarkForeignKeyPlanRun extends PlanRun {
+
+    val recordCount = 100000
+
+    val baseFolder = "/tmp/data-caterer-benchmark-foreign-key/data"
+    val accountStatus = List("open", "closed", "pending", "suspended")
+    val jsonTask = json("account_info", s"$baseFolder/json", Map("saveMode" -> "overwrite"))
+      .fields(
+        field.name("account_id").regex("ACC[0-9]{8}"),
+        field.name("year").`type`(IntegerType).sql("YEAR(date)"),
+        field.name("balance").`type`(DoubleType).min(10).max(1000),
+        field.name("date").`type`(DateType).min(Date.valueOf("2022-01-01")),
+        field.name("status").sql("element_at(sort_array(update_history, false), 1).status"),
+        field.name("update_history")
+          .`type`(ArrayType)
+          .arrayMinLength(1)
+          .fields(
+            field.name("updated_time").`type`(TimestampType).min(Timestamp.valueOf("2022-01-01 00:00:00")),
+            field.name("status").oneOf(accountStatus),
+          ),
+        field.name("customer_details")
+          .fields(
+            field.name("name").sql("_join_txn_name"),
+            field.name("age").`type`(IntegerType).min(18).max(90),
+            field.name("city").expression("#{Address.city}")
+          ),
+        field.name("_join_txn_name").expression("#{Name.name}").omit(true)
+      )
+      .count(count.records(recordCount))
+
+    val csvTxns = csv("transactions", s"$baseFolder/csv", Map("saveMode" -> "overwrite", "header" -> "true"))
+      .fields(
+        field.name("account_id"),
+        field.name("txn_id"),
+        field.name("name"),
+        field.name("amount").`type`(DoubleType).min(10).max(100),
+        field.name("merchant").expression("#{Company.name}"),
+      )
+      .count(
+        count
+          .records(recordCount)
+          .recordsPerField(4, "account_id", "name")
+      )
+
+    val conf = configuration
+      .enableSaveReports(false)
+      .enableCount(false)
+//      .numRecordsPerBatch(1000000)
+
+    val foreignKeySetup = plan
+      .addForeignKeyRelationship(jsonTask, List("account_id", "_join_txn_name"), List((csvTxns, List("account_id", "name"))))
+      .seed(1)
+
+    execute(foreignKeySetup, conf, jsonTask, csvTxns)
   }
 
   ignore("Timing of http calls") {

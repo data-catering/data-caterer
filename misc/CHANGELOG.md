@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.15.2
+
+- Various performance improvements
+  - Don't call `df.rdd` when zipping with index in foreign key logic
+  - Don't call `df.rdd` when checking for unique values
+  - When passing metadata to nested fields, don't re-create dataframe
+  - Use `unionByName` instead of checking if dataframe is empty then running `union`
+  - Set `enableSinkMetadata` to false by default
+  - New unique value checking logic using bloom filters
+    - Add `uniqueBloomFilterNumItems` to generation config
+    - Add `uniqueBloomFilterFalsePositiveProbability` to generation config
+  - Update default Spark memory settings
+- Update `netty` and `jsonsmart` libraries due to vulnerabilities
+- Add `enableUniqueCheckOnlyInBatch` to Scala and Java API
+
 ## 0.15.1
 
 - Ensure increment starting number uses `long` data type

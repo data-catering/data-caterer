@@ -31,6 +31,15 @@ class DataGeneratorFactoryTest extends SparkSuite {
     Field("details", fields = List(Field("account_id", Some("string"), Map("sql" -> "tmp_account_id"))))
   )
 
+  private val doubleNestedFields = List(
+    Field("id"),
+    Field("tmp_account_id", Some("string"), Map(REGEX_GENERATOR -> "ACC[0-9]{8}", OMIT -> "true")),
+    Field("details", fields = List(
+      Field("account_id", Some("string"), Map("sql" -> "tmp_account_id")),
+      Field("customer", fields = List(Field("name")))
+    ))
+  )
+
   test("Can generate data for basic step") {
     val step = Step("transaction", "parquet", Count(records = Some(10)), Map("path" -> "sample/output/parquet/transactions"), fields)
 
@@ -154,6 +163,23 @@ class DataGeneratorFactoryTest extends SparkSuite {
     val step = Step("transaction", "parquet", Count(Some(10),
       perField = Some(PerFieldCount(List("tmp_account_id"), Some(2)))),
       Map("path" -> "sample/output/parquet/transactions"), nestedFields)
+
+    val df = dataGeneratorFactory.generateDataForStep(step, "parquet", 0, 10)
+    df.cache()
+
+    assertResult(20L)(df.count())
+    val dfArr = df.collect()
+    dfArr.foreach(row => {
+      val sampleId = row.getAs[Row]("details").getAs[String]("account_id")
+      val sampleRows = df.filter(_.getAs[Row]("details").getAs[String]("account_id") == sampleId)
+      assert(sampleRows.count() == 2L)
+    })
+  }
+
+  test("Can generate data with two level nested fields") {
+    val step = Step("transaction", "parquet", Count(Some(10),
+      perField = Some(PerFieldCount(List("tmp_account_id"), Some(2)))),
+      Map("path" -> "sample/output/parquet/transactions"), doubleNestedFields)
 
     val df = dataGeneratorFactory.generateDataForStep(step, "parquet", 0, 10)
     df.cache()

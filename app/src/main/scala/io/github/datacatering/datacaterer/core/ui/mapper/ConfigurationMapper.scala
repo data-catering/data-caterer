@@ -47,6 +47,7 @@ object ConfigurationMapper {
         case CONFIG_FLAGS_VALIDATION => conf.enableValidation(boolVal)
         case CONFIG_FLAGS_GENERATE_VALIDATIONS => conf.enableGenerateValidations(boolVal)
         case CONFIG_FLAGS_ALERTS => conf.enableAlerts(boolVal)
+        case CONFIG_FLAGS_UNIQUE_CHECK_ONLY_IN_BATCH => conf.enableUniqueCheckOnlyInBatch(boolVal)
         case _ =>
           LOGGER.warn(s"Unexpected flags configuration key, key=${c._1}")
           conf
@@ -86,6 +87,8 @@ object ConfigurationMapper {
         case CONFIG_GENERATION_NUM_RECORDS_PER_STEP =>
           val parsedNum = c._2.toLong
           if (parsedNum != -1) conf.numRecordsPerStep(c._2.toLong) else conf
+        case CONFIG_GENERATION_UNIQUE_BLOOM_FILTER_NUM_ITEMS => conf.uniqueBloomFilterNumItems(c._2.toLong)
+        case CONFIG_GENERATION_UNIQUE_BLOOM_FILTER_FALSE_POSITIVE_PROBABILITY => conf.uniqueBloomFilterFalsePositiveProbability(c._2.toDouble)
         case _ =>
           LOGGER.warn(s"Unexpected generation configuration key, key=${c._1}")
           conf

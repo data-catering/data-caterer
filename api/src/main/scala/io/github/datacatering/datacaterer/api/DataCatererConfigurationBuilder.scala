@@ -344,6 +344,9 @@ case class DataCatererConfigurationBuilder(build: DataCatererConfiguration = Dat
   def enableAlerts(enable: Boolean): DataCatererConfigurationBuilder =
     this.modify(_.build.flagsConfig.enableAlerts).setTo(enable)
 
+  def enableUniqueCheckOnlyInBatch(enable: Boolean): DataCatererConfigurationBuilder =
+    this.modify(_.build.flagsConfig.enableUniqueCheckOnlyInBatch).setTo(enable)
+
 
   def planFilePath(path: String): DataCatererConfigurationBuilder =
     this.modify(_.build.foldersConfig.planFilePath).setTo(path)
@@ -388,6 +391,12 @@ case class DataCatererConfigurationBuilder(build: DataCatererConfiguration = Dat
 
   def numRecordsPerStep(numRecords: Long): DataCatererConfigurationBuilder =
     this.modify(_.build.generationConfig.numRecordsPerStep).setTo(Some(numRecords))
+
+  def uniqueBloomFilterNumItems(numItems: Long): DataCatererConfigurationBuilder =
+    this.modify(_.build.generationConfig.uniqueBloomFilterNumItems).setTo(numItems)
+
+  def uniqueBloomFilterFalsePositiveProbability(probability: Double): DataCatererConfigurationBuilder =
+    this.modify(_.build.generationConfig.uniqueBloomFilterFalsePositiveProbability).setTo(probability)
 
 
   def numErrorSampleRecords(numRecords: Int): DataCatererConfigurationBuilder =

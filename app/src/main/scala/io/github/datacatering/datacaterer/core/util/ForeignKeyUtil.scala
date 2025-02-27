@@ -287,14 +287,8 @@ object ForeignKeyUtil {
 
   private def zipWithIndex(df: DataFrame): DataFrame = {
     if (!df.storageLevel.useMemory) df.cache()
-    df.sqlContext.createDataFrame(
-      df.rdd.zipWithIndex.map(ln =>
-        Row.fromSeq(ln._1.toSeq ++ Seq(ln._2))
-      ),
-      StructType(
-        df.schema.fields ++ Array(StructField("_join_foreign_key", LongType, false))
-      )
-    )
+    val allColumns = df.columns ++ Array("ROW_NUMBER() OVER (ORDER BY 1) AS _join_foreign_key")
+    df.selectExpr(allColumns: _*)
   }
 
   private def combineMetadata(sourceDf: DataFrame, sourceCols: List[String], targetDf: DataFrame, targetCols: List[String], df: DataFrame): DataFrame = {

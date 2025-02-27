@@ -240,10 +240,17 @@ object Constants {
 
   //generation defaults
   lazy val DEFAULT_NUM_RECORDS_PER_BATCH = 100000
+  lazy val DEFAULT_UNIQUE_BLOOM_FILTER_NUM_ITEMS = 10000000
+  lazy val DEFAULT_UNIQUE_BLOOM_FILTER_FALSE_POSITIVE_PROBABILITY = 0.01
 
   //spark defaults
   lazy val DEFAULT_MASTER = "local[*]"
   lazy val DEFAULT_RUNTIME_CONFIG = Map(
+    "spark.driver.memory" -> "6g",
+    "spark.executor.memory" -> "6g",
+    "spark.executor.memoryOverhead" -> "512m",
+    "spark.memory.fraction" -> "0.6",
+    "spark.memory.storageFraction" -> "0.5",
     "spark.sql.cbo.enabled" -> "true",
     "spark.sql.adaptive.enabled" -> "true",
     "spark.sql.cbo.planStats.enabled" -> "true",
@@ -579,6 +586,7 @@ object Constants {
   lazy val CONFIG_FLAGS_VALIDATION = "enableValidation"
   lazy val CONFIG_FLAGS_GENERATE_VALIDATIONS = "enableGenerateValidations"
   lazy val CONFIG_FLAGS_ALERTS = "enableAlerts"
+  lazy val CONFIG_FLAGS_UNIQUE_CHECK_ONLY_IN_BATCH = "enableUniqueCheckOnlyInBatch"
   //folder config
   lazy val CONFIG_FOLDER_PLAN_FILE_PATH = "planFilePath"
   lazy val CONFIG_FOLDER_TASK_FOLDER_PATH = "taskFolderPath"
@@ -596,6 +604,8 @@ object Constants {
   //generation config
   lazy val CONFIG_GENERATION_NUM_RECORDS_PER_BATCH = "numRecordsPerBatch"
   lazy val CONFIG_GENERATION_NUM_RECORDS_PER_STEP = "numRecordsPerStep"
+  lazy val CONFIG_GENERATION_UNIQUE_BLOOM_FILTER_NUM_ITEMS = "uniqueBloomFilterNumItems"
+  lazy val CONFIG_GENERATION_UNIQUE_BLOOM_FILTER_FALSE_POSITIVE_PROBABILITY = "uniqueBloomFilterFalsePositiveProbability"
   //validation config
   lazy val CONFIG_VALIDATION_NUM_SAMPLE_ERROR_RECORDS = "numSampleErrorRecords"
   lazy val CONFIG_VALIDATION_ENABLE_DELETE_RECORD_TRACKING_FILES = "enableDeleteRecordTrackingFiles"

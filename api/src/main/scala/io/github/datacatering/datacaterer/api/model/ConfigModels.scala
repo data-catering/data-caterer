@@ -39,6 +39,8 @@ case class MetadataConfig(
 case class GenerationConfig(
                              numRecordsPerBatch: Long = DEFAULT_NUM_RECORDS_PER_BATCH,
                              numRecordsPerStep: Option[Long] = None,
+                             uniqueBloomFilterNumItems: Long = DEFAULT_UNIQUE_BLOOM_FILTER_NUM_ITEMS,
+                             uniqueBloomFilterFalsePositiveProbability: Double = DEFAULT_UNIQUE_BLOOM_FILTER_FALSE_POSITIVE_PROBABILITY
                            )
 
 case class ValidationConfig(

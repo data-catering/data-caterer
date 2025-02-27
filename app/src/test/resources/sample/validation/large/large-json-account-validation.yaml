@@ -1,0 +1,14 @@
+---
+name: "large_json_account_checks"
+description: "Check account related fields have gone through system correctly"
+dataSources:
+  json:
+    - options:
+        path: "app/src/test/resources/sample/large/json/account-gen"
+      validations:
+        - field: account_id
+          validation:
+            - type: unique
+        - field: amount
+          validation:
+            - type: unique
