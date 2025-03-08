@@ -1,5 +1,5 @@
 name: "kafka_plan"
 description: "Create account data in Kafka"
 tasks:
-  - name: "simple_kafka"
+  - name: "relationships_kafka"
     dataSourceName: "kafka"

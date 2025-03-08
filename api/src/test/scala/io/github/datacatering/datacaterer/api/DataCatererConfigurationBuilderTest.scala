@@ -14,7 +14,7 @@ class DataCatererConfigurationBuilderTest extends AnyFunSuite {
     assertResult(MetadataConfig())(result.metadataConfig)
     assertResult(GenerationConfig())(result.generationConfig)
     assert(result.connectionConfigByName.isEmpty)
-    assertResult(16)(result.runtimeConfig.size)
+    assertResult(21)(result.runtimeConfig.size)
     assertResult("local[*]")(result.master)
   }
 
