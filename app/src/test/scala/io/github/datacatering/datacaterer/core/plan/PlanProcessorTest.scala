@@ -117,7 +117,7 @@ class PlanProcessorTest extends SparkSuite {
   }
 
   ignore("Can run Postgres plan run") {
-    PlanProcessor.determineAndExecutePlan(Some(new BenchmarkForeignKeyPlanRun), apiCheck = false)
+    PlanProcessor.determineAndExecutePlan(Some(new TestKafkaRelationships), apiCheck = false)
   }
 
   class TestPostgres extends PlanRun {
@@ -657,6 +657,42 @@ class PlanProcessorTest extends SparkSuite {
     val conf = configuration.generatedReportsFolderPath("/tmp/report")
 
     execute(conf, accounts)
+  }
+
+  class TestKafkaRelationships extends PlanRun {
+    val customers = kafka("customer_kafka", "localhost:9092")
+      .topic("customer-topic")
+      .fields(
+        field.name("key").sql("'abc'"),
+        field.name("tmp_customer_id").`type`(IntegerType).incremental().omit(true)
+      )
+      .fields(
+        field.messageBody(
+          field.name("customer_id_int_check").uuid("tmp_customer_id"),
+          field.name("customer_id").uuid("tmp_customer_id"),
+          field.name("account_status").oneOf("open", "closed", "suspended", "pending")
+        )
+      )
+      .count(count.records(2))
+
+    val customer_accounts = kafka("customer_kafka", "localhost:9092")
+      .topic("customer-topic")
+      .fields(
+        field.name("key").sql("'abc'"),
+        field.name("tmp_customer_id").`type`(IntegerType).incremental().omit(true)
+      )
+      .fields(
+        field.messageBody(
+          field.name("customer_id_int_check").sql("tmp_customer_id"),
+          field.name("customer_id").uuid("tmp_customer_id"),
+          field.name("customer_product_id").uuid().incremental(10)
+        )
+      )
+      .count(count.records(2).recordsPerField(2, "body.customer_id"))
+
+    val conf = configuration.generatedReportsFolderPath("/tmp/report")
+
+    execute(conf, customers, customer_accounts)
   }
 
   class TestRabbitmq extends PlanRun {

@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.15.3
+
+- Ensure correct field options are parsed from YAML to real-time data sources
+
 ## 0.15.2
 
 - Various performance improvements
