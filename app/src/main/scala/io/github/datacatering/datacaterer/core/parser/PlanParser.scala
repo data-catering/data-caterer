@@ -1,6 +1,6 @@
 package io.github.datacatering.datacaterer.core.parser
 
-import io.github.datacatering.datacaterer.api.model.Constants.{HTTP_PATH_PARAM_FIELD_PREFIX, HTTP_QUERY_PARAM_FIELD_PREFIX, INCREMENTAL, ONE_OF_GENERATOR, REAL_TIME_METHOD_FIELD, REAL_TIME_URL_FIELD, UUID, YAML_HTTP_BODY_FIELD, YAML_HTTP_HEADERS_FIELD, YAML_HTTP_URL_FIELD, YAML_REAL_TIME_BODY_FIELD, YAML_REAL_TIME_HEADERS_FIELD}
+import io.github.datacatering.datacaterer.api.model.Constants.{HTTP_PATH_PARAM_FIELD_PREFIX, HTTP_QUERY_PARAM_FIELD_PREFIX, INCREMENTAL, ONE_OF_GENERATOR, REAL_TIME_METHOD_FIELD, REAL_TIME_URL_FIELD, SQL_GENERATOR, UUID, YAML_HTTP_BODY_FIELD, YAML_HTTP_HEADERS_FIELD, YAML_HTTP_URL_FIELD, YAML_REAL_TIME_BODY_FIELD, YAML_REAL_TIME_HEADERS_FIELD}
 import io.github.datacatering.datacaterer.api.model.{DataCatererConfiguration, DataSourceValidation, DataType, Field, IntegerType, Plan, Task, UpstreamDataSourceValidation, ValidationConfiguration, YamlUpstreamDataSourceValidation, YamlValidationConfiguration}
 import io.github.datacatering.datacaterer.api.{ConnectionConfigWithTaskBuilder, FieldBuilder, HttpMethodEnum, HttpQueryParameterStyleEnum, ValidationBuilder}
 import io.github.datacatering.datacaterer.core.exception.DataValidationMissingUpstreamDataSourceException
@@ -112,7 +112,12 @@ object PlanParser {
     def convertField(field: Field): List[Field] = {
       (field.name, field.fields.nonEmpty) match {
         case (YAML_REAL_TIME_HEADERS_FIELD, true) =>
-          val headerFields = field.fields.flatMap(innerField => convertField(innerField).map(FieldBuilder))
+          val headerFields = field.fields.flatMap(innerField => {
+            convertField(innerField).map(convertedField => {
+              val sqlExpr = convertedField.static.getOrElse(convertedField.options.getOrElse(SQL_GENERATOR, "").toString)
+              FieldBuilder().messageHeader(convertedField.name, sqlExpr)
+            })
+          })
           val messageHeaders = FieldBuilder().messageHeaders(headerFields: _*)
           List(messageHeaders.field)
         case (YAML_REAL_TIME_BODY_FIELD, true) =>

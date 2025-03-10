@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.15.4
+
+- Fix bug with using `messageHeaders` from YAML not being parsed correctly
+
 ## 0.15.3
 
 - Ensure correct field options are parsed from YAML to real-time data sources
