@@ -5,12 +5,17 @@ steps:
     count:
       records: 2
     options:
-      topic: "customer-topic"
+      topic: "account-topic"
     fields:
       - name: "key"
         type: "string"
         options:
           sql: "body.customer_id"
+      - name: "messageHeaders"
+        fields:
+          - name: "customer_id"
+            options:
+              sql: "body.customer_id"
       - name: "messageBody"
         type: struct
         fields:
@@ -33,7 +38,7 @@ steps:
         fieldNames:
           - "body.customer_id"
     options:
-      topic: "customer-topic"
+      topic: "account-topic"
     fields:
       - name: "key"
         type: "string"
