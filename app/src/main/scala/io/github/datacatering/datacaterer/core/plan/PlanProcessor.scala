@@ -11,8 +11,6 @@ import io.github.datacatering.datacaterer.core.generator.metadata.datasource.Dat
 import io.github.datacatering.datacaterer.core.model.Constants.METADATA_CONNECTION_OPTIONS
 import io.github.datacatering.datacaterer.core.model.PlanRunResults
 import io.github.datacatering.datacaterer.core.parser.PlanParser
-import io.github.datacatering.datacaterer.core.util.LifecycleUtil.isTrackActivity
-import io.github.datacatering.datacaterer.core.util.ManagementUtil.getApiToken
 import io.github.datacatering.datacaterer.core.util.SparkProvider
 import org.apache.spark.sql.SparkSession
 
@@ -23,9 +21,7 @@ object PlanProcessor {
   def determineAndExecutePlan(
                                optPlanRun: Option[PlanRun] = None,
                                interface: String = DATA_CATERER_INTERFACE_SCALA,
-                               apiCheck: Boolean = true
                              ): PlanRunResults = {
-    if (apiCheck && isTrackActivity) getApiToken
     val optPlanClass = getPlanClass
     optPlanClass.map(Class.forName)
       .map(cls => {
@@ -89,7 +85,7 @@ object PlanProcessor {
       dataSourceMetadataFactory.extractAllDataSourceMetadata(planRun)
     } catch {
       case exception: Exception =>
-        notifyManagementApi(exception, PLAN_STAGE_EXTRACT_METADATA)
+        handleException(exception, PLAN_STAGE_EXTRACT_METADATA)
         throw exception
     }
   }
@@ -104,17 +100,17 @@ object PlanProcessor {
       }
     } catch {
       case parsePlanException: Exception =>
-        notifyManagementApi(parsePlanException, PLAN_STAGE_PARSE_PLAN)
+        handleException(parsePlanException, PLAN_STAGE_PARSE_PLAN)
         throw parsePlanException
     }
   }
 
-  private def notifyManagementApi(
-                                   exception: Exception,
-                                   stage: String = PLAN_STAGE_PARSE_PLAN,
-                                   optConfig: Option[DataCatererConfiguration] = None,
-                                   optPlanRun: Option[PlanRun] = None
-                                 ): Unit = {
+  private def handleException(
+                                exception: Exception,
+                                stage: String = PLAN_STAGE_PARSE_PLAN,
+                                optConfig: Option[DataCatererConfiguration] = None,
+                                optPlanRun: Option[PlanRun] = None
+                             ): Unit = {
     val planRunPostPlanProcessor = optConfig.map(config => new PlanRunPostPlanProcessor(config))
       .getOrElse(new PlanRunPostPlanProcessor(DataCatererConfiguration()))
     val plan = optPlanRun.map(_._plan).getOrElse(Plan())
@@ -139,7 +135,7 @@ object PlanProcessor {
       })
     } catch {
       case preProcessorException: Exception =>
-        notifyManagementApi(preProcessorException, PLAN_STAGE_PRE_PLAN_PROCESSORS, Some(dataCatererConfiguration), Some(planRun))
+        handleException(preProcessorException, PLAN_STAGE_PRE_PLAN_PROCESSORS, Some(dataCatererConfiguration), Some(planRun))
         throw preProcessorException
     }
   }

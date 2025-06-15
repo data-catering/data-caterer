@@ -1,6 +1,6 @@
 package io.github.datacatering.datacaterer.core.generator
 
-import io.github.datacatering.datacaterer.api.model.Constants.{ALL_COMBINATIONS, INDEX_INC_FIELD, ONE_OF_GENERATOR, SQL_GENERATOR, STATIC}
+import io.github.datacatering.datacaterer.api.model.Constants.{ALL_COMBINATIONS, EXCLUDE_FIELDS, EXCLUDE_FIELD_PATTERNS, INCLUDE_FIELDS, INCLUDE_FIELD_PATTERNS, INDEX_INC_FIELD, OMIT, ONE_OF_GENERATOR, SQL_GENERATOR, STATIC}
 import io.github.datacatering.datacaterer.api.model.{Field, PerFieldCount, Step}
 import io.github.datacatering.datacaterer.core.exception.InvalidStepCountGeneratorConfigurationException
 import io.github.datacatering.datacaterer.core.generator.provider.DataGenerator
@@ -30,7 +30,7 @@ class DataGeneratorFactory(faker: Faker)(implicit val sparkSession: SparkSession
   registerSparkFunctions()
 
   def generateDataForStep(step: Step, dataSourceName: String, startIndex: Long, endIndex: Long): DataFrame = {
-    val structFieldsWithDataGenerators = getStructWithGenerators(step.fields)
+    val structFieldsWithDataGenerators = getStructWithGenerators(step.fields, step.options)
     val indexedDf = sparkSession.createDataFrame(Seq.range(startIndex, endIndex).map(Holder))
     generateDataViaSql(structFieldsWithDataGenerators, step, indexedDf)
       .alias(s"$dataSourceName.${step.name}")
@@ -131,10 +131,227 @@ class DataGeneratorFactory(faker: Faker)(implicit val sparkSession: SparkSession
       .drop(PER_FIELD_COUNT_GENERATED, PER_FIELD_COUNT_GENERATED_NUM, RECORD_COUNT_GENERATOR_WEIGHT_FIELD)
   }
 
-  private def getStructWithGenerators(fields: List[Field]): List[DataGenerator[_]] = {
+  private def getStructWithGenerators(fields: List[Field], options: Map[String, String] = Map()): List[DataGenerator[_]] = {
     val indexIncMetadata = new MetadataBuilder().putString(SQL_GENERATOR, INDEX_INC_FIELD).build()
     val indexIncField = new RandomLongDataGenerator(StructField(INDEX_INC_FIELD, LongType, false, indexIncMetadata), faker)
-    List(indexIncField) ++ fields.map(field => getDataGenerator(field.options, field.toStructField, faker))
+    
+    // Filter out struct fields that don't have any nested fields defined
+    val filteredFields = filterEmptyStructFields(fields)
+    
+    // Apply user-defined field filters
+    val userFilteredFields = applyFieldFilters(filteredFields, options)
+    
+    List(indexIncField) ++ userFilteredFields.map(field => getDataGenerator(field.options, field.toStructField, faker))
+  }
+
+  /**
+   * Recursively filters out struct fields that don't have any nested fields defined.
+   * This prevents empty struct fields from being included in data generation.
+   */
+  private def filterEmptyStructFields(fields: List[Field]): List[Field] = {
+    fields.flatMap { field =>
+      val isStructType = field.`type`.exists(t => 
+        t.toLowerCase.contains("struct") || 
+        (field.fields.nonEmpty && !t.toLowerCase.startsWith("array"))
+      )
+      
+      if (isStructType && field.fields.isEmpty) {
+        // Skip struct fields with no nested fields
+        LOGGER.debug(s"Filtering out empty struct field: ${field.name}")
+        None
+      } else if (field.fields.nonEmpty) {
+        // Recursively filter nested fields for struct/array fields
+        val filteredNestedFields = filterEmptyStructFields(field.fields)
+        if (filteredNestedFields.nonEmpty) {
+          Some(field.copy(fields = filteredNestedFields))
+        } else if (isStructType) {
+          // If all nested fields were filtered out, skip this struct too
+          LOGGER.debug(s"Filtering out struct field with only empty nested structs: ${field.name}")
+          None
+        } else {
+          Some(field)
+        }
+      } else {
+        // Non-struct fields are kept as is
+        Some(field)
+      }
+    }
+  }
+
+  /**
+   * Applies user-defined field filters to include/exclude specific fields based on configuration.
+   * Supports both exact field names and regex patterns.
+   * For nested fields, uses dot notation (e.g., "user.name", "account.*").
+   * Automatically handles Spark's "element" wrapper for array fields - users don't need to specify it.
+   */
+  private def applyFieldFilters(fields: List[Field], options: Map[String, String]): List[Field] = {
+    val includeFields = parseFieldList(options.get(INCLUDE_FIELDS))
+    val excludeFields = parseFieldList(options.get(EXCLUDE_FIELDS))
+    val includePatterns = parseFieldList(options.get(INCLUDE_FIELD_PATTERNS))
+    val excludePatterns = parseFieldList(options.get(EXCLUDE_FIELD_PATTERNS))
+
+    // If no filters are specified, return all fields
+    if (includeFields.isEmpty && excludeFields.isEmpty && includePatterns.isEmpty && excludePatterns.isEmpty) {
+      return fields
+    }
+
+    // Collect all field paths that should be included, accounting for array "element" wrappers
+    val allFieldPaths = collectAllFieldPathsWithArrayHandling(fields)
+    val fieldsToInclude = allFieldPaths.filter { fieldPath =>
+      val isExcludedByName = excludeFields.contains(fieldPath) || excludeFields.exists(excludeField => matchesArrayPath(fieldPath, excludeField))
+      val isExcludedByPattern = excludePatterns.exists(pattern => fieldPath.matches(pattern) || matchesArrayPathPattern(fieldPath, pattern))
+      
+      if (isExcludedByName || isExcludedByPattern) {
+        false
+      } else if (includeFields.nonEmpty || includePatterns.nonEmpty) {
+        val isIncludedByName = includeFields.contains(fieldPath) || includeFields.exists(includeField => matchesArrayPath(fieldPath, includeField))
+        val isIncludedByPattern = includePatterns.exists(pattern => fieldPath.matches(pattern) || matchesArrayPathPattern(fieldPath, pattern))
+        isIncludedByName || isIncludedByPattern
+      } else {
+        true
+      }
+    }.toSet
+
+    def filterFieldsRecursively(fieldList: List[Field], pathPrefix: String = ""): List[Field] = {
+      fieldList.flatMap { field =>
+        val fieldPath = if (pathPrefix.isEmpty) field.name else s"$pathPrefix.${field.name}"
+        
+        if (field.fields.nonEmpty) {
+          // For fields with nested fields, recursively filter
+          val filteredNestedFields = filterFieldsRecursively(field.fields, fieldPath)
+          
+          // Include the parent field if:
+          // 1. It should be included based on its own path, OR
+          // 2. It has nested fields that should be included, OR
+          // 3. Any of its descendant paths should be included (accounting for array paths)
+          val hasIncludedDescendants = fieldsToInclude.exists(includePath => 
+            includePath.startsWith(fieldPath + ".") || 
+            (isArrayField(field) && includePath.startsWith(fieldPath + ".element."))
+          )
+          
+          if (fieldsToInclude.contains(fieldPath) || filteredNestedFields.nonEmpty || hasIncludedDescendants) {
+            Some(field.copy(fields = filteredNestedFields))
+          } else {
+            LOGGER.debug(s"Filtering out field due to field filters: $fieldPath")
+            None
+          }
+        } else {
+          // For leaf fields, check if they should be included
+          if (fieldsToInclude.contains(fieldPath)) {
+            Some(field)
+          } else {
+            LOGGER.debug(s"Filtering out field due to field filters: $fieldPath")
+            None
+          }
+        }
+      }
+    }
+
+    val filteredFields = filterFieldsRecursively(fields)
+    
+    if (filteredFields.size < fields.size) {
+      LOGGER.info(s"Field filtering applied: ${fields.size} -> ${filteredFields.size} fields")
+    }
+    
+    filteredFields
+  }
+
+  /**
+   * Checks if a field is an array type based on its type string.
+   */
+  private def isArrayField(field: Field): Boolean = {
+    field.`type`.exists(_.toLowerCase.startsWith("array"))
+  }
+
+  /**
+   * Checks if a user-specified path matches an actual field path, accounting for array "element" wrappers.
+   * For example, user path "payment_information.payment_id" should match actual path "payment_information.element.payment_id"
+   */
+  private def matchesArrayPath(actualPath: String, userPath: String): Boolean = {
+    if (actualPath == userPath) {
+      true
+    } else {
+      // Check if the actual path has "element" wrappers that the user path doesn't specify
+      val actualParts = actualPath.split("\\.")
+      val userParts = userPath.split("\\.")
+      
+      if (userParts.length >= actualParts.length) {
+        false // User path can't be longer than actual path
+      } else {
+        // Try to match by skipping "element" parts in the actual path
+        matchPathsSkippingElements(actualParts.toList, userParts.toList)
+      }
+    }
+  }
+
+  /**
+   * Checks if a user-specified pattern matches an actual field path, accounting for array "element" wrappers.
+   */
+  private def matchesArrayPathPattern(actualPath: String, userPattern: String): Boolean = {
+    // First try direct pattern matching
+    if (actualPath.matches(userPattern)) {
+      true
+    } else {
+      // Try pattern matching after removing "element" parts
+      val pathWithoutElements = actualPath.replaceAll("\\.element\\.", ".")
+      pathWithoutElements.matches(userPattern)
+    }
+  }
+
+  /**
+   * Recursively matches path parts, skipping "element" parts in the actual path.
+   */
+  private def matchPathsSkippingElements(actualParts: List[String], userParts: List[String]): Boolean = {
+    (actualParts, userParts) match {
+      case (Nil, Nil) => true
+      case (Nil, _) => false
+      case (_, Nil) => true // User path fully matched
+      case (actualHead :: actualTail, userHead :: userTail) =>
+        if (actualHead == "element") {
+          // Skip "element" in actual path and continue matching
+          matchPathsSkippingElements(actualTail, userParts)
+        } else if (actualHead == userHead) {
+          // Parts match, continue with both tails
+          matchPathsSkippingElements(actualTail, userTail)
+        } else {
+          // Parts don't match
+          false
+        }
+    }
+  }
+
+  /**
+   * Collects all field paths from a nested field structure using dot notation,
+   * including both user-friendly paths (without "element") and actual Spark paths (with "element").
+   */
+  private def collectAllFieldPathsWithArrayHandling(fields: List[Field], pathPrefix: String = ""): List[String] = {
+    fields.flatMap { field =>
+      val fieldPath = if (pathPrefix.isEmpty) field.name else s"$pathPrefix.${field.name}"
+      
+      if (field.fields.nonEmpty) {
+        if (isArrayField(field)) {
+          // For array fields, collect paths both with and without "element" wrapper
+          val withElementPaths = collectAllFieldPathsWithArrayHandling(field.fields, s"$fieldPath.element")
+          val withoutElementPaths = collectAllFieldPathsWithArrayHandling(field.fields, fieldPath)
+          
+          // Include the parent path and all nested paths (both variants)
+          fieldPath :: (withElementPaths ++ withoutElementPaths)
+        } else {
+          // For non-array fields, collect paths normally
+          fieldPath :: collectAllFieldPathsWithArrayHandling(field.fields, fieldPath)
+        }
+      } else {
+        // Leaf field
+        List(fieldPath)
+      }
+    }
+  }
+
+  /**
+   * Parses a comma-separated field list from options.
+   */
+  private def parseFieldList(optValue: Option[String]): List[String] = {
+    optValue.map(_.split(",")).getOrElse(Array()).map(_.trim).filter(_.nonEmpty).toList
   }
 
   private def registerSparkFunctions(): Unit = {
@@ -146,6 +363,16 @@ class DataGeneratorFactory(faker: Faker)(implicit val sparkSession: SparkSession
 
   private def attachMetadata(df: DataFrame, structType: StructType): DataFrame = {
     def updateStructColumn(df: DataFrame, fieldName: String, updatedStructType: StructType): DataFrame = {
+      // Check if this is a flattened field name (contains dots) or a true nested structure
+      if (fieldName.contains(".")) {
+        // For flattened field names, just update the metadata directly
+        val escapedFieldName = s"`$fieldName`"
+        df.withColumn(
+          fieldName,
+          col(escapedFieldName).as(fieldName, new MetadataBuilder().withMetadata(updatedStructType.fields.head.metadata).build())
+        )
+      } else {
+        // For true nested structures, handle recursively
       val originalStructType = df.schema(fieldName).dataType.asInstanceOf[StructType]
 
       // Recursively update nested fields
@@ -181,6 +408,7 @@ class DataGeneratorFactory(faker: Faker)(implicit val sparkSession: SparkSession
         col(fieldName).cast(finalStructType)
           .as(fieldName, new MetadataBuilder().build())
       )
+      }
     }
 
     df.schema.fields.foldLeft(df) { (tempDF, field) =>
@@ -189,9 +417,11 @@ class DataGeneratorFactory(faker: Faker)(implicit val sparkSession: SparkSession
           updateStructColumn(tempDF, field.name, updatedField.dataType.asInstanceOf[StructType])
 
         case Some(updatedField) =>
+          // Handle flattened field names with dots
+          val escapedFieldName = if (field.name.contains(".")) s"`${field.name}`" else field.name
           tempDF.withColumn(
             field.name,
-            col(field.name).as(field.name, new MetadataBuilder().withMetadata(updatedField.metadata).build())
+            col(escapedFieldName).as(field.name, new MetadataBuilder().withMetadata(updatedField.metadata).build())
           )
 
         case None => tempDF // If field is not in updated schema, leave it unchanged

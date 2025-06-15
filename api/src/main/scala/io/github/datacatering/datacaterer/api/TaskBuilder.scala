@@ -406,6 +406,46 @@ case class StepBuilder(step: Step = Step(), optValidation: Option[DataSourceVali
   def enableDataGeneration(enable: Boolean): StepBuilder =
     this.modify(_.step.options)(_ ++ Map(ENABLE_DATA_GENERATION -> enable.toString))
 
+  /**
+   * Include only specific fields in data generation. Supports dot notation for nested fields (e.g., "user.name").
+   * Can be used with excludeFields, includeFieldPatterns, and excludeFieldPatterns.
+   *
+   * @param fieldNames Field names to include
+   * @return StepBuilder
+   */
+  @varargs def includeFields(fieldNames: String*): StepBuilder =
+    this.modify(_.step.options)(_ ++ Map(INCLUDE_FIELDS -> fieldNames.mkString(",")))
+
+  /**
+   * Exclude specific fields from data generation. Supports dot notation for nested fields (e.g., "user.internal").
+   * Can be used with includeFields, includeFieldPatterns, and excludeFieldPatterns.
+   *
+   * @param fieldNames Field names to exclude
+   * @return StepBuilder
+   */
+  @varargs def excludeFields(fieldNames: String*): StepBuilder =
+    this.modify(_.step.options)(_ ++ Map(EXCLUDE_FIELDS -> fieldNames.mkString(",")))
+
+  /**
+   * Include fields matching regex patterns in data generation. Supports dot notation for nested fields (e.g., "user.*").
+   * Can be used with includeFields, excludeFields, and excludeFieldPatterns.
+   *
+   * @param patterns Regex patterns for field names to include
+   * @return StepBuilder
+   */
+  @varargs def includeFieldPatterns(patterns: String*): StepBuilder =
+    this.modify(_.step.options)(_ ++ Map(INCLUDE_FIELD_PATTERNS -> patterns.mkString(",")))
+
+  /**
+   * Exclude fields matching regex patterns from data generation. Supports dot notation for nested fields (e.g., ".*internal.*").
+   * Can be used with includeFields, excludeFields, and includeFieldPatterns.
+   *
+   * @param patterns Regex patterns for field names to exclude
+   * @return StepBuilder
+   */
+  @varargs def excludeFieldPatterns(patterns: String*): StepBuilder =
+    this.modify(_.step.options)(_ ++ Map(EXCLUDE_FIELD_PATTERNS -> patterns.mkString(",")))
+
   private def getValidation: DataSourceValidationBuilder = optValidation.getOrElse(DataSourceValidationBuilder())
 }
 

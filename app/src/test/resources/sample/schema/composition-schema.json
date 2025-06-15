@@ -1,0 +1,90 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.com/composition.schema.json",
+  "title": "Composition Schema Test",
+  "description": "A schema testing allOf, oneOf, and anyOf composition",
+  "type": "object",
+  "properties": {
+    "baseInfo": {
+      "allOf": [
+        {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "name": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": ["id"]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "description": {
+              "type": "string",
+              "maxLength": 500
+            },
+            "category": {
+              "type": "string",
+              "enum": ["A", "B", "C"]
+            }
+          },
+          "required": ["name"]
+        }
+      ]
+    },
+    "contactMethod": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "email": {
+              "type": "string",
+              "format": "email"
+            }
+          },
+          "required": ["email"]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "phone": {
+              "type": "string",
+              "pattern": "^\\+?[1-9]\\d{1,14}$"
+            }
+          },
+          "required": ["phone"]
+        }
+      ]
+    },
+    "additionalData": {
+      "anyOf": [
+        {
+          "type": "object",
+          "properties": {
+            "metadata": {
+              "type": "object",
+              "additionalProperties": true
+            }
+          }
+        },
+        {
+          "type": "object",
+          "properties": {
+            "tags": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      ]
+    }
+  },
+  "required": ["baseInfo", "contactMethod"]
+} 

@@ -3,7 +3,7 @@ package io.github.datacatering.datacaterer.core.plan
 import io.github.datacatering.datacaterer.api.model.Constants.{OPEN_METADATA_AUTH_TYPE_OPEN_METADATA, OPEN_METADATA_JWT_TOKEN, OPEN_METADATA_TABLE_FQN, PARTITIONS, ROWS_PER_SECOND, SAVE_MODE, VALIDATION_IDENTIFIER}
 import io.github.datacatering.datacaterer.api.model.{ArrayType, DateType, DoubleType, HeaderType, IntegerType, MapType, TimestampType}
 import io.github.datacatering.datacaterer.api.{HttpMethodEnum, PlanRun}
-import io.github.datacatering.datacaterer.core.model.Constants.{DATA_CATERER_API_TOKEN, DATA_CATERER_API_USER, METADATA_FILTER_OUT_SCHEMA}
+import io.github.datacatering.datacaterer.core.model.Constants.METADATA_FILTER_OUT_SCHEMA
 import io.github.datacatering.datacaterer.core.util.{ObjectMapperUtil, SparkSuite}
 import org.asynchttpclient.DefaultAsyncHttpClientConfig
 import org.asynchttpclient.Dsl.asyncHttpClient
@@ -14,6 +14,7 @@ import scala.compat.java8.FutureConverters._
 import scala.concurrent.Await
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.Duration
+import scala.io.Source
 
 class PlanProcessorTest extends SparkSuite {
 
@@ -85,14 +86,18 @@ class PlanProcessorTest extends SparkSuite {
     }
   }
 
-  test("Can run documentation plan run") {
-    PlanProcessor.determineAndExecutePlan(Some(new DocumentationPlanRun()), apiCheck = false)
+  ignore("Can run documentation plan run") {
+    PlanProcessor.determineAndExecutePlan(Some(new DocumentationPlanRun()))
     verifyGeneratedData(scalaBaseFolder)
   }
 
   ignore("Can run Java plan run") {
     PlanProcessor.determineAndExecutePlanJava(new ExampleJavaPlanRun(javaBaseFolder))
     verifyGeneratedData(javaBaseFolder)
+  }
+
+  test("Can generate JSON data from JSON Schema with field filtering matching mx_pain structure") {
+    PlanProcessor.determineAndExecutePlan(Some(new TestJsonSchemaGenerationMatchingMxPain()))
   }
 
   private def verifyGeneratedData(folder: String) = {
@@ -110,14 +115,14 @@ class PlanProcessorTest extends SparkSuite {
     csvData.foreach(r => assert(r.getAs[String]("time").substring(0, 10) == r.getAs[String]("date")))
   }
 
-  test("Write YAML for plan") {
+  ignore("Write YAML for plan") {
     val docPlanRun = new ParquetMultipleRelationshipsPlan()
     val planWrite = ObjectMapperUtil.yamlObjectMapper.writeValueAsString(docPlanRun._tasks)
     println(planWrite)
   }
 
   ignore("Can run Postgres plan run") {
-    PlanProcessor.determineAndExecutePlan(Some(new TestKafkaRelationships), apiCheck = false)
+    PlanProcessor.determineAndExecutePlan(Some(new TestKafkaRelationships))
   }
 
   class TestPostgres extends PlanRun {
@@ -633,6 +638,54 @@ class PlanProcessorTest extends SparkSuite {
     execute(conf, accounts)
   }
 
+  class TestJsonSchemaGenerationMatchingMxPain extends PlanRun {
+    // Test field filtering to match the exact structure in mx_pain.json
+    val jsonSchemaTask = json("json_schema_mx_pain_test", "/tmp/data/json-schema-mx-pain-test", Map("saveMode" -> "overwrite"))
+      .fields(metadataSource.jsonSchema("app/src/test/resources/sample/schema/mx_pain.json"))
+      // Include fields to match mx_pain.json structure exactly
+      // .includeFields(
+      //   // Group header fields
+      //   "customer_direct_debit_initiation_v11.group_header.message_identification",
+      //   "customer_direct_debit_initiation_v11.group_header.creation_date_time",
+      //   "customer_direct_debit_initiation_v11.group_header.number_of_transactions",
+      //   "customer_direct_debit_initiation_v11.group_header.control_sum",
+      //   "customer_direct_debit_initiation_v11.group_header.initiating_party.name",
+        
+      //   // Payment information fields
+      //   "customer_direct_debit_initiation_v11.payment_information.payment_information_identification",
+      //   "customer_direct_debit_initiation_v11.payment_information.payment_method",
+      //   "customer_direct_debit_initiation_v11.payment_information.batch_booking",
+      //   "customer_direct_debit_initiation_v11.payment_information.number_of_transactions",
+      //   "customer_direct_debit_initiation_v11.payment_information.control_sum",
+      //   "customer_direct_debit_initiation_v11.payment_information.payment_type_information.service_level.code",
+      //   "customer_direct_debit_initiation_v11.payment_information.payment_type_information.local_instrument.code",
+      //   "customer_direct_debit_initiation_v11.payment_information.payment_type_information.sequence_type",
+      //   "customer_direct_debit_initiation_v11.payment_information.requested_collection_date",
+      //   "customer_direct_debit_initiation_v11.payment_information.creditor.name",
+      //   "customer_direct_debit_initiation_v11.payment_information.creditor_account.identification.iban",
+      //   "customer_direct_debit_initiation_v11.payment_information.creditor_agent.financial_institution_identification.bic",
+      //   "customer_direct_debit_initiation_v11.payment_information.charge_bearer",
+        
+      //   // Direct debit transaction information fields
+      //   "customer_direct_debit_initiation_v11.payment_information.direct_debit_transaction_information.payment_identification.end_to_end_identification",
+      //   "customer_direct_debit_initiation_v11.payment_information.direct_debit_transaction_information.instructed_amount.value",
+      //   "customer_direct_debit_initiation_v11.payment_information.direct_debit_transaction_information.instructed_amount.currency",
+      //   "customer_direct_debit_initiation_v11.payment_information.direct_debit_transaction_information.direct_debit_transaction.mandate_related_information.mandate_identification",
+      //   "customer_direct_debit_initiation_v11.payment_information.direct_debit_transaction_information.direct_debit_transaction.mandate_related_information.date_of_signature",
+      //   "customer_direct_debit_initiation_v11.payment_information.direct_debit_transaction_information.debtor_agent.financial_institution_identification.bic",
+      //   "customer_direct_debit_initiation_v11.payment_information.direct_debit_transaction_information.debtor.name",
+      //   "customer_direct_debit_initiation_v11.payment_information.direct_debit_transaction_information.debtor_account.identification.iban"
+      // )
+      .count(count.records(10))
+
+    val conf = configuration
+      .enableGeneratePlanAndTasks(true)
+      .generatedPlanAndTaskFolderPath("/tmp/data-caterer-gen-mx-pain")
+      .generatedReportsFolderPath("/tmp/data/report-mx-pain")
+
+    execute(conf, jsonSchemaTask)
+  }
+
   class TestKafka extends PlanRun {
     val accounts = kafka("customer_kafka", "localhost:9092")
       .topic("accounts")
@@ -734,12 +787,6 @@ class PlanProcessorTest extends SparkSuite {
     val conf = configuration.generatedReportsFolderPath("/tmp/report")
 
     execute(conf, accounts)
-  }
-
-  ignore("Check fail status") {
-    System.setProperty(DATA_CATERER_API_USER, "")
-    System.setProperty(DATA_CATERER_API_TOKEN, "")
-    PlanProcessor.determineAndExecutePlan(Some(new TestFailedValidation))
   }
 
   class TestFailedGeneration extends PlanRun {

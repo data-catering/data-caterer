@@ -59,12 +59,16 @@ object GeneratorUtil {
             (isIgnoreForeignColExists || foreignKeyFields.exists(col => field.metadata.getString(SQL_GENERATOR).contains(col)))) {
             field.metadata.getString(SQL_GENERATOR)
           } else {
-            field.name
+            // Escape field names that contain dots
+            if (field.name.contains(".")) s"${field.name}" else field.name
           }
       }
     }
 
-    val sqlExpressions = df.schema.fields.map(f => s"${getSqlExpr(f)} as ${f.name}")
+    val sqlExpressions = df.schema.fields.map(f => {
+      val columnAlias = if (f.name.contains(".")) s"`${f.name}`" else f.name
+      s"${getSqlExpr(f)} as $columnAlias"
+    })
     val res = df.selectExpr(sqlExpressions: _*)
       .selectExpr(sqlExpressions: _*) //fix for nested SQL references but I don't think it would work longer term
     //TODO have to figure out the order of the SQL expressions and execute accordingly

@@ -56,6 +56,7 @@ object Constants {
   lazy val JMS_VPN_NAME = "vpnName"
   lazy val JMS_VIRTUAL_HOST = "virtualHost"
   lazy val SCHEMA_LOCATION = "schemaLocation"
+  lazy val JSON_SCHEMA_FILE = "jsonSchemaFile"
   lazy val GREAT_EXPECTATIONS_FILE = "expectationsFile"
   lazy val DATA_CONTRACT_FILE = "dataContractFile"
   lazy val DATA_CONTRACT_SCHEMA = "dataContractSchema"
@@ -131,6 +132,10 @@ object Constants {
 
   //step options
   lazy val ALL_COMBINATIONS = "allCombinations"
+  lazy val INCLUDE_FIELDS = "includeFields"
+  lazy val EXCLUDE_FIELDS = "excludeFields"
+  lazy val INCLUDE_FIELD_PATTERNS = "includeFieldPatterns"
+  lazy val EXCLUDE_FIELD_PATTERNS = "excludeFieldPatterns"
 
   //field labels
   lazy val LABEL_NAME = "name"
@@ -382,6 +387,7 @@ object Constants {
   lazy val AMUNDSEN = "amundsen"
   lazy val DATAHUB = "datahub"
   lazy val CONFLUENT_SCHEMA_REGISTRY = "confluentSchemaRegistry"
+  lazy val JSON_SCHEMA = "jsonSchema"
   lazy val DEFAULT_METADATA_SOURCE_NAME = "defaultMetadataSource"
 
   //alert source

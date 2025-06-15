@@ -5,7 +5,7 @@ import io.github.datacatering.datacaterer.api.model.{DataCatererConfiguration, P
 trait PrePlanProcessor {
 
   val dataCatererConfiguration: DataCatererConfiguration
-  val enabled: Boolean
+  val enabled: Boolean = true
 
   def apply(plan: Plan, tasks: List[Task], validations: List[ValidationConfiguration]): Unit
 

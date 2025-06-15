@@ -38,7 +38,7 @@ and deep dive into issues [from the generated report](https://data.catering/samp
 
 1. Docker
    ```shell
-   docker run -d -i -p 9898:9898 -e DEPLOY_MODE=standalone --name datacaterer datacatering/data-caterer:0.12.1
+   docker run -d -i -p 9898:9898 -e DEPLOY_MODE=standalone --name datacaterer datacatering/data-caterer:0.16.0
    ```
    [Open localhost:9898](http://localhost:9898).
 1. [Run Scala/Java examples](#run-scalajava-examples)
@@ -87,6 +87,7 @@ Data Caterer supports the below data sources. [Check here for the full roadmap](
 | Messaging        | RabbitMQ                           | ❌       |
 | Metadata         | Data Contract CLI                  | ✅       |
 | Metadata         | Great Expectations                 | ✅       |
+| Metadata         | JSON Schema                        | ✅       |
 | Metadata         | Marquez                            | ✅       |
 | Metadata         | OpenAPI/Swagger                    | ✅       |
 | Metadata         | OpenMetadata                       | ✅       |
@@ -301,19 +302,3 @@ parquet("customer_parquet", "/data/parquet/customer")
   .validations(metadataSource.greatExpectations("/data/great-expectations/taxi-expectations.json"))
 ```
 
-## Issues with current testing
-
-- No one properly tests in lower environments
-  - Integration tests are turned into sanity checks
-  - Too many test environments (dev, test, sit, uat, staging, beta, pre-prod)
-  - Meme about error in production
-    - Business will ask "was this tested in X environment", the test in X environment is something irrelevant or small
-- Integration tests are too difficult and slow
-  - But what has anyone done to try solve the problem?
-- Testers stuck manually generating data
-  - Hard to create data with relationships within the same data source or across data sources
-- Testing only becomes a priority when things go wrong in production
-  - Show companies that have had big problems due to lack of testing or leaking customer data
-    - Sonos
-    - Crowdstrike
-    - Optus

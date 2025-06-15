@@ -1,6 +1,6 @@
 package io.github.datacatering.datacaterer.api.model
 
-import io.github.datacatering.datacaterer.api.model.Constants.{CONFLUENT_SCHEMA_REGISTRY, DATA_CONTRACT_CLI, GREAT_EXPECTATIONS, MARQUEZ, METADATA_SOURCE_HAS_OPEN_LINEAGE_SUPPORT, METADATA_SOURCE_TYPE, OPEN_API, OPEN_DATA_CONTRACT_STANDARD, OPEN_METADATA}
+import io.github.datacatering.datacaterer.api.model.Constants.{CONFLUENT_SCHEMA_REGISTRY, DATA_CONTRACT_CLI, GREAT_EXPECTATIONS, JSON_SCHEMA, MARQUEZ, METADATA_SOURCE_HAS_OPEN_LINEAGE_SUPPORT, METADATA_SOURCE_TYPE, OPEN_API, OPEN_DATA_CONTRACT_STANDARD, OPEN_METADATA}
 
 trait MetadataSource {
 
@@ -53,5 +53,11 @@ case class DataContractCliSource(override val connectionOptions: Map[String, Str
 case class ConfluentSchemaRegistrySource(override val connectionOptions: Map[String, String] = Map()) extends MetadataSource {
 
   override val `type`: String = CONFLUENT_SCHEMA_REGISTRY
+
+}
+
+case class JsonSchemaSource(override val connectionOptions: Map[String, String] = Map()) extends MetadataSource {
+
+  override val `type`: String = JSON_SCHEMA
 
 }

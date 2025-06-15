@@ -20,7 +20,6 @@ class PlanRoutes(
                   planRepository: ActorRef[PlanRepository.PlanCommand],
                   planResponseHandler: ActorRef[PlanResponseHandler.Response],
                   connectionRepository: ActorRef[ConnectionRepository.ConnectionCommand],
-                  credentialRepository: ActorRef[CredentialRepository.CredentialsCommand],
                 )(implicit system: ActorSystem[_]) extends Directives with JacksonSupport {
 
   private val LOGGER = Logger.getLogger(getClass.getName)
@@ -71,30 +70,6 @@ class PlanRoutes(
     path("data_catering_transparent.svg") {
       get {
         getFromResource("report/data_catering_transparent.svg")
-      }
-    },
-    path("credentials") {
-      post {
-        entity(as[CredentialsRequest]) { creds =>
-          val futureResp = credentialRepository.ask(x => CredentialRepository.SaveCredentials(creds, x))
-          onComplete(futureResp) {
-            case Success(value) =>
-              value match {
-                case CredentialRepository.VerifiedCredentialsResponse() =>
-                  LOGGER.debug("Completed from credentials path")
-                  complete(value)
-                case CredentialRepository.InvalidCredentialsResponse() =>
-                  complete(StatusCodes.Unauthorized, s"Invalid user credentials, user-id=${creds.userId}")
-                case CredentialRepository.UserNotFoundCredentialsResponse() =>
-                  complete(StatusCodes.Unauthorized, s"User not found, user-id=${creds.userId}")
-                case CredentialRepository.InternalErrorCredentialsResponse() =>
-                  complete(StatusCodes.InternalServerError, s"Failed to validate user credentials, user-id=${creds.userId}")
-              }
-            case Failure(exception) =>
-              LOGGER.debug("Throwing exception from credentials path", exception)
-              complete(StatusCodes.InternalServerError, s"Failed to validate user credentials, user-id=${creds.userId}")
-          }
-        }
       }
     },
     pathPrefix("run") {

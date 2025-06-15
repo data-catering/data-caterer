@@ -1,0 +1,55 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.com/array.schema.json",
+  "title": "Array Schema Test",
+  "description": "A schema testing various array configurations",
+  "type": "array",
+  "items": {
+    "type": "object",
+    "properties": {
+      "id": {
+        "type": "integer",
+        "minimum": 1
+      },
+      "tags": {
+        "type": "array",
+        "items": {
+          "type": "string",
+          "pattern": "^[a-z]+$"
+        },
+        "minItems": 1,
+        "maxItems": 10,
+        "uniqueItems": true
+      },
+      "scores": {
+        "type": "array",
+        "items": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "minItems": 3,
+        "maxItems": 5
+      },
+      "nested": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string",
+              "minLength": 1
+            },
+            "value": {
+              "type": "integer"
+            }
+          },
+          "required": ["name"]
+        }
+      }
+    },
+    "required": ["id"]
+  },
+  "minItems": 1,
+  "maxItems": 100
+} 

@@ -254,10 +254,6 @@ case class MissingApiEnvVarException(envVar: String) extends RuntimeException(
     s"key or token, please follow steps found here (https://data.catering/get-started/quick-start/), env-var=$envVar"
 )
 
-case class ManagementApiException(errorMessage: String) extends RuntimeException(
-  s"Error message from data-caterer management API, error-message=$errorMessage"
-)
-
 case class UserNotFoundException(userId: String) extends RuntimeException(
   s"User not found for data-caterer, user-id=$userId"
 )

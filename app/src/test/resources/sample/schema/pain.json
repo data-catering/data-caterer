@@ -1,0 +1,102 @@
+{
+  "Document": {
+    "CstmrDrctDbtInitn": {
+      "GrpHdr": {
+        "MsgId": "DD20250606-001",
+        "CreDtTm": "2025-06-06T09:00:00",
+        "NbOfTxs": "2",
+        "CtrlSum": 250.00,
+        "InitgPty": {
+          "Nm": "DataSQRL Inc."
+        }
+      },
+      "PmtInf": [
+        {
+          "PmtInfId": "PMTINF001",
+          "PmtMtd": "DD",
+          "BtchBookg": true,
+          "NbOfTxs": "2",
+          "CtrlSum": 250.00,
+          "PmtTpInf": {
+            "SvcLvl": { "Cd": "SEPA" },
+            "LclInstrm": { "Cd": "CORE" },
+            "SeqTp": "RCUR"
+          },
+          "ReqdColltnDt": "2025-06-10",
+          "Cdtr": {
+            "Nm": "DataSQRL Inc."
+          },
+          "CdtrAcct": {
+            "Id": {
+              "IBAN": "DE89370400440532013000"
+            }
+          },
+          "CdtrAgt": {
+            "FinInstnId": {
+              "BIC": "DEUTDEFF"
+            }
+          },
+          "ChrgBr": "SLEV",
+          "DrctDbtTxInf": [
+            {
+              "PmtId": {
+                "EndToEndId": "E2E20250606-001"
+              },
+              "InstdAmt": {
+                "value": 100.00,
+                "Ccy": "EUR"
+              },
+              "DrctDbtTx": {
+                "MndtRltdInf": {
+                  "MndtId": "MANDATE-001",
+                  "DtOfSgntr": "2024-12-01"
+                }
+              },
+              "DbtrAgt": {
+                "FinInstnId": {
+                  "BIC": "NWBKGB2L"
+                }
+              },
+              "Dbtr": {
+                "Nm": "Jane Doe"
+              },
+              "DbtrAcct": {
+                "Id": {
+                  "IBAN": "GB29NWBK60161331926819"
+                }
+              }
+            },
+            {
+              "PmtId": {
+                "EndToEndId": "E2E20250606-002"
+              },
+              "InstdAmt": {
+                "value": 150.00,
+                "Ccy": "EUR"
+              },
+              "DrctDbtTx": {
+                "MndtRltdInf": {
+                  "MndtId": "MANDATE-002",
+                  "DtOfSgntr": "2025-01-15"
+                }
+              },
+              "DbtrAgt": {
+                "FinInstnId": {
+                  "BIC": "BNPAFRPP"
+                }
+              },
+              "Dbtr": {
+                "Nm": "Jean Dupont"
+              },
+              "DbtrAcct": {
+                "Id": {
+                  "IBAN": "FR1420041010050500013M02606"
+                }
+              }
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

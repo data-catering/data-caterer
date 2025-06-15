@@ -296,10 +296,11 @@ object RandomDataGenerator {
     override def generateSqlExpression: String = {
       val nestedSqlExpressions = dataType match {
         case structType: StructType =>
-          val structGen = new RandomStructTypeDataGenerator(StructField(structField.name, structType))
+          val structFieldWithMetadata = StructField(structField.name, structType, structField.nullable, structField.metadata)
+          val structGen = new RandomStructTypeDataGenerator(structFieldWithMetadata, faker)
           structGen.generateSqlExpressionWrapper
         case _ =>
-          getGeneratorForStructField(structField.copy(dataType = dataType)).generateSqlExpressionWrapper
+          getGeneratorForStructField(structField.copy(dataType = dataType), faker).generateSqlExpressionWrapper
       }
       s"TRANSFORM(ARRAY_REPEAT(1, CAST($sqlRandom * ${arrayMaxSize - arrayMinSize} + $arrayMinSize AS INT)), i -> $nestedSqlExpressions)"
     }

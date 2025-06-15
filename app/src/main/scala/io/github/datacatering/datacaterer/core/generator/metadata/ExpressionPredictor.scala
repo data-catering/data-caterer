@@ -39,21 +39,61 @@ object ExpressionPredictor {
         structField
       }
     } else if (structField.dataType.typeName == "string") {
-      val optFieldPrediction = tryGetFieldPrediction(structField)
-      val metadata = optFieldPrediction.map(prediction => {
-        val metadataBuilder = new MetadataBuilder().withMetadata(structField.metadata)
-        prediction.toMap.foreach(p => metadataBuilder.putString(p._1, p._2))
-        metadataBuilder.build()
-      }).getOrElse(structField.metadata)
-      val updatedDataType = if (metadata.contains(FIELD_DATA_TYPE) && metadata.getString(FIELD_DATA_TYPE) != "string") {
-        DataType.fromDDL(metadata.getString(FIELD_DATA_TYPE))
+      // Check if field already has constraints from metadata sources
+      val hasExistingConstraints = hasFieldConstraints(structField)
+      
+      if (hasExistingConstraints) {
+        // Field already has constraints from data source (e.g. JSON schema), preserve them
+        LOGGER.info(s"Field '${structField.name}' already has metadata constraints, skipping expression prediction, ${structField.metadata.json}")
+        structField
       } else {
-        structField.dataType
+        // No existing constraints, apply expression predictions
+        val optFieldPrediction = tryGetFieldPrediction(structField)
+        val metadata = optFieldPrediction.map(prediction => {
+          val metadataBuilder = new MetadataBuilder().withMetadata(structField.metadata)
+          prediction.toMap.foreach(p => metadataBuilder.putString(p._1, p._2))
+          metadataBuilder.build()
+        }).getOrElse(structField.metadata)
+        val updatedDataType = if (metadata.contains(FIELD_DATA_TYPE) && metadata.getString(FIELD_DATA_TYPE) != "string") {
+          DataType.fromDDL(metadata.getString(FIELD_DATA_TYPE))
+        } else {
+          structField.dataType
+        }
+        StructField(structField.name, updatedDataType, structField.nullable, metadata)
       }
-      StructField(structField.name, updatedDataType, structField.nullable, metadata)
     } else {
       structField
     }
+  }
+
+  /**
+   * Check if a field already has constraints that indicate it comes from a data source
+   * like JSON schema, database metadata, etc.
+   */
+  private def hasFieldConstraints(structField: StructField): Boolean = {
+    val metadata = structField.metadata
+    // Check for common field constraint metadata keys that indicate data source constraints
+    metadata.contains(MINIMUM_LENGTH) ||
+    metadata.contains(MAXIMUM_LENGTH) ||
+    metadata.contains(MINIMUM) ||
+    metadata.contains(MAXIMUM) ||
+    metadata.contains(ONE_OF_GENERATOR) ||
+    metadata.contains(REGEX_GENERATOR) ||
+    metadata.contains(EXPRESSION) ||
+    metadata.contains(DEFAULT_VALUE) ||
+    metadata.contains(CONSTRAINT_TYPE) ||
+    metadata.contains(STATIC) ||
+    metadata.contains(NULL_COUNT) ||
+    metadata.contains(DISTINCT_COUNT) ||
+    metadata.contains(HISTOGRAM) ||
+    metadata.contains(AVERAGE_LENGTH) ||
+    metadata.contains(STANDARD_DEVIATION) ||
+    metadata.contains(MEAN) ||
+    metadata.contains(DISTRIBUTION) ||
+    metadata.contains(ARRAY_MINIMUM_LENGTH) ||
+    metadata.contains(ARRAY_MAXIMUM_LENGTH) ||
+    metadata.contains(MAP_MINIMUM_SIZE) ||
+    metadata.contains(MAP_MAXIMUM_SIZE)
   }
 
   private def structTypeWithFieldPredictions(dataType: DataType): StructType = {

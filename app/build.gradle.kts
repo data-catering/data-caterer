@@ -194,6 +194,9 @@ dependencies {
     // needed to work on Windows
     basicImpl("com.globalmentor:hadoop-bare-naked-local-fs:0.1.0")
 
+    // json schema validation
+    basicImpl("com.networknt:json-schema-validator:1.5.7")
+
     // misc
     basicImpl("joda-time:joda-time:2.12.7")
     basicImpl("com.google.guava:guava:33.2.1-jre")
@@ -231,39 +234,38 @@ dependencies {
     basicImpl("org.scala-lang.modules:scala-xml_$scalaVersion:2.2.0") {
         exclude(group = "org.scala-lang")
     }
-}
 
-testing {
-    suites {
-        // Configure the built-in test suite
-        val test by getting(JvmTestSuite::class) {
-            // Use JUnit5 test framework
-            useJUnitJupiter()
+    // Test dependencies
+    testImplementation("org.scalatest:scalatest_$scalaVersion:3.2.19")
+    testImplementation("org.scalatestplus:junit-5-11_$scalaVersion:3.2.19.0")
+    testImplementation("org.scalamock:scalamock_$scalaVersion:5.2.0")
+    testImplementation("org.mockito:mockito-scala_$scalaVersion:1.17.37")
+    testImplementation("org.apache.spark:spark-sql_$scalaVersion:$sparkVersion")
+    testImplementation("org.apache.spark:spark-avro_$scalaVersion:$sparkVersion")
+    testImplementation("org.apache.spark:spark-protobuf_$scalaVersion:$sparkVersion")
+    testImplementation("com.dimafeng:testcontainers-scala_$scalaVersion:0.41.3")
+    testImplementation("org.apache.pekko:pekko-actor-testkit-typed_$scalaVersion:1.0.1")
+    testImplementation(project(":api"))
 
-            dependencies {
-                // Use Scalatest for testing our library
-                implementation("org.scalatest:scalatest_$scalaVersion:3.2.19")
-                implementation("org.scalatestplus:junit-5-11_$scalaVersion:3.2.19.0")
-                implementation("org.scalamock:scalamock_$scalaVersion:5.2.0")
-                implementation("org.mockito:mockito-scala_$scalaVersion:1.17.37")
-                implementation("org.apache.spark:spark-sql_$scalaVersion:$sparkVersion")
-                implementation("org.apache.spark:spark-avro_$scalaVersion:$sparkVersion")
-                implementation("org.apache.spark:spark-protobuf_$scalaVersion:$sparkVersion")
-                implementation("com.dimafeng:testcontainers-scala_$scalaVersion:0.41.3")
-                implementation("org.apache.pekko:pekko-actor-testkit-typed_$scalaVersion:1.0.1")
-                implementation(project(":api"))
-
-                // Need scala-xml at test runtime
-                runtimeOnly("org.scala-lang.modules:scala-xml_$scalaVersion:1.3.1")
-                runtimeOnly("org.junit.platform:junit-platform-engine:1.11.3")
-                runtimeOnly("org.junit.platform:junit-platform-launcher:1.11.3")
-            }
-        }
-    }
+    // Need scala-xml at test runtime
+    testRuntimeOnly("org.scala-lang.modules:scala-xml_$scalaVersion:1.3.1")
+    testRuntimeOnly("org.junit.platform:junit-platform-engine:1.11.3")
+    testRuntimeOnly("org.junit.platform:junit-platform-launcher:1.11.3")
 }
 
 tasks.test {
     jvmArgs("-Djava.security.manager=allow", "-Djdk.module.illegalAccess=deny", "--add-opens=java.base/java.lang=ALL-UNNAMED", "--add-opens=java.base/java.lang.invoke=ALL-UNNAMED", "--add-opens=java.base/java.lang.reflect=ALL-UNNAMED", "--add-opens=java.base/java.io=ALL-UNNAMED", "--add-opens=java.base/java.net=ALL-UNNAMED", "--add-opens=java.base/java.nio=ALL-UNNAMED", "--add-opens=java.base/java.util=ALL-UNNAMED", "--add-opens=java.base/java.util.concurrent=ALL-UNNAMED", "--add-opens=java.base/java.util.concurrent.atomic=ALL-UNNAMED", "--add-opens=java.base/sun.nio.ch=ALL-UNNAMED", "--add-opens=java.base/sun.nio.cs=ALL-UNNAMED", "--add-opens=java.base/sun.security.action=ALL-UNNAMED", "--add-opens=java.base/sun.util.calendar=ALL-UNNAMED", "--add-opens=java.security.jgss/sun.security.krb5=ALL-UNNAMED")
+    finalizedBy(tasks.reportScoverage)
+    useJUnitPlatform {
+        includeEngines("scalatest")
+        testLogging {
+            events("failed")
+        }
+    }
+    // Enable proper test filtering
+    filter {
+        setFailOnNoMatchingTests(false)
+    }
 }
 
 application {
@@ -292,24 +294,6 @@ tasks.shadowJar {
     val newTransformer = com.github.jengelman.gradle.plugins.shadow.transformers.AppendingTransformer()
     newTransformer.resource = "reference.conf"
     transformers.add(newTransformer)
-}
-
-tasks.test {
-    finalizedBy(tasks.reportScoverage)
-    environment("DATA_CATERER_API_USER", "hello")
-    environment("DATA_CATERER_API_TOKEN", "world")
-    environment("DATA_CATERER_MANAGEMENT_TRACK", "data_caterer_is_cool")
-}
-
-tasks {
-    test{
-        useJUnitPlatform {
-            includeEngines("scalatest")
-            testLogging {
-                events("failed")
-            }
-        }
-    }
 }
 
 configure<ScoverageExtension> {

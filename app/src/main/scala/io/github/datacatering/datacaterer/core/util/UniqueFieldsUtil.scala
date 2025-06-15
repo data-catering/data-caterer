@@ -96,7 +96,7 @@ class UniqueFieldsUtil(
     // Create a new column with the concatenated unique key
     val withUniqueKey = df.withColumn("composite_key", array(fields.map(col): _*))
 
-    // Filter out duplicates
+    // Filter out duplicates (but not for array fields)
     val uniqueDF = withUniqueKey.filter(isUniqueUDF(col("composite_key"))).drop("composite_key")
     uniqueDF.cache()
 

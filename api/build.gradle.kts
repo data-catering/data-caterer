@@ -56,9 +56,6 @@ testing {
     suites {
         // Configure the built-in test suite
         val test by getting(JvmTestSuite::class) {
-            // Use JUnit5 test framework
-            useJUnitJupiter()
-
             dependencies {
                 // Use Scalatest for testing our library
                 implementation("org.scalatest:scalatest_$scalaVersion:3.2.19")
@@ -74,6 +71,17 @@ testing {
 
 tasks.test {
     jvmArgs("-Djava.security.manager=allow", "-Djdk.module.illegalAccess=deny", "--add-opens=java.base/java.lang=ALL-UNNAMED", "--add-opens=java.base/java.lang.invoke=ALL-UNNAMED", "--add-opens=java.base/java.lang.reflect=ALL-UNNAMED", "--add-opens=java.base/java.io=ALL-UNNAMED", "--add-opens=java.base/java.net=ALL-UNNAMED", "--add-opens=java.base/java.nio=ALL-UNNAMED", "--add-opens=java.base/java.util=ALL-UNNAMED", "--add-opens=java.base/java.util.concurrent=ALL-UNNAMED", "--add-opens=java.base/java.util.concurrent.atomic=ALL-UNNAMED", "--add-opens=java.base/sun.nio.ch=ALL-UNNAMED", "--add-opens=java.base/sun.nio.cs=ALL-UNNAMED", "--add-opens=java.base/sun.security.action=ALL-UNNAMED", "--add-opens=java.base/sun.util.calendar=ALL-UNNAMED", "--add-opens=java.security.jgss/sun.security.krb5=ALL-UNNAMED")
+    finalizedBy(tasks.reportScoverage)
+    useJUnitPlatform {
+        includeEngines("scalatest")
+        testLogging {
+            events("failed")
+        }
+    }
+    // Enable proper test filtering
+    filter {
+        setFailOnNoMatchingTests(false)
+    }
 }
 
 sourceSets {
@@ -115,10 +123,6 @@ tasks.shadowJar {
     archiveVersion.set(project.version.toString())
     archiveClassifier.set("")
     isZip64 = true
-}
-
-tasks.test {
-    finalizedBy(tasks.reportScoverage)
 }
 
 configure<ScoverageExtension> {
@@ -178,13 +182,3 @@ signing {
     sign(publishing.publications["mavenScala"])
 }
 
-tasks {
-    test{
-        useJUnitPlatform {
-            includeEngines("scalatest")
-            testLogging {
-                events("failed")
-            }
-        }
-    }
-}

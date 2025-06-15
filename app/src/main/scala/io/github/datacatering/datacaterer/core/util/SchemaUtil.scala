@@ -221,7 +221,8 @@ object PlanImplicits {
 
     def gatherUniqueFields: List[String] = {
       step.fields.filter(field => {
-        field.options.get(IS_UNIQUE).exists(_.toString.toBoolean) && !field.`type`.contains(IntegerType.toString)
+        field.options.get(IS_UNIQUE).exists(_.toString.toBoolean) &&
+          !field.`type`.exists(t => t.contains(IntegerType.toString) || t.contains("array"))
       }).map(_.name)
     }
   }

@@ -1,0 +1,100 @@
+{
+  "customer_direct_debit_initiation_v11": {
+    "group_header": {
+      "message_identification": "DD20250606-001",
+      "creation_date_time": "2025-06-06T09:00:00",
+      "number_of_transactions": "2",
+      "control_sum": 250.00,
+      "initiating_party": {
+        "name": "DataSQRL Inc."
+      }
+    },
+    "payment_information": [
+      {
+        "payment_information_identification": "PMTINF001",
+        "payment_method": "DD",
+        "batch_booking": true,
+        "number_of_transactions": "2",
+        "control_sum": 250.00,
+        "payment_type_information": {
+          "service_level": { "code": "SEPA" },
+          "local_instrument": { "code": "CORE" },
+          "sequence_type": "RCUR"
+        },
+        "requested_collection_date": "2025-06-10",
+        "creditor": {
+          "name": "DataSQRL Inc."
+        },
+        "creditor_account": {
+          "id": {
+            "iban": "DE89370400440532013000"
+          }
+        },
+        "creditor_agent": {
+          "financial_institution_identification": {
+            "bic": "DEUTDEFF"
+          }
+        },
+        "charge_bearer": "SLEV",
+        "direct_debit_transaction_information": [
+          {
+            "payment_identification": {
+              "end_to_end_identification": "E2E20250606-001"
+            },
+            "instructed_amount": {
+              "value": 100.00,
+              "currency": "EUR"
+            },
+            "direct_debit_transaction": {
+              "mandate_related_information": {
+                "mandate_identification": "MANDATE-001",
+                "date_of_signature": "2024-12-01"
+              }
+            },
+            "debtor_agent": {
+              "financial_institution_identification": {
+                "bic": "NWBKGB2L"
+              }
+            },
+            "debtor": {
+              "name": "Jane Doe"
+            },
+            "debtor_account": {
+              "id": {
+                "iban": "GB29NWBK60161331926819"
+              }
+            }
+          },
+          {
+            "payment_identification": {
+              "end_to_end_identification": "E2E20250606-002"
+            },
+            "instructed_amount": {
+              "value": 150.00,
+              "currency": "EUR"
+            },
+            "direct_debit_transaction": {
+              "mandate_related_information": {
+                "mandate_identification": "MANDATE-002",
+                "date_of_signature": "2025-01-15"
+              }
+            },
+            "debtor_agent": {
+              "financial_institution_identification": {
+                "bic": "BNPAFRPP"
+              }
+            },
+            "debtor": {
+              "name": "Jean Dupont"
+            },
+            "debtor_account": {
+              "id": {
+                "iban": "FR1420041010050500013M02606"
+              }
+            }
+          }
+        ]
+      }
+    ]
+  }
+}

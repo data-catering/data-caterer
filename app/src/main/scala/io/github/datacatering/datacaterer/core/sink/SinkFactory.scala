@@ -309,7 +309,9 @@ class SinkFactory(
     val dfOmitFields = df.schema.fields
       .filter(field => field.metadata.contains(OMIT) && field.metadata.getString(OMIT).equalsIgnoreCase("true"))
       .map(_.name)
-    val dfWithoutOmitFields = df.selectExpr(df.columns.filter(c => !dfOmitFields.contains(c)): _*)
+    val columnsToSelect = df.columns.filter(c => !dfOmitFields.contains(c))
+      .map(c => if (c.contains(".")) s"`$c`" else c)
+    val dfWithoutOmitFields = df.selectExpr(columnsToSelect: _*)
     if (!dfWithoutOmitFields.storageLevel.useMemory) dfWithoutOmitFields.cache()
     dfWithoutOmitFields
   }

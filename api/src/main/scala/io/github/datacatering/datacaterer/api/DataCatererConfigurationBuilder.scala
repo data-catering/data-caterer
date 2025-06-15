@@ -543,6 +543,50 @@ final case class ConnectionConfigWithTaskBuilder(
     this.modify(_.options)(_ ++ metadataSourceBuilder.metadataSource.allOptions)
   }
 
+  /**
+   * Include only specific fields in data generation. Supports dot notation for nested fields.
+   * Example: includeFields("name", "address.city", "account.balance")
+   *
+   * @param fields Field names to include
+   * @return Updated connection config builder
+   */
+  @varargs def includeFields(fields: String*): ConnectionConfigWithTaskBuilder = {
+    this.modify(_.options)(_ ++ Map(INCLUDE_FIELDS -> fields.mkString(",")))
+  }
+
+  /**
+   * Exclude specific fields from data generation. Supports dot notation for nested fields.
+   * Example: excludeFields("internal_id", "metadata.created_by")
+   *
+   * @param fields Field names to exclude
+   * @return Updated connection config builder
+   */
+  @varargs def excludeFields(fields: String*): ConnectionConfigWithTaskBuilder = {
+    this.modify(_.options)(_ ++ Map(EXCLUDE_FIELDS -> fields.mkString(",")))
+  }
+
+  /**
+   * Include fields matching regex patterns. Supports dot notation for nested fields.
+   * Example: includeFieldPatterns("user_.*", "account_.*")
+   *
+   * @param patterns Regex patterns for field names to include
+   * @return Updated connection config builder
+   */
+  @varargs def includeFieldPatterns(patterns: String*): ConnectionConfigWithTaskBuilder = {
+    this.modify(_.options)(_ ++ Map(INCLUDE_FIELD_PATTERNS -> patterns.mkString(",")))
+  }
+
+  /**
+   * Exclude fields matching regex patterns. Supports dot notation for nested fields.
+   * Example: excludeFieldPatterns("internal_.*", "temp_.*")
+   *
+   * @param patterns Regex patterns for field names to exclude
+   * @return Updated connection config builder
+   */
+  @varargs def excludeFieldPatterns(patterns: String*): ConnectionConfigWithTaskBuilder = {
+    this.modify(_.options)(_ ++ Map(EXCLUDE_FIELD_PATTERNS -> patterns.mkString(",")))
+  }
+
   private def setConnectionConfig[T <: ConnectionTaskBuilder[_]](name: String, configBuilder: DataCatererConfigurationBuilder, connectionBuilder: T): T = {
     val modifiedConnectionConfig = this.modify(_.dataSourceName).setTo(name)
       .modify(_.options).setTo(configBuilder.build.connectionConfigByName(name))

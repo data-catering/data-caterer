@@ -1,0 +1,48 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "type": "object",
+  "title": "Simple Test Schema",
+  "description": "A simple JSON schema for testing data generation",
+  "properties": {
+    "account_id": {
+      "type": "string",
+      "description": "Account identifier",
+      "pattern": "^ACC[0-9]{8}$"
+    },
+    "balance": {
+      "type": "number",
+      "description": "Account balance",
+      "minimum": 10.0,
+      "maximum": 5000.0
+    },
+    "customer_name": {
+      "type": "string",
+      "description": "Customer name",
+      "minLength": 2,
+      "maxLength": 50
+    },
+    "status": {
+      "type": "string",
+      "description": "Account status",
+      "enum": ["open", "closed", "pending", "suspended"]
+    },
+    "created_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Account creation date"
+    },
+    "details": {
+      "type": "object",
+      "properties": {
+        "branch": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string",
+          "enum": ["checking", "savings", "business"]
+        }
+      }
+    }
+  },
+  "required": ["account_id", "balance", "customer_name", "status"]
+} 

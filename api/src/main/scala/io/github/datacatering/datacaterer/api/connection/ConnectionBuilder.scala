@@ -221,6 +221,54 @@ trait ConnectionTaskBuilder[T] {
     this
   }
 
+  /**
+   * Include only specific fields in data generation. Supports dot notation for nested fields.
+   * Example: includeFields("name", "address.city", "account.balance")
+   *
+   * @param fields Field names to include
+   * @return The connection task builder
+   */
+  @varargs def includeFields(fields: String*): ConnectionTaskBuilder[T] = {
+    this.step = Some(getStep.includeFields(fields: _*))
+    this
+  }
+
+  /**
+   * Exclude specific fields from data generation. Supports dot notation for nested fields.
+   * Example: excludeFields("internal_id", "metadata.created_by")
+   *
+   * @param fields Field names to exclude
+   * @return The connection task builder
+   */
+  @varargs def excludeFields(fields: String*): ConnectionTaskBuilder[T] = {
+    this.step = Some(getStep.excludeFields(fields: _*))
+    this
+  }
+
+  /**
+   * Include fields matching regex patterns. Supports dot notation for nested fields.
+   * Example: includeFieldPatterns("user_.*", "account_.*")
+   *
+   * @param patterns Regex patterns for field names to include
+   * @return The connection task builder
+   */
+  @varargs def includeFieldPatterns(patterns: String*): ConnectionTaskBuilder[T] = {
+    this.step = Some(getStep.includeFieldPatterns(patterns: _*))
+    this
+  }
+
+  /**
+   * Exclude fields matching regex patterns. Supports dot notation for nested fields.
+   * Example: excludeFieldPatterns("internal_.*", "temp_.*")
+   *
+   * @param patterns Regex patterns for field names to exclude
+   * @return The connection task builder
+   */
+  @varargs def excludeFieldPatterns(patterns: String*): ConnectionTaskBuilder[T] = {
+    this.step = Some(getStep.excludeFieldPatterns(patterns: _*))
+    this
+  }
+
   def toTasksBuilder: Option[TasksBuilder] = {
     val dataSourceName = connectionConfigWithTaskBuilder.dataSourceName
     val format = connectionConfigWithTaskBuilder.options(FORMAT)

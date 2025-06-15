@@ -99,7 +99,7 @@ trait DataSourceMetadata {
       DataSourceDetail(this, dataSourceReadOptions, StructType(Seq()))
     } else if (!hasSourceData) {
       LOGGER.debug(s"Metadata source does not contain source data for data analysis. Field level metadata will not be calculated, name=$name")
-      val structFields = MetadataUtil.mapToStructFields(additionalFieldMetadata, dataSourceReadOptions)
+      val structFields = MetadataUtil.mapToStructFieldsForMetadataExtraction(additionalFieldMetadata, dataSourceReadOptions)
       val validations = getGeneratedValidations(dataSourceReadOptions, structFields, flagsConfig)
       DataSourceDetail(this, dataSourceReadOptions, StructType(structFields), validations)
     } else {
@@ -113,7 +113,7 @@ trait DataSourceMetadata {
         .sample(metadataConfig.numRecordsForAnalysis.toDouble / metadataConfig.numRecordsFromDataSource)
 
       val fieldsWithDataProfilingMetadata = MetadataUtil.getFieldDataProfilingMetadata(data, dataSourceReadOptions, this, metadataConfig)
-      val structFields = MetadataUtil.mapToStructFields(data, dataSourceReadOptions, fieldsWithDataProfilingMetadata, additionalFieldMetadata)
+      val structFields = MetadataUtil.mapToStructFieldsForMetadataExtraction(data, dataSourceReadOptions, fieldsWithDataProfilingMetadata, additionalFieldMetadata)
       val validations = getGeneratedValidations(dataSourceReadOptions, structFields, flagsConfig)
       DataSourceDetail(this, dataSourceReadOptions, StructType(structFields), validations)
     }

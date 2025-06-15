@@ -89,6 +89,10 @@ object TaskHelper {
     (Step(stepName, stepType, count, mergedOptions, mergedSchema), optUserConf.flatMap(_._2))
   }
 
+  private def getAllFields(fields: List[io.github.datacatering.datacaterer.api.model.Field]): List[io.github.datacatering.datacaterer.api.model.Field] = {
+    fields ++ fields.flatMap(field => getAllFields(field.fields))
+  }
+
   /**
    * If a plan run is provided, it will attempt to match the data source with the steps in the plan run to see if there
    * are any user defined options that need to be used.

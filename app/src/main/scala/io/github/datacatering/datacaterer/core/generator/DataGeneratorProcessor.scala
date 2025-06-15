@@ -86,7 +86,7 @@ class DataGeneratorProcessor(dataCatererConfiguration: DataCatererConfiguration)
       deleteRecordProcessor.deleteGeneratedRecords(plan, stepsByName, summaryWithTask)
     } catch {
       case exception: Exception =>
-        notifyManagementApi(plan, planRunResults.generationResults, planRunResults.validationResults, PLAN_STAGE_DELETE_DATA, exception)
+        notifyResult(plan, planRunResults.generationResults, planRunResults.validationResults, PLAN_STAGE_DELETE_DATA, exception)
         throw exception
     }
   }
@@ -97,7 +97,7 @@ class DataGeneratorProcessor(dataCatererConfiguration: DataCatererConfiguration)
         .executeValidations
     } catch {
       case exception: Exception =>
-        notifyManagementApi(plan, generationResults, List(), PLAN_STAGE_VALIDATE_DATA, exception)
+        notifyResult(plan, generationResults, List(), PLAN_STAGE_VALIDATE_DATA, exception)
         throw exception
     }
   }
@@ -107,7 +107,7 @@ class DataGeneratorProcessor(dataCatererConfiguration: DataCatererConfiguration)
       batchDataProcessor.splitAndProcess(plan, summaryWithTask, optValidations)
     } catch {
       case exception: Exception =>
-        notifyManagementApi(plan, List(), List(), PLAN_STAGE_GENERATE_DATA, exception)
+        notifyResult(plan, List(), List(), PLAN_STAGE_GENERATE_DATA, exception)
         throw exception
     }
   }
@@ -126,18 +126,18 @@ class DataGeneratorProcessor(dataCatererConfiguration: DataCatererConfiguration)
       })
     } catch {
       case exception: Exception =>
-        notifyManagementApi(plan, generationResult, validationResult, PLAN_STAGE_POST_PLAN_PROCESSORS, exception)
+        notifyResult(plan, generationResult, validationResult, PLAN_STAGE_POST_PLAN_PROCESSORS, exception)
         throw exception
     }
   }
 
-  private def notifyManagementApi(
-                                   plan: Plan,
-                                   generationResult: List[DataSourceResult],
-                                   validationResult: List[ValidationConfigResult],
-                                   stage: String,
-                                   exception: Exception
-                                 ): Unit = {
+  private def notifyResult(
+                            plan: Plan,
+                            generationResult: List[DataSourceResult],
+                            validationResult: List[ValidationConfigResult],
+                            stage: String,
+                            exception: Exception
+                          ): Unit = {
     planRunPostPlanProcessor.notifyPlanResult(plan, generationResult, validationResult, stage, Some(exception))
   }
 
