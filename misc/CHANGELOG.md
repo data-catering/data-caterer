@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.16.0
+
+- Add in JSON schema as metadata source
+- Allow for include/exclude fields to be defined to filter fields to generate
+
 ## 0.15.4
 
 - Fix bug with using `messageHeaders` from YAML not being parsed correctly
