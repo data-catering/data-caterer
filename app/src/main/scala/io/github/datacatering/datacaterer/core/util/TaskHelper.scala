@@ -24,12 +24,20 @@ object TaskHelper {
    * @return a tuple containing the task and a map of the step names
    */
   def fromMetadata(optPlanRun: Option[PlanRun], name: String, stepType: String, structTypes: List[DataSourceDetail]): (Task, Map[String, String]) = {
-    val baseSteps = optPlanRun.map(planRun =>
-      planRun._connectionTaskBuilders
+    val baseSteps = optPlanRun.map(planRun => {
+      // Connection task builders come from Java/Scala API code
+      val javaScalaApiSteps = planRun._connectionTaskBuilders
         .filter(_.connectionConfigWithTaskBuilder.dataSourceName == name)
         .flatMap(_.step.map(_.step))
         .filter(step => step.fields.nonEmpty || step.options.nonEmpty)
-    ).getOrElse(Seq())
+      
+      // YAML steps comes from planRun._tasks
+      val yamlSteps = planRun._tasks
+        .flatMap(_.steps)
+        .filter(step => step.fields.nonEmpty || step.options.nonEmpty)
+
+      javaScalaApiSteps ++ yamlSteps
+    }).getOrElse(Seq())
     val hasMultipleSubDataSources = if (structTypes.size > 1) true else false
     val stepsWithAdditionalMetadata = structTypes.map(structType => enrichWithUserDefinedOptions(name, stepType, structType, optPlanRun, hasMultipleSubDataSources))
     val mappedStepNames = stepsWithAdditionalMetadata.map(_._2).filter(_.isDefined).map(_.get).toMap
@@ -42,6 +50,16 @@ object TaskHelper {
     (Task(name, allSteps.map(_._1)), mappedStepNames)
   }
 
+  /**
+    * Enriches the step with user defined options.
+    *
+    * @param name the name of the data source
+    * @param stepType the type of the step
+    * @param generatedDetails the details of the data source
+    * @param optPlanRun the optional plan run
+    * @param hasMultipleSubDataSources whether the data source has multiple sub data sources
+    * @return a tuple containing the step and the user defined options
+    */
   def enrichWithUserDefinedOptions(
                                     name: String,
                                     stepType: String,
@@ -54,7 +72,10 @@ object TaskHelper {
     //check if there is any user defined step attributes that need to be used
     val optUserConf = if (optPlanRun.isDefined) {
       val planRun = optPlanRun.get
+
+      // Match with config from Java/Scala API code
       val matchingDataSourceConfig = planRun._connectionTaskBuilders.filter(_.connectionConfigWithTaskBuilder.dataSourceName == name)
+
       if (matchingDataSourceConfig.size == 1) {
         stepWithOptNameMapping(matchingDataSourceConfig, stepName)
       } else if (matchingDataSourceConfig.size > 1) {
@@ -117,7 +138,8 @@ object TaskHelper {
     val generateDetailsDataSourceOptions = generatedDetails.dataSourceMetadata.connectionConfig.filter(o => SPECIFIC_DATA_SOURCE_OPTIONS.contains(o._1))
     val matchingStepOptions = planSteps.filter(step => {
       val stepDataSourceOptions = step.options.filter(o => SPECIFIC_DATA_SOURCE_OPTIONS.contains(o._1))
-      stepDataSourceOptions == generateDetailsDataSourceOptions
+      // Check if generateDetailsDataSourceOptions has all the options that are in the step
+      generateDetailsDataSourceOptions.forall(o => stepDataSourceOptions.contains(o._1) && stepDataSourceOptions(o._1) == o._2)
     })
     if (matchingStepOptions.nonEmpty) {
       if (matchingStepOptions.size > 1) {

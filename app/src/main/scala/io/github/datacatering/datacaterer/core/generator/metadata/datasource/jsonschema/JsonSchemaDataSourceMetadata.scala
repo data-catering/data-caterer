@@ -52,7 +52,7 @@ case class JsonSchemaDataSourceMetadata(
       LOGGER.debug(s"Converting JSON schema to Data Caterer fields with $$ref support, schema-type=${schema.`type`}")
       val fields = JsonSchemaConverter.convertSchemaWithRefs(schema, JSON_SCHEMA_FILE_PATH)
       val baseOptions = connectionConfig ++ Map(
-        METADATA_IDENTIFIER -> s"json_schema"
+        METADATA_IDENTIFIER -> toMetadataIdentifier(JSON_SCHEMA_FILE_PATH)
       )
 
       LOGGER.debug(s"Converting fields to nested structure, root-fields-count=${fields.size}")
@@ -87,12 +87,16 @@ case class JsonSchemaDataSourceMetadata(
       
       FieldMetadata(
         field = field.name,
-        dataSourceReadOptions = Map(METADATA_IDENTIFIER -> "json_schema"),
+        dataSourceReadOptions = Map(METADATA_IDENTIFIER -> toMetadataIdentifier(JSON_SCHEMA_FILE_PATH)),
         metadata = metadata,
         nestedFields = nestedFieldMetadata
       )
     })
   }
 
-  private def toMetadataIdentifier(schemaName: String): String = s"${JSON_SCHEMA}_$schemaName"
+  private def toMetadataIdentifier(schemaFilePath: String): String = {
+    // Extract just the filename from the path to create a clean identifier
+    val fileName = schemaFilePath.split("/").last.replaceAll("[^a-zA-Z0-9_-]", "_")
+    s"${JSON_SCHEMA}_$fileName"
+  }
 } 
