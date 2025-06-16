@@ -15,7 +15,7 @@ case class FlagsConfig(
                         enableValidation: Boolean = DEFAULT_ENABLE_VALIDATION,
                         enableGenerateValidations: Boolean = DEFAULT_ENABLE_SUGGEST_VALIDATIONS,
                         enableAlerts: Boolean = DEFAULT_ENABLE_ALERTS,
-                        enableTrackActivity: Boolean = DEFAULT_ENABLE_TRACK_ACTIVITY
+                        enableUniqueCheckOnlyInBatch: Boolean = DEFAULT_ENABLE_UNIQUE_CHECK_ONLY_WITHIN_BATCH
                       )
 
 case class FoldersConfig(
@@ -39,6 +39,8 @@ case class MetadataConfig(
 case class GenerationConfig(
                              numRecordsPerBatch: Long = DEFAULT_NUM_RECORDS_PER_BATCH,
                              numRecordsPerStep: Option[Long] = None,
+                             uniqueBloomFilterNumItems: Long = DEFAULT_UNIQUE_BLOOM_FILTER_NUM_ITEMS,
+                             uniqueBloomFilterFalsePositiveProbability: Double = DEFAULT_UNIQUE_BLOOM_FILTER_FALSE_POSITIVE_PROBABILITY
                            )
 
 case class ValidationConfig(

@@ -2,7 +2,7 @@ package io.github.datacatering.datacaterer.core.ui.plan
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.github.pjfanning.pekkohttpjackson.JacksonSupport
-import io.github.datacatering.datacaterer.core.ui.model.{PlanRunRequest, SaveConnectionsRequest}
+import io.github.datacatering.datacaterer.core.ui.model.{CredentialsRequest, PlanRunRequest, SaveConnectionsRequest}
 import io.github.datacatering.datacaterer.core.util.ObjectMapperUtil
 import org.apache.log4j.Logger
 import org.apache.pekko.actor.typed.scaladsl.AskPattern.{Askable, schedulerFromActorSystem}
@@ -19,7 +19,7 @@ import scala.util.{Failure, Success}
 class PlanRoutes(
                   planRepository: ActorRef[PlanRepository.PlanCommand],
                   planResponseHandler: ActorRef[PlanResponseHandler.Response],
-                  connectionRepository: ActorRef[ConnectionRepository.ConnectionCommand]
+                  connectionRepository: ActorRef[ConnectionRepository.ConnectionCommand],
                 )(implicit system: ActorSystem[_]) extends Directives with JacksonSupport {
 
   private val LOGGER = Logger.getLogger(getClass.getName)
@@ -92,9 +92,7 @@ class PlanRoutes(
         },
         path("status" / """[A-Za-z0-9-_]+""".r) { id =>
           val planStatus = planRepository.ask(x => PlanRepository.GetPlanRunStatus(id, x))
-          rejectEmptyResponse {
-            complete(planStatus)
-          }
+          complete(planStatus)
         },
         post {
           entity(as[PlanRunRequest]) { runInfo =>

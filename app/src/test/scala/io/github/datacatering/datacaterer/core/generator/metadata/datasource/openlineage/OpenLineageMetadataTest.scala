@@ -4,13 +4,10 @@ import io.github.datacatering.datacaterer.api.model.Constants.{DATA_SOURCE_NAME,
 import io.github.datacatering.datacaterer.core.util.SparkSuite
 import org.asynchttpclient.netty.NettyResponse
 import org.asynchttpclient.{AsyncHttpClient, BoundRequestBuilder, ListenableFuture, Response}
-import org.junit.runner.RunWith
 import org.scalamock.scalatest.MockFactory
-import org.scalatestplus.junit.JUnitRunner
 
 import java.nio.file.{Files, Path}
 
-@RunWith(classOf[JUnitRunner])
 class OpenLineageMetadataTest extends SparkSuite with MockFactory {
 
   test("Can get list of datasets from Marquez") {

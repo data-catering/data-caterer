@@ -1,14 +1,11 @@
 package io.github.datacatering.datacaterer.core.generator.metadata
 
-import io.github.datacatering.datacaterer.api.model.Constants.{EXPRESSION, FIELD_LABEL, IS_PII, LABEL_ADDRESS, LABEL_APP, LABEL_FOOD, LABEL_INTERNET, LABEL_JOB, LABEL_MONEY, LABEL_NAME, LABEL_NATION, LABEL_PHONE, LABEL_RELATIONSHIP, LABEL_USERNAME, LABEL_WEATHER}
-import org.apache.spark.sql.types.{StringType, StructField, StructType}
-import org.junit.runner.RunWith
+import io.github.datacatering.datacaterer.api.model.Constants.{EXPRESSION, FIELD_LABEL, IS_PII, LABEL_ADDRESS, LABEL_APP, LABEL_FOOD, LABEL_INTERNET, LABEL_JOB, LABEL_MONEY, LABEL_NAME, LABEL_NATION, LABEL_PHONE, LABEL_RELATIONSHIP, LABEL_USERNAME, LABEL_WEATHER, MINIMUM_LENGTH, MAXIMUM_LENGTH}
+import org.apache.spark.sql.types.{MetadataBuilder, StringType, StructField, StructType}
 import org.scalatest.funsuite.AnyFunSuite
-import org.scalatestplus.junit.JUnitRunner
 
 import java.nio.file.{Files, Paths, StandardOpenOption}
 
-@RunWith(classOf[JUnitRunner])
 class ExpressionPredictorTest extends AnyFunSuite {
 
   test("Can get all data faker expressions and write to file") {
@@ -315,6 +312,34 @@ class ExpressionPredictorTest extends AnyFunSuite {
       assertResult(LABEL_PHONE)(result.get.label)
       assert(result.get.isPII)
     })
+  }
+
+  test("Should preserve field constraints from metadata sources and not override with predictions") {
+    val metadataBuilder = new MetadataBuilder()
+    metadataBuilder.putString(MINIMUM_LENGTH, "5")
+    metadataBuilder.putString(MAXIMUM_LENGTH, "15")
+    val fieldWithConstraints = StructField("name", StringType, true, metadataBuilder.build())
+
+    val result = ExpressionPredictor.getFieldPredictions(fieldWithConstraints)
+
+    // Original constraints should be preserved
+    assert(result.metadata.contains(MINIMUM_LENGTH))
+    assert(result.metadata.contains(MAXIMUM_LENGTH))
+    assertResult("5")(result.metadata.getString(MINIMUM_LENGTH))
+    assertResult("15")(result.metadata.getString(MAXIMUM_LENGTH))
+    
+    // No expression should be added since constraints already exist
+    assert(!result.metadata.contains(EXPRESSION))
+  }
+
+  test("Should add predictions when no constraints exist") {
+    val fieldWithoutConstraints = StructField("name", StringType, true)
+
+    val result = ExpressionPredictor.getFieldPredictions(fieldWithoutConstraints)
+
+    // Expression should be added when no constraints exist
+    assert(result.metadata.contains(EXPRESSION))
+    assertResult("#{Name.name}")(result.metadata.getString(EXPRESSION))
   }
 
   private def field(name: String): StructField = StructField(name, StringType)

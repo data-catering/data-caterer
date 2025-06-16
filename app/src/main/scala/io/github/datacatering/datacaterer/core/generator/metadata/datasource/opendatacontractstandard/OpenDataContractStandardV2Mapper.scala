@@ -58,7 +58,7 @@ object OpenDataContractStandardV2Mapper {
       )
     } else {
       contract.`type`.map(_.toLowerCase) match {
-        case Some(CSV) | Some(JSON) | Some(PARQUET) | Some(ORC) | Some(KAFKA) | Some(HTTP) | Some(SOLACE) =>
+        case Some(CSV) | Some(JSON) | Some(PARQUET) | Some(ORC) | Some(KAFKA) | Some(HTTP) | Some(RABBITMQ) | Some(SOLACE) =>
           Map(FORMAT -> contract.`type`.get.toLowerCase)
         case _ =>
           LOGGER.warn(s"Defaulting to format CSV since contract type is not supported, name=${contract.datasetName}, type=${contract.`type`.getOrElse("")}")

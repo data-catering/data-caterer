@@ -295,34 +295,48 @@ class SinkFactory(
     val cleansedOptions = ConfigUtil.cleanseOptions(connectionConfig)
     val sinkResult = SinkResult(dataSourceName, format, saveMode.name(), cleansedOptions, count.toLong, isSuccess, Array(), startTime, exception = optException)
 
-    if (flagsConfig.enableSinkMetadata) {
+    val result = if (flagsConfig.enableSinkMetadata) {
       val sample = df.take(metadataConfig.numGeneratedSamples).map(_.json)
       val fields = getFieldMetadata(dataSourceName, df, connectionConfig, metadataConfig)
       sinkResult.copy(generatedMetadata = fields, sample = sample)
     } else {
       sinkResult
     }
+    result
   }
 
   private def removeOmitFields(df: DataFrame): DataFrame = {
     val dfOmitFields = df.schema.fields
       .filter(field => field.metadata.contains(OMIT) && field.metadata.getString(OMIT).equalsIgnoreCase("true"))
       .map(_.name)
-    val dfWithoutOmitFields = df.selectExpr(df.columns.filter(c => !dfOmitFields.contains(c)): _*)
+    val columnsToSelect = df.columns.filter(c => !dfOmitFields.contains(c))
+      .map(c => if (c.contains(".")) s"`$c`" else c)
+    val dfWithoutOmitFields = df.selectExpr(columnsToSelect: _*)
     if (!dfWithoutOmitFields.storageLevel.useMemory) dfWithoutOmitFields.cache()
     dfWithoutOmitFields
   }
 
   private def saveRealTimeResponses(step: Step, saveResult: Dataset[Try[RealTimeSinkResult]]): Unit = {
     import sparkSession.implicits._
-    val resultJson = saveResult.map(tryRes => tryRes.getOrElse(RealTimeSinkResult()).result)
+    LOGGER.debug(s"Attempting to save real time responses for validation, step-name=${step.name}")
+    val resultJson = saveResult.map {
+      case Success(value) => value.result
+      case Failure(exception) => s"""{"exception": "${exception.getMessage}"}"""
+    }
     val jsonSchema = sparkSession.read.json(resultJson).schema
     val topLevelFieldNames = jsonSchema.fields.map(f => s"result.${f.name}")
-    val parsedResult = resultJson.selectExpr(s"FROM_JSON(value, '${jsonSchema.toDDL}') AS result")
-      .selectExpr(topLevelFieldNames: _*)
-    val cleanStepName = cleanValidationIdentifier(step.name)
-    parsedResult.write
-      .mode(SaveMode.Overwrite)
-      .json(s"${foldersConfig.recordTrackingForValidationFolderPath}/$cleanStepName")
+    if (jsonSchema.nonEmpty) {
+      LOGGER.debug(s"Schema is non-empty, saving real-time responses for validation, step-name=${step.name}")
+      val parsedResult = resultJson.selectExpr(s"FROM_JSON(value, '${jsonSchema.toDDL}') AS result")
+        .selectExpr(topLevelFieldNames: _*)
+      val cleanStepName = cleanValidationIdentifier(step.name)
+      val filePath = s"${foldersConfig.recordTrackingForValidationFolderPath}/$cleanStepName"
+      LOGGER.debug(s"Saving real-time responses for validation, step-name=$cleanStepName, file-path=$filePath")
+      parsedResult.write
+        .mode(SaveMode.Overwrite)
+        .json(filePath)
+    } else {
+      LOGGER.warn("Unable to save real-time responses with empty schema")
+    }
   }
 }

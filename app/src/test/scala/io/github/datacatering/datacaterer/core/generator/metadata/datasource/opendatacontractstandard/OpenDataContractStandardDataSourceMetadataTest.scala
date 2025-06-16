@@ -3,10 +3,7 @@ package io.github.datacatering.datacaterer.core.generator.metadata.datasource.op
 import io.github.datacatering.datacaterer.api.model.Constants.{CLUSTERING_POSITION, DATA_CONTRACT_FILE, ENABLED_NULL, FIELD_DATA_TYPE, IS_NULLABLE, IS_PRIMARY_KEY, IS_UNIQUE, METADATA_IDENTIFIER, PRIMARY_KEY_POSITION}
 import io.github.datacatering.datacaterer.core.generator.metadata.datasource.SubDataSourceMetadata
 import io.github.datacatering.datacaterer.core.util.SparkSuite
-import org.junit.runner.RunWith
-import org.scalatestplus.junit.JUnitRunner
 
-@RunWith(classOf[JUnitRunner])
 class OpenDataContractStandardDataSourceMetadataTest extends SparkSuite {
 
   test("Can convert ODCS file to field metadata") {

@@ -77,11 +77,11 @@ trait JdbcMetadata extends DatabaseMetadata {
       ForeignKeyRelationship(
         new ForeignKeyRelation(name,
           toStepName(Map(JDBC_TABLE -> r.getAs[String]("foreign_dbtable"))),
-          r.getAs[String]("foreign_field")
+          r.getAs[String]("foreign_column")
         ),
         new ForeignKeyRelation(name,
           toStepName(Map(JDBC_TABLE -> r.getAs[String]("dbtable"))),
-          r.getAs[String]("field")
+          r.getAs[String]("column")
         )
       )
     )
@@ -104,36 +104,36 @@ trait JdbcMetadata extends DatabaseMetadata {
         MAXIMUM_LENGTH -> r.getAs[String]("character_maximum_length"),
         NUMERIC_PRECISION -> r.getAs[String]("numeric_precision"),
         NUMERIC_SCALE -> r.getAs[String]("numeric_scale"),
-        DEFAULT_VALUE -> r.getAs[String]("field_default")
+        DEFAULT_VALUE -> r.getAs[String]("column_default")
       ).filter(m => m._2 != null) ++ dataSourceGenerationMetadata(r)
 
       val dataSourceReadOptions = Map(JDBC_TABLE -> s"${r.getAs[String]("schema")}.${r.getAs("table")}")
-      FieldMetadata(r.getAs("field"), dataSourceReadOptions, fieldMetadata)
+      FieldMetadata(r.getAs("column"), dataSourceReadOptions, fieldMetadata)
     })
   }
 
   /*
-    Foreign key query requires the following return fields names to be returned:
+    Foreign key query requires the following return columns names to be returned:
     - schema
     - table
     - dbtable
-    - field
+    - column
     - foreign_dbtable
-    - foreign_field
+    - foreign_column
      */
   def foreignKeyQuery: String
 
   /*
-  Additional field metadata query requires the following return fields names to be returned:
+  Additional column metadata query requires the following return columns names to be returned:
   - schema
   - table
-  - field
+  - column
   - source_data_type
   - is_nullable
   - character_maximum_length
   - numeric_precision
   - numeric_scale
-  - field_default
+  - column_default
   - is_unique
   - is_primary_key
   - primary_key_position

@@ -9,13 +9,10 @@ import io.github.datacatering.datacaterer.core.generator.metadata.datasource.gre
 import io.github.datacatering.datacaterer.core.util.SparkSuite
 import io.github.datacatering.datacaterer.core.validator.ValidationHelper.getValidationType
 import org.apache.spark.sql.Encoders
-import org.junit.runner.RunWith
-import org.scalatestplus.junit.JUnitRunner
 
 import java.sql.Timestamp
 import java.time.Instant
 
-@RunWith(classOf[JUnitRunner])
 class GreatExpectationsDataValidationsTest extends SparkSuite {
 
   private val df = sparkSession.createDataFrame(Seq(TaxiRecord(), TaxiRecord(), TaxiRecord(), TaxiRecord(), TaxiRecord()))

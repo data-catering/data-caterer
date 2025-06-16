@@ -82,7 +82,6 @@ export async function createForeignKeysFromPlan(respJson) {
                 let updatedFields = $(newForeignKey).find("input.foreign-key-source").val(foreignKey.source.fields);
                 dispatchEvent(updatedFields, "input");
                 //also add in other options
-                console.log(foreignKey.source.options);
                 if (foreignKey.source.options) {
                     for (let [key, value] of Object.entries(foreignKey.source.options)) {
                         let fkConnectionProperty = $(newForeignKey).find(`input.foreign-key-connection-property[aria-label=${key}]`);
@@ -128,7 +127,7 @@ export function getForeignKeys(taskToDataSource) {
     });
 }
 
-async function createForeignKeyLinks(index, linkType) {
+export async function createForeignKeyLinks(index, linkType) {
     // links to either data generation link or delete link
     let buttonText = linkType.charAt(0).toUpperCase() + linkType.slice(1);
     let linkSourceFkHeader = document.createElement("h5");
@@ -153,7 +152,7 @@ async function createForeignKeyLinks(index, linkType) {
     return createAccordionItem(`foreign-key-${linkType}-${index}`, buttonText, "", bodyContainer);
 }
 
-async function createForeignKey(index) {
+export async function createForeignKey(index) {
     let foreignKeyContainer = document.createElement("div");
     foreignKeyContainer.setAttribute("class", "foreign-key-container");
     // main source
@@ -231,7 +230,6 @@ async function createForeignKeyInput(index, name) {
             .then(() => {
                 //check if override options already exist in tasks
                 //TODO do we make a listener between the connection properties and the relationships properties to keep them in sync?
-                console.log($(taskNameInput).closest("[class~=data-source-config-container]").find("input[class~=data-source-property]"));
                 $(taskNameInput).closest("[class~=data-source-config-container]")
                     .find("input[class~=data-source-property]")
                     .each(function (i, obj) {
@@ -260,17 +258,28 @@ async function createForeignKeyInput(index, name) {
     return foreignKeyContainer;
 }
 
-function getForeignKeyDetail(taskToDataSource, element) {
+export function getForeignKeyDetail(taskToDataSource, element) {
     let taskName = $(element).find("select[aria-label=Task]").val();
     let fields = $(element).find("input[aria-label=Fields]").val();
 
     let fieldsArray = fields.includes(",") ? fields.split(",") : Array(fields);
     let dataSource = taskToDataSource[taskName];
 
-    let baseForeignKey = {dataSource: dataSource,step: taskName, fields: fieldsArray};
+    let baseForeignKey = {dataSource: dataSource, step: taskName, fields: fieldsArray};
     let overrideConnectionOptions = getOverrideConnectionOptionsAsMap(element);
     if (Object.keys(overrideConnectionOptions).length > 0) {
-        baseForeignKey["options"] = overrideConnectionOptions;
+        // convert options into step name based on data source type
+        if ("method" in overrideConnectionOptions && "endpoint" in overrideConnectionOptions) {
+            baseForeignKey["step"] = overrideConnectionOptions["method"] + overrideConnectionOptions["endpoint"]
+        } else if ("keyspace" in overrideConnectionOptions && "table" in overrideConnectionOptions) {
+            baseForeignKey["step"] = `${overrideConnectionOptions["keyspace"]}.${overrideConnectionOptions["table"]}`
+        } else if ("schema" in overrideConnectionOptions && "table" in overrideConnectionOptions) {
+            baseForeignKey["step"] = `${overrideConnectionOptions["schema"]}.${overrideConnectionOptions["table"]}`
+        } else if ("topic" in overrideConnectionOptions) {
+            baseForeignKey["step"] = overrideConnectionOptions["topic"]
+        } else if ("destination" in overrideConnectionOptions) {
+            baseForeignKey["step"] = overrideConnectionOptions["destination"]
+        }
     }
     return baseForeignKey;
 }

@@ -1,81 +1,80 @@
 package io.github.datacatering.datacaterer.core.sink.http
 
-import io.github.datacatering.datacaterer.api.model.Constants.{PASSWORD, USERNAME}
-import org.apache.spark.sql.types.{StringType, StructField, StructType}
-import org.junit.runner.RunWith
+import io.github.datacatering.datacaterer.api.model.Step
+import io.github.datacatering.datacaterer.core.model.RealTimeSinkResult
+import io.github.datacatering.datacaterer.core.util.SparkSuite
+import io.netty.handler.codec.http.DefaultHttpHeaders
+import org.apache.spark.sql.Row
+import org.apache.spark.sql.types.{MetadataBuilder, StringType, StructField, StructType}
+import org.asynchttpclient.uri.Uri
+import org.asynchttpclient.{AsyncHttpClient, BoundRequestBuilder, ClientStats, HostStats, ListenableFuture, Request, Response}
 import org.scalamock.scalatest.MockFactory
-import org.scalatest.funsuite.AnyFunSuite
-import org.scalatestplus.junit.JUnitRunner
+import org.scalatest.matchers.should.Matchers
 
-@RunWith(classOf[JUnitRunner])
-class HttpSinkProcessorTest extends AnyFunSuite with MockFactory {
+import java.util.concurrent.CompletableFuture
 
-  private val headerStruct = StructType(Seq(StructField("key", StringType), StructField("value", StringType)))
-  private val connectionConfig = Map(USERNAME -> "admin", PASSWORD -> "password")
+class HttpSinkProcessorTest extends SparkSuite with Matchers with MockFactory {
 
-//  test("Can send HTTP POST request with body and headers") {
-//    val mockHttp = mock[Http]
-//    val headersArray = new mutable.WrappedArrayBuilder[Row](ClassTag(classOf[Row]))
-//    val header1 = new GenericRowWithSchema(Array("id", "id123"), headerStruct)
-//    val header2 = new GenericRowWithSchema(Array("type", "account"), headerStruct)
-//    headersArray += header1
-//    headersArray += header2
-//    val mockRow = mock[Row]
-//    (mockRow.schema _).expects().anyNumberOfTimes().returns(StructType(Seq(
-//      StructField(REAL_TIME_URL_COL, StringType),
-//      StructField(REAL_TIME_BODY_COL, StringType),
-//      StructField(REAL_TIME_METHOD_COL, StringType),
-//      StructField(REAL_TIME_CONTENT_TYPE_COL, StringType),
-//      StructField(REAL_TIME_HEADERS_COL, ArrayType(StructType(Seq(
-//        StructField("key", StringType),
-//        StructField("value", StringType)
-//      ))))
-//    )))
-//    (mockRow.getAs[String](_: String)).expects(REAL_TIME_URL_COL).once().returns("http://localhost:8080/customer")
-//    (mockRow.getAs[String](_: String)).expects(REAL_TIME_BODY_COL).once().returns("""{"name":"peter"}""")
-//    (mockRow.getAs[String](_: String)).expects(REAL_TIME_METHOD_COL).once().returns("POST")
-//    (mockRow.getAs[mutable.WrappedArray[Row]](_: String)).expects(REAL_TIME_HEADERS_COL).once().returns(headersArray.result())
-//    (mockRow.getAs[String](_: String)).expects(REAL_TIME_CONTENT_TYPE_COL).once().returns("application/json")
-//
-//    val res = HttpSinkProcessor.createHttpRequest(mockRow, Some(connectionConfig)).toRequest
-//
-//    assertResult("http://localhost:8080/customer")(res.getUrl)
-//    assertResult("POST")(res.getMethod)
-//    val headers = res.getHeaders
-//    assertResult(4)(headers.size())
-//    assertResult("id123")(headers.get("id"))
-//    assertResult("account")(headers.get("type"))
-//    assertResult("Basic YWRtaW46cGFzc3dvcmQ=")(headers.get("Authorization"))
-//    assertResult("application/json; charset=UTF-8")(headers.get("Content-Type"))
-//  }
-//
-//  test("Can push data to HTTP endpoint using defaults") {
-//    val mockHttp = mock[Http]
-//    val mockRow = mock[Row]
-//    val step = Step("step1", "json", Count(), Map(), Schema(None))
-//    val httpSinkProcessor = HttpSinkProcessor.createConnections(connectionConfig, step, mockHttp)
-//    val mockResp = mock[Response]
-//    val futureResp = Future.successful(mockResp)
-//
-//    (mockRow.schema _).expects().anyNumberOfTimes().returns(StructType(Seq(StructField(REAL_TIME_URL_COL, StringType))))
-//    (mockHttp.apply(_: Req)(_: ExecutionContext)).expects(*, *).returns(futureResp).once()
-//    (mockRow.getAs[String](_: String)).expects(REAL_TIME_URL_COL).once().returns("http://localhost:8080/help")
-//    httpSinkProcessor.pushRowToSink(mockRow)
-//  }
-//
-//  test("Still able to proceed even when exception occurs during HTTP call") {
-//    val mockHttp = mock[Http]
-//    val mockRow = mock[Row]
-//    val step = Step("step1", "json", Count(), Map(), Schema(None))
-//    val httpSinkProcessor = HttpSinkProcessor.createConnections(connectionConfig, step, mockHttp)
-//    val futureResp = Future.failed(new Throwable())
-//
-//    (mockRow.schema _).expects().anyNumberOfTimes().returns(StructType(Seq(StructField(REAL_TIME_URL_COL, StringType))))
-//    (mockHttp.apply(_: Req)(_: ExecutionContext)).expects(*, *).returns(futureResp).once()
-//    (mockRow.getAs[String](_: String)).expects(REAL_TIME_URL_COL).once().returns("http://localhost:8080/help")
-//    httpSinkProcessor.pushRowToSink(mockRow)
-//  }
+  val mockHttpClient: AsyncHttpClient = mock[AsyncHttpClient]
+  val mockRequest: Request = mock[Request]
+  val mockResponse: Response = mock[Response]
+  val myHeaderMetadata = new MetadataBuilder().putString("header", "X-my-header").build()
+  val schema = StructType(Seq(
+    StructField("url", StringType),
+    StructField("method", StringType),
+    StructField("body", StringType),
+    StructField("headerX-my-header", StringType, true, myHeaderMetadata)
+  ))
+
+  test("pushRowToSink should return RealTimeSinkResult for successful request") {
+    val url = "http://example.com"
+    val method = "POST"
+    val body = "{\"key\":\"value\"}"
+    val header = "hello world"
+
+    val mockBoundRequest = mock[BoundRequestBuilder]
+    val mockRequest = mock[Request]
+    val mockListenableResponse = mock[ListenableFuture[Response]]
+
+    (() => mockHttpClient.isClosed).expects().once().returns(false)
+    (mockHttpClient.prepare(_: String, _: String)).expects(method, url).returns(mockBoundRequest)
+    (mockBoundRequest.setBody(_: String)).expects(*).once().returns(mockBoundRequest)
+    (mockBoundRequest.addHeader(_: CharSequence, _: String)).expects(*, *).once().returns(mockBoundRequest)
+    (() => mockBoundRequest.build()).expects().once().returns(mockRequest)
+    (mockHttpClient.executeRequest(_: Request)).expects(mockRequest).once().returns(mockListenableResponse)
+    (() => mockListenableResponse.toCompletableFuture).expects().once().returns(CompletableFuture.completedFuture(mockResponse))
+
+    val httpHeaders = new DefaultHttpHeaders()
+    (() => mockRequest.getUrl).expects().once().returns(url)
+    (() => mockRequest.getUri).expects().once().returns(Uri.create(url))
+    (() => mockRequest.getMethod).expects().twice().returns(method)
+    (() => mockRequest.getHeaders).expects().once().returns(httpHeaders)
+    (() => mockRequest.getStringData).expects().once().returns(body)
+
+    (() => mockResponse.getHeaders).expects().once().returns(httpHeaders)
+    (() => mockResponse.getContentType).expects().once().returns("application/json")
+    (() => mockResponse.getResponseBody).expects().once().returns("")
+    (() => mockResponse.getStatusCode).expects().once().returns(200)
+    (() => mockResponse.getStatusText).expects().once().returns("")
+
+    val rdd = sparkSession.sparkContext.parallelize(Seq(Row(url, method, body, header)))
+    val row = sparkSession.createDataFrame(rdd, schema).head()
+
+    val processor = HttpSinkProcessor.createConnections(Map.empty, Step(), mockHttpClient)
+    val result = processor.pushRowToSink(row)
+
+    result shouldBe a[RealTimeSinkResult]
+  }
+
+  test("close should close HTTP client after retries") {
+    val clientStats = new ClientStats(java.util.Map.of("", new HostStats(0, 0)))
+    (() => mockHttpClient.getClientStats).expects().twice().returns(clientStats)
+    (() => mockHttpClient.close()).expects().once()
+
+    val processor = HttpSinkProcessor.createConnections(Map.empty, Step(), mockHttpClient)
+    processor.close
+  }
 }
 
 
-case class Header(key: String, value: String)
+case class HttpRequestRow(url: String, method: String, body: String)

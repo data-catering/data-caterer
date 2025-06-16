@@ -9,6 +9,12 @@ tasks:
     enabled: false
   - name: "json_account_file"
     dataSourceName: "json"
+    enabled: false
+  - name: "csv_transaction_file"
+    dataSourceName: "csv"
+    enabled: false
+  - name: "csv_customer_files"
+    dataSourceName: "csv"
     enabled: true
   - name: "json_account_http"
     dataSourceName: "httpbin"
@@ -25,5 +31,5 @@ sinkOptions:
 #          step: "file_account"
 #          fields: [ "account_id" ]
 
-validations:
-  - "json_account_checks"
+#validations:
+#  - "json_account_checks"

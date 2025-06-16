@@ -1,12 +1,9 @@
 package io.github.datacatering.datacaterer.core.generator.metadata.datasource.openmetadata
 
 import io.github.datacatering.datacaterer.api.model.{ExpressionValidation, GroupByValidation}
-import org.junit.runner.RunWith
 import org.openmetadata.client.model.{TestCase, TestCaseParameterValue}
 import org.scalatest.funsuite.AnyFunSuite
-import org.scalatestplus.junit.JUnitRunner
 
-@RunWith(classOf[JUnitRunner])
 class OpenMetadataDataValidationsTest extends AnyFunSuite {
 
   test("Can read test cases from OpenMetadata and convert to data validations") {

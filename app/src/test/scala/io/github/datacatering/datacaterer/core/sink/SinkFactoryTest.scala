@@ -3,15 +3,12 @@ package io.github.datacatering.datacaterer.core.sink
 import io.github.datacatering.datacaterer.api.model.Constants.{DELTA, FORMAT, ICEBERG, PATH, SAVE_MODE, TABLE}
 import io.github.datacatering.datacaterer.api.model.{FlagsConfig, FoldersConfig, MetadataConfig, Step}
 import io.github.datacatering.datacaterer.core.util.{SparkSuite, Transaction}
-import org.junit.runner.RunWith
-import org.scalatestplus.junit.JUnitRunner
 
 import java.io.File
 import java.sql.Date
 import java.time.LocalDateTime
 import scala.reflect.io.Directory
 
-@RunWith(classOf[JUnitRunner])
 class SinkFactoryTest extends SparkSuite {
 
   private val sampleData = Seq(

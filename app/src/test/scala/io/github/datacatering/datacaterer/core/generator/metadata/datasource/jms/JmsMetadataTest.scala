@@ -1,19 +1,14 @@
 package io.github.datacatering.datacaterer.core.generator.metadata.datasource.jms
 
 import io.github.datacatering.datacaterer.core.generator.Holder
-import io.github.datacatering.datacaterer.core.parser.ProtobufParser
 import io.github.datacatering.datacaterer.core.util.{ProtobufUtil, SparkSuite}
 import org.apache.spark.sql.avro.functions.from_avro
 import org.apache.spark.sql.functions.lit
 import org.apache.spark.sql.protobuf.functions.from_protobuf
 import org.apache.spark.sql.{Encoder, Encoders}
-import org.junit.runner.RunWith
-import org.scalatestplus.junit.JUnitRunner
 
 import java.io.File
-import java.nio.file.Paths
 
-@RunWith(classOf[JUnitRunner])
 class JmsMetadataTest extends SparkSuite {
 
   test("can get avro data with schema") {

@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.com/invalid.schema.json",
+  "title": "Invalid Schema",
+  "description": "An invalid schema for testing error handling",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "invalid-type"
+    },
+    "age": {
+      "type": "integer",
+      "minimum": "not-a-number"
+    }
+  },
+  "required": ["name", "age"],
+  // This comment makes it invalid JSON
+  "additionalProperties": false
+} 

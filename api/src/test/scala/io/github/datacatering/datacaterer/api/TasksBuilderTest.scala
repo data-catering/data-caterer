@@ -1,11 +1,9 @@
 package io.github.datacatering.datacaterer.api
 
-import io.github.datacatering.datacaterer.api.model.{ArrayType, Count, DateType, Field, IntegerType, StringType}
-import org.junit.runner.RunWith
+import io.github.datacatering.datacaterer.api.model.Constants.{HTTP_PATH_PARAM_FIELD_PREFIX, HTTP_QUERY_PARAM_FIELD_PREFIX, INCREMENTAL, REAL_TIME_BODY_CONTENT_FIELD, REAL_TIME_BODY_FIELD, REAL_TIME_HEADERS_FIELD, REAL_TIME_METHOD_FIELD, REAL_TIME_URL_FIELD, SQL_GENERATOR}
+import io.github.datacatering.datacaterer.api.model.{ArrayType, Count, DateType, IntegerType, StringType}
 import org.scalatest.funsuite.AnyFunSuite
-import org.scalatestplus.junit.JUnitRunner
 
-@RunWith(classOf[JUnitRunner])
 class TasksBuilderTest extends AnyFunSuite {
 
   test("Can create a task summary when given a task") {
@@ -197,6 +195,200 @@ class TasksBuilderTest extends AnyFunSuite {
     assert(result.`type`.contains("array<date>"))
   }
 
+  test("Can create incremental field") {
+    val result = FieldBuilder().`type`(IntegerType).incremental().field
+
+    assertResult(1)(result.options(INCREMENTAL))
+  }
+
+  test("Can create uuid field") {
+    val result = FieldBuilder().uuid().field
+
+    assertResult("UUID()")(result.options(SQL_GENERATOR))
+  }
+
+  test("Can create incremental uuid field") {
+    val result = FieldBuilder().uuid().incremental().field
+    val result1 = FieldBuilder().incremental().uuid().field
+
+    List(result, result1).foreach(res => {
+      assertResult(1)(res.options(INCREMENTAL))
+      assertResult(
+        """CONCAT(
+          |SUBSTR(MD5(CAST(1 + __index_inc AS STRING)), 1, 8), '-',
+          |SUBSTR(MD5(CAST(1 + __index_inc AS STRING)), 9, 4), '-',
+          |SUBSTR(MD5(CAST(1 + __index_inc AS STRING)), 13, 4), '-',
+          |SUBSTR(MD5(CAST(1 + __index_inc AS STRING)), 17, 4), '-',
+          |SUBSTR(MD5(CAST(1 + __index_inc AS STRING)), 21, 12)
+          |)""".stripMargin)(res.options(SQL_GENERATOR))
+    })
+  }
+
+  test("Can create uuid field based on another fields value") {
+    val result = FieldBuilder().uuid("id").field
+
+    assertResult(
+      """CONCAT(
+        |SUBSTR(MD5(CAST(id AS STRING)), 1, 8), '-',
+        |SUBSTR(MD5(CAST(id AS STRING)), 9, 4), '-',
+        |SUBSTR(MD5(CAST(id AS STRING)), 13, 4), '-',
+        |SUBSTR(MD5(CAST(id AS STRING)), 17, 4), '-',
+        |SUBSTR(MD5(CAST(id AS STRING)), 21, 12)
+        |)""".stripMargin)(result.options(SQL_GENERATOR))
+  }
+
+  test("Can create message header field") {
+    val result = FieldBuilder().messageHeader("account", "account_id").field
+
+    assert(result.options.contains("sql"))
+    assertResult("NAMED_STRUCT('key', 'account', 'value', TO_BINARY(account_id, 'utf-8'))")(result.options("sql"))
+  }
+
+  test("Can create message headers field") {
+    val result = FieldBuilder()
+      .messageHeaders(
+        FieldBuilder().messageHeader("account", "account_id"),
+        FieldBuilder().messageHeader("date", "created_date"),
+      )
+      .field
+
+    assert(result.options.contains("sql"))
+    assertResult(REAL_TIME_HEADERS_FIELD)(result.name)
+    assertResult(Some("array<struct<key: string,value: binary>>"))(result.`type`)
+    assertResult("ARRAY(" +
+      "NAMED_STRUCT('key', 'account', 'value', TO_BINARY(account_id, 'utf-8'))," +
+      "NAMED_STRUCT('key', 'date', 'value', TO_BINARY(created_date, 'utf-8'))" +
+      ")")(result.options("sql"))
+  }
+
+  test("Can create message body fields") {
+    val result = FieldBuilder()
+      .messageBody(
+        FieldBuilder().name("account_id"),
+        FieldBuilder().name("created_date").`type`(DateType),
+      )
+      .map(_.field)
+
+    assertResult(2)(result.size)
+    val optToJsonField = result.find(f => f.name == REAL_TIME_BODY_FIELD)
+    assert(optToJsonField.isDefined)
+    assertResult(s"TO_JSON($REAL_TIME_BODY_CONTENT_FIELD)")(optToJsonField.get.options("sql"))
+    val optBody = result.find(f => f.name == REAL_TIME_BODY_CONTENT_FIELD)
+    assert(optBody.isDefined)
+    assertResult(2)(optBody.get.fields.size)
+    val bodyFields = optBody.get.fields
+    assert(bodyFields.exists(f => f.name == "account_id"))
+    assert(bodyFields.exists(f => f.name == "created_date" && f.`type`.contains("date")))
+  }
+
+  test("Can create http header field") {
+    val result = FieldBuilder().httpHeader("status").field
+
+    assertResult("headerstatus")(result.name)
+  }
+
+  test("Can create http path parameter field") {
+    val result = FieldBuilder().httpPathParam("status").field
+
+    assertResult("pathParamstatus")(result.name)
+  }
+
+  test("Can create http query parameter field") {
+    val result = FieldBuilder().httpQueryParam("status").field
+
+    assertResult("queryParamstatus")(result.name)
+  }
+
+  test("Can create http url field") {
+    val result = FieldBuilder().httpUrl("http://localhost:8080").map(_.field)
+
+    assertResult(2)(result.size)
+    val optRealTimeUrlField = result.find(f => f.name == REAL_TIME_URL_FIELD)
+    assert(optRealTimeUrlField.isDefined)
+    assertResult("CONCAT('http://localhost:8080', ARRAY_JOIN(ARRAY(), '&'))")(optRealTimeUrlField.get.options("sql"))
+    val optRealTimeMethodField = result.find(f => f.name == REAL_TIME_METHOD_FIELD)
+    assert(optRealTimeMethodField.isDefined)
+    assertResult("GET")(optRealTimeMethodField.get.options("static"))
+  }
+
+  test("Can create http url field with path parameters") {
+    val statusPathParam = FieldBuilder().httpPathParam("status").oneOf("open", "closed")
+    val result = FieldBuilder()
+      .httpUrl("http://localhost:8080/v1/user/{status}", HttpMethodEnum.GET, List(statusPathParam))
+      .map(_.field)
+
+    assertResult(3)(result.size)
+    val optRealTimeMethodField = result.find(f => f.name == REAL_TIME_METHOD_FIELD)
+    assert(optRealTimeMethodField.isDefined)
+    assertResult("GET")(optRealTimeMethodField.get.options("static"))
+    val optStatusField = result.find(f => f.name == s"${HTTP_PATH_PARAM_FIELD_PREFIX}status")
+    assert(optStatusField.isDefined)
+    assertResult(List("open", "closed"))(optStatusField.get.options("oneOf"))
+    val optRealTimeUrlField = result.find(f => f.name == REAL_TIME_URL_FIELD)
+    assert(optRealTimeUrlField.isDefined)
+    assertResult("CONCAT(REPLACE('http://localhost:8080/v1/user/{status}', '{status}', URL_ENCODE(`pathParamstatus`)), ARRAY_JOIN(ARRAY(), '&'))")(optRealTimeUrlField.get.options("sql"))
+  }
+
+  test("Can create http url field with query parameters") {
+    val statusQueryParam = FieldBuilder().httpQueryParam("status").oneOf("open", "closed")
+    val result = FieldBuilder()
+      .httpUrl("http://localhost:8080/v1/user", HttpMethodEnum.GET, queryParams = List(statusQueryParam))
+      .map(_.field)
+
+    assertResult(3)(result.size)
+    val optRealTimeMethodField = result.find(f => f.name == REAL_TIME_METHOD_FIELD)
+    assert(optRealTimeMethodField.isDefined)
+    assertResult("GET")(optRealTimeMethodField.get.options("static"))
+    val optStatusField = result.find(f => f.name == s"${HTTP_QUERY_PARAM_FIELD_PREFIX}status")
+    assert(optStatusField.isDefined)
+    assertResult(List("open", "closed"))(optStatusField.get.options("oneOf"))
+    val optRealTimeUrlField = result.find(f => f.name == REAL_TIME_URL_FIELD)
+    assert(optRealTimeUrlField.isDefined)
+    assertResult("CONCAT(CONCAT('http://localhost:8080/v1/user', '?'), ARRAY_JOIN(ARRAY(CAST(CONCAT('status=', queryParamstatus) AS STRING)), '&'))")(optRealTimeUrlField.get.options("sql"))
+  }
+
+  test("Can create http url field with path and query parameters") {
+    val idPathParam = FieldBuilder().httpPathParam("id").regex("ACC[0-9]{8}")
+    val statusQueryParam = FieldBuilder().httpQueryParam("status").oneOf("open", "closed")
+    val result = FieldBuilder()
+      .httpUrl("http://localhost:8080/v1/user/{id}", HttpMethodEnum.GET, List(idPathParam), List(statusQueryParam))
+      .map(_.field)
+
+    assertResult(4)(result.size)
+    val optRealTimeMethodField = result.find(f => f.name == REAL_TIME_METHOD_FIELD)
+    assert(optRealTimeMethodField.isDefined)
+    assertResult("GET")(optRealTimeMethodField.get.options("static"))
+    val optIdField = result.find(f => f.name == s"${HTTP_PATH_PARAM_FIELD_PREFIX}id")
+    assert(optIdField.isDefined)
+    assertResult("ACC[0-9]{8}")(optIdField.get.options("regex"))
+    val optStatusField = result.find(f => f.name == s"${HTTP_QUERY_PARAM_FIELD_PREFIX}status")
+    assert(optStatusField.isDefined)
+    assertResult(List("open", "closed"))(optStatusField.get.options("oneOf"))
+    val optRealTimeUrlField = result.find(f => f.name == REAL_TIME_URL_FIELD)
+    assert(optRealTimeUrlField.isDefined)
+    assertResult("CONCAT(CONCAT(REPLACE('http://localhost:8080/v1/user/{id}', '{id}', URL_ENCODE(`pathParamid`)), '?'), ARRAY_JOIN(ARRAY(CAST(CONCAT('status=', queryParamstatus) AS STRING)), '&'))")(optRealTimeUrlField.get.options("sql"))
+  }
+
+  test("Can create http body field") {
+    val result = FieldBuilder()
+      .httpBody(
+        FieldBuilder().name("account_id"),
+        FieldBuilder().name("created_date").`type`(DateType),
+      )
+      .map(_.field)
+
+    assertResult(2)(result.size)
+    val optToJsonField = result.find(f => f.name == REAL_TIME_BODY_FIELD)
+    assert(optToJsonField.isDefined)
+    assertResult(s"TO_JSON($REAL_TIME_BODY_CONTENT_FIELD)")(optToJsonField.get.options("sql"))
+    val optBody = result.find(f => f.name == REAL_TIME_BODY_CONTENT_FIELD)
+    assert(optBody.isDefined)
+    assertResult(2)(optBody.get.fields.size)
+    val bodyFields = optBody.get.fields
+    assert(bodyFields.exists(_.name == "account_id"))
+    assert(bodyFields.exists(f => f.name == "created_date" && f.`type`.contains("date")))
+  }
+
   test("Can create field with metadata") {
     val result = FieldBuilder()
       .name("account_id")
@@ -226,6 +418,7 @@ class TasksBuilderTest extends AnyFunSuite {
       .clusteringPosition(1)
       .standardDeviation(0.1)
       .mean(5.1)
+      .exponentialDistribution(1.0)
       .options(Map("customMetadata" -> "yes"))
       .option("data" -> "big")
       .field
@@ -261,6 +454,8 @@ class TasksBuilderTest extends AnyFunSuite {
     assertResult("big")(gen("data"))
     assertResult("0.1")(gen("stddev"))
     assertResult("5.1")(gen("mean"))
+    assertResult("exponential")(gen("distribution"))
+    assertResult("1.0")(gen("distributionRateParam"))
   }
 
 }

@@ -1,0 +1,273 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+@file ../../build.gradle.kts
+@file ../../settings.gradle.kts
+@file ../../api/build.gradle.kts
+@file ../../app/build.gradle.kts
+
+# Data Caterer Development Guidelines
+
+## Introduction
+
+Data Caterer is a test data management tool that provides automated data generation, validation, and cleanup capabilities. It's built with Scala and Apache Spark, using a multi-module Gradle build system with two main modules: `app` (main application) and `api` (builder API).
+
+This rule defines the architectural patterns, coding conventions, and development practices for maintaining consistency across the Data Caterer codebase.
+
+## Architecture Overview
+
+### Core Concepts
+
+- **Plans**: High-level configuration defining what data operations to perform
+- **Tasks**: Represent individual data sources (databases, files, etc.)
+- **Steps**: Sub-operations within tasks (e.g., specific tables, topics, file paths)
+- **Fields**: Individual data field configurations with generation rules
+- **Validations**: Data quality checks and assertions
+
+### Module Structure
+
+- **API Module** (`api/`): Builder patterns and models for programmatic usage
+- **App Module** (`app/`): Core execution engine, Spark integration, and UI server
+- **Package Hierarchy**: `io.github.datacatering.datacaterer`
+
+## Development Patterns
+
+### 1. Builder Pattern Implementation
+
+All configuration classes follow a consistent builder pattern using immutable case classes:
+
+```scala
+case class TaskBuilder(task: Task = Task()) {
+  def this() = this(Task())
+  
+  def name(name: String): TaskBuilder = 
+    this.modify(_.task.name).setTo(name)
+    
+  def steps(steps: StepBuilder*): TaskBuilder = 
+    this.modify(_.task.steps)(_ ++ steps.map(_.step))
+}
+
+case class StepBuilder(step: Step = Step()) {
+  def enabled(enabled: Boolean): StepBuilder =
+    this.modify(_.step.enabled).setTo(enabled)
+    
+  def option(option: (String, String)): StepBuilder =
+    this.modify(_.step.options)(_ ++ Map(option))
+}
+```
+
+**Key Rules:**
+- Use `com.softwaremill.quicklens.ModifyPimp` for immutable updates
+- Provide parameterless constructors: `def this() = this(DefaultValue())`
+- Return the builder type for method chaining
+- Use `@varargs` for methods accepting multiple builders
+
+### 2. Case Class Data Modeling
+
+Data structures use case classes with consistent patterns:
+
+```scala
+@JsonIgnoreProperties(ignoreUnknown = true)
+case class DataSource(
+  name: String,
+  `type`: String,
+  options: Map[String, String] = Map(),
+  enabled: Boolean = true,
+  metadata: Option[Metadata] = None
+)
+```
+
+**Key Rules:**
+- Use `@JsonIgnoreProperties(ignoreUnknown = true)` for JSON serialization
+- Provide sensible defaults for optional parameters
+- Use backticks for reserved keywords: `` `type` ``
+- Use `Option[T]` for nullable fields, not `null`
+- Group related fields logically
+
+### 3. Trait-Based Polymorphism
+
+Use sealed traits for type hierarchies with pattern matching:
+
+```scala
+sealed trait DataType {
+  override def toString: String = getClass.getSimpleName.toLowerCase.stripSuffix("type$")
+}
+
+case object StringType extends DataType
+case object IntegerType extends DataType
+class DecimalType(precision: Int = 10, scale: Int = 0) extends DataType {
+  assert(scale < precision, "Scale required to be less than precision")
+  override def toString: String = s"decimal($precision, $scale)"
+}
+```
+
+**Key Rules:**
+- Use sealed traits for closed type hierarchies
+- Implement meaningful `toString` methods
+- Use case objects for singleton types
+- Add validation in constructors with `assert`
+- Use Jackson annotations for polymorphic JSON serialization
+
+### 4. Validation Modeling
+
+Validation classes follow a consistent structure:
+
+```scala
+trait Validation {
+  def toOptions: List[List[String]]
+  def baseOptions: List[List[String]] = List()
+}
+
+case class CountValidation(count: Long) extends Validation {
+  override def toOptions: List[List[String]] = 
+    List(List("count", count.toString)) ++ baseOptions
+}
+```
+
+### 5. Configuration Management
+
+Environment-based configuration with fallback defaults:
+
+```scala
+object Constants {
+  val DEFAULT_DATA_SOURCE_NAME = "myDefaultDataSource"
+  val DEFAULT_TASK_NAME = "default_task"
+  val RANDOM_SEED = "RANDOM_SEED"
+}
+
+// Environment variable usage
+val enabledGeneration = System.getenv("ENABLE_GENERATE_DATA") == "true"
+```
+
+## Implementation Guidelines
+
+### Field Generation Patterns
+
+```scala
+case class FieldBuilder(field: Field = Field()) {
+  def name(name: String): FieldBuilder = 
+    this.modify(_.field.name).setTo(name)
+    
+  def `type`(`type`: DataType): FieldBuilder = 
+    this.modify(_.field.`type`).setTo(`type`)
+    
+  def options(options: Map[String, Any]): FieldBuilder =
+    this.modify(_.field.options)(_ ++ options)
+    
+  // Convenience methods for common patterns
+  def regex(pattern: String): FieldBuilder = 
+    option(REGEX -> pattern)
+    
+  def oneOf[T](mdc:values: T*): FieldBuilder = {
+    val oneOfValues = values.toList.map(_.toString)
+    option(ONE_OF_VALUES -> oneOfValues)
+  }
+}
+```
+
+### Data Source Connection Patterns
+
+```scala
+def postgres(name: String, url: String): ConnectionConfigWithTaskBuilder =
+  ConnectionConfigWithTaskBuilder().postgres(name, url)
+
+def kafka(name: String, bootstrapServers: String): ConnectionConfigWithTaskBuilder =
+  ConnectionConfigWithTaskBuilder().kafka(name, bootstrapServers)
+```
+
+### Error Handling
+
+```scala
+try {
+  PlanProcessor.determineAndExecutePlan()
+} catch {
+  case t: Throwable =>
+    LOGGER.error("An error occurred while processing the plan", t)
+    System.exit(1)
+}
+```
+
+## Testing Patterns
+
+### Builder Testing
+
+```scala
+class TaskBuilderTest extends AnyFunSuite {
+  test("Can create task with steps") {
+    val result = TaskBuilder()
+      .name("my_task")
+      .steps(
+        StepBuilder().name("step1").`type`("json"),
+        StepBuilder().name("step2").`type`("csv")
+      )
+    
+    assert(result.task.name == "my_task")
+    assert(result.task.steps.length == 2)
+  }
+}
+```
+
+### Test Filtering with ScalaTest
+
+**IMPORTANT**: ScalaTest with JUnit Platform has limitations with Gradle's `--tests` filtering that affects how you run specific tests.
+
+#### The Issue
+ScalaTest engine doesn't properly respect wildcard patterns in Gradle's `--tests` option. Using patterns like `--tests "*PlanRunTest*"` will run **ALL tests** instead of filtering to matching classes.
+
+#### Correct Usage
+
+**✅ Use exact class names:**
+```bash
+# Run a specific test class
+./gradlew :app:test --tests "io.github.datacatering.datacaterer.core.ui.plan.PlanRepositoryTest" --info
+
+# Run a specific test method
+./gradlew :app:test --tests "io.github.datacatering.datacaterer.core.ui.plan.PlanRepositoryTest.runPlan should handle successful plan execution with generation and validation" --info
+
+# Run multiple specific classes
+./gradlew :app:test --tests "io.github.datacatering.datacaterer.core.ui.plan.PlanRepositoryTest" --tests "io.github.datacatering.datacaterer.api.PlanRunTest"  --info
+```
+
+**❌ Do NOT use wildcard patterns:**
+```bash
+# These DO NOT work properly with ScalaTest - they run ALL tests
+./gradlew :app:test --tests "*PlanRunTest*"
+./gradlew :app:test --tests "*Repository*"
+./gradlew :app:test --tests "*.core.ui.*"
+```
+
+**Key Points:**
+- Test filtering works correctly with exact class names
+- Wildcard patterns are not supported with ScalaTest engine
+- Both API and app modules have been configured to support filtering
+- Use full qualified class names for reliable test execution
+- The `setFailOnNoMatchingTests(false)` prevents build failures when no tests match the filter
+
+## Real-World Examples
+
+* [TaskBuilder API](mdc:../api/src/main/scala/io/github/datacatering/datacaterer/api/TaskBuilder.scala)
+* [Data Type Hierarchy](mdc:../api/src/main/scala/io/github/datacatering/datacaterer/api/model/DataType.scala)
+* [Validation Models](mdc:../api/src/main/scala/io/github/datacatering/datacaterer/api/model/ValidationModels.scala)
+* [Plan Configuration](mdc:../app/src/test/resources/sample/plan/account-create-plan.yaml)
+
+## Common Pitfalls
+
+* **Builder Immutability**: Always return new instances from builder methods, never mutate existing state
+* **JSON Serialization**: Don't forget `@JsonIgnoreProperties(ignoreUnknown = true)` for external data models
+* **Option Usage**: Use `Option[T]` consistently instead of `null` for optional values
+* **Package Structure**: Follow the established package hierarchy under `io.github.datacatering.datacaterer`
+* **Gradle Module Dependencies**: API module should not depend on app module; keep dependencies flowing one way
+* **Spark Integration**: Use Spark DataFrame operations consistently in the app module
+* **Environment Variables**: Use environment variables for runtime configuration, not hardcoded values
+* **Logging**: Use `org.apache.log4j.Logger` consistently throughout the application
+
+## Build and Dependency Management
+
+* Use Gradle with Kotlin DSL (`.gradle.kts`)
+* Scala version managed centrally via `gradle.properties`
+* API module publishes to Maven Central
+* App module builds executable JAR with Shadow plugin
+* Test suites use ScalaTest with JUnit 5
+* Code coverage with Scoverage plugin

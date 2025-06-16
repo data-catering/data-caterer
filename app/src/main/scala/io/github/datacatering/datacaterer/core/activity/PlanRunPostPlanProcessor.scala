@@ -1,46 +1,51 @@
 package io.github.datacatering.datacaterer.core.activity
 
+import io.github.datacatering.datacaterer.api.model.Constants.{PLAN_STAGE_EXCEPTION_MESSAGE_LENGTH, PLAN_STAGE_FINISHED, PLAN_STATUS_FAILED, PLAN_STATUS_SUCCESS}
 import io.github.datacatering.datacaterer.api.model.{DataCatererConfiguration, DataSourceResult, Plan, PlanResults, ValidationConfigResult}
+import io.github.datacatering.datacaterer.api.util.ResultWriterUtil.{getGenerationStatus, getValidationStatus}
 import io.github.datacatering.datacaterer.core.listener.SparkRecordListener
 import io.github.datacatering.datacaterer.core.plan.PostPlanProcessor
-import io.github.datacatering.datacaterer.core.util.ManagementUtil.getDataCatererManagementUrl
 import io.github.datacatering.datacaterer.core.util.ObjectMapperUtil
 import org.apache.log4j.Logger
-import org.asynchttpclient.AsyncHttpClient
-import org.asynchttpclient.Dsl.asyncHttpClient
 
-import scala.compat.java8.FutureConverters.CompletionStageOps
-import scala.concurrent.ExecutionContext.Implicits.global
-import scala.util.{Failure, Success}
-
-class PlanRunPostPlanProcessor(val dataCatererConfiguration: DataCatererConfiguration) extends PostPlanProcessor {
-
-  override val enabled: Boolean = dataCatererConfiguration.flagsConfig.enableTrackActivity
+class PlanRunPostPlanProcessor(val dataCatererConfiguration: DataCatererConfiguration) extends PostPlanProcessor with LifecycleManagement {
 
   private val LOGGER = Logger.getLogger(getClass.getName)
-  private val dataCatererManagementUrl = getDataCatererManagementUrl
-  private val http: AsyncHttpClient = asyncHttpClient
-
+  
   override def apply(
                       plan: Plan,
                       sparkRecordListener: SparkRecordListener,
                       generationResult: List[DataSourceResult],
                       validationResults: List[ValidationConfigResult]
                     ): Unit = {
-    val planResults = PlanResults(plan, generationResult, validationResults)
-    val jsonBody = ObjectMapperUtil.jsonObjectMapper.writeValueAsString(planResults)
-    val url = s"$dataCatererManagementUrl/plan/finish"
-    val prepareRequest = http.prepare("POST", url)
-      .setBody(jsonBody)
+    notifyPlanResult(plan, generationResult, validationResults)
+  }
 
-    val futureResp = prepareRequest.execute().toCompletableFuture.toScala
-    futureResp.onComplete {
-      case Success(_) =>
-        LOGGER.debug(s"Successfully posted run results, url=$url")
-        http.close()
-      case Failure(exception) =>
-        LOGGER.debug(s"Failed to post run results, url=$url", exception)
-        http.close()
+  def notifyPlanResult(
+                        plan: Plan,
+                        generationResult: List[DataSourceResult],
+                        validationResults: List[ValidationConfigResult],
+                        stage: String = PLAN_STAGE_FINISHED,
+                        optException: Option[Exception] = None
+                      ): Unit = {
+    if (enabled) {
+      val exceptionMessage = optException.map(ex => ex.getMessage.substring(0, Math.min(PLAN_STAGE_EXCEPTION_MESSAGE_LENGTH, ex.getMessage.length)))
+      val isGenerationSuccess = getGenerationStatus(generationResult)
+      val isValidationSuccess = getValidationStatus(validationResults)
+      val generationSummary = generationResult.map(_.jsonSummary)
+      val validationSummary = validationResults.map(_.jsonSummary(false))
+
+      val planResults = PlanResults(plan, generationSummary, validationSummary, isGenerationSuccess, isValidationSuccess, stage, exceptionMessage)
+      val planResultsJson = ObjectMapperUtil.jsonObjectMapper.writeValueAsString(planResults)
+
+      val status = if (stage == PLAN_STAGE_FINISHED && optException.isEmpty) PLAN_STATUS_SUCCESS else PLAN_STATUS_FAILED
+
+      if (optException.isDefined) {
+        LOGGER.error(s"Plan failed, stage=$stage, status=$status, message=${exceptionMessage.getOrElse("")}")
+        LOGGER.debug(s"Failed plan details, results=$planResultsJson")
+      } else {
+        LOGGER.debug(s"Plan finished, stage=$stage, status=$status")
+      }
     }
   }
 }

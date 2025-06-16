@@ -3,11 +3,8 @@ package io.github.datacatering.datacaterer.core.ui.mapper
 import io.github.datacatering.datacaterer.api.DataCatererConfigurationBuilder
 import io.github.datacatering.datacaterer.api.model.Constants._
 import io.github.datacatering.datacaterer.core.ui.model.ConfigurationRequest
-import org.junit.runner.RunWith
 import org.scalatest.funsuite.AnyFunSuite
-import org.scalatestplus.junit.JUnitRunner
 
-@RunWith(classOf[JUnitRunner])
 class ConfigurationMapperTest extends AnyFunSuite {
 
   test("Can convert UI flag config") {
@@ -24,6 +21,7 @@ class ConfigurationMapperTest extends AnyFunSuite {
       CONFIG_FLAGS_VALIDATION -> "false",
       CONFIG_FLAGS_GENERATE_VALIDATIONS -> "false",
       CONFIG_FLAGS_ALERTS -> "false",
+      CONFIG_FLAGS_UNIQUE_CHECK_ONLY_IN_BATCH -> "true",
       "blah" -> "false"
     ))
     val baseConf = DataCatererConfigurationBuilder()
@@ -41,6 +39,7 @@ class ConfigurationMapperTest extends AnyFunSuite {
     assert(!res.flagsConfig.enableValidation)
     assert(!res.flagsConfig.enableGenerateValidations)
     assert(!res.flagsConfig.enableAlerts)
+    assert(res.flagsConfig.enableUniqueCheckOnlyInBatch)
   }
 
   test("Can convert UI alert config") {
@@ -65,13 +64,20 @@ class ConfigurationMapperTest extends AnyFunSuite {
   }
 
   test("Can convert UI generation config") {
-    val configRequest = ConfigurationRequest(generation = Map(CONFIG_GENERATION_NUM_RECORDS_PER_BATCH -> "100",
-      CONFIG_GENERATION_NUM_RECORDS_PER_STEP -> "10", "blah" -> "hello"))
+    val configRequest = ConfigurationRequest(generation = Map(
+      CONFIG_GENERATION_NUM_RECORDS_PER_BATCH -> "100",
+      CONFIG_GENERATION_NUM_RECORDS_PER_STEP -> "10",
+      CONFIG_GENERATION_UNIQUE_BLOOM_FILTER_NUM_ITEMS -> "1000",
+      CONFIG_GENERATION_UNIQUE_BLOOM_FILTER_FALSE_POSITIVE_PROBABILITY -> "0.05",
+      "blah" -> "hello"
+    ))
     val baseConf = DataCatererConfigurationBuilder()
     val res = ConfigurationMapper.mapGenerationConfiguration(configRequest, baseConf).build
 
     assertResult(100)(res.generationConfig.numRecordsPerBatch)
     assert(res.generationConfig.numRecordsPerStep.contains(10))
+    assertResult(1000)(res.generationConfig.uniqueBloomFilterNumItems)
+    assertResult(0.05)(res.generationConfig.uniqueBloomFilterFalsePositiveProbability)
   }
 
   test("Can convert UI metadata config") {

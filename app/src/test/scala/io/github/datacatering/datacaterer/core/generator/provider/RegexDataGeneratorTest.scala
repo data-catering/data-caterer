@@ -4,11 +4,8 @@ import io.github.datacatering.datacaterer.api.model.Constants.REGEX_GENERATOR
 import io.github.datacatering.datacaterer.core.exception.InvalidDataGeneratorConfigurationException
 import io.github.datacatering.datacaterer.core.generator.provider.RegexDataGenerator.RandomRegexDataGenerator
 import org.apache.spark.sql.types.{MetadataBuilder, StringType, StructField}
-import org.junit.runner.RunWith
 import org.scalatest.funsuite.AnyFunSuite
-import org.scalatestplus.junit.JUnitRunner
 
-@RunWith(classOf[JUnitRunner])
 class RegexDataGeneratorTest extends AnyFunSuite {
 
   test("Can generate data based on regex") {

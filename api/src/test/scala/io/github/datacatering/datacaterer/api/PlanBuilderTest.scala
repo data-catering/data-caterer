@@ -2,11 +2,8 @@ package io.github.datacatering.datacaterer.api
 
 import io.github.datacatering.datacaterer.api.model.Constants.ALL_COMBINATIONS
 import io.github.datacatering.datacaterer.api.model.{DataCatererConfiguration, ExpressionValidation, ForeignKeyRelation, PauseWaitCondition}
-import org.junit.runner.RunWith
 import org.scalatest.funsuite.AnyFunSuite
-import org.scalatestplus.junit.JUnitRunner
 
-@RunWith(classOf[JUnitRunner])
 class PlanBuilderTest extends AnyFunSuite {
 
   test("Can create Plan") {

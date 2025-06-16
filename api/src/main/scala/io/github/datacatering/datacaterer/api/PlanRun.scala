@@ -1,6 +1,6 @@
 package io.github.datacatering.datacaterer.api
 
-import io.github.datacatering.datacaterer.api.connection.{CassandraBuilder, ConnectionTaskBuilder, FileBuilder, HttpBuilder, KafkaBuilder, MySqlBuilder, PostgresBuilder, SolaceBuilder}
+import io.github.datacatering.datacaterer.api.connection.{BigQueryBuilder, CassandraBuilder, ConnectionTaskBuilder, FileBuilder, HttpBuilder, KafkaBuilder, MySqlBuilder, PostgresBuilder, RabbitmqBuilder, SolaceBuilder}
 import io.github.datacatering.datacaterer.api.model.Constants._
 import io.github.datacatering.datacaterer.api.model.{DataCatererConfiguration, ForeignKeyRelation, Plan, Task, ValidationConfiguration}
 
@@ -14,45 +14,172 @@ trait PlanRun {
   var _validations: List[ValidationConfiguration] = List()
   var _connectionTaskBuilders: Seq[ConnectionTaskBuilder[_]] = Seq()
 
+  /**
+   * Create new plan builder
+   *
+   * @return PlanBuilder
+   */
   def plan: PlanBuilder = PlanBuilder()
 
+  /**
+   * Create new task summary builder
+   *
+   * @return TaskSummaryBuilder
+   */
   def taskSummary: TaskSummaryBuilder = TaskSummaryBuilder()
 
+  /**
+   * Create new tasks builder
+   *
+   * @return TasksBuilder
+   */
   def tasks: TasksBuilder = TasksBuilder()
 
+  /**
+   * Create new task builder
+   *
+   * @return TaskBuilder
+   */
   def task: TaskBuilder = TaskBuilder()
 
+  /**
+   * Create new step builder
+   *
+   * @return StepBuilder
+   */
   def step: StepBuilder = StepBuilder()
 
+  /**
+   * Create new field builder
+   * Can create field with regex, range, list, or value
+   * For example, `field.name("id").regex("ID[0-9]{8}")`
+   *
+   * @return FieldBuilder
+   */
   def field: FieldBuilder = FieldBuilder()
 
+  /**
+   * Create new generator builder
+   * Used to alter way data is generated, either for fields or records
+   *
+   * @return GeneratorBuilder
+   */
   def generator: GeneratorBuilder = GeneratorBuilder()
 
+  /**
+   * Create new count builder
+   * Used to set the number of records to generate
+   *
+   * @return CountBuilder
+   */
   def count: CountBuilder = CountBuilder()
 
+  /**
+   * Create new connection task builder
+   *
+   * @return ConnectionTaskBuilder
+   */
   def configuration: DataCatererConfigurationBuilder = DataCatererConfigurationBuilder()
 
+  /**
+   * Create new wait condition builder
+   * Used to set conditions for waiting before running a set of validations
+   *
+   * @return WaitConditionBuilder
+   */
   def waitCondition: WaitConditionBuilder = WaitConditionBuilder()
 
+  /**
+   * Create new validation builder
+   * Used to set conditions for validating data
+   *
+   * @return ValidationBuilder
+   */
   def validation: ValidationBuilder = ValidationBuilder()
 
+  /**
+   * Create new pre-filter builder
+   * Used to set conditions for filtering data before validation
+   *
+   * @return PreFilterBuilder
+   */
   def preFilterBuilder(validationBuilder: ValidationBuilder): CombinationPreFilterBuilder = PreFilterBuilder().filter(validationBuilder)
 
-  def fieldPreFilter(field: String): FieldValidationBuilder = ValidationBuilder().field(field)
-
+  /**
+   * Create new data source validation builder
+   * Used to set conditions for validating a data source
+   *
+   * @return DataSourceValidationBuilder
+   */
   def dataSourceValidation: DataSourceValidationBuilder = DataSourceValidationBuilder()
 
+  /**
+   * Create new validation configuration builder
+   * Used to set configurations for running validations
+   *
+   * @return ValidationConfigurationBuilder
+   */
   def validationConfig: ValidationConfigurationBuilder = ValidationConfigurationBuilder()
 
+  /**
+   * Create new foreign key relation
+   * Used to set relationships between data sources
+   *
+   * @return ForeignKeyRelation
+   */
   def foreignField(dataSource: String, step: String, field: String): ForeignKeyRelation =
     new ForeignKeyRelation(dataSource, step, field)
 
+  /**
+   * Create new foreign key relation
+   * Used to set relationships between data sources
+   *
+   * @return ForeignKeyRelation
+   */
   def foreignField(dataSource: String, step: String, fields: List[String]): ForeignKeyRelation =
     ForeignKeyRelation(dataSource, step, fields)
 
+  /**
+   * Create new foreign key relation
+   * Used to set relationships between data sources
+   *
+   * @return ForeignKeyRelation
+   */
+  def foreignField(connectionTask: ConnectionTaskBuilder[_], field: String): ForeignKeyRelation =
+    ForeignKeyRelation(
+      connectionTask.connectionConfigWithTaskBuilder.dataSourceName,
+      connectionTask.getStep.step.name,
+      List(field)
+    )
+
+  /**
+   * Create new foreign key relation
+   * Used to set relationships between data sources
+   *
+   * @return ForeignKeyRelation
+   */
+  def foreignField(connectionTask: ConnectionTaskBuilder[_], fields: List[String]): ForeignKeyRelation =
+    ForeignKeyRelation(
+      connectionTask.connectionConfigWithTaskBuilder.dataSourceName,
+      connectionTask.getStep.step.name,
+      fields
+    )
+
+  /**
+   * Create new foreign key relation
+   * Used to set relationships between data sources
+   *
+   * @return ForeignKeyRelation
+   */
   def foreignField(connectionTask: ConnectionTaskBuilder[_], step: String, fields: List[String]): ForeignKeyRelation =
     ForeignKeyRelation(connectionTask.connectionConfigWithTaskBuilder.dataSourceName, step, fields)
 
+  /**
+   * Create new metadata source builder
+   * Used to set metadata for a data source to gather information about schema or validations
+   *
+   * @return
+   */
   def metadataSource: MetadataSourceBuilder = MetadataSourceBuilder()
 
   /**
@@ -153,12 +280,12 @@ trait PlanRun {
    * Create new ICEBERG generation step with only warehouse path and table name. Uses hadoop as the catalog type.
    *
    * @param name      Data source name
-   * @param path      Warehouse path to generated ICEBERG
    * @param tableName Table name for generated ICEBERG
+   * @param path      Warehouse path to generated ICEBERG
    * @return FileBuilder
    */
-  def icebergJava(name: String, path: String, tableName: String): FileBuilder =
-    iceberg(name, path, tableName)
+  def icebergJava(name: String, tableName: String, path: String): FileBuilder =
+    iceberg(name, tableName, path)
 
   /**
    * Create new POSTGRES generation step with connection configuration
@@ -275,6 +402,105 @@ trait PlanRun {
    */
   def cassandra(connectionTaskBuilder: ConnectionTaskBuilder[CassandraBuilder]): CassandraBuilder =
     CassandraBuilder().fromBaseConfig(connectionTaskBuilder)
+
+
+  /**
+   * Create new BigQuery generation step with name
+   *
+   * @param name Data source name
+   * @return BigQueryBuilder
+   */
+  def bigquery(name: String): BigQueryBuilder = ConnectionConfigWithTaskBuilder().bigquery(name)
+
+  /**
+   * Create new BigQuery generation step with name and temporaryGcsBucket
+   *
+   * @param name               Data source name
+   * @param temporaryGcsBucket Temporary GCS bucket to store temporary data
+   * @return BigQueryBuilder
+   */
+  def bigquery(name: String, temporaryGcsBucket: String): BigQueryBuilder =
+    ConnectionConfigWithTaskBuilder().bigquery(name, "", temporaryGcsBucket)
+
+  /**
+   * Create new BigQuery generation step with name, temporaryGcsBucket and options
+   *
+   * @param name               Data source name
+   * @param temporaryGcsBucket Temporary GCS bucket to store temporary data
+   * @param options            Additional connection options
+   * @return BigQueryBuilder
+   */
+  def bigquery(name: String, temporaryGcsBucket: String, options: Map[String, String]): BigQueryBuilder =
+    ConnectionConfigWithTaskBuilder().bigquery(name, "", temporaryGcsBucket, options)
+
+  /**
+   * Create new BigQuery generation step with name, credentials file, temporaryGcsBucket and options
+   *
+   * @param name               Data source name
+   * @param credentialsFile    Path to BigQuery credentials file
+   * @param temporaryGcsBucket Temporary GCS bucket to store temporary data
+   * @param options            Additional connection options
+   * @return BigQueryBuilder
+   */
+  def bigquery(name: String, credentialsFile: String, temporaryGcsBucket: String, options: Map[String, String]): BigQueryBuilder =
+    ConnectionConfigWithTaskBuilder().bigquery(name, credentialsFile, temporaryGcsBucket, options)
+
+
+  /**
+   * Create new BigQuery generation step using the same connection configuration from another BigQueryBuilder
+   *
+   * @param connectionTaskBuilder BigQuery builder with connection configuration
+   * @return BigQueryBuilder
+   */
+  def bigquery(connectionTaskBuilder: ConnectionTaskBuilder[BigQueryBuilder]): BigQueryBuilder =
+    BigQueryBuilder().fromBaseConfig(connectionTaskBuilder)
+
+
+  /**
+   * Create new RABBITMQ generation step with connection configuration
+   *
+   * @param name              Data source name
+   * @param url               Solace url
+   * @param username          Solace username
+   * @param password          Solace password
+   * @param virtualHost       Virtual host in rabbitmq to connect to
+   * @param connectionFactory Connection factory
+   * @param options           Additional connection options
+   * @return SolaceBuilder
+   */
+  def rabbitmq(
+                name: String,
+                url: String = DEFAULT_RABBITMQ_URL,
+                username: String = DEFAULT_RABBITMQ_USERNAME,
+                password: String = DEFAULT_RABBITMQ_PASSWORD,
+                virtualHost: String = DEFAULT_RABBITMQ_VIRTUAL_HOST,
+                connectionFactory: String = DEFAULT_RABBITMQ_CONNECTION_FACTORY,
+                options: Map[String, String] = Map()
+              ): RabbitmqBuilder =
+    ConnectionConfigWithTaskBuilder().rabbitmq(name, url, username, password, virtualHost, connectionFactory, options)
+
+  /**
+   * Create new RABBITMQ generation step with URL, username, password and virtual host. Default connection factory used
+   *
+   * @param name        Data source name
+   * @param url         Rabbitmq url
+   * @param username    Rabbitmq username
+   * @param password    Rabbitmq password
+   * @param virtualHost Virtual host in Rabbitmq
+   * @return RabbitmqBuilder
+   */
+  def rabbitmqJava(name: String, url: String, username: String, password: String, virtualHost: String): RabbitmqBuilder =
+    rabbitmq(name, url, username, password, virtualHost)
+
+  /**
+   * Create new RABBITMQ generation step with URL, username, password and virtual host. Default username, password,
+   * virtual host, connection factory used
+   *
+   * @param name Data source name
+   * @param url  Rabbitmq url
+   * @return RabbitmqBuilder
+   */
+  def rabbitmqJava(name: String, url: String): RabbitmqBuilder = rabbitmq(name, url)
 
 
   /**
@@ -457,10 +683,11 @@ trait PlanRun {
                         connectionTasks: ConnectionTaskBuilder[_]*
                       ): Unit = {
     val allConnectionTasks = connectionTask +: connectionTasks
-    val connectionConfig = allConnectionTasks.map(x => {
-      val connectionConfigWithTaskBuilder = x.connectionConfigWithTaskBuilder
-      (connectionConfigWithTaskBuilder.dataSourceName, connectionConfigWithTaskBuilder.options)
-    }).toMap
+    //need to merge options of same data source name
+    val connectionConfig = allConnectionTasks.groupBy(_.connectionConfigWithTaskBuilder.dataSourceName).map(x => {
+      val options = x._2.map(_.connectionConfigWithTaskBuilder.options).reduce(_ ++ _)
+      x._1 -> options
+    })
     val withConnectionConfig = baseConfiguration.connectionConfig(connectionConfig)
     val allValidations = validations ++ getValidations(allConnectionTasks)
     val allTasks = allConnectionTasks.map(_.toTasksBuilder).filter(_.isDefined).map(_.get).toList

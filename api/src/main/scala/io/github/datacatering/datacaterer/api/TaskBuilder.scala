@@ -1,9 +1,11 @@
 package io.github.datacatering.datacaterer.api
 
 import com.softwaremill.quicklens.ModifyPimp
-import io.github.datacatering.datacaterer.api.converter.Converters.toScalaMap
+import io.github.datacatering.datacaterer.api.HttpMethodEnum.HttpMethodEnum
+import io.github.datacatering.datacaterer.api.HttpQueryParameterStyleEnum.HttpQueryParameterStyleEnum
+import io.github.datacatering.datacaterer.api.converter.Converters.{toScalaList, toScalaMap}
 import io.github.datacatering.datacaterer.api.model.Constants._
-import io.github.datacatering.datacaterer.api.model.{Count, DataType, Field, PerFieldCount, Step, Task, TaskSummary}
+import io.github.datacatering.datacaterer.api.model.{ArrayType, Count, DataType, DoubleType, Field, HeaderType, PerFieldCount, Step, StringType, Task, TaskSummary}
 
 import scala.annotation.varargs
 
@@ -237,6 +239,15 @@ case class StepBuilder(step: Step = Step(), optValidation: Option[DataSourceVali
     this.modify(_.step.options)(_ ++ Map(CASSANDRA_KEYSPACE -> keyspace, CASSANDRA_TABLE -> table))
 
   /**
+   * Table name for data source
+   *
+   * @param table Table name
+   * @return StepBuilder
+   */
+  def table(table: String): StepBuilder =
+    this.modify(_.step.options)(_ ++ Map(TABLE -> table))
+
+  /**
    * The queue/topic name for a JMS data source.
    * This is used as part of connecting to a JMS destination as a JNDI resource
    *
@@ -358,6 +369,15 @@ case class StepBuilder(step: Step = Step(), optValidation: Option[DataSourceVali
     this.modify(_.step.fields).setTo(step.fields ++ fields.map(_.field))
 
   /**
+   * Define fields of the schema of the data source to use when generating data.
+   *
+   * @param fields Fields of the schema
+   * @return StepBuilder
+   */
+  def fields(fields: List[FieldBuilder]): StepBuilder =
+    this.modify(_.step.fields).setTo(step.fields ++ fields.map(_.field))
+
+  /**
    * Define data validations once data has been generated. The result of the validations is logged out and included
    * as part of the HTML report.
    *
@@ -385,6 +405,46 @@ case class StepBuilder(step: Step = Step(), optValidation: Option[DataSourceVali
    */
   def enableDataGeneration(enable: Boolean): StepBuilder =
     this.modify(_.step.options)(_ ++ Map(ENABLE_DATA_GENERATION -> enable.toString))
+
+  /**
+   * Include only specific fields in data generation. Supports dot notation for nested fields (e.g., "user.name").
+   * Can be used with excludeFields, includeFieldPatterns, and excludeFieldPatterns.
+   *
+   * @param fieldNames Field names to include
+   * @return StepBuilder
+   */
+  @varargs def includeFields(fieldNames: String*): StepBuilder =
+    this.modify(_.step.options)(_ ++ Map(INCLUDE_FIELDS -> fieldNames.mkString(",")))
+
+  /**
+   * Exclude specific fields from data generation. Supports dot notation for nested fields (e.g., "user.internal").
+   * Can be used with includeFields, includeFieldPatterns, and excludeFieldPatterns.
+   *
+   * @param fieldNames Field names to exclude
+   * @return StepBuilder
+   */
+  @varargs def excludeFields(fieldNames: String*): StepBuilder =
+    this.modify(_.step.options)(_ ++ Map(EXCLUDE_FIELDS -> fieldNames.mkString(",")))
+
+  /**
+   * Include fields matching regex patterns in data generation. Supports dot notation for nested fields (e.g., "user.*").
+   * Can be used with includeFields, excludeFields, and excludeFieldPatterns.
+   *
+   * @param patterns Regex patterns for field names to include
+   * @return StepBuilder
+   */
+  @varargs def includeFieldPatterns(patterns: String*): StepBuilder =
+    this.modify(_.step.options)(_ ++ Map(INCLUDE_FIELD_PATTERNS -> patterns.mkString(",")))
+
+  /**
+   * Exclude fields matching regex patterns from data generation. Supports dot notation for nested fields (e.g., ".*internal.*").
+   * Can be used with includeFields, excludeFields, and includeFieldPatterns.
+   *
+   * @param patterns Regex patterns for field names to exclude
+   * @return StepBuilder
+   */
+  @varargs def excludeFieldPatterns(patterns: String*): StepBuilder =
+    this.modify(_.step.options)(_ ++ Map(EXCLUDE_FIELD_PATTERNS -> patterns.mkString(",")))
 
   private def getValidation: DataSourceValidationBuilder = optValidation.getOrElse(DataSourceValidationBuilder())
 }
@@ -429,7 +489,7 @@ case class CountBuilder(count: Count = Count()) {
    * Sets the number of records per field for the task builder.
    *
    * @param records the number of records per field
-   * @param fields    the field names to apply the records per field setting to
+   * @param fields  the field names to apply the records per field setting to
    * @return the updated task builder
    */
   @varargs def recordsPerField(records: Long, fields: String*): CountBuilder =
@@ -439,7 +499,7 @@ case class CountBuilder(count: Count = Count()) {
    * Generates a `CountBuilder` that records the number of records per field.
    *
    * @param generator The `GeneratorBuilder` to use for generating the per-field counts.
-   * @param fields      The field names to generate per-field counts for.
+   * @param fields    The field names to generate per-field counts for.
    * @return A `CountBuilder` that records the number of records per field.
    */
   @varargs def recordsPerFieldGenerator(generator: GeneratorBuilder, fields: String*): CountBuilder =
@@ -450,7 +510,7 @@ case class CountBuilder(count: Count = Count()) {
    *
    * @param records   the total number of records to generate
    * @param generator the `GeneratorBuilder` to use for generating the per-field counts
-   * @param fields      the names of the fields to generate counts for
+   * @param fields    the names of the fields to generate counts for
    * @return a `CountBuilder` with the specified record and per-field count settings
    */
   @varargs def recordsPerFieldGenerator(records: Long, generator: GeneratorBuilder, fields: String*): CountBuilder =
@@ -460,8 +520,8 @@ case class CountBuilder(count: Count = Count()) {
   /**
    * Generates a normal distribution of records per field for the specified fields.
    *
-   * @param min  the minimum number of records per field
-   * @param max  the maximum number of records per field
+   * @param min    the minimum number of records per field
+   * @param max    the maximum number of records per field
    * @param fields the fields to generate the normal distribution for
    * @return a `CountBuilder` instance with the normal distribution configuration applied
    */
@@ -476,7 +536,7 @@ case class CountBuilder(count: Count = Count()) {
    * @param min           the minimum number of records per field
    * @param max           the maximum number of records per field
    * @param rateParameter the rate parameter for the exponential distribution
-   * @param fields          the fields to apply the distribution to
+   * @param fields        the fields to apply the distribution to
    * @return the modified task builder
    */
   @varargs def recordsPerFieldExponentialDistribution(min: Long, max: Long, rateParameter: Double, fields: String*): CountBuilder = {
@@ -488,7 +548,7 @@ case class CountBuilder(count: Count = Count()) {
    * Generates a list of records per field using an exponential distribution.
    *
    * @param rateParameter the rate parameter for the exponential distribution
-   * @param fields          the fields to generate records for
+   * @param fields        the fields to generate records for
    * @return a [[CountBuilder]] that can be used to build the records
    */
   @varargs def recordsPerFieldExponentialDistribution(rateParameter: Double, fields: String*): CountBuilder =
@@ -523,7 +583,7 @@ case class PerFieldCountBuilder(perFieldCount: PerFieldCount = PerFieldCount()) 
    * Number of records to generate per set of field values defined
    *
    * @param records Number of records
-   * @param fields    Field names
+   * @param fields  Field names
    * @return PerFieldCountBuilder
    */
   @varargs def records(records: Long, fields: String*): PerFieldCountBuilder =
@@ -533,7 +593,7 @@ case class PerFieldCountBuilder(perFieldCount: PerFieldCount = PerFieldCount()) 
    * Define a generator to determine the number of records to generate per set of field value defined
    *
    * @param generator Generator for number of records
-   * @param fields      Field names
+   * @param fields    Field names
    * @return PerFieldCountBuilder
    */
   @varargs def generator(generator: GeneratorBuilder, fields: String*): PerFieldCountBuilder =
@@ -573,6 +633,15 @@ case class FieldBuilder(field: Field = Field()) {
    * @return a new `FieldBuilder` with the updated schema
    */
   @varargs def fields(fields: FieldBuilder*): FieldBuilder =
+    this.modify(_.field.fields).setTo(field.fields ++ fields.map(_.field))
+
+  /**
+   * Adds the specified fields to the schema of this `FieldBuilder`.
+   *
+   * @param fields the fields to add to the schema
+   * @return a new `FieldBuilder` with the updated schema
+   */
+  def fields(fields: List[FieldBuilder]): FieldBuilder =
     this.modify(_.field.fields).setTo(field.fields ++ fields.map(_.field))
 
   /**
@@ -626,19 +695,50 @@ case class FieldBuilder(field: Field = Field()) {
    * @param values The values that the field can take on.
    * @return A FieldBuilder that has been modified to use the provided values.
    */
-  @varargs def oneOf(values: Any*): FieldBuilder =
-    this.modify(_.field.options).setTo(getGenBuilder.oneOf(values: _*).options)
+  @varargs def oneOf(value: Any, values: Any*): FieldBuilder =
+    this.modify(_.field.options).setTo(getGenBuilder.oneOf(value, values: _*).options)
       .modify(_.field.`type`)
       .setTo(
-        values match {
-          case Seq(_: Double, _*) => Some("double")
-          case Seq(_: String, _*) => Some("string")
-          case Seq(_: Int, _*) => Some("integer")
-          case Seq(_: Long, _*) => Some("long")
-          case Seq(_: Boolean, _*) => Some("boolean")
+        value match {
+          case _: Double => Some("double")
+          case _: String => Some("string")
+          case _: Int => Some("integer")
+          case _: Long => Some("long")
+          case _: Boolean => Some("boolean")
           case _ => None
         }
       )
+
+  def oneOf(values: List[Any]): FieldBuilder =
+    if (values.nonEmpty) oneOf(values.head, values.tail: _*) else this
+
+  /**
+   * Builds a field that can take on one of the provided values. Each value is associated with a weight.
+   * The weight is used to determine the probability of selecting a particular value.
+   * Higher weights increase the likelihood of selecting a value.
+   *
+   * @param values The values that the field can take on with associated weight.
+   * @return A FieldBuilder that has been modified to use the provided values.
+   */
+  @varargs def oneOfWeighted(value: (Any, Double), values: (Any, Double)*): List[FieldBuilder] = {
+    val oneOfWeightedField = this.modify(_.field.options).setTo(getGenBuilder.oneOfWeighted(value, values: _*).options)
+      .modify(_.field.`type`)
+      .setTo(
+        value._1 match {
+          case _: Double => Some("double")
+          case _: String => Some("string")
+          case _: Int => Some("integer")
+          case _: Long => Some("long")
+          case _: Boolean => Some("boolean")
+          case _ => None
+        }
+      )
+    val randomWeight = FieldBuilder().`type`(DoubleType).name(s"${field.name}_weight").sql("RAND()").omit(true)
+    List(randomWeight, oneOfWeightedField)
+  }
+
+  def oneOfWeighted(values: List[(Any, Double)]): List[FieldBuilder] =
+    if (values.nonEmpty) oneOfWeighted(values.head, values.tail: _*) else List(this)
 
   /**
    * Sets the options for the field generator.
@@ -890,6 +990,253 @@ case class FieldBuilder(field: Field = Field()) {
   def mean(mean: Double): FieldBuilder =
     this.modify(_.field.options).setTo(getGenBuilder.mean(mean).options)
 
+  /**
+   * The distribution of the data is exponential.
+   *
+   * @param rate Rate parameter to control skewness of distribution.
+   * @return FieldBuilder
+   */
+  def exponentialDistribution(rate: Double): FieldBuilder =
+    this.modify(_.field.options).setTo(getGenBuilder.exponentialDistribution(rate).options)
+
+  /**
+   * The distribution of the data is normal.
+   *
+   * @return FieldBuilder
+   */
+  def normalDistribution(): FieldBuilder =
+    this.modify(_.field.options).setTo(getGenBuilder.normalDistribution().options)
+
+  /**
+   * Field value is generated incrementally. Starts at 1 and increments by 1 til max number of records.
+   *
+   * @param startNumber Starting number for incremental field
+   * @return FieldBuilder
+   */
+  def incremental(startNumber: Long = 1): FieldBuilder = {
+    val incrementalOpts = if (field.`type`.contains(StringType.toString) && field.options.contains(SQL_GENERATOR) && field.options(SQL_GENERATOR).toString.equalsIgnoreCase("UUID()")) {
+      //then it is a UUID field that is generated consistently and incrementally via the __index_inc field
+      getGenBuilder.sql(toUuidFromCol(s"$startNumber + $INDEX_INC_FIELD")).incremental(startNumber).options
+    } else {
+      getGenBuilder.incremental(startNumber).options
+    }
+    this.modify(_.field.options).setTo(incrementalOpts)
+  }
+
+  /**
+   * Field values are UUID strings.
+   *
+   * @param fieldName Name of the field to generate UUIDs from. Used to create consistent UUIDs.
+   * @return FieldBuilder
+   */
+  def uuid(fieldName: String = INDEX_INC_FIELD): FieldBuilder = {
+    val uuidOpts = if (field.`type`.contains(StringType.toString) && field.options.contains(INCREMENTAL)) {
+      //then it is an incremental field that is generated consistently and incrementally via the __index_inc field
+      val startingNumber = field.options(INCREMENTAL).toString.toLong
+      getGenBuilder.sql(toUuidFromCol(s"$startingNumber + $INDEX_INC_FIELD")).options
+    } else if (!fieldName.equalsIgnoreCase(INDEX_INC_FIELD)) {
+      getGenBuilder.sql(toUuidFromCol(fieldName)).options
+    } else {
+      getGenBuilder.uuid().options
+    }
+    this.modify(_.field.options).setTo(uuidOpts)
+  }
+
+  /**
+   * Create message header fields. Can be used for data sources such as Kafka or Solace.
+   *
+   * @param messageHeader Headers of the message
+   * @return FieldBuilder
+   */
+  @varargs def messageHeaders(messageHeader: FieldBuilder*): FieldBuilder = {
+    val combinedSql = messageHeader.map(f => f.field.options(SQL_GENERATOR)).mkString(",")
+    this.name(REAL_TIME_HEADERS_FIELD).sql(s"ARRAY($combinedSql)").`type`(HeaderType.getType)
+  }
+
+  /**
+   * Create message header field. Can be used for data sources such as Kafka or Solace.
+   * Use with `messageHeaders(...)`.
+   *
+   * @param key   Key of the header
+   * @param value Value of the header in SQL
+   * @return FieldBuilder
+   */
+  def messageHeader(key: String, value: String): FieldBuilder =
+    this.modify(_.field.options)
+      .setTo(getGenBuilder.sql(s"NAMED_STRUCT('key', '$key', 'value', TO_BINARY($value, 'utf-8'))").options)
+
+  /**
+   * Create a message body field. Can be used for data sources such as Kafka or Solace.
+   *
+   * @param fields Fields defined in the JSON body of the message
+   * @return List of fields
+   */
+  @varargs def messageBody(fields: FieldBuilder*): List[FieldBuilder] = {
+    realTimeBody(fields: _*)
+  }
+
+  /**
+   * Create a HTTP header field. Used for HTTP data source.
+   *
+   * @param name Name of the header field
+   * @return FieldBuilder
+   */
+  def httpHeader(name: String): FieldBuilder = {
+    val cleanFieldName = name.replaceAll("-", "_")
+    val contentLengthMap = if (name == "Content-Length") {
+      Map(
+        SQL_GENERATOR -> s"LENGTH($REAL_TIME_BODY_FIELD)",
+        HTTP_HEADER_FIELD_PREFIX -> name
+      )
+    } else Map(HTTP_HEADER_FIELD_PREFIX -> name)
+    this.name(HTTP_HEADER_FIELD_PREFIX + cleanFieldName)
+      .options(contentLengthMap)
+  }
+
+  /**
+   * Create a HTTP path parameter field. Used for HTTP data source path parameters in URL.
+   * For example, url=http://localhost:8080/user/{id} has path parameter `id`
+   *
+   * @param name Name of the path parameter
+   * @return FieldBuilder
+   */
+  def httpPathParam(name: String): FieldBuilder = {
+    this.name(HTTP_PATH_PARAM_FIELD_PREFIX + name).nullable(false).enableNull(false)
+  }
+
+  /**
+   * Create a HTTP query parameter field. Used for HTTP data source query parameters in URL.
+   * Follows the OpenAPI standard (https://swagger.io/docs/specification/v3_0/serialization/#query-parameters).
+   *
+   * @param name Name of the path parameter
+   * @return FieldBuilder
+   */
+  def httpQueryParam(
+                      name: String,
+                      `type`: DataType = StringType,
+                      style: HttpQueryParameterStyleEnum = HttpQueryParameterStyleEnum.FORM,
+                      explode: Boolean = true,
+                    ): FieldBuilder = {
+    val fieldName = s"$HTTP_QUERY_PARAM_FIELD_PREFIX$name"
+    val sqlGenerator = `type` match {
+      case ArrayType =>
+        val delimiter = (style, explode) match {
+          case (HttpQueryParameterStyleEnum.FORM, false) => ","
+          case (HttpQueryParameterStyleEnum.SPACE_DELIMITED, false) => "%20"
+          case (HttpQueryParameterStyleEnum.PIPE_DELIMITED, false) => "|"
+          case _ => s"&$name="
+        }
+        s"""CASE WHEN ARRAY_SIZE($fieldName) > 0 THEN CONCAT('$name=', ARRAY_JOIN($fieldName, '$delimiter')) ELSE null END"""
+      case _ => s"CONCAT('$name=', $fieldName)"
+    }
+    this.name(fieldName).option(POST_SQL_EXPRESSION -> sqlGenerator)
+  }
+
+  /**
+   * Create a HTTP query parameter field of type string. Used for HTTP data source query parameters in URL.
+   *
+   * @param name Name of query parameter
+   * @return FieldBuilder
+   */
+  def httpQueryParam(name: String): FieldBuilder = httpQueryParam(name, StringType)
+
+  /**
+   * Create a HTTP URL field. It will build the URL based on the path and query parameters defined.
+   *
+   * @param url         URL of the HTTP endpoint
+   * @param method      HTTP method to call endpoint (i.e. GET, POST, PUT, etc.)
+   * @param pathParams  Definition of path parameter field generation
+   * @param queryParams Definition of query parameter field generation
+   * @return List of FieldBuilder
+   */
+  def httpUrl(
+               url: String,
+               method: HttpMethodEnum = HttpMethodEnum.GET,
+               pathParams: List[FieldBuilder] = List(),
+               queryParams: List[FieldBuilder] = List()
+             ): List[FieldBuilder] = {
+    val urlWithPathParamReplace = pathParams.foldLeft(s"'$url'")((url, pathParam) => {
+      val fieldName = pathParam.field.name
+      val fieldNameWithoutPrefix = fieldName.replaceFirst(HTTP_PATH_PARAM_FIELD_PREFIX, "")
+      val replaceValue = pathParam.field.options.getOrElse(POST_SQL_EXPRESSION, s"`$fieldName`")
+      s"REPLACE($url, '{$fieldNameWithoutPrefix}', URL_ENCODE($replaceValue))"
+    })
+    val urlWithPathAndQuery = if (queryParams.nonEmpty) s"CONCAT($urlWithPathParamReplace, '?')" else urlWithPathParamReplace
+    val combinedQueryParams = queryParams.map(q => s"CAST(${q.field.options.getOrElse(POST_SQL_EXPRESSION, s"`${q.field.name}`")} AS STRING)").mkString(",")
+    val combinedQuerySql = s"ARRAY_JOIN(ARRAY($combinedQueryParams), '&')"
+    val urlSql = s"CONCAT($urlWithPathAndQuery, $combinedQuerySql)"
+    val urlField = FieldBuilder().name(REAL_TIME_URL_FIELD).sql(urlSql)
+
+    List(
+      urlField,
+      httpMethod(method)
+    ) ++ pathParams ++ queryParams
+  }
+
+  /**
+   * Create a HTTP URL field for Java.
+   *
+   * @param url         URL of the HTTP endpoint
+   * @param method      HTTP method to call endpoint (i.e. GET, POST, PUT, etc.)
+   * @param pathParams  Definition of path parameter field generation
+   * @param queryParams Definition of query parameter field generation
+   * @return List of FieldBuilder
+   */
+  def httpUrl(url: String, method: HttpMethodEnum, pathParams: java.util.List[FieldBuilder], queryParams: java.util.List[FieldBuilder]): List[FieldBuilder] =
+    httpUrl(url, method, toScalaList(pathParams), toScalaList(queryParams))
+
+  /**
+   * Create a HTTP URL field with method.
+   *
+   * @param url    URL of the HTTP endpoint
+   * @param method HTTP method to call endpoint (i.e. GET, POST, PUT, etc.)
+   * @return List of FieldBuilder
+   */
+  def httpUrl(url: String, method: HttpMethodEnum): List[FieldBuilder] = httpUrl(url, method, List())
+
+  /**
+   * Create a HTTP URL field.
+   *
+   * @param url URL of the HTTP endpoint
+   * @return List of FieldBuilder
+   */
+  def httpUrl(url: String): List[FieldBuilder] = httpUrl(url, HttpMethodEnum.GET)
+
+  /**
+   * Create a HTTP method field.
+   *
+   * @param method HTTP method to call endpoint (i.e. GET, POST, PUT, etc.)
+   * @return FieldBuilder
+   */
+  def httpMethod(method: HttpMethodEnum): FieldBuilder = this.name(REAL_TIME_METHOD_FIELD).static(method.toString)
+
+  /**
+   * Create a HTTP body field. Used for HTTP data source.
+   *
+   * @param fields Fields defined in the JSON body of the message
+   * @return List of fields
+   */
+  @varargs def httpBody(fields: FieldBuilder*): List[FieldBuilder] = {
+    realTimeBody(fields: _*)
+  }
+
+  private def realTimeBody(fields: FieldBuilder*): List[FieldBuilder] = {
+    val jsonContent = this.name(REAL_TIME_BODY_FIELD).sql(s"TO_JSON($REAL_TIME_BODY_CONTENT_FIELD)")
+    val bodyContent = FieldBuilder().name(REAL_TIME_BODY_CONTENT_FIELD).fields(fields: _*)
+    List(jsonContent, bodyContent)
+  }
+
+  private def toUuidFromCol(col: String): String = {
+    val castStr = s"CAST($col AS STRING)"
+    s"""CONCAT(
+       |SUBSTR(MD5($castStr), 1, 8), '-',
+       |SUBSTR(MD5($castStr), 9, 4), '-',
+       |SUBSTR(MD5($castStr), 13, 4), '-',
+       |SUBSTR(MD5($castStr), 17, 4), '-',
+       |SUBSTR(MD5($castStr), 21, 12)
+       |)""".stripMargin
+  }
+
   private def getGenBuilder: GeneratorBuilder = {
     GeneratorBuilder(field.options)
   }
@@ -926,7 +1273,21 @@ case class GeneratorBuilder(options: Map[String, Any] = Map()) {
    * @param values Set of valid values
    * @return GeneratorBuilder
    */
-  @varargs def oneOf(values: Any*): GeneratorBuilder = this.modify(_.options)(_ ++ Map(ONE_OF_GENERATOR -> values))
+  @varargs def oneOf(value: Any, values: Any*): GeneratorBuilder = {
+    val allValues = Seq(value) ++ values
+    this.modify(_.options)(_ ++ Map(ONE_OF_GENERATOR -> allValues))
+  }
+
+  /**
+   * Create a generator that can only generate values from a set of weighted values defined.
+   *
+   * @param values Set of valid values
+   * @return GeneratorBuilder
+   */
+  @varargs def oneOfWeighted(value: (Any, Double), values: (Any, Double)*): GeneratorBuilder = {
+    val valuesAsStringSeq = (Seq(value) ++ values).map(v => s"${v._1}->${v._2}")
+    this.modify(_.options)(_ ++ Map(ONE_OF_GENERATOR -> valuesAsStringSeq))
+  }
 
   /**
    * Define metadata map for your generator. Add/overwrites existing metadata
@@ -1216,4 +1577,32 @@ case class GeneratorBuilder(options: Map[String, Any] = Map()) {
    */
   def normalDistribution(): GeneratorBuilder =
     this.modify(_.options)(_ ++ Map(DISTRIBUTION -> DISTRIBUTION_NORMAL))
+
+  /**
+   * Field values are incremented by 1 for each record generated. This is useful for primary keys or unique fields.
+   * Starts at 1 and increments by 1 til the max number of records generated.
+   *
+   * @param startNumber Starting number for incremental field
+   * @return GeneratorBuilder
+   */
+  def incremental(startNumber: Long = 1): GeneratorBuilder =
+    this.modify(_.options)(_ ++ Map(INCREMENTAL -> startNumber))
+
+  /**
+   * Field values are UUID strings.
+   *
+   * @return GeneratorBuilder
+   */
+  def uuid(): GeneratorBuilder =
+    this.modify(_.options)(_ ++ Map(SQL_GENERATOR -> "UUID()"))
+}
+
+object HttpMethodEnum extends Enumeration {
+  type HttpMethodEnum = Value
+  val POST, GET, PUT, PATCH, DELETE, HEAD, OPTIONS, TRACE = Value
+}
+
+object HttpQueryParameterStyleEnum extends Enumeration {
+  type HttpQueryParameterStyleEnum = Value
+  val FORM, SPACE_DELIMITED, PIPE_DELIMITED, OTHER = Value
 }

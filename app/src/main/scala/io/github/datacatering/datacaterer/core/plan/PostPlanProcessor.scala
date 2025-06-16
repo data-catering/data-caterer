@@ -6,7 +6,7 @@ import io.github.datacatering.datacaterer.core.listener.SparkRecordListener
 trait PostPlanProcessor {
 
   val dataCatererConfiguration: DataCatererConfiguration
-  val enabled: Boolean
+  val enabled: Boolean = true
 
   def apply(plan: Plan, sparkRecordListener: SparkRecordListener, generationResult: List[DataSourceResult],
             validationResults: List[ValidationConfigResult]): Unit

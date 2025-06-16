@@ -10,15 +10,19 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          java-package: jdk
+          architecture: x64
+          distribution: oracle
       - name: Gradle build with cache
         uses: burrunan/gradle-cache-action@v1
         with:
           arguments: ":app:shadowJar"
       - name: Run integration tests
         id: tests
-        uses: data-catering/insta-integration@v1
-        env:
-          LOG_LEVEL: debug
+        uses: data-catering/insta-integration@v2
       - name: Print results
         run: |
           echo "Records generated:         ${{ steps.tests.outputs.num_records_generated }}"

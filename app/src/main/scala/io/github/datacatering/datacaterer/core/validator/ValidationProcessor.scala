@@ -77,18 +77,13 @@ class ValidationProcessor(
         dataSourceValidation.waitCondition.waitBeforeValidation(connectionConfigsByName)
 
         val df = getDataFrame(dataSourceName, dataSourceValidation.options)
-        if (df.isEmpty) {
-          LOGGER.info("No data found to run validations")
-          DataSourceValidationResult(dataSourceName, dataSourceValidation.options, List())
-        } else {
-          if (!df.storageLevel.useMemory) df.cache()
-          val results = dataSourceValidation.validations.flatMap(validBuilder => tryValidate(df, validBuilder))
-          df.unpersist()
-          LOGGER.debug(s"Finished data validations, name=${vc.name}," +
-            s"data-source-name=$dataSourceName, details=${dataSourceValidation.options}, num-validations=${dataSourceValidation.validations.size}")
-          cleanRecordTrackingFiles()
-          DataSourceValidationResult(dataSourceName, dataSourceValidation.options, results)
-        }
+        if (!df.storageLevel.useMemory) df.cache()
+        val results = dataSourceValidation.validations.flatMap(validBuilder => tryValidate(df, validBuilder))
+        df.unpersist()
+        LOGGER.debug(s"Finished data validations, name=${vc.name}," +
+          s"data-source-name=$dataSourceName, details=${dataSourceValidation.options}, num-validations=${dataSourceValidation.validations.size}")
+        cleanRecordTrackingFiles()
+        DataSourceValidationResult(dataSourceName, dataSourceValidation.options, results)
       }
     } else {
       LOGGER.debug(s"Data validations are disabled, data-source-name=$dataSourceName, details=${dataSourceValidation.options}")
@@ -133,6 +128,7 @@ class ValidationProcessor(
     configWithFormatConfigs.filter(_._1.startsWith("spark.sql"))
       .foreach(conf => sparkSession.sqlContext.setConf(conf._1, conf._2))
 
+    LOGGER.debug(s"Reading data for validation, data-source-name=$dataSourceName, format=$format")
     val df = if (format == JMS) {
       LOGGER.warn("No support for JMS data validations, will skip validations")
       sparkSession.emptyDataFrame

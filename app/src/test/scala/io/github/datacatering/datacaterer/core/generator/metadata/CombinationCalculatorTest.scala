@@ -2,11 +2,8 @@ package io.github.datacatering.datacaterer.core.generator.metadata
 
 import io.github.datacatering.datacaterer.api.model.Field
 import net.datafaker.Faker
-import org.junit.runner.RunWith
 import org.scalatest.funsuite.AnyFunSuite
-import org.scalatestplus.junit.JUnitRunner
 
-@RunWith(classOf[JUnitRunner])
 class CombinationCalculatorTest extends AnyFunSuite {
 
   ignore("Can calculate number of combinations given a schema with faker expressions and one of data generators") {

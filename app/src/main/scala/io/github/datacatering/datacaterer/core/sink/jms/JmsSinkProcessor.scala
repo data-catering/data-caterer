@@ -1,20 +1,19 @@
 package io.github.datacatering.datacaterer.core.sink.jms
 
-import io.github.datacatering.datacaterer.api.model.Constants.{DEFAULT_REAL_TIME_HEADERS_DATA_TYPE, JMS_CONNECTION_FACTORY, JMS_DESTINATION_NAME, JMS_INITIAL_CONTEXT_FACTORY, JMS_VPN_NAME, PASSWORD, URL, USERNAME}
+import io.github.datacatering.datacaterer.api.model.Constants.{DEFAULT_RABBITMQ_CONNECTION_FACTORY, DEFAULT_REAL_TIME_HEADERS_DATA_TYPE, DEFAULT_SOLACE_CONNECTION_FACTORY, JMS_CONNECTION_FACTORY, REAL_TIME_BODY_FIELD, REAL_TIME_HEADERS_FIELD, REAL_TIME_PARTITION_FIELD}
 import io.github.datacatering.datacaterer.api.model.Step
 import io.github.datacatering.datacaterer.core.exception.{FailedJmsMessageCreateException, FailedJmsMessageGetBodyException, FailedJmsMessageSendException}
-import io.github.datacatering.datacaterer.core.model.Constants.{REAL_TIME_BODY_FIELD, REAL_TIME_HEADERS_FIELD, REAL_TIME_PARTITION_FIELD}
 import io.github.datacatering.datacaterer.core.model.RealTimeSinkResult
+import io.github.datacatering.datacaterer.core.sink.jms.jndi.JndiJmsConnection
+import io.github.datacatering.datacaterer.core.sink.jms.rabbitmq.RabbitmqJmsConnection
 import io.github.datacatering.datacaterer.core.sink.{RealTimeSinkProcessor, SinkProcessor}
 import io.github.datacatering.datacaterer.core.util.RowUtil.getRowValue
+import jakarta.jms.{Connection, MessageProducer, Session, TextMessage}
 import org.apache.log4j.Logger
 import org.apache.spark.sql.Row
 import org.apache.spark.sql.types.{IntegerType, StringType}
 
 import java.nio.charset.StandardCharsets
-import java.util.Properties
-import javax.jms.{Connection, ConnectionFactory, Destination, MessageProducer, Session, TextMessage}
-import javax.naming.{Context, InitialContext}
 import scala.collection.mutable
 import scala.util.{Failure, Success, Try}
 
@@ -38,7 +37,7 @@ object JmsSinkProcessor extends RealTimeSinkProcessor[(MessageProducer, Session,
     val (messageProducer, session, connection) = getConnectionFromPool
     val message = tryCreateMessage(body, messageProducer, session, connection)
     trySendMessage(row, messageProducer, session, connection, message)
-    RealTimeSinkResult("")
+    RealTimeSinkResult()
   }
 
   private def trySendMessage(row: Row, messageProducer: MessageProducer, session: Session, connection: Connection, message: TextMessage): Unit = {
@@ -98,10 +97,14 @@ object JmsSinkProcessor extends RealTimeSinkProcessor[(MessageProducer, Session,
   }
 
   def createConnection(connectionConfig: Map[String, String], step: Step): (MessageProducer, Session, Connection) = {
-    val (connection, context) = createInitialConnection(connectionConfig)
-    val session = connection.createSession(false, Session.AUTO_ACKNOWLEDGE)
-    val destination = context.lookup(s"${step.options(JMS_DESTINATION_NAME)}").asInstanceOf[Destination]
-    val messageProducer = session.createProducer(destination)
+    val jmsConnection = connectionConfig(JMS_CONNECTION_FACTORY) match {
+      case DEFAULT_SOLACE_CONNECTION_FACTORY => new JndiJmsConnection(connectionConfig)
+      case DEFAULT_RABBITMQ_CONNECTION_FACTORY => new RabbitmqJmsConnection(connectionConfig)
+      case _ => throw new IllegalArgumentException(s"Unsupported JMS connection factory, factory=${connectionConfig(JMS_CONNECTION_FACTORY)}")
+    }
+    val connection = jmsConnection.createConnection()
+    val session = jmsConnection.createSession(connection)
+    val messageProducer = jmsConnection.createMessageProducer(connection, session, step)
     (messageProducer, session, connection)
   }
 
@@ -114,24 +117,5 @@ object JmsSinkProcessor extends RealTimeSinkProcessor[(MessageProducer, Session,
     //      connection.close()
     //      session.close()
     //    }
-  }
-
-  protected def createInitialConnection(connectionConfig: Map[String, String]): (Connection, InitialContext) = {
-    val properties: Properties = getConnectionProperties(connectionConfig)
-    val context = new InitialContext(properties)
-    val cf = context.lookup(connectionConfig(JMS_CONNECTION_FACTORY)).asInstanceOf[ConnectionFactory]
-    (cf.createConnection(), context)
-  }
-
-  def getConnectionProperties(connectionConfig: Map[String, String]): Properties = {
-    val properties = new Properties()
-    properties.put(Context.INITIAL_CONTEXT_FACTORY, connectionConfig(JMS_INITIAL_CONTEXT_FACTORY))
-    properties.put(Context.PROVIDER_URL, connectionConfig(URL))
-    properties.put(Context.SECURITY_PRINCIPAL, s"${connectionConfig(USERNAME)}@${connectionConfig(JMS_VPN_NAME)}")
-    properties.put(Context.SECURITY_CREDENTIALS, connectionConfig(PASSWORD))
-    val addedConfig = List(JMS_INITIAL_CONTEXT_FACTORY, URL, USERNAME, PASSWORD, JMS_VPN_NAME)
-    connectionConfig.filter(x => !addedConfig.contains(x._1))
-      .foreach(c => properties.put(c._1, c._2))
-    properties
   }
 }

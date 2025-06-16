@@ -1,7 +1,7 @@
 package io.github.datacatering.datacaterer.api.model
 
-import io.github.datacatering.datacaterer.api.model.Constants.DEFAULT_DATA_SOURCE_NAME
-import io.github.datacatering.datacaterer.api.util.ConfigUtil.cleanseOptions
+import io.github.datacatering.datacaterer.api.model.Constants.{DEFAULT_DATA_SOURCE_NAME, GENERATION_FORMAT, GENERATION_IS_SUCCESS, GENERATION_NAME, GENERATION_NUM_RECORDS, GENERATION_OPTIONS, GENERATION_TIME_TAKEN_SECONDS, PLAN_STAGE_FINISHED, VALIDATION_DATA_SOURCE_NAME, VALIDATION_DESCRIPTION, VALIDATION_DETAILS, VALIDATION_ERROR_THRESHOLD, VALIDATION_ERROR_VALIDATIONS, VALIDATION_IS_SUCCESS, VALIDATION_NAME, VALIDATION_NUM_ERRORS, VALIDATION_NUM_SUCCESS, VALIDATION_NUM_VALIDATIONS, VALIDATION_OPTIONS, VALIDATION_SAMPLE_ERRORS, VALIDATION_SUCCESS_RATE}
+import io.github.datacatering.datacaterer.api.util.ConfigUtil.{cleanseAdditionalOptions, cleanseOptions}
 import io.github.datacatering.datacaterer.api.util.ResultWriterUtil.getSuccessSymbol
 
 import java.time.{Duration, LocalDateTime}
@@ -32,10 +32,12 @@ case class DataSourceResult(
 
   def jsonSummary: Map[String, Any] = {
     Map(
-      "name" -> name,
-      "options" -> step.options,
-      "isSuccess" -> sinkResult.isSuccess,
-      "numRecords" -> sinkResult.count
+      GENERATION_NAME -> name,
+      GENERATION_FORMAT -> sinkResult.format,
+      GENERATION_OPTIONS -> cleanseAdditionalOptions(step.options),
+      GENERATION_IS_SUCCESS -> sinkResult.isSuccess,
+      GENERATION_NUM_RECORDS -> sinkResult.count,
+      GENERATION_TIME_TAKEN_SECONDS -> sinkResult.durationInSeconds,
     )
   }
 }
@@ -90,32 +92,39 @@ case class ValidationConfigResult(
     } else List()
   }
 
-  def jsonSummary: Map[String, Any] = {
+  def jsonSummary(hasSampleErrors: Boolean = true): Map[String, Any] = {
     val validationRes = dataSourceValidationResults.flatMap(dsv =>
       dsv.validationResults.map(v => (dsv.dataSourceName, dsv.options, v))
     )
     if (validationRes.nonEmpty) {
       val (numSuccess, successRate, isSuccess) = baseSummary(validationRes.map(_._3))
-      val errorMap = validationRes.filter(vr => !vr._3.isSuccess).map(res => {
-        val validationDetails = res._3.validation.toOptions.map(v => (v.head, v.last)).toMap
-        Map(
-          "dataSourceName" -> res._1,
-          "options" -> cleanseOptions(res._2),
-          "validation" -> validationDetails,
-          "numErrors" -> res._3.numErrors,
-          "sampleErrorValues" -> res._3.sampleErrorValues.getOrElse(Array())
-        )
-      })
+      val errorMap = validationRes
+        .filter(vr => !vr._3.isSuccess)
+        .map(res => {
+          val validationDetails = res._3.validation.toOptions.map(v => (v.head, v.last)).toMap
+          val baseDetails = Map(
+            VALIDATION_DATA_SOURCE_NAME -> res._1,
+            VALIDATION_OPTIONS -> cleanseAdditionalOptions(res._2),
+            VALIDATION_DETAILS -> validationDetails,
+            VALIDATION_NUM_ERRORS -> res._3.numErrors,
+            VALIDATION_ERROR_THRESHOLD -> res._3.validation.errorThreshold.getOrElse(0.0)
+          )
+          val sampleErrors = if (hasSampleErrors) {
+            Map(VALIDATION_SAMPLE_ERRORS -> res._3.sampleErrorValues.getOrElse(Array()))
+          } else Map()
+          baseDetails ++ sampleErrors
+        })
+
       val baseValidationMap = Map(
-        "name" -> name,
-        "description" -> description,
-        "isSuccess" -> isSuccess,
-        "numSuccess" -> numSuccess,
-        "numValidations" -> validationRes.size,
-        "successRate" -> successRate
+        VALIDATION_NAME -> name,
+        VALIDATION_DESCRIPTION -> description,
+        VALIDATION_IS_SUCCESS -> isSuccess,
+        VALIDATION_NUM_SUCCESS -> numSuccess,
+        VALIDATION_NUM_VALIDATIONS -> validationRes.size,
+        VALIDATION_SUCCESS_RATE -> successRate
       )
       if (errorMap.nonEmpty) {
-        baseValidationMap ++ Map("errorValidations" -> errorMap)
+        baseValidationMap ++ Map(VALIDATION_ERROR_VALIDATIONS -> errorMap)
       } else baseValidationMap
     } else Map()
   }
@@ -151,8 +160,12 @@ object ValidationResult {
 
 case class PlanResults(
                         plan: Plan,
-                        generationResult: List[DataSourceResult],
-                        validationResults: List[ValidationConfigResult]
+                        generationResult: List[Map[String, Any]],
+                        validationResult: List[Map[String, Any]],
+                        generationSuccessful: Boolean = true,
+                        validationSuccessful: Boolean = true,
+                        stage: String = PLAN_STAGE_FINISHED,
+                        exception: Option[String] = None
                       )
 
 case class PlanRunSummary(

@@ -6,24 +6,30 @@ import io.github.datacatering.datacaterer.api.util.ConfigUtil
 import io.github.datacatering.datacaterer.core.exception.UnsupportedDataFormatForTrackingException
 import io.github.datacatering.datacaterer.core.generator.metadata.ExpressionPredictor
 import io.github.datacatering.datacaterer.core.generator.metadata.datasource.DataSourceMetadata
+import io.github.datacatering.datacaterer.core.generator.metadata.datasource.database.CassandraMetadata
 import io.github.datacatering.datacaterer.core.generator.metadata.datasource.confluentschemaregistry.ConfluentSchemaRegistryMetadata
-import io.github.datacatering.datacaterer.core.generator.metadata.datasource.database.{CassandraMetadata, FieldMetadata, MysqlMetadata, PostgresMetadata}
+import io.github.datacatering.datacaterer.core.generator.metadata.datasource.database.FieldMetadata
 import io.github.datacatering.datacaterer.core.generator.metadata.datasource.datacontractcli.DataContractCliDataSourceMetadata
 import io.github.datacatering.datacaterer.core.generator.metadata.datasource.file.FileMetadata
 import io.github.datacatering.datacaterer.core.generator.metadata.datasource.greatexpectations.GreatExpectationsDataSourceMetadata
 import io.github.datacatering.datacaterer.core.generator.metadata.datasource.http.HttpMetadata
 import io.github.datacatering.datacaterer.core.generator.metadata.datasource.jms.JmsMetadata
-import io.github.datacatering.datacaterer.core.generator.metadata.datasource.opendatacontractstandard.OpenDataContractStandardDataSourceMetadata
+import io.github.datacatering.datacaterer.core.generator.metadata.datasource.jsonschema.JsonSchemaDataSourceMetadata
+import io.github.datacatering.datacaterer.core.generator.metadata.datasource.database.MysqlMetadata
 import io.github.datacatering.datacaterer.core.generator.metadata.datasource.openlineage.OpenLineageMetadata
 import io.github.datacatering.datacaterer.core.generator.metadata.datasource.openmetadata.OpenMetadataDataSourceMetadata
+import io.github.datacatering.datacaterer.core.generator.metadata.datasource.opendatacontractstandard.OpenDataContractStandardDataSourceMetadata
+import io.github.datacatering.datacaterer.core.generator.metadata.datasource.database.PostgresMetadata
+import io.github.datacatering.datacaterer.core.util.ValidationUtil.cleanValidationIdentifier
 import org.apache.log4j.Logger
 import org.apache.spark.sql.catalyst.TableIdentifier
 import org.apache.spark.sql.catalyst.catalog.CatalogColumnStat
 import org.apache.spark.sql.execution.command.AnalyzeColumnCommand
-import org.apache.spark.sql.types.{BinaryType, BooleanType, DataType, DateType, DecimalType, DoubleType, FloatType, IntegerType, LongType, Metadata, MetadataBuilder, ShortType, StringType, StructField, StructType, TimestampType}
+import org.apache.spark.sql.types.{BinaryType, BooleanType, DataType, DateType, DecimalType, DoubleType, FloatType, IntegerType, LongType, Metadata, MetadataBuilder, ShortType, StringType, StructField, StructType, TimestampType, ArrayType}
 import org.apache.spark.sql.{DataFrame, Dataset, Encoder, Encoders, SparkSession}
 
 import scala.util.{Failure, Success, Try}
+import io.github.datacatering.datacaterer.api.model.Step
 
 object MetadataUtil {
 
@@ -41,18 +47,88 @@ object MetadataUtil {
     Metadata.fromJson(OBJECT_MAPPER.writeValueAsString(mapMetadata))
   }
 
+  /**
+   * Map to StructFields with ExpressionPredictor applied - used for sink/generation phase
+   */
   def mapToStructFields(
                          sourceData: DataFrame,
                          dataSourceReadOptions: Map[String, String],
                          fieldDataProfilingMetadata: List[DataProfilingMetadata]
                        )(implicit sparkSession: SparkSession): Array[StructField] = {
-    mapToStructFields(sourceData, dataSourceReadOptions, fieldDataProfilingMetadata, sparkSession.emptyDataset[FieldMetadata])
+    mapToStructFieldsWithPredictions(sourceData, dataSourceReadOptions, fieldDataProfilingMetadata, sparkSession.emptyDataset[FieldMetadata])
   }
 
+  /**
+   * Map to StructFields with ExpressionPredictor applied - used for sink/generation phase
+   */
   def mapToStructFields(sourceData: DataFrame, dataSourceReadOptions: Map[String, String],
                         fieldDataProfilingMetadata: List[DataProfilingMetadata],
                         additionalFieldMetadata: Dataset[FieldMetadata])(implicit sparkSession: SparkSession): Array[StructField] = {
-    if (!additionalFieldMetadata.storageLevel.useMemory) additionalFieldMetadata.cache()
+    mapToStructFieldsWithPredictions(sourceData, dataSourceReadOptions, fieldDataProfilingMetadata, additionalFieldMetadata)
+  }
+
+  /**
+   * Map to StructFields for metadata extraction phase - NO ExpressionPredictor applied
+   */
+  def mapToStructFieldsForMetadataExtraction(additionalFieldMetadata: Dataset[FieldMetadata], dataSourceReadOptions: Map[String, String]): Array[StructField] = {
+    val colsMetadata = additionalFieldMetadata.collect()
+    val targetMetadataId = dataSourceReadOptions.getOrElse(METADATA_IDENTIFIER, "")
+    
+    val matchedColMetadata = colsMetadata.filter(fm => {
+      val fieldMetadataId = fm.dataSourceReadOptions.getOrElse(METADATA_IDENTIFIER, "")
+      fieldMetadataId.equals(targetMetadataId)
+    })
+    
+    getStructFieldsForMetadataExtraction(matchedColMetadata)
+  }
+
+  /**
+   * Map to StructFields for metadata extraction phase - NO ExpressionPredictor applied
+   */
+  def mapToStructFieldsForMetadataExtraction(sourceData: DataFrame, dataSourceReadOptions: Map[String, String],
+                        fieldDataProfilingMetadata: List[DataProfilingMetadata],
+                        additionalFieldMetadata: Dataset[FieldMetadata])(implicit sparkSession: SparkSession): Array[StructField] = {
+    
+    val dataSourceAdditionalFieldMetadata = additionalFieldMetadata.filter(_.dataSourceReadOptions.equals(dataSourceReadOptions))
+    val primaryKeys = dataSourceAdditionalFieldMetadata.filter(_.metadata.get(IS_PRIMARY_KEY).exists(_.toBoolean))
+    val primaryKeyCount = primaryKeys.count()
+
+    val fieldsWithMetadata = sourceData.schema.fields.map(field => {
+      val baseMetadata = new MetadataBuilder().withMetadata(field.metadata)
+      fieldDataProfilingMetadata.find(_.fieldName == field.name).foreach(c => baseMetadata.withMetadata(mapToMetadata(c.metadata)))
+
+      var nullable = field.nullable
+      val optFieldAdditionalMetadata = dataSourceAdditionalFieldMetadata.filter(_.field == field.name)
+      if (!optFieldAdditionalMetadata.isEmpty) {
+        val fieldAdditionalMetadata = optFieldAdditionalMetadata.first()
+        fieldAdditionalMetadata.metadata.foreach(m => {
+          if (m._1.equals(IS_NULLABLE)) nullable = m._2.toBoolean
+          baseMetadata.putString(m._1, String.valueOf(m._2))
+        })
+        val isPrimaryKey = fieldAdditionalMetadata.metadata.get(IS_PRIMARY_KEY).exists(_.toBoolean)
+        if (isPrimaryKey && primaryKeyCount == 1) {
+          baseMetadata.putString(IS_UNIQUE, "true")
+        }
+      }
+      val updatedField = StructField(field.name, field.dataType, nullable, baseMetadata.build())
+      // NO ExpressionPredictor applied here - this is metadata extraction phase
+      updatedField
+    })
+
+    if (sparkSession.catalog.tableExists(TEMP_CACHED_TABLE_NAME)) {
+      sparkSession.catalog.uncacheTable(TEMP_CACHED_TABLE_NAME)
+    }
+    additionalFieldMetadata.unpersist()
+    fieldsWithMetadata
+  }
+
+  /**
+   * PRIVATE: Map to StructFields with ExpressionPredictor applied - used for sink/generation phase
+   */
+  private def mapToStructFieldsWithPredictions(sourceData: DataFrame, dataSourceReadOptions: Map[String, String],
+                        fieldDataProfilingMetadata: List[DataProfilingMetadata],
+                        additionalFieldMetadata: Dataset[FieldMetadata])(implicit sparkSession: SparkSession): Array[StructField] = {
+    
     val dataSourceAdditionalFieldMetadata = additionalFieldMetadata.filter(_.dataSourceReadOptions.equals(dataSourceReadOptions))
     val primaryKeys = dataSourceAdditionalFieldMetadata.filter(_.metadata.get(IS_PRIMARY_KEY).exists(_.toBoolean))
     val primaryKeyCount = primaryKeys.count()
@@ -81,25 +157,40 @@ object MetadataUtil {
     if (sparkSession.catalog.tableExists(TEMP_CACHED_TABLE_NAME)) {
       sparkSession.catalog.uncacheTable(TEMP_CACHED_TABLE_NAME)
     }
+    additionalFieldMetadata.unpersist()
     fieldsWithMetadata
   }
 
-  def mapToStructFields(additionalFieldMetadata: Dataset[FieldMetadata], dataSourceReadOptions: Map[String, String]): Array[StructField] = {
-    val colsMetadata = additionalFieldMetadata.collect()
-    val matchedColMetadata = colsMetadata.filter(_.dataSourceReadOptions.getOrElse(METADATA_IDENTIFIER, "").equals(dataSourceReadOptions(METADATA_IDENTIFIER)))
-    getStructFields(matchedColMetadata)
-  }
-
-  private def getStructFields(colsMetadata: Array[FieldMetadata]): Array[StructField] = {
+  /**
+   * PRIVATE: Get StructFields for metadata extraction phase - NO ExpressionPredictor applied
+   */
+  private def getStructFieldsForMetadataExtraction(colsMetadata: Array[FieldMetadata]): Array[StructField] = {
     colsMetadata.map(colMetadata => {
       var dataType = DataType.fromDDL(colMetadata.metadata.getOrElse(FIELD_DATA_TYPE, DEFAULT_FIELD_TYPE))
-      if (colMetadata.nestedFields.nonEmpty && dataType.typeName == "struct") {
-        dataType = StructType(getStructFields(colMetadata.nestedFields.toArray))
+      
+      // Handle nested structures and arrays with proper metadata preservation
+      if (colMetadata.nestedFields.nonEmpty) {
+        if (dataType.typeName == "struct") {
+          // For struct types, recursively process nested fields and preserve their metadata
+          val nestedStructFields = getStructFieldsForMetadataExtraction(colMetadata.nestedFields.toArray)
+          dataType = StructType(nestedStructFields)
+        } else if (dataType.typeName == "array") {
+          // For array types, check if the element type should be a struct with nested fields
+          val arrayType = dataType.asInstanceOf[ArrayType]
+          if (arrayType.elementType.typeName == "struct" || colMetadata.nestedFields.nonEmpty) {
+            // Create a struct type from the nested fields for the array element
+            val nestedStructFields = getStructFieldsForMetadataExtraction(colMetadata.nestedFields.toArray)
+            val elementStructType = StructType(nestedStructFields)
+            dataType = ArrayType(elementStructType, arrayType.containsNull)
+          }
+        }
       }
+      
       val nullable = colMetadata.metadata.get(IS_NULLABLE).map(_.toBoolean).getOrElse(DEFAULT_FIELD_NULLABLE)
       val metadata = mapToMetadata(colMetadata.metadata)
       val baseField = StructField(colMetadata.field, dataType, nullable, metadata)
-      ExpressionPredictor.getFieldPredictions(baseField)
+      // NO ExpressionPredictor applied here - this is metadata extraction phase
+      baseField
     })
   }
 
@@ -190,14 +281,14 @@ object MetadataUtil {
         s"$schema/$table"
       case CASSANDRA =>
         s"${step.options(CASSANDRA_KEYSPACE)}/${step.options(CASSANDRA_TABLE)}"
-      case PARQUET | CSV | JSON | DELTA | ORC =>
+      case PARQUET | CSV | JSON | DELTA | ORC | DELTA | ICEBERG =>
         step.options(PATH).replaceAll("s3(a|n?)://|wasb(s?)://|gs://|file://|hdfs://[a-zA-Z0-9]+:[0-9]+", "")
-      case JMS =>
+      case JMS | RABBITMQ | SOLACE =>
         step.options(JMS_DESTINATION_NAME)
       case KAFKA =>
         step.options(KAFKA_TOPIC)
       case HTTP =>
-        step.name
+        cleanValidationIdentifier(step.name)
       case _ =>
         LOGGER.warn(s"Unsupported data format for record tracking, format=$lowerFormat")
         throw UnsupportedDataFormatForTrackingException(lowerFormat)
@@ -220,6 +311,7 @@ object MetadataUtil {
           case OPEN_DATA_CONTRACT_STANDARD => Some(OpenDataContractStandardDataSourceMetadata(connectionConfig._1, format, connectionConfig._2))
           case DATA_CONTRACT_CLI => Some(DataContractCliDataSourceMetadata(connectionConfig._1, format, connectionConfig._2))
           case CONFLUENT_SCHEMA_REGISTRY => Some(ConfluentSchemaRegistryMetadata(connectionConfig._1, format, connectionConfig._2))
+          case JSON_SCHEMA => Some(JsonSchemaDataSourceMetadata(connectionConfig._1, format, connectionConfig._2))
           case metadataSourceType =>
             LOGGER.warn(s"Unsupported external metadata source, connection-name=${connectionConfig._1}, metadata-source-type=$metadataSourceType")
             None
@@ -233,7 +325,7 @@ object MetadataUtil {
             LOGGER.warn(s"Metadata extraction not supported for JDBC driver type '$driver', connection-name=${connectionConfig._1}")
             None
         }
-      case (_, CSV | JSON | PARQUET | DELTA | ORC) => Some(FileMetadata(connectionConfig._1, format, connectionConfig._2))
+      case (_, CSV | JSON | PARQUET | DELTA | ORC | ICEBERG) => Some(FileMetadata(connectionConfig._1, format, connectionConfig._2))
       case (_, HTTP) => Some(HttpMetadata(connectionConfig._1, format, connectionConfig._2))
       case (_, JMS) => Some(JmsMetadata(connectionConfig._1, format, connectionConfig._2))
       case _ =>

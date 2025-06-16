@@ -2,10 +2,7 @@ package io.github.datacatering.datacaterer.core.generator.metadata.datasource
 
 import io.github.datacatering.datacaterer.api.PlanRun
 import io.github.datacatering.datacaterer.core.util.SparkSuite
-import org.junit.runner.RunWith
-import org.scalatestplus.junit.JUnitRunner
 
-@RunWith(classOf[JUnitRunner])
 class DataSourceMetadataFactoryTest extends SparkSuite {
 
   class ManualGenerationPlan extends PlanRun {

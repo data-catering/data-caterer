@@ -1,91 +1,115 @@
 package io.github.datacatering.datacaterer.core.util
 
-import io.github.datacatering.datacaterer.api.model.{ForeignKeyRelation, Plan, Step, Task, TaskSummary}
+import io.github.datacatering.datacaterer.api.model.Constants.DEFAULT_ENABLE_UNIQUE_CHECK_ONLY_WITHIN_BATCH
+import io.github.datacatering.datacaterer.api.model.{ForeignKeyRelation, GenerationConfig, Plan, Step, Task, TaskSummary}
 import io.github.datacatering.datacaterer.core.util.PlanImplicits.{PerFieldCountOps, StepOps}
 import org.apache.log4j.Logger
-import org.apache.spark.sql.functions.col
+import org.apache.spark.broadcast.Broadcast
+import org.apache.spark.sql.functions.{array, col, udf}
 import org.apache.spark.sql.{DataFrame, Dataset, Row, SparkSession}
+import org.apache.spark.util.sketch.BloomFilter
 
-class UniqueFieldsUtil(plan: Plan, executableTasks: List[(TaskSummary, Task)])(implicit sparkSession: SparkSession) {
+class UniqueFieldsUtil(
+                        plan: Plan,
+                        executableTasks: List[(TaskSummary, Task)],
+                        enableUniqueCheckOnlyInBatch: Boolean = DEFAULT_ENABLE_UNIQUE_CHECK_ONLY_WITHIN_BATCH,
+                        generationConfig: GenerationConfig = GenerationConfig()
+                      )(implicit sparkSession: SparkSession) {
 
   private val LOGGER = Logger.getLogger(getClass.getName)
 
-  var uniqueFieldsDf: Map[UniqueFields, DataFrame] = getUniqueFields
+  var uniqueFieldsDf: Map[UniqueFields, Broadcast[BloomFilter]] = getUniqueFields
 
   def getUniqueFieldsValues(dataSourceStep: String, df: DataFrame, step: Step): DataFrame = {
     LOGGER.debug(s"Only keeping unique values for generated data, data-source-step=$dataSourceStep")
     //get all the unique values that have been generated for each field so far
     val existingFieldValues = uniqueFieldsDf.filter(uniqueDf => uniqueDf._1.getDataSourceName == dataSourceStep)
-    var finalDf = df
-    if (!finalDf.storageLevel.useMemory) finalDf.cache()
+    val initialDf = df // Rename df to initialDf to avoid confusion
+    if (!initialDf.storageLevel.useMemory) initialDf.cache()
 
-    //drop duplicate records for data via dropDuplicates and then anti join with previously generated values
-    existingFieldValues.foreach(previouslyGenerated => {
+    val finalDf = existingFieldValues.foldLeft(initialDf) { (currentDf, previouslyGenerated) =>
       val fields = previouslyGenerated._1.fields
       LOGGER.debug(s"Only keeping unique values for generated data for fields, " +
         s"data-source-step=$dataSourceStep, fields=${fields.mkString(",")}")
+
       //check if it is a nested field, need to bring field to top level before dropping duplicates
       val dfWithUnique = if (fields.exists(c => c.contains("."))) {
         LOGGER.debug("Nested fields exist, required to bring to top level data frame before dropping duplicates")
         val mappedCols = fields.map(c => if (c.contains(".")) c -> s"_dedup_$c" else c -> c).toMap
         val dedupCols = mappedCols.values.filter(c => c.startsWith("_dedup_")).toList
-        finalDf.withColumns(mappedCols.filter(_._2.startsWith("_dedup_")).map(c => c._2 -> col(c._1)))
+        currentDf.withColumns(mappedCols.filter(_._2.startsWith("_dedup_")).map(c => c._2 -> col(c._1)))
           .dropDuplicates(mappedCols.values.toList)
           .drop(dedupCols: _*)
       } else {
-        finalDf.dropDuplicates(fields)
+        currentDf.dropDuplicates(fields)
       }
-      //if there is a perField count, then need to create unique set of values, then run a left semi join with original dataset
-      finalDf = if (step.count.perField.isDefined) {
-        getUniqueWithPerFieldCount(step, finalDf, previouslyGenerated, fields, dfWithUnique)
-      } else if (previouslyGenerated._2.columns.nonEmpty) {
-        dfWithUnique.join(previouslyGenerated._2, fields, "left_anti")
+      if (!dfWithUnique.storageLevel.useMemory) dfWithUnique.cache()
+
+      val filterGlobalUniqueDf = if (!enableUniqueCheckOnlyInBatch) {
+        filterUniqueRecords(dfWithUnique, previouslyGenerated)
       } else {
         dfWithUnique
       }
-    })
+      if (!filterGlobalUniqueDf.storageLevel.useMemory) filterGlobalUniqueDf.cache()
+      dfWithUnique.unpersist()
 
-    //update the map with the latest values
-    existingFieldValues.foreach(col => {
-      LOGGER.debug("Updating list of existing generated record value to ensure uniqueness")
-      val existingDf = uniqueFieldsDf(col._1)
-      val newFieldValuesDf = finalDf.selectExpr(col._1.fields: _*)
-      if (!existingDf.storageLevel.useMemory) existingDf.cache()
-      if (!newFieldValuesDf.storageLevel.useMemory) newFieldValuesDf.cache()
-      val combinedValuesDf = if (existingDf.isEmpty) newFieldValuesDf else newFieldValuesDf.union(existingDf)
-      if (!combinedValuesDf.storageLevel.useMemory) combinedValuesDf.cache()
-      uniqueFieldsDf = uniqueFieldsDf ++ Map(col._1 -> combinedValuesDf)
-    })
+      val resultDf = if (step.count.perField.isDefined) {
+        getUniqueWithPerFieldCount(step, previouslyGenerated, filterGlobalUniqueDf)
+      } else {
+        filterGlobalUniqueDf
+      }
+      resultDf.cache()
+      resultDf
+    }
+
+    finalDf.cache()
     finalDf
   }
 
   private def getUniqueWithPerFieldCount(
-                                           step: Step,
-                                           finalDf: DataFrame,
-                                           previouslyGenerated: (UniqueFields, DataFrame),
-                                           fields: List[String],
-                                           dfWithUnique: Dataset[Row]
-                                         ): DataFrame = {
+                                          step: Step,
+                                          previouslyGenerated: (UniqueFields, Broadcast[BloomFilter]),
+                                          dfWithUnique: Dataset[Row]
+                                        ): DataFrame = {
     LOGGER.debug(s"Per field count is defined, removing any records with number of rows greater than max, " +
       s"data-source-name=${previouslyGenerated._1.dataSource} step=${previouslyGenerated._1.step}")
     val perFieldCount = step.count.perField.get
-    val dfUnique = if (previouslyGenerated._2.columns.nonEmpty) {
-      dfWithUnique.join(previouslyGenerated._2, fields, "left_anti")
-    } else {
-      dfWithUnique
-    }
 
     //filter out those who have num records greater than max per field
     val maxPerField = perFieldCount.maxCountPerField
-    val rowsAboveMaxPerField = finalDf
+    val rowsAboveMaxPerField = dfWithUnique
       .groupBy(perFieldCount.fieldNames.map(col): _*)
       .count()
       .filter(s"count > $maxPerField")
-    val dfWithoutRowsAboveMaxPerField = finalDf.join(rowsAboveMaxPerField, perFieldCount.fieldNames, "left_anti")
-    dfWithoutRowsAboveMaxPerField.join(dfUnique, fields, "left_semi")
+    dfWithUnique.join(rowsAboveMaxPerField, perFieldCount.fieldNames, "left_anti")
   }
 
-  private def getUniqueFields: Map[UniqueFields, DataFrame] = {
+  def filterUniqueRecords(df: Dataset[Row], previouslyGenerated: (UniqueFields, Broadcast[BloomFilter])): DataFrame = {
+    val fields = previouslyGenerated._1.fields
+    val filter = previouslyGenerated._2.value // Access the broadcast Bloom Filter
+    // UDF to check if a composite key (from multiple columns) is unique
+    val isUniqueUDF = udf((values: Seq[String]) => {
+      val compositeKey = values.mkString("|") // Join multiple column values as a unique key
+      !filter.mightContain(compositeKey) // Check in Bloom Filter
+    })
+
+    // Create a new column with the concatenated unique key
+    val withUniqueKey = df.withColumn("composite_key", array(fields.map(col): _*))
+
+    // Filter out duplicates (but not for array fields)
+    val uniqueDF = withUniqueKey.filter(isUniqueUDF(col("composite_key"))).drop("composite_key")
+    uniqueDF.cache()
+
+    // Update Bloom Filter with new unique values
+    uniqueDF.selectExpr(s"concat_ws('|', ${fields.mkString(", ")}) as unique_key")
+      .collect()
+      .foreach(row => filter.put(row.getString(0)))
+    // Re-broadcast the updated Bloom Filter for future batches
+    uniqueFieldsDf += (previouslyGenerated._1 -> sparkSession.sparkContext.broadcast(filter))
+    uniqueDF
+  }
+
+  private def getUniqueFields: Map[UniqueFields, Broadcast[BloomFilter]] = {
     def uniqueFieldFromForeignKeyRelation(foreignKeyRelation: ForeignKeyRelation): UniqueFields = {
       UniqueFields(foreignKeyRelation.dataSource, foreignKeyRelation.step, foreignKeyRelation.fields)
     }
@@ -114,9 +138,19 @@ class UniqueFieldsUtil(plan: Plan, executableTasks: List[(TaskSummary, Task)])(i
           allKeys
         })
     })
-    (foreignKeyUniqueFields ++ taskUniqueFields).map(uc => (uc, sparkSession.emptyDataFrame)).toMap
+    (foreignKeyUniqueFields ++ taskUniqueFields).map(uc => {
+      val bloomFilter = BloomFilter.create(generationConfig.uniqueBloomFilterNumItems, generationConfig.uniqueBloomFilterFalsePositiveProbability)
+      val bloomFilterBC = sparkSession.sparkContext.broadcast(bloomFilter)
+      (uc, bloomFilterBC)
+    }).toMap
   }
 
+  def cleanup(): Unit = {
+    uniqueFieldsDf.foreach(u => {
+      u._2.unpersist()
+      u._2.destroy()
+    })
+  }
 }
 
 case class UniqueFields(dataSource: String, step: String, fields: List[String]) {

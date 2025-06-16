@@ -1,0 +1,19 @@
+name: "http_plan"
+description: "Create account data in HTTP"
+tasks:
+  - name: "http_openapi"
+    dataSourceName: "http"
+
+sinkOptions:
+  foreignKeys:
+    - source:
+        dataSource: "http"
+        step: "POST/pets"
+        fields: ["id"]
+      generate:
+        - dataSource: "http"
+          step: "GET/pets/{id}"
+          fields: ["pathParamid"]
+        - dataSource: "http"
+          step: "DELETE/pets/{id}"
+          fields: ["pathParamid"]

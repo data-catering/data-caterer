@@ -1,21 +1,17 @@
 package io.github.datacatering.datacaterer.core.sink.jms
 
+import io.github.datacatering.datacaterer.api.model.Constants.{REAL_TIME_BODY_FIELD, REAL_TIME_HEADERS_FIELD, REAL_TIME_PARTITION_FIELD, REAL_TIME_URL_FIELD}
 import io.github.datacatering.datacaterer.api.model.{Count, Field, Step}
-import io.github.datacatering.datacaterer.core.model.Constants.{REAL_TIME_BODY_FIELD, REAL_TIME_HEADERS_FIELD, REAL_TIME_PARTITION_FIELD, REAL_TIME_URL_FIELD}
 import io.github.datacatering.datacaterer.core.util.SparkSuite
+import jakarta.jms.{Connection, Message, MessageProducer, Session, TextMessage}
 import org.apache.spark.sql.catalyst.expressions.GenericRowWithSchema
 import org.apache.spark.sql.types.{ArrayType, BinaryType, IntegerType, StringType, StructField, StructType}
-import org.junit.runner.RunWith
 import org.scalamock.scalatest.MockFactory
 import org.scalamock.util.Defaultable
-import org.scalatestplus.junit.JUnitRunner
 
 import java.util
-import javax.jms.{Connection, Message, MessageProducer, Session, TextMessage}
-import javax.naming.Context
 import scala.collection.mutable
 
-@RunWith(classOf[JUnitRunner])
 class JmsSinkProcessorTest extends SparkSuite with MockFactory {
 
   private val mockConnection = mock[Connection]
@@ -79,27 +75,6 @@ class JmsSinkProcessorTest extends SparkSuite with MockFactory {
     (mockMessage.setJMSPriority(_: Int)).expects(4).once()
     (mockMessageProducer.send(_: Message)).expects(*).once()
     jmsSinkProcessor.pushRowToSink(mockRow)
-  }
-
-  test("Can get all required connection properties for JMS") {
-    val connectionConfig = Map(
-      "initialContextFactory" -> "com.solacesystems.jndi.SolJNDIInitialContextFactory",
-      "url" -> "smf://localhost:55555",
-      "vpnName" -> "default",
-      "user" -> "admin",
-      "password" -> "admin"
-    )
-
-    val res = JmsSinkProcessor.getConnectionProperties(connectionConfig)
-    assertResult(4)(res.size())
-    assert(res.containsKey(Context.INITIAL_CONTEXT_FACTORY))
-    assertResult(connectionConfig("initialContextFactory"))(res.getProperty(Context.INITIAL_CONTEXT_FACTORY))
-    assert(res.containsKey(Context.SECURITY_PRINCIPAL))
-    assertResult(connectionConfig("user") + "@" + connectionConfig("vpnName"))(res.getProperty(Context.SECURITY_PRINCIPAL))
-    assert(res.containsKey(Context.SECURITY_CREDENTIALS))
-    assertResult(connectionConfig("password"))(res.getProperty(Context.SECURITY_CREDENTIALS))
-    assert(res.containsKey(Context.PROVIDER_URL))
-    assertResult(connectionConfig("url"))(res.getProperty(Context.PROVIDER_URL))
   }
 
   test("Throw exception when incomplete connection configuration provided") {

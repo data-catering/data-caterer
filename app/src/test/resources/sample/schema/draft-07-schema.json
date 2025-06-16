@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "$id": "https://example.com/draft07.schema.json",
+  "title": "Draft 07 Schema",
+  "description": "A schema using JSON Schema Draft 07 for compatibility testing",
+  "type": "object",
+  "definitions": {
+    "phoneNumber": {
+      "type": "string",
+      "pattern": "^\\+?[1-9]\\d{1,14}$"
+    }
+  },
+  "properties": {
+    "id": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 100
+    },
+    "phone": {
+      "$ref": "#/definitions/phoneNumber"
+    },
+    "tags": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "uniqueItems": true
+    }
+  },
+  "required": ["id", "name"],
+  "additionalProperties": false
+} 

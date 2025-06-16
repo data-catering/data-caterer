@@ -36,7 +36,28 @@ and deep dive into issues [from the generated report](https://data.catering/late
 
 ## Quick start
 
-[Follow quick start instructions from here](https://data.catering/latest/get-started/quick-start/).
+1. Docker
+   ```shell
+   docker run -d -i -p 9898:9898 -e DEPLOY_MODE=standalone --name datacaterer datacatering/data-caterer:0.16.0
+   ```
+   [Open localhost:9898](http://localhost:9898).
+1. [Run Scala/Java examples](#run-scalajava-examples)
+   ```shell
+   git clone git@github.com:data-catering/data-caterer-example.git
+   cd data-caterer-example && ./run.sh
+   #check results under docker/sample/report/index.html folder
+   ```
+1. [UI App: Mac download](https://nightly.link/data-catering/data-caterer/workflows/build/main/data-caterer-mac.zip)
+1. [UI App: Windows download](https://nightly.link/data-catering/data-caterer/workflows/build/main/data-caterer-windows.zip)
+   1. After downloading, go to 'Downloads' folder and 'Extract All' from data-caterer-windows
+   1. Double-click 'DataCaterer-1.0.0' to install Data Caterer
+   1. Click on 'More info' then at the bottom, click 'Run anyway'
+   1. Go to '/Program Files/DataCaterer' folder and run DataCaterer application
+   1. If your browser doesn't open, go to [http://localhost:9898](http://localhost:9898) in your preferred browser
+1. [UI App: Linux download](https://nightly.link/data-catering/data-caterer/workflows/build/main/data-caterer-linux.zip)
+
+[Follow quick start instructions from here if you want more details](https://data.catering/latest/get-started/quick-start/).
+
 
 ## Integrations
 
@@ -70,6 +91,7 @@ Data Caterer supports the below data sources. [Check here for the full roadmap](
 | Messaging        | Pulsar                             | ❌       |
 | Metadata         | Data Contract CLI                  | ✅       |
 | Metadata         | Great Expectations                 | ✅       |
+| Metadata         | JSON Schema                        | ✅       |
 | Metadata         | Marquez                            | ✅       |
 | Metadata         | OpenAPI/Swagger                    | ✅       |
 | Metadata         | OpenMetadata                       | ✅       |
@@ -278,3 +300,4 @@ http("my_http")
 parquet("customer_parquet", "/data/parquet/customer")
   .validations(metadataSource.greatExpectations("/data/great-expectations/taxi-expectations.json"))
 ```
+

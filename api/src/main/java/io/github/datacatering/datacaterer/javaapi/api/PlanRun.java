@@ -19,6 +19,7 @@ import io.github.datacatering.datacaterer.api.TasksBuilder;
 import io.github.datacatering.datacaterer.api.ValidationBuilder;
 import io.github.datacatering.datacaterer.api.ValidationConfigurationBuilder;
 import io.github.datacatering.datacaterer.api.WaitConditionBuilder;
+import io.github.datacatering.datacaterer.api.connection.BigQueryBuilder;
 import io.github.datacatering.datacaterer.api.connection.CassandraBuilder;
 import io.github.datacatering.datacaterer.api.connection.ConnectionTaskBuilder;
 import io.github.datacatering.datacaterer.api.connection.FileBuilder;
@@ -26,6 +27,7 @@ import io.github.datacatering.datacaterer.api.connection.HttpBuilder;
 import io.github.datacatering.datacaterer.api.connection.KafkaBuilder;
 import io.github.datacatering.datacaterer.api.connection.MySqlBuilder;
 import io.github.datacatering.datacaterer.api.connection.PostgresBuilder;
+import io.github.datacatering.datacaterer.api.connection.RabbitmqBuilder;
 import io.github.datacatering.datacaterer.api.connection.SolaceBuilder;
 import io.github.datacatering.datacaterer.api.model.ForeignKeyRelation;
 
@@ -36,12 +38,19 @@ import java.util.Map;
 import static io.github.datacatering.datacaterer.api.converter.Converters.toScalaList;
 import static io.github.datacatering.datacaterer.api.converter.Converters.toScalaMap;
 
-/*
- * An abstract class representing a plan run.
+/**
+ * The PlanRun class provides a set of methods to create a data catering plan and execute it.
  */
 public abstract class PlanRun {
 
     private io.github.datacatering.datacaterer.api.PlanRun basePlanRun = new BasePlanRun();
+
+    /**
+     * Default constructor for PlanRun.
+     */
+    protected PlanRun() {
+        // No-op constructor
+    }
 
     /**
      * Gets the base PlanRun instance.
@@ -223,6 +232,38 @@ public abstract class PlanRun {
     }
 
     /**
+     * Creates a ForeignKeyRelation instance with the provided ConnectionTaskBuilder and field.
+     * It assumes there is only one step inside the ConnectionTaskBuilder.
+     *
+     * @param connectionTaskBuilder The ConnectionTaskBuilder instance representing the task.
+     * @param field                 The list of fields for the ForeignKeyRelation.
+     * @return A ForeignKeyRelation instance.
+     */
+    public ForeignKeyRelation foreignField(ConnectionTaskBuilder<?> connectionTaskBuilder, String field) {
+        return new ForeignKeyRelation(
+                connectionTaskBuilder.connectionConfigWithTaskBuilder().dataSourceName(),
+                connectionTaskBuilder.getStep().step().name(),
+                toScalaList(List.of(field))
+        );
+    }
+
+    /**
+     * Creates a ForeignKeyRelation instance with the provided ConnectionTaskBuilder and fields.
+     * It assumes there is only one step inside the ConnectionTaskBuilder.
+     *
+     * @param connectionTaskBuilder The ConnectionTaskBuilder instance representing the task.
+     * @param fields                The list of fields for the ForeignKeyRelation.
+     * @return A ForeignKeyRelation instance.
+     */
+    public ForeignKeyRelation foreignField(ConnectionTaskBuilder<?> connectionTaskBuilder, List<String> fields) {
+        return new ForeignKeyRelation(
+                connectionTaskBuilder.connectionConfigWithTaskBuilder().dataSourceName(),
+                connectionTaskBuilder.getStep().step().name(),
+                toScalaList(fields)
+        );
+    }
+
+    /**
      * Creates a ForeignKeyRelation instance with the provided ConnectionTaskBuilder, step, and fields.
      *
      * @param connectionTaskBuilder The ConnectionTaskBuilder instance representing the task.
@@ -337,16 +378,16 @@ public abstract class PlanRun {
      * @return A FileBuilder instance for the Iceberg table.
      */
 
-    public FileBuilder iceberg(String name, String path, String tableName) {
-        return basePlanRun.icebergJava(name, path, tableName);
+    public FileBuilder iceberg(String name, String tableName, String path) {
+        return basePlanRun.icebergJava(name, tableName, path);
     }
 
     /**
      * Creates a FileBuilder instance for an Iceberg table with the provided parameters.
      *
      * @param name        The name of the FileBuilder instance.
-     * @param path        The path to the Iceberg table.
      * @param tableName   The name of the Iceberg table.
+     * @param path        The path to the Iceberg table.
      * @param catalogType The type of the Iceberg catalog.
      * @param catalogUri  The URI of the Iceberg catalog.
      * @param options     A map of options to be used for the Iceberg table.
@@ -354,13 +395,13 @@ public abstract class PlanRun {
      */
     public FileBuilder iceberg(
             String name,
-            String path,
             String tableName,
+            String path,
             String catalogType,
             String catalogUri,
             Map<String, String> options
     ) {
-        return basePlanRun.iceberg(name, path, tableName, catalogType, catalogUri, toScalaMap(options));
+        return basePlanRun.iceberg(name, tableName, path, catalogType, catalogUri, toScalaMap(options));
     }
 
     /**
@@ -513,6 +554,106 @@ public abstract class PlanRun {
             ConnectionTaskBuilder<CassandraBuilder> connectionTaskBuilder
     ) {
         return basePlanRun.cassandra(connectionTaskBuilder);
+    }
+
+    /**
+     * Creates a BigQueryBuilder instance with name.
+     *
+     * @param name               Name of the BigQueryBuilder instance.
+     * @return A BigQueryBuilder instance.
+     */
+    public BigQueryBuilder bigquery(String name) {
+        return basePlanRun.bigquery(name);
+    }
+
+    /**
+     * Creates a BigQueryBuilder instance with name and temporary GCS bucket.
+     *
+     * @param name               Name of the BigQueryBuilder instance.
+     * @param temporaryGcsBucket The temporary GCS bucket to use for BigQuery.
+     * @return A BigQueryBuilder instance.
+     */
+    public BigQueryBuilder bigquery(String name, String temporaryGcsBucket) {
+        return basePlanRun.bigquery(name, temporaryGcsBucket);
+    }
+
+    /**
+     * Creates a BigQueryBuilder instance with name, temporary GCS bucket, and options.
+     *
+     * @param name               Name of the BigQueryBuilder instance.
+     * @param temporaryGcsBucket The temporary GCS bucket to use for BigQuery.
+     * @param options            A map of options to be used for the BigQueryBuilder.
+     * @return A BigQueryBuilder instance.
+     */
+    public BigQueryBuilder bigquery(String name, String temporaryGcsBucket, Map<String, String> options) {
+        return basePlanRun.bigquery(name, temporaryGcsBucket, toScalaMap(options));
+    }
+
+    /**
+     * Creates a BigQueryBuilder instance from the provided ConnectionTaskBuilder.
+     *
+     * @param connectionTaskBuilder The ConnectionTaskBuilder object representing the task to build a BigQueryBuilder.
+     * @return A BigQueryBuilder instance.
+     */
+    public BigQueryBuilder bigquery(
+            ConnectionTaskBuilder<BigQueryBuilder> connectionTaskBuilder
+    ) {
+        return basePlanRun.bigquery(connectionTaskBuilder);
+    }
+
+    /**
+     * Creates a RabbitMq instance with the provided name, URL, username, password, VPN name, connection factory, initial context factory, and options.
+     *
+     * @param name              The name of the RabbitmqBuilder instance.
+     * @param url               The URL for the RabbitmqBuilder.
+     * @param username          The username for the RabbitmqBuilder.
+     * @param password          The password for the RabbitmqBuilder.
+     * @param virtualHost       The virtual host for the RabbitmqBuilder.
+     * @param connectionFactory The connection factory for the RabbitmqBuilder.
+     * @param options           A map of options to be used for the RabbitmqBuilder.
+     * @return A RabbitmqBuilder instance.
+     */
+    public RabbitmqBuilder rabbitmq(
+            String name,
+            String url,
+            String username,
+            String password,
+            String virtualHost,
+            String connectionFactory,
+            Map<String, String> options
+    ) {
+        return basePlanRun.rabbitmq(name, url, username, password, virtualHost, connectionFactory, toScalaMap(options));
+    }
+
+    /**
+     * Creates a RabbitMq instance with the provided name, URL, username, password, virtual host, connection factory, initial context factory, and options.
+     *
+     * @param name        The name of the RabbitmqBuilder instance.
+     * @param url         The URL for the RabbitmqBuilder.
+     * @param username    The username for the RabbitmqBuilder.
+     * @param password    The password for the RabbitmqBuilder.
+     * @param virtualHost The virtual host for the RabbitmqBuilder.
+     * @return A RabbitmqBuilder instance.
+     */
+    public RabbitmqBuilder rabbitmq(
+            String name,
+            String url,
+            String username,
+            String password,
+            String virtualHost
+    ) {
+        return basePlanRun.rabbitmqJava(name, url, username, password, virtualHost);
+    }
+
+    /**
+     * Creates a RabbitMq instance with the provided name, URL, username, password, virtual host, connection factory, initial context factory, and options.
+     *
+     * @param name The name of the RabbitmqBuilder instance.
+     * @param url  The URL for the RabbitmqBuilder.
+     * @return A RabbitmqBuilder instance.
+     */
+    public RabbitmqBuilder rabbitmq(String name, String url) {
+        return basePlanRun.rabbitmqJava(name, url);
     }
 
     /**

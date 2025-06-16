@@ -12,9 +12,11 @@ object Constants {
   lazy val JDBC = "jdbc"
   lazy val POSTGRES = "postgres"
   lazy val MYSQL = "mysql"
+  lazy val BIGQUERY = "bigquery"
   lazy val HTTP = "http"
   lazy val JMS = "jms"
   lazy val KAFKA = "kafka"
+  lazy val RABBITMQ = "rabbitmq"
   lazy val SOLACE = "solace"
   lazy val RATE = "rate"
   //file formats
@@ -52,7 +54,9 @@ object Constants {
   lazy val JMS_INITIAL_CONTEXT_FACTORY = "initialContextFactory"
   lazy val JMS_CONNECTION_FACTORY = "connectionFactory"
   lazy val JMS_VPN_NAME = "vpnName"
+  lazy val JMS_VIRTUAL_HOST = "virtualHost"
   lazy val SCHEMA_LOCATION = "schemaLocation"
+  lazy val JSON_SCHEMA_FILE = "jsonSchemaFile"
   lazy val GREAT_EXPECTATIONS_FILE = "expectationsFile"
   lazy val DATA_CONTRACT_FILE = "dataContractFile"
   lazy val DATA_CONTRACT_SCHEMA = "dataContractSchema"
@@ -61,7 +65,11 @@ object Constants {
   lazy val ICEBERG_CATALOG_TYPE = "catalogType"
   lazy val ICEBERG_CATALOG_URI = "catalogUri"
   lazy val ICEBERG_CATALOG_DEFAULT_NAMESPACE = "catalogDefaultNamespace"
-  lazy val SPECIFIC_DATA_SOURCE_OPTIONS = List(FORMAT, PATH, CASSANDRA_KEYSPACE, CASSANDRA_TABLE, JDBC_TABLE, JDBC_QUERY,
+  lazy val BIGQUERY_WRITE_METHOD = "writeMethod"
+  lazy val BIGQUERY_CREDENTIALS_FILE = "credentialsFile"
+  lazy val BIGQUERY_QUERY_JOB_PRIORITY = "queryJobPriority"
+  lazy val BIGQUERY_TEMPORARY_GCS_BUCKET = "temporaryGcsBucket"
+  lazy val SPECIFIC_DATA_SOURCE_OPTIONS = List(PATH, CASSANDRA_KEYSPACE, CASSANDRA_TABLE, JDBC_TABLE, JDBC_QUERY,
     SCHEMA, TABLE, URL, DRIVER, PARTITIONS, PARTITION_BY, KAFKA_TOPIC, JMS_DESTINATION_NAME, JMS_VPN_NAME, SCHEMA_LOCATION,
     GREAT_EXPECTATIONS_FILE, DATA_CONTRACT_FILE, ROWS_PER_SECOND, HUDI_TABLE_NAME, ICEBERG_CATALOG_TYPE, ICEBERG_CATALOG_URI)
 
@@ -116,9 +124,18 @@ object Constants {
   lazy val IS_PII = "isPII"
   lazy val HTTP_PARAMETER_TYPE = "httpParamType"
   lazy val POST_SQL_EXPRESSION = "postSqlExpression"
+  lazy val INCREMENTAL = "incremental"
+  lazy val UUID = "uuid"
+
+  //special field names
+  lazy val INDEX_INC_FIELD = "__index_inc"
 
   //step options
   lazy val ALL_COMBINATIONS = "allCombinations"
+  lazy val INCLUDE_FIELDS = "includeFields"
+  lazy val EXCLUDE_FIELDS = "excludeFields"
+  lazy val INCLUDE_FIELD_PATTERNS = "includeFieldPatterns"
+  lazy val EXCLUDE_FIELD_PATTERNS = "excludeFieldPatterns"
 
   //field labels
   lazy val LABEL_NAME = "name"
@@ -172,6 +189,24 @@ object Constants {
   lazy val REGEX_GENERATOR = "regex"
   lazy val SQL_GENERATOR = "sql"
 
+  //real time field names
+  lazy val REAL_TIME_BODY_FIELD = "value"
+  lazy val REAL_TIME_BODY_CONTENT_FIELD = "body"
+  lazy val REAL_TIME_PARTITION_FIELD = "partition"
+  lazy val REAL_TIME_HEADERS_FIELD = "headers"
+  lazy val REAL_TIME_METHOD_FIELD = "method"
+  lazy val REAL_TIME_ENDPOINT = "endpoint"
+  lazy val REAL_TIME_CONTENT_TYPE_FIELD = "content_type"
+  lazy val REAL_TIME_URL_FIELD = "url"
+  lazy val HTTP_HEADER_FIELD_PREFIX = "header"
+  lazy val HTTP_PATH_PARAM_FIELD_PREFIX = "pathParam"
+  lazy val HTTP_QUERY_PARAM_FIELD_PREFIX = "queryParam"
+  lazy val YAML_REAL_TIME_HEADERS_FIELD = "messageHeaders"
+  lazy val YAML_REAL_TIME_BODY_FIELD = "messageBody"
+  lazy val YAML_HTTP_BODY_FIELD = "httpBody"
+  lazy val YAML_HTTP_HEADERS_FIELD = "httpHeaders"
+  lazy val YAML_HTTP_URL_FIELD = "httpUrl"
+
   //flag names
   lazy val ENABLE_DATA_GENERATION = "enableDataGeneration"
   lazy val ENABLE_DATA_VALIDATION = "enableDataValidation"
@@ -190,6 +225,7 @@ object Constants {
   lazy val DEFAULT_ENABLE_SUGGEST_VALIDATIONS = false
   lazy val DEFAULT_ENABLE_ALERTS = true
   lazy val DEFAULT_ENABLE_TRACK_ACTIVITY = true
+  lazy val DEFAULT_ENABLE_UNIQUE_CHECK_ONLY_WITHIN_BATCH = false
 
   //folders defaults
   lazy val DEFAULT_PLAN_FILE_PATH = "/opt/app/plan/customer-create-plan.yaml"
@@ -209,10 +245,17 @@ object Constants {
 
   //generation defaults
   lazy val DEFAULT_NUM_RECORDS_PER_BATCH = 100000
+  lazy val DEFAULT_UNIQUE_BLOOM_FILTER_NUM_ITEMS = 10000000
+  lazy val DEFAULT_UNIQUE_BLOOM_FILTER_FALSE_POSITIVE_PROBABILITY = 0.01
 
   //spark defaults
   lazy val DEFAULT_MASTER = "local[*]"
   lazy val DEFAULT_RUNTIME_CONFIG = Map(
+    "spark.driver.memory" -> "6g",
+    "spark.executor.memory" -> "6g",
+    "spark.executor.memoryOverhead" -> "512m",
+    "spark.memory.fraction" -> "0.6",
+    "spark.memory.storageFraction" -> "0.5",
     "spark.sql.cbo.enabled" -> "true",
     "spark.sql.adaptive.enabled" -> "true",
     "spark.sql.cbo.planStats.enabled" -> "true",
@@ -249,6 +292,19 @@ object Constants {
   lazy val DEFAULT_CASSANDRA_USERNAME = "cassandra"
   lazy val DEFAULT_CASSANDRA_PASSWORD = "cassandra"
 
+  //bigquery defaults
+  lazy val DEFAULT_BIGQUERY_WRITE_METHOD = "indirect"
+  lazy val BIGQUERY_WRITE_METHOD_DIRECT = "direct"
+  lazy val DEFAULT_BIGQUERY_QUERY_JOB_PRIORITY = "batch"
+
+  //rabbitmq defaults
+  lazy val DEFAULT_RABBITMQ_URL = "localhost:5672"
+  lazy val DEFAULT_RABBITMQ_USERNAME = "guest"
+  lazy val DEFAULT_RABBITMQ_PASSWORD = "guest"
+  lazy val DEFAULT_RABBITMQ_VIRTUAL_HOST = "/"
+  lazy val DEFAULT_RABBITMQ_CONNECTION_FACTORY = "com.rabbitmq.jms.admin.RMQConnectionFactory"
+  lazy val DEFAULT_RABBITMQ_INITIAL_CONTEXT_FACTORY = ""
+
   //solace defaults
   lazy val DEFAULT_SOLACE_URL = "smf://solaceserver:55554"
   lazy val DEFAULT_SOLACE_USERNAME = "admin"
@@ -277,20 +333,23 @@ object Constants {
   lazy val FOREIGN_KEY_PLAN_FILE_DELIMITER = "."
   lazy val FOREIGN_KEY_PLAN_FILE_DELIMITER_REGEX = "\\."
 
+  //plan defaults
+  lazy val DEFAULT_PLAN_NAME = "default_plan"
+
   //task defaults
-  def DEFAULT_TASK_NAME: String = UUID.randomUUID().toString
+  def DEFAULT_TASK_NAME: String = java.util.UUID.randomUUID().toString
 
   lazy val DEFAULT_DATA_SOURCE_NAME = "json"
   lazy val DEFAULT_TASK_SUMMARY_ENABLE = true
 
   //step defaults
-  def DEFAULT_STEP_NAME: String = UUID.randomUUID().toString
+  def DEFAULT_STEP_NAME: String = java.util.UUID.randomUUID().toString
 
   lazy val DEFAULT_STEP_TYPE = "json"
   lazy val DEFAULT_STEP_ENABLED = true
 
   //field defaults
-  def DEFAULT_FIELD_NAME: String = UUID.randomUUID().toString
+  def DEFAULT_FIELD_NAME: String = java.util.UUID.randomUUID().toString
 
   lazy val DEFAULT_FIELD_TYPE = "string"
   lazy val DEFAULT_FIELD_NULLABLE = true
@@ -328,6 +387,7 @@ object Constants {
   lazy val AMUNDSEN = "amundsen"
   lazy val DATAHUB = "datahub"
   lazy val CONFLUENT_SCHEMA_REGISTRY = "confluentSchemaRegistry"
+  lazy val JSON_SCHEMA = "jsonSchema"
   lazy val DEFAULT_METADATA_SOURCE_NAME = "defaultMetadataSource"
 
   //alert source
@@ -497,6 +557,27 @@ object Constants {
   lazy val VALIDATION_FIELD_NAME_MATCH_ORDER = "fieldNameMatchOrder"
   lazy val VALIDATION_FIELD_NAME_MATCH_SET = "fieldNameMatchSet"
 
+  //validation summary
+  lazy val VALIDATION_NAME = "name"
+  lazy val VALIDATION_IS_SUCCESS = "isSuccess"
+  lazy val VALIDATION_NUM_SUCCESS = "numSuccess"
+  lazy val VALIDATION_NUM_VALIDATIONS = "numValidations"
+  lazy val VALIDATION_SUCCESS_RATE = "successRate"
+  lazy val VALIDATION_DATA_SOURCE_NAME = "dataSourceName"
+  lazy val VALIDATION_OPTIONS = "options"
+  lazy val VALIDATION_DETAILS = "validation"
+  lazy val VALIDATION_NUM_ERRORS = "numErrors"
+  lazy val VALIDATION_SAMPLE_ERRORS = "sampleErrorValues"
+  lazy val VALIDATION_ERROR_VALIDATIONS = "errorValidations"
+
+  //generation summary
+  lazy val GENERATION_NAME = "name"
+  lazy val GENERATION_FORMAT = "format"
+  lazy val GENERATION_OPTIONS = "options"
+  lazy val GENERATION_IS_SUCCESS = "isSuccess"
+  lazy val GENERATION_NUM_RECORDS = "numRecords"
+  lazy val GENERATION_TIME_TAKEN_SECONDS = "timeTakenSeconds"
+
   //configuration names
   //flags config
   lazy val CONFIG_FLAGS_COUNT = "enableCount"
@@ -511,6 +592,7 @@ object Constants {
   lazy val CONFIG_FLAGS_VALIDATION = "enableValidation"
   lazy val CONFIG_FLAGS_GENERATE_VALIDATIONS = "enableGenerateValidations"
   lazy val CONFIG_FLAGS_ALERTS = "enableAlerts"
+  lazy val CONFIG_FLAGS_UNIQUE_CHECK_ONLY_IN_BATCH = "enableUniqueCheckOnlyInBatch"
   //folder config
   lazy val CONFIG_FOLDER_PLAN_FILE_PATH = "planFilePath"
   lazy val CONFIG_FOLDER_TASK_FOLDER_PATH = "taskFolderPath"
@@ -528,6 +610,8 @@ object Constants {
   //generation config
   lazy val CONFIG_GENERATION_NUM_RECORDS_PER_BATCH = "numRecordsPerBatch"
   lazy val CONFIG_GENERATION_NUM_RECORDS_PER_STEP = "numRecordsPerStep"
+  lazy val CONFIG_GENERATION_UNIQUE_BLOOM_FILTER_NUM_ITEMS = "uniqueBloomFilterNumItems"
+  lazy val CONFIG_GENERATION_UNIQUE_BLOOM_FILTER_FALSE_POSITIVE_PROBABILITY = "uniqueBloomFilterFalsePositiveProbability"
   //validation config
   lazy val CONFIG_VALIDATION_NUM_SAMPLE_ERROR_RECORDS = "numSampleErrorRecords"
   lazy val CONFIG_VALIDATION_ENABLE_DELETE_RECORD_TRACKING_FILES = "enableDeleteRecordTrackingFiles"
@@ -545,9 +629,6 @@ object Constants {
   lazy val ALERT_TRIGGER_ON_GENERATION_SUCCESS = "generation_success"
   lazy val ALERT_TRIGGER_ON_VALIDATION_SUCCESS = "validation_success"
 
-  //trial
-  lazy val API_KEY = "API_KEY"
-
   //ui
   lazy val PLAN_RUN_EXECUTION_DELIMITER = "||"
   lazy val PLAN_RUN_EXECUTION_DELIMITER_REGEX = "\\|\\|"
@@ -558,5 +639,21 @@ object Constants {
   lazy val DATA_CATERER_INTERFACE_SCALA = "scala"
   lazy val DATA_CATERER_INTERFACE_UI = "ui"
   lazy val DATA_CATERER_INTERFACE_YAML = "yaml"
+
+  //plan run stages
+  lazy val PLAN_STAGE_START = "planStart"
+  lazy val PLAN_STAGE_PARSE_PLAN = "parsePlan"
+  lazy val PLAN_STAGE_PRE_PLAN_PROCESSORS = "prePlanProcessors"
+  lazy val PLAN_STAGE_EXTRACT_METADATA = "extractMetadata"
+  lazy val PLAN_STAGE_GENERATE_DATA = "generateData"
+  lazy val PLAN_STAGE_VALIDATE_DATA = "validateData"
+  lazy val PLAN_STAGE_DELETE_DATA = "deleteData"
+  lazy val PLAN_STAGE_POST_PLAN_PROCESSORS = "postPlanProcessors"
+  lazy val PLAN_STAGE_FINISHED = "planFinish"
+  lazy val PLAN_STAGE_EXCEPTION_MESSAGE_LENGTH = 500
+
+  //plan run status
+  lazy val PLAN_STATUS_SUCCESS = "success"
+  lazy val PLAN_STATUS_FAILED = "failed"
 
 }

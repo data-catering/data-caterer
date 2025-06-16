@@ -75,17 +75,11 @@ object CombinationCalculator {
       }
     } else {
       if (spt.length < 2) throw InvalidFakerExpressionException(key)
-      val fileObject = faker.fakeValuesService.fetchObject(spt.head, faker.getContext)
-      fileObject match {
-        case JavaMapStringToList(stringToStrings) =>
-          val mapFakerExpressions = stringToStrings.asScala.toMap
-          fetchNumValues(spt.last, faker, mapFakerExpressions)
-        case _ => throw new RuntimeException(s"Unexpected return type from faker object, key=$key")
-      }
+      val fileObject = faker.fakeValuesService.fetchObject[util.Map[String, util.List[String]]](spt.head, faker.getContext)
+      val mapFakerExpressions = fileObject.asScala.toMap
+      fetchNumValues(spt.last, faker, mapFakerExpressions)
     }
   }
 
   private def containsFakerExpression(expressions: List[String]): Boolean = expressions.exists(FAKER_EXPRESSION_REGEX.pattern.matcher(_).matches())
 }
-
-case class JavaMapStringToList(value: util.Map[String, util.List[String]])

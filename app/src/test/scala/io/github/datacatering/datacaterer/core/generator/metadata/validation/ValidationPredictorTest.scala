@@ -4,11 +4,8 @@ import io.github.datacatering.datacaterer.api.model.Constants.IS_PRIMARY_KEY
 import io.github.datacatering.datacaterer.api.model.{ExpressionValidation, GroupByValidation}
 import io.github.datacatering.datacaterer.core.generator.metadata.datasource.database.PostgresMetadata
 import org.apache.spark.sql.types.{DateType, MetadataBuilder, StringType, StructField}
-import org.junit.runner.RunWith
 import org.scalatest.funsuite.AnyFunSuite
-import org.scalatestplus.junit.JUnitRunner
 
-@RunWith(classOf[JUnitRunner])
 class ValidationPredictorTest extends AnyFunSuite {
 
   test("Can suggest validations from struct fields") {

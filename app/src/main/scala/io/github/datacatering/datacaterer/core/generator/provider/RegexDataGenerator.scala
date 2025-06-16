@@ -25,7 +25,9 @@ object RegexDataGenerator {
     }
 
     override def generateSqlExpression: String = {
-      s"$GENERATE_REGEX_UDF('$regex')"
+      // Escape backslashes for SQL string literal
+      val escapedRegex = regex.replace("\\", "\\\\")
+      s"$GENERATE_REGEX_UDF('$escapedRegex')"
     }
   }
 

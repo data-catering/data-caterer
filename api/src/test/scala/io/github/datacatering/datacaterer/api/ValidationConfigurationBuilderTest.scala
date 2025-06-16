@@ -1,14 +1,11 @@
 package io.github.datacatering.datacaterer.api
 
 import io.github.datacatering.datacaterer.api.model.Constants.{DEFAULT_VALIDATION_JOIN_TYPE, DEFAULT_VALIDATION_WEBHOOK_HTTP_DATA_SOURCE_NAME, DEFAULT_VALIDATION_WEBHOOK_HTTP_METHOD, DEFAULT_VALIDATION_WEBHOOK_HTTP_STATUS_CODES, PATH, VALIDATION_FIELD_NAME_COUNT_BETWEEN, VALIDATION_FIELD_NAME_COUNT_EQUAL, VALIDATION_FIELD_NAME_MATCH_ORDER, VALIDATION_FIELD_NAME_MATCH_SET}
-import io.github.datacatering.datacaterer.api.model.{FieldNamesValidation, ConditionType, DataExistsWaitCondition, ExpressionValidation, FileExistsWaitCondition, GroupByValidation, PauseWaitCondition, UpstreamDataSourceValidation, WebhookWaitCondition}
-import org.junit.runner.RunWith
+import io.github.datacatering.datacaterer.api.model.{ConditionType, DataExistsWaitCondition, ExpressionValidation, FieldNamesValidation, FileExistsWaitCondition, GroupByValidation, PauseWaitCondition, UpstreamDataSourceValidation, WebhookWaitCondition}
 import org.scalatest.funsuite.AnyFunSuite
-import org.scalatestplus.junit.JUnitRunner
 
 import java.sql.{Date, Timestamp}
 
-@RunWith(classOf[JUnitRunner])
 class ValidationConfigurationBuilderTest extends AnyFunSuite {
 
   test("Can create simple validation for data source") {

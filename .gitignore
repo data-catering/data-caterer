@@ -12,6 +12,9 @@ tmp
 *.dmg
 *.exe
 *.jfr
+.bloop
+.metals
+.vscode
 
 app/out
 app/src/test/resources/sample/parquet
@@ -26,6 +29,9 @@ app/src/test/resources/sample/plan-gen
 
 api/out
 api/src/test/resources/sample/documentation
+
+ui/node_modules
+ui/coverage
 
 *.class
 *.log

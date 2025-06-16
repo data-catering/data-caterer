@@ -2,11 +2,8 @@ package io.github.datacatering.datacaterer.core.generator.metadata.validation
 
 import io.github.datacatering.datacaterer.api.model.ExpressionValidation
 import org.apache.spark.sql.types.{DataType, DateType, StringType, StructField, TimestampType}
-import org.junit.runner.RunWith
 import org.scalatest.funsuite.AnyFunSuite
-import org.scalatestplus.junit.JUnitRunner
 
-@RunWith(classOf[JUnitRunner])
 class DateTimestampValidationPredictionCheckTest extends AnyFunSuite {
 
   test("Can create validations from data source with open_date and close_date fields") {

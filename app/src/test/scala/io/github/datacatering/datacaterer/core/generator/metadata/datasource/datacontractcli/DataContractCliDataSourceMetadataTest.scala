@@ -3,13 +3,10 @@ package io.github.datacatering.datacaterer.core.generator.metadata.datasource.da
 import io.github.datacatering.datacaterer.api.model.Constants.{DATA_CONTRACT_FILE, FIELD_DATA_TYPE, METADATA_IDENTIFIER}
 import io.github.datacatering.datacaterer.core.exception.{InvalidDataContractFileFormatException, MissingDataContractFilePathException}
 import io.github.datacatering.datacaterer.core.util.SparkSuite
-import org.junit.runner.RunWith
 import org.scalatest.matchers.should.Matchers.convertToAnyShouldWrapper
-import org.scalatestplus.junit.JUnitRunner
 
 import java.io.File
 
-@RunWith(classOf[JUnitRunner])
 class DataContractCliDataSourceMetadataTest extends SparkSuite {
 
   test("throw MissingDataContractFilePathException when DATA_CONTRACT_FILE is not defined") {

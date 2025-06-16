@@ -2,21 +2,22 @@ package io.github.datacatering.datacaterer.core.generator.metadata.datasource.op
 
 import io.github.datacatering.datacaterer.api.ValidationBuilder
 import io.github.datacatering.datacaterer.api.model.Constants._
-import io.github.datacatering.datacaterer.api.model.{ArrayType, BinaryType, BooleanType, ByteType, DataType, DateType, DecimalType, DoubleType, FloatType, IntegerType, LongType, ShortType, StringType, StructType, TimestampType}
+import io.github.datacatering.datacaterer.api.model.{ArrayType, BinaryType, BooleanType, ByteType, DataType, DateType, DecimalType, DoubleType, FloatType, IntegerType, LongType, MapType, ShortType, StringType, StructType, TimestampType}
 import io.github.datacatering.datacaterer.core.exception.{FailedRetrieveOpenMetadataTestCasesException, InvalidFullQualifiedNameException, InvalidOpenMetadataConnectionConfigurationException}
 import io.github.datacatering.datacaterer.core.generator.metadata.datasource.database.FieldMetadata
 import io.github.datacatering.datacaterer.core.generator.metadata.datasource.{DataSourceMetadata, SubDataSourceMetadata}
 import org.apache.log4j.Logger
 import org.apache.spark.sql.SparkSession
+import org.openmetadata.client.api.TablesApi.ListTablesQueryParams
+import org.openmetadata.client.api.TestCasesApi.ListTestCasesQueryParams
 import org.openmetadata.client.api.{TablesApi, TestCasesApi}
 import org.openmetadata.client.gateway.OpenMetadata
 import org.openmetadata.client.model.Column.DataTypeEnum
 import org.openmetadata.client.model.{Column, Table}
-import org.openmetadata.schema.security.client.{Auth0SSOClientConfig, AzureSSOClientConfig, CustomOIDCSSOClientConfig, GoogleSSOClientConfig, OktaSSOClientConfig, OpenMetadataJWTClientConfig}
-import org.openmetadata.schema.security.credentials.BasicAuth
+import org.openmetadata.schema.security.client.OpenMetadataJWTClientConfig
 import org.openmetadata.schema.services.connections.metadata.{AuthProvider, OpenMetadataConnection}
 
-import scala.collection.JavaConverters.{asScalaBufferConverter, mapAsJavaMapConverter, seqAsJavaListConverter}
+import scala.jdk.CollectionConverters.asScalaBufferConverter
 
 case class OpenMetadataDataSourceMetadata(
                                            name: String,
@@ -29,40 +30,16 @@ case class OpenMetadataDataSourceMetadata(
   private val DATA_TYPE_STRUCT_REGEX = "^struct<(.+?)>$".r
   private val DATA_TYPE_CHAR_VAR_REGEX = "^character varying\\(([0-9]+)\\)$".r
   private val DATA_TYPE_CHAR_REGEX = "^char\\(([0-9]+)\\)$".r
-  private val AUTH_CONFIGURATION = List(
-    OPEN_METADATA_BASIC_AUTH_USERNAME,
-    OPEN_METADATA_BASIC_AUTH_PASSWORD,
-    OPEN_METADATA_GOOGLE_AUTH_AUDIENCE,
-    OPEN_METADATA_GOOGLE_AUTH_SECRET_KEY,
-    OPEN_METADATA_OKTA_AUTH_CLIENT_ID,
-    OPEN_METADATA_OKTA_AUTH_ORG_URL,
-    OPEN_METADATA_OKTA_AUTH_EMAIL,
-    OPEN_METADATA_OKTA_AUTH_SCOPES,
-    OPEN_METADATA_OKTA_AUTH_PRIVATE_KEY,
-    OPEN_METADATA_AUTH0_CLIENT_ID,
-    OPEN_METADATA_AUTH0_SECRET_KEY,
-    OPEN_METADATA_AUTH0_DOMAIN,
-    OPEN_METADATA_AZURE_CLIENT_ID,
-    OPEN_METADATA_AZURE_CLIENT_SECRET,
-    OPEN_METADATA_AZURE_SCOPES,
-    OPEN_METADATA_AZURE_AUTHORITY,
-    OPEN_METADATA_JWT_TOKEN,
-    OPEN_METADATA_CUSTOM_OIDC_CLIENT_ID,
-    OPEN_METADATA_CUSTOM_OIDC_SECRET_KEY,
-    OPEN_METADATA_CUSTOM_OIDC_TOKEN_ENDPOINT
-  )
-  private lazy val gateway = getGateway
 
   override val hasSourceData: Boolean = false
 
   override def getSubDataSourcesMetadata(implicit sparkSession: SparkSession): Array[SubDataSourceMetadata] = {
-    val tablesApi = gateway.buildClient(classOf[TablesApi])
-    val configWithoutAuth = connectionConfig.filter(c => !AUTH_CONFIGURATION.contains(c._1))
-      .map(x => (x._1, x._2.asInstanceOf[Object])).asJava
+    val tablesClient = getTablesClient
     val allTables = if (connectionConfig.contains(OPEN_METADATA_TABLE_FQN)) {
-      List(tablesApi.getTableByFQN(connectionConfig(OPEN_METADATA_TABLE_FQN), configWithoutAuth))
+      List(tablesClient.getTableByFQN(connectionConfig(OPEN_METADATA_TABLE_FQN), "", ""))
     } else {
-      tablesApi.listTables(configWithoutAuth).getData.asScala
+      val listTablesQueryParams = new ListTablesQueryParams()
+      tablesClient.listTables(listTablesQueryParams).getData.asScala
     }
 
     allTables.map(table => {
@@ -93,22 +70,15 @@ case class OpenMetadataDataSourceMetadata(
     }).toArray
   }
 
-  private def getGateway: OpenMetadata = {
-    val server = new OpenMetadataConnection
-    server.setHostPort(getConfig(OPEN_METADATA_HOST))
-    server.setApiVersion(getConfig(OPEN_METADATA_API_VERSION))
-    authenticate(server)
-    new OpenMetadata(server)
-  }
-
   override def getDataSourceValidations(dataSourceReadOptions: Map[String, String]): List[ValidationBuilder] = {
+    val testClient = getTestCasesClient
     val entityNameWithFieldPattern = "^(.+?)\\.(.+?)\\.(.+?)\\.(.+?)\\.(.+?)$".r
-    val testCasesApi = gateway.buildClient(classOf[TestCasesApi])
-    val listTestCases = testCasesApi.listTestCases(Map.empty[String, Object].asJava)
+    val listTestCasesQueryParams = new ListTestCasesQueryParams()
+    val listTestCases = testClient.listTestCases(listTestCasesQueryParams)
 
     if (listTestCases.getErrors != null && listTestCases.getErrors.size() > 0) {
       LOGGER.error("Failed to retrieve test cases from OpenMetadata")
-      throw FailedRetrieveOpenMetadataTestCasesException(listTestCases.getErrors.asScala.toList)
+      throw FailedRetrieveOpenMetadataTestCasesException(listTestCases.getErrors.asScala.toList.map(_.toString))
     } else {
       listTestCases.getData.asScala
         .filter(t => t.getEntityFQN.startsWith(dataSourceReadOptions(METADATA_IDENTIFIER)) && !t.getDeleted)
@@ -150,18 +120,17 @@ case class OpenMetadataDataSourceMetadata(
     (precisionScaleMeta ++ miscMetadata, updatedDataType)
   }
 
-  //col.getDataTypeDisplay => array<struct<product_id:character varying(24),price:int,onsale:boolean,tax:int,weight:int,others:int,vendor:character varying(64), stock:int>>
-  private def dataTypeMapping(col: Column): DataType = {
+  def dataTypeMapping(col: Column): DataType = {
     col.getDataType match {
       case DataTypeEnum.NUMBER | DataTypeEnum.NUMERIC | DataTypeEnum.DOUBLE => DoubleType
       case DataTypeEnum.TINYINT | DataTypeEnum.SMALLINT => ShortType
       case DataTypeEnum.BIGINT | DataTypeEnum.INT | DataTypeEnum.YEAR => IntegerType
       case DataTypeEnum.LONG => LongType
-      case DataTypeEnum.DECIMAL => new DecimalType(col.getScale, col.getPrecision)
+      case DataTypeEnum.DECIMAL => new DecimalType(col.getPrecision, col.getScale)
       case DataTypeEnum.FLOAT => FloatType
       case DataTypeEnum.BOOLEAN => BooleanType
       case DataTypeEnum.BLOB | DataTypeEnum.MEDIUMBLOB | DataTypeEnum.LONGBLOB | DataTypeEnum.BYTEA |
-           DataTypeEnum.BYTES | DataTypeEnum.VARBINARY | DataTypeEnum.VARBINARY => BinaryType
+           DataTypeEnum.BYTES | DataTypeEnum.VARBINARY => BinaryType
       case DataTypeEnum.BYTEINT => ByteType
       case DataTypeEnum.STRING | DataTypeEnum.TEXT | DataTypeEnum.VARCHAR | DataTypeEnum.CHAR | DataTypeEnum.JSON |
            DataTypeEnum.XML | DataTypeEnum.NTEXT | DataTypeEnum.IPV4 | DataTypeEnum.IPV6 | DataTypeEnum.CIDR |
@@ -174,14 +143,15 @@ case class OpenMetadataDataSourceMetadata(
     }
   }
 
-  private def getInnerDataType(dataTypeDisplay: String): DataType = {
+  //col.getDataTypeDisplay => array<struct<product_id:character varying(24),price:int,onsale:boolean,tax:int,weight:int,others:int,vendor:character varying(64), stock:int>>
+  def getInnerDataType(dataTypeDisplay: String): DataType = {
     dataTypeDisplay match {
       case DATA_TYPE_ARRAY_REGEX(innerType) => new ArrayType(getInnerDataType(innerType))
       case DATA_TYPE_MAP_REGEX(innerType) =>
         val spt = innerType.split(",")
-        val key = getInnerDataType(spt.head)
-        val value = getInnerDataType(spt.last)
-        new StructType(List("key" -> key, "value" -> value))
+        val keyType = getInnerDataType(spt.head)
+        val valueType = getInnerDataType(spt.last)
+        new MapType(keyType, valueType)
       case DATA_TYPE_STRUCT_REGEX(innerType) =>
         val keyValues = innerType.split(",").map(t => t.split(":"))
         val mappedInnerType = keyValues.map(kv => (kv.head, getInnerDataType(kv.last))).toList
@@ -208,64 +178,34 @@ case class OpenMetadataDataSourceMetadata(
     }
   }
 
+  private def getGateway: OpenMetadata = {
+    val server = new OpenMetadataConnection
+    server.setHostPort(getConfig(OPEN_METADATA_HOST))
+    server.setApiVersion(getConfig(OPEN_METADATA_API_VERSION))
+    authenticate(server)
+    new OpenMetadata(server)
+  }
+
+  protected def getTablesClient: TablesApi = {
+    getGateway.buildClient(classOf[TablesApi])
+  }
+
+  protected def getTestCasesClient: TestCasesApi = {
+    getGateway.buildClient(classOf[TestCasesApi])
+  }
+
   private def authenticate(server: OpenMetadataConnection): OpenMetadataConnection = {
-    val authTypeConfig = connectionConfig.getOrElse(OPEN_METADATA_AUTH_TYPE, AuthProvider.NO_AUTH.value())
+    val authTypeConfig = connectionConfig.getOrElse(OPEN_METADATA_AUTH_TYPE, AuthProvider.BASIC.value())
     val authType = AuthProvider.fromValue(authTypeConfig)
     server.setAuthProvider(authType)
-    val securityConfig = authType match {
-      case AuthProvider.NO_AUTH => return server
-      case AuthProvider.BASIC =>
-        val basicAuth = new BasicAuth
-        basicAuth.setUsername(getConfig(OPEN_METADATA_BASIC_AUTH_USERNAME))
-        basicAuth.setPassword(getConfig(OPEN_METADATA_BASIC_AUTH_PASSWORD))
-        basicAuth
-      case AuthProvider.AZURE =>
-        val azureConf = new AzureSSOClientConfig
-        azureConf.setClientId(getConfig(OPEN_METADATA_AZURE_CLIENT_ID))
-        azureConf.setClientSecret(getConfig(OPEN_METADATA_AZURE_CLIENT_SECRET))
-        azureConf.setScopes(getConfig(OPEN_METADATA_AZURE_SCOPES).split(",").toList.asJava)
-        azureConf.setAuthority(getConfig(OPEN_METADATA_AZURE_AUTHORITY))
-        azureConf
-      case AuthProvider.GOOGLE =>
-        val googleConf = new GoogleSSOClientConfig
-        googleConf.setAudience(getConfig(OPEN_METADATA_GOOGLE_AUTH_AUDIENCE))
-        googleConf.setSecretKey(getConfig(OPEN_METADATA_GOOGLE_AUTH_SECRET_KEY))
-        googleConf
-      case AuthProvider.OKTA =>
-        val oktaConf = new OktaSSOClientConfig
-        oktaConf.setClientId(getConfig(OPEN_METADATA_OKTA_AUTH_CLIENT_ID))
-        oktaConf.setOrgURL(getConfig(OPEN_METADATA_OKTA_AUTH_ORG_URL))
-        oktaConf.setEmail(getConfig(OPEN_METADATA_OKTA_AUTH_EMAIL))
-        oktaConf.setScopes(getConfig(OPEN_METADATA_OKTA_AUTH_SCOPES).split(",").toList.asJava)
-        oktaConf.setPrivateKey(getConfig(OPEN_METADATA_OKTA_AUTH_PRIVATE_KEY))
-        oktaConf
-      case AuthProvider.AUTH_0 =>
-        val auth0Conf = new Auth0SSOClientConfig
-        auth0Conf.setClientId(getConfig(OPEN_METADATA_AUTH0_CLIENT_ID))
-        auth0Conf.setSecretKey(getConfig(OPEN_METADATA_AUTH0_SECRET_KEY))
-        auth0Conf.setDomain(getConfig(OPEN_METADATA_AUTH0_DOMAIN))
-        auth0Conf
-      case AuthProvider.AWS_COGNITO =>
-        LOGGER.warn("AWS Cognito authentication not supported yet for OpenMetadata")
-        return server
-      case AuthProvider.CUSTOM_OIDC =>
-        val customConf = new CustomOIDCSSOClientConfig
-        customConf.setClientId(OPEN_METADATA_CUSTOM_OIDC_CLIENT_ID)
-        customConf.setSecretKey(OPEN_METADATA_CUSTOM_OIDC_SECRET_KEY)
-        customConf.setTokenEndpoint(OPEN_METADATA_CUSTOM_OIDC_TOKEN_ENDPOINT)
-        customConf
-      case AuthProvider.LDAP =>
-        LOGGER.warn("LDAP authentication not supported yet for OpenMetadata")
-        return server
-      case AuthProvider.SAML =>
-        LOGGER.warn("SAML authentication not supported yet for OpenMetadata")
-        return server
+    authType match {
       case AuthProvider.OPENMETADATA =>
         val openMetadataConf = new OpenMetadataJWTClientConfig
         openMetadataConf.setJwtToken(getConfig(OPEN_METADATA_JWT_TOKEN))
-        openMetadataConf
+        server.setSecurityConfig(openMetadataConf)
+      case x =>
+        LOGGER.warn(s"$x authentication not supported for OpenMetadata Java Client Library")
     }
-    server.setSecurityConfig(securityConfig)
     server
   }
 

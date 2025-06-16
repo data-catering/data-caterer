@@ -18,3 +18,6 @@ sinkOptions:
         - dataSource: "csv"
           step: "transaction"
           fields: [ "account_id" ]
+
+validations:
+  - large_json_account_checks

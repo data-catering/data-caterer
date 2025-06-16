@@ -19,7 +19,7 @@ plugins {
     application
 
     id("org.scoverage") version "8.0.3"
-    id("com.github.johnrengelman.shadow") version "8.1.1"
+    id("com.gradleup.shadow") version "8.3.6"
 }
 
 repositories {
@@ -84,8 +84,8 @@ dependencies {
 
     // vulnerabilities in Spark
 //    basicImpl("com.google.protobuf:protobuf-java:3.25.5") fails with https://github.com/protostuff/protostuff/issues/367
-    basicImpl("io.netty:netty-codec-http:4.1.110.Final")
-    basicImpl("io.netty:netty-codec-http2:4.1.110.Final")
+    basicImpl("io.netty:netty-codec-http:4.1.118.Final")
+    basicImpl("io.netty:netty-codec-http2:4.1.118.Final")
     basicImpl("io.netty:netty-tcnative-boringssl-static:2.0.65.Final:windows-x86_64")
     basicImpl("io.netty:netty-tcnative-boringssl-static:2.0.65.Final:osx-x86_64")
     basicImpl("io.netty:netty-tcnative-boringssl-static:2.0.65.Final:linux-x86_64")
@@ -93,8 +93,8 @@ dependencies {
     basicImpl("com.nimbusds:nimbus-jose-jwt:9.37.2")
     basicImpl("commons-io:commons-io:2.17.0")
     basicImpl("commons-net:commons-net:3.9.0")
-    basicImpl("io.netty:netty-handler:4.1.109.Final")
-    basicImpl("net.minidev:json-smart:2.4.9")
+    basicImpl("io.netty:netty-handler:4.1.118.Final")
+    basicImpl("net.minidev:json-smart:2.5.2")
     basicImpl("org.apache.avro:avro:1.11.4")
     basicImpl("org.apache.commons:commons-compress:1.26.0")
     basicImpl("org.apache.commons:commons-configuration2:2.10.1")
@@ -110,11 +110,11 @@ dependencies {
     basicImpl("org.wildfly.openssl:wildfly-openssl-java:1.1.3.Final")
     basicImpl("org.jboss.xnio:xnio-api:3.8.15.Final")
     basicImpl("io.airlift:aircompressor:0.27")
-    basicImpl("org.apache.zookeeper:zookeeper:3.9.2")
+    basicImpl("org.apache.zookeeper:zookeeper:3.9.3")
 //    basicImpl("dnsjava:dnsjava:3.6.2")
-    basicImpl("com.amazon.ion:ion-java:1.11.8")
+    basicImpl("com.amazon.ion:ion-java:1.11.10")
     basicImpl("org.apache.ivy:ivy:2.5.2")
-    basicImpl("org.xerial.snappy:snappy-java:1.1.10.4")
+    basicImpl("org.xerial.snappy:snappy-java:1.1.10.7")
     //basicImpl("software.amazon.ion:ion-java:1.5.1") //should use: basicImpl("com.amazon.ion:ion-java:1.11.8")
 
     // additional spark
@@ -129,11 +129,18 @@ dependencies {
 
     // connectors
     // postgres
-    basicImpl("org.postgresql:postgresql:42.7.3")
+    basicImpl("org.postgresql:postgresql:42.7.5")
     // mysql
     basicImpl("com.mysql:mysql-connector-j:9.0.0")
     // cassandra
     basicImpl("com.datastax.spark:spark-cassandra-connector_$scalaVersion:3.5.0") {
+        exclude(group = "org.scala-lang")
+    }
+    // bigquery
+    basicImpl("org.apache.spark:spark-mllib_$scalaVersion:$sparkVersion") {
+        exclude(group = "org.scala-lang")
+    }
+    basicImpl("com.google.cloud.spark:spark-${sparkMajorVersion}-bigquery:0.42.0") {
         exclude(group = "org.scala-lang")
     }
     // cloud file storage
@@ -151,18 +158,19 @@ dependencies {
     }
 
     // http
-    basicImpl("org.asynchttpclient:async-http-client:2.12.3")
+    basicImpl("org.asynchttpclient:async-http-client:3.0.1")
     basicImpl("io.swagger.parser.v3:swagger-parser-v3:2.1.16")
     // kafka
     basicImpl("org.apache.spark:spark-sql-kafka-0-10_$scalaVersion:$sparkVersion") {
         exclude(group = "org.scala-lang")
     }
     // jms
-    //TODO implementation("jakarta.jms:jakarta.jms-api:3.1.0") jms 3.x
+    basicImpl("jakarta.jms:jakarta.jms-api:3.1.0")
     basicImpl("javax.jms:javax.jms-api:2.0.1")
-    basicImpl("com.solacesystems:sol-jms:10.21.0")
+    basicImpl("com.solacesystems:sol-jms-jakarta:10.25.2")
+    basicImpl("com.rabbitmq.jms:rabbitmq-jms:3.4.0")
     // open metadata
-    basicImpl("org.open-metadata:openmetadata-java-client:1.1.7") {  //1.2.0 has component reliant on java 17
+    basicImpl("org.open-metadata:openmetadata-java-client:1.6.3") {
         exclude(group = "org.antlr")
         exclude(module = "logback-core")
         exclude(module = "logback-classic")
@@ -171,7 +179,7 @@ dependencies {
     basicImpl("io.protostuff:protostuff-parser:3.1.40")
 
     // data generation helpers
-    basicImpl("net.datafaker:datafaker:1.9.0")
+    basicImpl("net.datafaker:datafaker:2.4.2")
     basicImpl("org.reflections:reflections:0.10.2")
 
     // alert
@@ -186,6 +194,9 @@ dependencies {
     // needed to work on Windows
     basicImpl("com.globalmentor:hadoop-bare-naked-local-fs:0.1.0")
 
+    // json schema validation
+    basicImpl("com.networknt:json-schema-validator:1.5.7")
+
     // misc
     basicImpl("joda-time:joda-time:2.12.7")
     basicImpl("com.google.guava:guava:33.2.1-jre")
@@ -197,41 +208,63 @@ dependencies {
             strictly("2.15.3")
         }
     }
-    basicImpl("com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.15.3")
+    basicImpl("com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.15.3") {
+        version {
+            strictly("2.15.3")
+        }
+    }
     basicImpl("com.fasterxml.jackson.module:jackson-module-scala_$scalaVersion:2.15.3") {
+        version {
+            strictly("2.15.3")
+        }
         exclude(group = "org.scala-lang")
     }
-    basicImpl("com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.15.3")
-    basicImpl("com.fasterxml.jackson.datatype:jackson-datatype-joda:2.15.3")
+    basicImpl("com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.15.3") {
+        version {
+            strictly("2.15.3")
+        }
+    }
+    basicImpl("com.fasterxml.jackson.datatype:jackson-datatype-joda:2.15.3") {
+        version {
+            strictly("2.15.3")
+        }
+    }
     //NoClassDefFoundError: shaded/parquet/com/fasterxml/jackson/databind/ObjectMapper
     basicImpl("org.apache.parquet:parquet-jackson:1.13.1")  //new versions contain transitive deps that use java 21, shadowJar fails
     basicImpl("org.scala-lang.modules:scala-xml_$scalaVersion:2.2.0") {
         exclude(group = "org.scala-lang")
     }
+
+    // Test dependencies
+    testImplementation("org.scalatest:scalatest_$scalaVersion:3.2.19")
+    testImplementation("org.scalatestplus:junit-5-11_$scalaVersion:3.2.19.0")
+    testImplementation("org.scalamock:scalamock_$scalaVersion:5.2.0")
+    testImplementation("org.mockito:mockito-scala_$scalaVersion:1.17.37")
+    testImplementation("org.apache.spark:spark-sql_$scalaVersion:$sparkVersion")
+    testImplementation("org.apache.spark:spark-avro_$scalaVersion:$sparkVersion")
+    testImplementation("org.apache.spark:spark-protobuf_$scalaVersion:$sparkVersion")
+    testImplementation("com.dimafeng:testcontainers-scala_$scalaVersion:0.41.3")
+    testImplementation("org.apache.pekko:pekko-actor-testkit-typed_$scalaVersion:1.0.1")
+    testImplementation(project(":api"))
+
+    // Need scala-xml at test runtime
+    testRuntimeOnly("org.scala-lang.modules:scala-xml_$scalaVersion:1.3.1")
+    testRuntimeOnly("org.junit.platform:junit-platform-engine:1.11.3")
+    testRuntimeOnly("org.junit.platform:junit-platform-launcher:1.11.3")
 }
 
-testing {
-    suites {
-        // Configure the built-in test suite
-        val test by getting(JvmTestSuite::class) {
-            // Use JUnit4 test framework
-            useJUnit("4.13.2")
-
-            dependencies {
-                // Use Scalatest for testing our library
-                implementation("org.scalatest:scalatest_$scalaVersion:3.2.17")
-                implementation("org.scalatestplus:junit-4-13_$scalaVersion:3.2.17.0")
-                implementation("org.scalamock:scalamock_$scalaVersion:5.2.0")
-                implementation("org.apache.spark:spark-sql_$scalaVersion:$sparkVersion")
-                implementation("org.apache.spark:spark-avro_$scalaVersion:$sparkVersion")
-                implementation("org.apache.spark:spark-protobuf_$scalaVersion:$sparkVersion")
-                implementation("com.dimafeng:testcontainers-scala_$scalaVersion:0.41.3")
-                implementation(project(":api"))
-
-                // Need scala-xml at test runtime
-                runtimeOnly("org.scala-lang.modules:scala-xml_$scalaVersion:1.3.1")
-            }
+tasks.test {
+    jvmArgs("-Djava.security.manager=allow", "-Djdk.module.illegalAccess=deny", "--add-opens=java.base/java.lang=ALL-UNNAMED", "--add-opens=java.base/java.lang.invoke=ALL-UNNAMED", "--add-opens=java.base/java.lang.reflect=ALL-UNNAMED", "--add-opens=java.base/java.io=ALL-UNNAMED", "--add-opens=java.base/java.net=ALL-UNNAMED", "--add-opens=java.base/java.nio=ALL-UNNAMED", "--add-opens=java.base/java.util=ALL-UNNAMED", "--add-opens=java.base/java.util.concurrent=ALL-UNNAMED", "--add-opens=java.base/java.util.concurrent.atomic=ALL-UNNAMED", "--add-opens=java.base/sun.nio.ch=ALL-UNNAMED", "--add-opens=java.base/sun.nio.cs=ALL-UNNAMED", "--add-opens=java.base/sun.security.action=ALL-UNNAMED", "--add-opens=java.base/sun.util.calendar=ALL-UNNAMED", "--add-opens=java.security.jgss/sun.security.krb5=ALL-UNNAMED")
+    finalizedBy(tasks.reportScoverage)
+    useJUnitPlatform {
+        includeEngines("scalatest")
+        testLogging {
+            events("failed")
         }
+    }
+    // Enable proper test filtering
+    filter {
+        setFailOnNoMatchingTests(false)
     }
 }
 
@@ -261,10 +294,6 @@ tasks.shadowJar {
     val newTransformer = com.github.jengelman.gradle.plugins.shadow.transformers.AppendingTransformer()
     newTransformer.resource = "reference.conf"
     transformers.add(newTransformer)
-}
-
-tasks.test {
-    finalizedBy(tasks.reportScoverage)
 }
 
 configure<ScoverageExtension> {

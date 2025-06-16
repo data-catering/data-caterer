@@ -15,10 +15,15 @@ case class SaveFileException(filePath: String, throwable: Throwable) extends Run
   throwable
 )
 
+case class GetPlanRunStatusException(planId: String, throwable: Throwable) extends RuntimeException(
+  s"Failed to get plan run status from file system, plan-id=$planId",
+  throwable
+)
+
 //Foreign key
 case class InvalidForeignKeyFormatException(foreignKey: String) extends RuntimeException(
   s"Unexpected foreign key relation format. Should have at least 2 or 3 parts delimited " +
-  s"by either $FOREIGN_KEY_DELIMITER or $FOREIGN_KEY_PLAN_FILE_DELIMITER, foreign-key=$foreignKey"
+    s"by either $FOREIGN_KEY_DELIMITER or $FOREIGN_KEY_PLAN_FILE_DELIMITER, foreign-key=$foreignKey"
 )
 
 case class MissingDataSourceFromForeignKeyException(dataSourceName: String) extends RuntimeException(
@@ -241,4 +246,18 @@ case class UnsupportedProtobufType(protobufType: String) extends RuntimeExceptio
 
 case class InvalidNumberOfProtobufMessages(filePath: String) extends RuntimeException(
   s"Only one message can be defined in .proto file for parsing, protobuf-file=$filePath"
+)
+
+//api
+case class MissingApiEnvVarException(envVar: String) extends RuntimeException(
+  s"Environment variable not defined, please set environment variable and run again, if you have not generated an API " +
+    s"key or token, please follow steps found here (https://data.catering/get-started/quick-start/), env-var=$envVar"
+)
+
+case class UserNotFoundException(userId: String) extends RuntimeException(
+  s"User not found for data-caterer, user-id=$userId"
+)
+
+case class InvalidCredentialsException(userId: String) extends RuntimeException(
+  s"Invalid user ID for data-caterer, user-id=$userId"
 )

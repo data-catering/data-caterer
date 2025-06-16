@@ -1,9 +1,9 @@
 package io.github.datacatering.datacaterer.core.sink.http
 
-import io.github.datacatering.datacaterer.api.model.Constants.DEFAULT_REAL_TIME_HEADERS_DATA_TYPE
+import io.github.datacatering.datacaterer.api.model.Constants.{DEFAULT_REAL_TIME_HEADERS_DATA_TYPE, HTTP_HEADER_FIELD_PREFIX, REAL_TIME_BODY_FIELD, REAL_TIME_HEADERS_FIELD, REAL_TIME_METHOD_FIELD, REAL_TIME_URL_FIELD}
 import io.github.datacatering.datacaterer.api.model.Step
 import io.github.datacatering.datacaterer.core.exception.AddHttpHeaderException
-import io.github.datacatering.datacaterer.core.model.Constants.{DEFAULT_HTTP_METHOD, HTTP_HEADER_FIELD_PREFIX, REAL_TIME_BODY_FIELD, REAL_TIME_HEADERS_FIELD, REAL_TIME_METHOD_FIELD, REAL_TIME_URL_FIELD}
+import io.github.datacatering.datacaterer.core.model.Constants.DEFAULT_HTTP_METHOD
 import io.github.datacatering.datacaterer.core.model.RealTimeSinkResult
 import io.github.datacatering.datacaterer.core.sink.http.model.HttpResult
 import io.github.datacatering.datacaterer.core.sink.{RealTimeSinkProcessor, SinkProcessor}
@@ -162,7 +162,7 @@ object HttpSinkProcessor extends RealTimeSinkProcessor[Unit] with Serializable {
     }
     val sslContext = SslContextBuilder.forClient().trustManager(trustManager).build()
     val config = new DefaultAsyncHttpClientConfig.Builder().setSslContext(sslContext)
-      .setRequestTimeout(5000).build()
+      .setRequestTimeout(java.time.Duration.ofMillis(5000)).build()
     asyncHttpClient(config)
   }
 }

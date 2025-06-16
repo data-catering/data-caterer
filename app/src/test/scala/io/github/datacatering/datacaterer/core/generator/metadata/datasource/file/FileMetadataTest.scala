@@ -1,10 +1,7 @@
 package io.github.datacatering.datacaterer.core.generator.metadata.datasource.file
 
 import io.github.datacatering.datacaterer.core.util.SparkSuite
-import org.junit.runner.RunWith
-import org.scalatestplus.junit.JUnitRunner
 
-@RunWith(classOf[JUnitRunner])
 class FileMetadataTest extends SparkSuite {
   private val baseFolder = "src/test/resources/sample/files"
 

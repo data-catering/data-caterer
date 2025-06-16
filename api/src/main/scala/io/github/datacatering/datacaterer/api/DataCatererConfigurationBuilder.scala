@@ -1,9 +1,9 @@
 package io.github.datacatering.datacaterer.api
 
 import com.softwaremill.quicklens.ModifyPimp
-import io.github.datacatering.datacaterer.api.connection.{CassandraBuilder, ConnectionTaskBuilder, FileBuilder, HttpBuilder, KafkaBuilder, MySqlBuilder, NoopBuilder, PostgresBuilder, SolaceBuilder}
+import io.github.datacatering.datacaterer.api.connection.{BigQueryBuilder, CassandraBuilder, ConnectionTaskBuilder, FileBuilder, HttpBuilder, KafkaBuilder, MySqlBuilder, NoopBuilder, PostgresBuilder, RabbitmqBuilder, SolaceBuilder}
 import io.github.datacatering.datacaterer.api.converter.Converters.toScalaMap
-import io.github.datacatering.datacaterer.api.model.Constants._
+import io.github.datacatering.datacaterer.api.model.Constants.{BIGQUERY_WRITE_METHOD, _}
 import io.github.datacatering.datacaterer.api.model.DataCatererConfiguration
 
 import scala.annotation.varargs
@@ -36,8 +36,16 @@ case class DataCatererConfigurationBuilder(build: DataCatererConfiguration = Dat
     connectionConfig(mappedConf)
   }
 
-  def addConnectionConfig(name: String, format: String, connectionConfig: Map[String, String]): DataCatererConfigurationBuilder =
-    this.modify(_.build.connectionConfigByName)(_ ++ Map(name -> (connectionConfig ++ Map(FORMAT -> format))))
+  def addConnectionConfig(name: String, format: String, connectionConfig: Map[String, String]): DataCatererConfigurationBuilder = {
+    if (this.build.connectionConfigByName.contains(name)) {
+      //need to merge the connection config
+      val existingConfig = this.build.connectionConfigByName(name)
+      val mergedConfig = existingConfig ++ connectionConfig
+      this.modify(_.build.connectionConfigByName)(_ ++ Map(name -> mergedConfig))
+    } else {
+      this.modify(_.build.connectionConfigByName)(_ ++ Map(name -> (connectionConfig ++ Map(FORMAT -> format))))
+    }
+  }
 
   def addConnectionConfigJava(name: String, format: String, connectionConfig: java.util.Map[String, String]): DataCatererConfigurationBuilder =
     addConnectionConfig(name, format, toScalaMap(connectionConfig))
@@ -194,8 +202,41 @@ case class DataCatererConfigurationBuilder(build: DataCatererConfiguration = Dat
                ): DataCatererConfigurationBuilder =
     cassandra(name, url, DEFAULT_CASSANDRA_USERNAME)
 
+  def bigquery(
+                name: String,
+                credentialsFile: String,
+                temporaryGcsBucket: String,
+                options: Map[String, String] = Map()
+              ): DataCatererConfigurationBuilder = {
+    val credentialsMap = if (credentialsFile.nonEmpty) Map(BIGQUERY_CREDENTIALS_FILE -> credentialsFile) else Map()
+    val temporaryGcsBucketMap = if (temporaryGcsBucket.nonEmpty) {
+      Map(
+        BIGQUERY_TEMPORARY_GCS_BUCKET -> temporaryGcsBucket,
+        BIGQUERY_WRITE_METHOD -> DEFAULT_BIGQUERY_WRITE_METHOD,
+      )
+    } else Map(BIGQUERY_WRITE_METHOD -> BIGQUERY_WRITE_METHOD_DIRECT)
+    val allOptions = Map(
+      BIGQUERY_QUERY_JOB_PRIORITY -> DEFAULT_BIGQUERY_QUERY_JOB_PRIORITY,
+    ) ++ options ++ credentialsMap ++ temporaryGcsBucketMap
+    addConnectionConfig(name, BIGQUERY, allOptions)
+  }
+
   def jms(name: String, url: String, username: String, password: String, options: Map[String, String] = Map()): DataCatererConfigurationBuilder =
     addConnection(name, JMS, url, username, password, options)
+
+  def rabbitmq(
+                name: String,
+                url: String = DEFAULT_RABBITMQ_URL,
+                username: String = DEFAULT_RABBITMQ_USERNAME,
+                password: String = DEFAULT_RABBITMQ_PASSWORD,
+                virtualHost: String = DEFAULT_RABBITMQ_VIRTUAL_HOST,
+                connectionFactory: String = DEFAULT_RABBITMQ_CONNECTION_FACTORY,
+                options: Map[String, String] = Map()
+              ): DataCatererConfigurationBuilder =
+    jms(name, url, username, password, Map(
+      JMS_VIRTUAL_HOST -> virtualHost,
+      JMS_CONNECTION_FACTORY -> connectionFactory,
+    ) ++ options)
 
   def solace(
               name: String,
@@ -303,6 +344,9 @@ case class DataCatererConfigurationBuilder(build: DataCatererConfiguration = Dat
   def enableAlerts(enable: Boolean): DataCatererConfigurationBuilder =
     this.modify(_.build.flagsConfig.enableAlerts).setTo(enable)
 
+  def enableUniqueCheckOnlyInBatch(enable: Boolean): DataCatererConfigurationBuilder =
+    this.modify(_.build.flagsConfig.enableUniqueCheckOnlyInBatch).setTo(enable)
+
 
   def planFilePath(path: String): DataCatererConfigurationBuilder =
     this.modify(_.build.foldersConfig.planFilePath).setTo(path)
@@ -347,6 +391,12 @@ case class DataCatererConfigurationBuilder(build: DataCatererConfiguration = Dat
 
   def numRecordsPerStep(numRecords: Long): DataCatererConfigurationBuilder =
     this.modify(_.build.generationConfig.numRecordsPerStep).setTo(Some(numRecords))
+
+  def uniqueBloomFilterNumItems(numItems: Long): DataCatererConfigurationBuilder =
+    this.modify(_.build.generationConfig.uniqueBloomFilterNumItems).setTo(numItems)
+
+  def uniqueBloomFilterFalsePositiveProbability(probability: Double): DataCatererConfigurationBuilder =
+    this.modify(_.build.generationConfig.uniqueBloomFilterFalsePositiveProbability).setTo(probability)
 
 
   def numErrorSampleRecords(numRecords: Int): DataCatererConfigurationBuilder =
@@ -434,6 +484,29 @@ final case class ConnectionConfigWithTaskBuilder(
     setConnectionConfig(name, configBuilder, CassandraBuilder())
   }
 
+  def bigquery(
+                name: String,
+                credentialsFile: String = "",
+                temporaryGcsBucket: String = "",
+                options: Map[String, String] = Map()
+              ): BigQueryBuilder = {
+    val configBuilder = DataCatererConfigurationBuilder().bigquery(name, credentialsFile, temporaryGcsBucket, options)
+    setConnectionConfig(name, configBuilder, BigQueryBuilder())
+  }
+
+  def rabbitmq(
+                name: String,
+                url: String,
+                username: String,
+                password: String,
+                virtualHost: String,
+                connectionFactory: String,
+                options: Map[String, String] = Map()
+              ): RabbitmqBuilder = {
+    val configBuilder = DataCatererConfigurationBuilder().rabbitmq(name, url, username, password, virtualHost, connectionFactory, options)
+    setConnectionConfig(name, configBuilder, RabbitmqBuilder())
+  }
+
   def solace(
               name: String,
               url: String,
@@ -462,8 +535,56 @@ final case class ConnectionConfigWithTaskBuilder(
     this.modify(_.options)(_ ++ options)
   }
 
+  def option(option: (String, String)): ConnectionConfigWithTaskBuilder = {
+    this.modify(_.options)(_ ++ Map(option))
+  }
+
   def metadataSource(metadataSourceBuilder: MetadataSourceBuilder): ConnectionConfigWithTaskBuilder = {
     this.modify(_.options)(_ ++ metadataSourceBuilder.metadataSource.allOptions)
+  }
+
+  /**
+   * Include only specific fields in data generation. Supports dot notation for nested fields.
+   * Example: includeFields("name", "address.city", "account.balance")
+   *
+   * @param fields Field names to include
+   * @return Updated connection config builder
+   */
+  @varargs def includeFields(fields: String*): ConnectionConfigWithTaskBuilder = {
+    this.modify(_.options)(_ ++ Map(INCLUDE_FIELDS -> fields.mkString(",")))
+  }
+
+  /**
+   * Exclude specific fields from data generation. Supports dot notation for nested fields.
+   * Example: excludeFields("internal_id", "metadata.created_by")
+   *
+   * @param fields Field names to exclude
+   * @return Updated connection config builder
+   */
+  @varargs def excludeFields(fields: String*): ConnectionConfigWithTaskBuilder = {
+    this.modify(_.options)(_ ++ Map(EXCLUDE_FIELDS -> fields.mkString(",")))
+  }
+
+  /**
+   * Include fields matching regex patterns. Supports dot notation for nested fields.
+   * Example: includeFieldPatterns("user_.*", "account_.*")
+   *
+   * @param patterns Regex patterns for field names to include
+   * @return Updated connection config builder
+   */
+  @varargs def includeFieldPatterns(patterns: String*): ConnectionConfigWithTaskBuilder = {
+    this.modify(_.options)(_ ++ Map(INCLUDE_FIELD_PATTERNS -> patterns.mkString(",")))
+  }
+
+  /**
+   * Exclude fields matching regex patterns. Supports dot notation for nested fields.
+   * Example: excludeFieldPatterns("internal_.*", "temp_.*")
+   *
+   * @param patterns Regex patterns for field names to exclude
+   * @return Updated connection config builder
+   */
+  @varargs def excludeFieldPatterns(patterns: String*): ConnectionConfigWithTaskBuilder = {
+    this.modify(_.options)(_ ++ Map(EXCLUDE_FIELD_PATTERNS -> patterns.mkString(",")))
   }
 
   private def setConnectionConfig[T <: ConnectionTaskBuilder[_]](name: String, configBuilder: DataCatererConfigurationBuilder, connectionBuilder: T): T = {

@@ -14,8 +14,9 @@ import org.apache.log4j.Logger
 import org.apache.spark.sql.{DataFrame, SaveMode, SparkSession}
 
 import java.io.Serializable
-import java.time.LocalDateTime
+import java.time.{Duration, LocalDateTime}
 import java.util.{Locale, Random}
+import scala.annotation.tailrec
 import scala.util.{Failure, Success, Try}
 
 class BatchDataProcessor(connectionConfigsByName: Map[String, Map[String, String]], foldersConfig: FoldersConfig,
@@ -31,9 +32,9 @@ class BatchDataProcessor(connectionConfigsByName: Map[String, Map[String, String
                      (implicit sparkSession: SparkSession): List[DataSourceResult] = {
     val faker = getDataFaker(plan)
     val dataGeneratorFactory = new DataGeneratorFactory(faker)
-    val uniqueFieldUtil = new UniqueFieldsUtil(plan, executableTasks)
-    val tasks = executableTasks.map(_._2)
-    var (numBatches, trackRecordsPerStep) = calculateNumBatches(tasks, generationConfig)
+    val uniqueFieldUtil = new UniqueFieldsUtil(plan, executableTasks, flagsConfig.enableUniqueCheckOnlyInBatch, generationConfig)
+    val foreignKeys = plan.sinkOptions.map(_.foreignKeys).getOrElse(List())
+    var (numBatches, trackRecordsPerStep) = calculateNumBatches(foreignKeys, executableTasks, generationConfig)
 
     def generateDataForStep(batch: Int, task: (TaskSummary, Task), s: Step): (String, DataFrame) = {
       val isStepEnabledGenerateData = s.options.get(ENABLE_DATA_GENERATION).map(_.toBoolean).getOrElse(DEFAULT_ENABLE_GENERATE_DATA)
@@ -45,45 +46,60 @@ class BatchDataProcessor(connectionConfigsByName: Map[String, Map[String, String
         val endIndex = stepRecords.currentNumRecords + stepRecords.numRecordsPerBatch
 
         val genDf = dataGeneratorFactory.generateDataForStep(s, task._1.dataSourceName, startIndex, endIndex)
-        var df = getUniqueGeneratedRecords(uniqueFieldUtil, dataSourceStepName, genDf, s)
+        val initialDf = getUniqueGeneratedRecords(uniqueFieldUtil, dataSourceStepName, genDf, s)
+        if (!initialDf.storageLevel.useMemory) initialDf.cache()
+        genDf.unpersist()
 
-        if (!df.storageLevel.useMemory) df.cache()
-        var dfRecordCount = if (flagsConfig.enableCount) df.count() else stepRecords.numRecordsPerBatch
-        var retries = 0
+        val initialRecordCount = if (flagsConfig.enableCount) initialDf.count() else stepRecords.numRecordsPerBatch
         val targetNumRecords = stepRecords.numRecordsPerBatch * s.count.perField.map(_.averageCountPerField).getOrElse(1L)
+
         LOGGER.debug(s"Step record count for batch, batch=$batch, step-name=${s.name}, " +
-          s"target-num-records=$targetNumRecords, actual-num-records=$dfRecordCount")
+          s"target-num-records=$targetNumRecords, actual-num-records=$initialRecordCount")
 
         // if record count doesn't match expected record count, generate more data
-        def generateAdditionalRecords(): Unit = {
-          LOGGER.debug(s"Record count does not reach expected num records for batch, generating more records until reached, " +
-            s"target-num-records=$targetNumRecords, actual-num-records=$dfRecordCount, num-retries=$retries, max-retries=$maxRetries")
+        def generateAdditionalRecords(currentDf: DataFrame, currentRecordCount: Long): (DataFrame, Long) = {
           val additionalGenDf = dataGeneratorFactory
-            .generateDataForStep(s, task._1.dataSourceName, stepRecords.currentNumRecords + dfRecordCount, endIndex)
+            .generateDataForStep(s, task._1.dataSourceName, stepRecords.currentNumRecords + currentRecordCount, endIndex)
           val additionalDf = getUniqueGeneratedRecords(uniqueFieldUtil, dataSourceStepName, additionalGenDf, s)
-          df = df.union(additionalDf)
-          dfRecordCount = df.count()
+          if (!additionalDf.storageLevel.useMemory) additionalDf.cache()
+          additionalGenDf.unpersist()
+          val newDf = currentDf.unionByName(additionalDf, true)
+          val newRecordCount = newDf.count()
           LOGGER.debug(s"Generated more records for step, batch=$batch, step-name=${s.name}, " +
-            s"new-num-records=${additionalDf.count()}, actual-num-records=$dfRecordCount")
+            s"new-num-records=${additionalDf.count()}, actual-num-records=$newRecordCount")
+          additionalDf.unpersist()
+          (newDf, newRecordCount)
+        }
+
+        // Recursive function to generate additional records
+        @tailrec
+        def generateRecordsRecursively(currentDf: DataFrame, currentRecordCount: Long, retries: Int): (DataFrame, Long) = {
+          LOGGER.debug(s"Record count does not reach expected num records for batch, generating more records until reached, " +
+            s"target-num-records=$targetNumRecords, actual-num-records=$currentRecordCount, num-retries=$retries, max-retries=$maxRetries")
+          if (targetNumRecords == currentRecordCount || retries >= maxRetries) {
+            (currentDf, currentRecordCount)
+          } else {
+            val (newDf, newRecordCount) = generateAdditionalRecords(currentDf, currentRecordCount)
+            generateRecordsRecursively(newDf, newRecordCount, retries + 1)
+          }
         }
 
         //if random amount of records, don't try to regenerate more records
-        if (s.count.options.isEmpty && s.count.perField.forall(_.options.isEmpty)) {
-          while (targetNumRecords != dfRecordCount && retries < maxRetries) {
-            retries += 1
-            generateAdditionalRecords()
-          }
-          if (targetNumRecords != dfRecordCount && retries == maxRetries) {
-            LOGGER.warn("Unable to reach expected number of records due to reaching max retries. " +
-              s"Can be due to limited number of potential unique records, " +
-              s"target-num-records=$targetNumRecords, actual-num-records=${dfRecordCount}")
-          }
+        val (finalDf, finalRecordCount) = if (s.count.options.isEmpty && s.count.perField.forall(_.options.isEmpty)) {
+          generateRecordsRecursively(initialDf, initialRecordCount, 0)
         } else {
           LOGGER.debug("Random amount of records generated, not attempting to generate more records")
+          (initialDf, initialRecordCount)
         }
 
-        trackRecordsPerStep = trackRecordsPerStep ++ Map(recordStepName -> stepRecords.copy(currentNumRecords = dfRecordCount + stepRecords.currentNumRecords))
-        (dataSourceStepName, df)
+        if (targetNumRecords != finalRecordCount && s.count.options.isEmpty && s.count.perField.forall(_.options.isEmpty)) {
+          LOGGER.warn("Unable to reach expected number of records due to reaching max retries. " +
+            s"Can be due to limited number of potential unique records, " +
+            s"target-num-records=$targetNumRecords, actual-num-records=$finalRecordCount")
+        }
+
+        trackRecordsPerStep = trackRecordsPerStep ++ Map(recordStepName -> stepRecords.copy(currentNumRecords = finalRecordCount + stepRecords.currentNumRecords))
+        (dataSourceStepName, finalDf)
       } else {
         LOGGER.debug(s"Step has data generation disabled, data-source=${task._1.dataSourceName}")
         (dataSourceStepName, sparkSession.emptyDataFrame)
@@ -95,18 +111,22 @@ class BatchDataProcessor(connectionConfigsByName: Map[String, Map[String, String
       LOGGER.info(s"Starting batch, batch=$batch, num-batches=$numBatches")
       val generatedDataForeachTask = executableTasks.flatMap(task =>
         task._2.steps.filter(_.enabled).map(s => generateDataForStep(batch, task, s))
-      ).toMap
+      )
 
       val sinkDf = plan.sinkOptions
         .map(_ => ForeignKeyUtil.getDataFramesWithForeignKeys(plan, generatedDataForeachTask))
-        .getOrElse(generatedDataForeachTask.toList)
+        .getOrElse(generatedDataForeachTask)
       val sinkResults = pushDataToSinks(plan, executableTasks, sinkDf, batch, startTime, optValidations)
       sinkDf.foreach(_._2.unpersist())
-      LOGGER.info(s"Finished batch, batch=$batch, num-batches=$numBatches")
+      sparkSession.sparkContext.getPersistentRDDs.foreach { case (_, rdd) => rdd.unpersist() }
+      val endTime = LocalDateTime.now()
+      val timeTakenMs = Duration.between(startTime, endTime).toMillis
+      LOGGER.info(s"Finished batch, batch=$batch, num-batches=$numBatches, time-taken-ms=$timeTakenMs")
       sinkResults
     }).toList
 
     LOGGER.debug(s"Completed all batches, num-batches=$numBatches")
+    uniqueFieldUtil.cleanup()
     dataSourceResults
   }
 
@@ -123,7 +143,8 @@ class BatchDataProcessor(connectionConfigsByName: Map[String, Map[String, String
     ).toMap
     val dataSourcesUsedInValidation = getDataSourcesUsedInValidation(optValidations)
 
-    sinkDf.filter(s => !s._2.isEmpty).map(df => {
+    val nonEmptyDfs = if (flagsConfig.enableCount) sinkDf.filter(s => !s._2.isEmpty) else sinkDf
+    nonEmptyDfs.map(df => {
       val dataSourceName = df._1.split("\\.").head
       val (step, task) = stepAndTaskByDataSourceName(df._1)
       val dataSourceConfig = connectionConfigsByName.getOrElse(dataSourceName, Map())

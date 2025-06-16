@@ -1,23 +1,19 @@
 name: "large_csv_file"
 steps:
-  - name: "transactions"
+  - name: "transaction"
     type: "csv"
     options:
       path: "app/src/test/resources/sample/large/csv/transactions"
-      partitions: 10
-      partitionBy: "year"
+      saveMode: "Overwrite"
     count:
       records: 100000
       perField:
-        count: 2
+        count: 4
         fieldNames:
           - "account_id"
           - "name"
     fields:
       - name: "account_id"
-        type: "string"
-        options:
-          regex: "ACC1[0-9]{9}"
       - name: "name"
         type: "string"
         options:
@@ -25,15 +21,15 @@ steps:
       - name: "year"
         type: "int"
         options:
-          minValue: 2021
-          maxValue: 2022
+          min: 2021
+          max: 2022
       - name: "amount"
         type: "double"
         options:
-          minValue: 10.0
-          maxValue: 100.0
+          min: 10.0
+          max: 100.0
       - name: "txn_date"
         type: "date"
         options:
-          minValue: "2021-01-01"
-          maxValue: "2021-12-31"
+          min: "2021-01-01"
+          max: "2021-12-31"

@@ -10,6 +10,9 @@ object Constants {
   lazy val ADVANCED_APPLICATION = "advanced"
   lazy val TRIAL_APPLICATION = "trial"
 
+  //env vars
+  lazy val DATA_CATERER_UI = "DATA_CATERER_UI"
+
   //base config
   lazy val RUNTIME_MASTER = "runtime.master"
 
@@ -30,22 +33,12 @@ object Constants {
 
   //special field names
   lazy val PER_FIELD_COUNT = "_per_field_count"
+  lazy val PER_FIELD_COUNT_GENERATED_NUM = "_per_field_count_gen_num"
   lazy val PER_FIELD_COUNT_GENERATED = "_per_field_count_gen"
   lazy val JOIN_FOREIGN_KEY_FIELD = "_join_foreign_key"
   lazy val PER_FIELD_INDEX_FIELD = "_per_field_index"
   lazy val RECORD_COUNT_GENERATOR_FIELD = "record_count_generator"
-  lazy val INDEX_INC_FIELD = "__index_inc"
-  lazy val REAL_TIME_BODY_FIELD = "value"
-  lazy val REAL_TIME_BODY_CONTENT_FIELD = "bodyContent"
-  lazy val REAL_TIME_PARTITION_FIELD = "partition"
-  lazy val REAL_TIME_HEADERS_FIELD = "headers"
-  lazy val REAL_TIME_METHOD_FIELD = "method"
-  lazy val REAL_TIME_ENDPOINT = "endpoint"
-  lazy val REAL_TIME_CONTENT_TYPE_FIELD = "content_type"
-  lazy val REAL_TIME_URL_FIELD = "url"
-  lazy val HTTP_HEADER_FIELD_PREFIX = "header"
-  lazy val HTTP_PATH_PARAM_FIELD_PREFIX = "pathParam"
-  lazy val HTTP_QUERY_PARAM_FIELD_PREFIX = "queryParam"
+  lazy val RECORD_COUNT_GENERATOR_WEIGHT_FIELD = "record_count_generator_weight"
 
   //special table name
   lazy val DATA_CATERER_RANDOM_LENGTH = "data_caterer_random_length"
@@ -105,6 +98,7 @@ object Constants {
     CASSANDRA -> CONNECTION_GROUP_DATA_SOURCE,
     POSTGRES -> CONNECTION_GROUP_DATA_SOURCE,
     MYSQL -> CONNECTION_GROUP_DATA_SOURCE,
+    BIGQUERY -> CONNECTION_GROUP_DATA_SOURCE,
     CSV -> CONNECTION_GROUP_DATA_SOURCE,
     JSON -> CONNECTION_GROUP_DATA_SOURCE,
     PARQUET -> CONNECTION_GROUP_DATA_SOURCE,
@@ -113,6 +107,7 @@ object Constants {
     HTTP -> CONNECTION_GROUP_DATA_SOURCE,
     JMS -> CONNECTION_GROUP_DATA_SOURCE,
     KAFKA -> CONNECTION_GROUP_DATA_SOURCE,
+    RABBITMQ -> CONNECTION_GROUP_DATA_SOURCE,
     SOLACE -> CONNECTION_GROUP_DATA_SOURCE,
     OPEN_METADATA -> CONNECTION_GROUP_METADATA_SOURCE,
     MARQUEZ -> CONNECTION_GROUP_METADATA_SOURCE,
@@ -121,6 +116,8 @@ object Constants {
     AMUNDSEN -> CONNECTION_GROUP_METADATA_SOURCE,
     DATAHUB -> CONNECTION_GROUP_METADATA_SOURCE,
     OPEN_DATA_CONTRACT_STANDARD -> CONNECTION_GROUP_METADATA_SOURCE,
+    CONFLUENT_SCHEMA_REGISTRY -> CONNECTION_GROUP_METADATA_SOURCE,
+    JSON_SCHEMA -> CONNECTION_GROUP_METADATA_SOURCE,
     SLACK -> CONNECTION_GROUP_ALERT,
   )
 

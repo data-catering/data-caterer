@@ -1,21 +1,17 @@
 package io.github.datacatering.datacaterer.core.generator.metadata.datasource.http
 
-import io.github.datacatering.datacaterer.api.model.Constants.{ENABLED_NULL, FIELD_DATA_TYPE, HTTP_PARAMETER_TYPE, HTTP_PATH_PARAMETER, HTTP_QUERY_PARAMETER, IS_NULLABLE, ONE_OF_GENERATOR, POST_SQL_EXPRESSION, SQL_GENERATOR, STATIC}
+import io.github.datacatering.datacaterer.api.model.Constants.{ENABLED_NULL, FIELD_DATA_TYPE, HTTP_HEADER_FIELD_PREFIX, HTTP_PARAMETER_TYPE, HTTP_PATH_PARAMETER, HTTP_PATH_PARAM_FIELD_PREFIX, HTTP_QUERY_PARAMETER, HTTP_QUERY_PARAM_FIELD_PREFIX, IS_NULLABLE, ONE_OF_GENERATOR, POST_SQL_EXPRESSION, REAL_TIME_BODY_CONTENT_FIELD, REAL_TIME_BODY_FIELD, REAL_TIME_CONTENT_TYPE_FIELD, REAL_TIME_METHOD_FIELD, REAL_TIME_URL_FIELD, SQL_GENERATOR, STATIC}
 import io.github.datacatering.datacaterer.core.generator.metadata.datasource.database.FieldMetadata
-import io.github.datacatering.datacaterer.core.model.Constants.{HTTP_HEADER_FIELD_PREFIX, HTTP_PATH_PARAM_FIELD_PREFIX, HTTP_QUERY_PARAM_FIELD_PREFIX, REAL_TIME_BODY_FIELD, REAL_TIME_BODY_CONTENT_FIELD, REAL_TIME_CONTENT_TYPE_FIELD, REAL_TIME_METHOD_FIELD, REAL_TIME_URL_FIELD}
 import io.swagger.v3.oas.models.PathItem.HttpMethod
 import io.swagger.v3.oas.models.media.{Content, MediaType, Schema}
 import io.swagger.v3.oas.models.parameters.Parameter.StyleEnum
 import io.swagger.v3.oas.models.parameters.{Parameter, RequestBody}
 import io.swagger.v3.oas.models.servers.Server
 import io.swagger.v3.oas.models.{Components, OpenAPI, Operation}
-import org.junit.runner.RunWith
 import org.scalatest.funsuite.AnyFunSuite
-import org.scalatestplus.junit.JUnitRunner
 
 import scala.collection.JavaConverters.seqAsJavaListConverter
 
-@RunWith(classOf[JUnitRunner])
 class OpenAPIConverterTest extends AnyFunSuite {
 
   test("Can convert GET request to field metadata") {
@@ -26,7 +22,7 @@ class OpenAPIConverterTest extends AnyFunSuite {
     val result = openAPIConverter.toFieldMetadata("/", HttpMethod.GET, operation, Map())
 
     assertResult(2)(result.size)
-    assertResult(Map(FIELD_DATA_TYPE -> "string", SQL_GENERATOR -> "CONCAT('http://localhost:80/', URL_ENCODE(ARRAY_JOIN(ARRAY(), '&')))"))(result.filter(_.field == REAL_TIME_URL_FIELD).head.metadata)
+    assertResult(Map(FIELD_DATA_TYPE -> "string", SQL_GENERATOR -> "CONCAT('http://localhost:80/', ARRAY_JOIN(ARRAY(), '&'))"))(result.filter(_.field == REAL_TIME_URL_FIELD).head.metadata)
     assertResult(Map(FIELD_DATA_TYPE -> "string", STATIC -> "GET"))(result.filter(_.field == REAL_TIME_METHOD_FIELD).head.metadata)
   }
 
@@ -124,7 +120,7 @@ class OpenAPIConverterTest extends AnyFunSuite {
 
     val result = new OpenAPIConverter().urlSqlGenerator(baseUrl, pathParams, queryParams)
 
-    assertResult("CONCAT(CONCAT(REPLACE('http://localhost:80/id/{id}/data', '{id}', URL_ENCODE(`id`)), '?'), URL_ENCODE(ARRAY_JOIN(ARRAY(CAST(`limit`` AS STRING),CAST(CONCAT('tags=', ARRAY_JOIN(tags, ',')) AS STRING)), '&')))")(result)
+    assertResult("CONCAT(CONCAT(REPLACE('http://localhost:80/id/{id}/data', '{id}', URL_ENCODE(`id`)), '?'), ARRAY_JOIN(ARRAY(CAST(`limit` AS STRING),CAST(CONCAT('tags=', ARRAY_JOIN(tags, ',')) AS STRING)), '&'))")(result)
   }
 
   test("Can get path params from parameters list") {
