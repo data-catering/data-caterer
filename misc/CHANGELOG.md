@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.16.1
+
+- Fixed issue relating to matching tasks from YAML and tasks from metadata
+
 ## 0.16.0
 
 - Add in JSON schema as metadata source

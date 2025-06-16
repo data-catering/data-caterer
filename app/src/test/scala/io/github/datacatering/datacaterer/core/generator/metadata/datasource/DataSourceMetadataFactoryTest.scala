@@ -3,6 +3,7 @@ package io.github.datacatering.datacaterer.core.generator.metadata.datasource
 import io.github.datacatering.datacaterer.api.PlanRun
 import io.github.datacatering.datacaterer.core.util.SparkSuite
 
+
 class DataSourceMetadataFactoryTest extends SparkSuite {
 
   class ManualGenerationPlan extends PlanRun {
@@ -68,4 +69,6 @@ class DataSourceMetadataFactoryTest extends SparkSuite {
     assertResult(1)(result.get._3.head.dataSources.head._2.size)
     assertResult(4)(result.get._3.head.dataSources.head._2.head.validations.size)
   }
+
+
 }

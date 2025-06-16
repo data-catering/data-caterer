@@ -6,10 +6,13 @@ tasks:
     enabled: false
   - name: "parquet_transaction_file"
     dataSourceName: "parquet"
-    enabled: true
+    enabled: false
   - name: "cassandra_customer_status_table_create"
     dataSourceName: "cassandra"
     enabled: false
   - name: "cassandra_customer_transactions_table_create"
     dataSourceName: "cassandra"
     enabled: false
+  - name: "json_schema_file"
+    dataSourceName: "json"
+    enabled: true

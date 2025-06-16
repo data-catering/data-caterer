@@ -1,6 +1,6 @@
 package io.github.datacatering.datacaterer.core.generator.metadata.datasource.jsonschema
 
-import io.github.datacatering.datacaterer.api.model.Constants.JSON_SCHEMA_FILE
+import io.github.datacatering.datacaterer.api.model.Constants.{JSON_SCHEMA_FILE, METADATA_IDENTIFIER}
 import io.github.datacatering.datacaterer.core.generator.metadata.datasource.database.FieldMetadata
 import io.github.datacatering.datacaterer.core.util.SparkSuite
 
@@ -155,5 +155,29 @@ class JsonSchemaDataSourceMetadataTest extends SparkSuite {
     
     // Should return empty list when schema file doesn't exist
     assert(validations.isEmpty)
+  }
+
+  test("metadata identifier includes schema file name for task matching") {
+    val schemaPath = getClass.getResource("/sample/schema/simple-user-schema.json").getPath
+    val connectionConfig = Map(JSON_SCHEMA_FILE -> schemaPath)
+    
+    val metadata = JsonSchemaDataSourceMetadata("test", "json", connectionConfig)
+    val subDataSources = metadata.getSubDataSourcesMetadata
+    
+    assert(subDataSources.length == 1)
+    
+    // The metadata identifier should include the schema file name
+    val metadataIdentifier = subDataSources.head.readOptions(METADATA_IDENTIFIER)
+    assert(metadataIdentifier.contains("simple-user-schema_json"), 
+      s"Metadata identifier should contain schema file name, actual: $metadataIdentifier")
+    
+    // Verify field metadata also has the same identifier
+    val fieldMetadata = subDataSources.head.optFieldMetadata.get.collect()
+    assert(fieldMetadata.length > 0)
+    
+    val firstField = fieldMetadata.head
+    val fieldMetadataIdentifier = firstField.dataSourceReadOptions(METADATA_IDENTIFIER)
+    assert(fieldMetadataIdentifier == metadataIdentifier,
+      s"Field metadata identifier should match sub data source identifier, field: $fieldMetadataIdentifier, sub: $metadataIdentifier")
   }
 } 
