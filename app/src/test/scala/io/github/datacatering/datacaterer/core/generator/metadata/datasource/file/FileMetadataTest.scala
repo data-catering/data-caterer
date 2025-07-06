@@ -3,20 +3,21 @@ package io.github.datacatering.datacaterer.core.generator.metadata.datasource.fi
 import io.github.datacatering.datacaterer.core.util.SparkSuite
 
 class FileMetadataTest extends SparkSuite {
-  private val baseFolder = "src/test/resources/sample/files"
+  private val baseFolder = getClass.getResource("/sample/files").getPath
 
   test("Can get all distinct folder pathways for csv file type") {
-    val fileMetadata = FileMetadata("csv_data", "csv", Map("path" -> baseFolder))
+    val fileMetadata = FileMetadata("csv_data", "csv", Map("path" -> s"$baseFolder/csv"))
 
     val result = fileMetadata.getSubDataSourcesMetadata
 
     assertResult(2)(result.length)
     assert(result.forall(m => m.readOptions("format") == "csv"))
-    assert(result.forall(m => m.readOptions("path").contains(s"$baseFolder/csv/account") || m.readOptions("path").contains(s"$baseFolder/csv/transactions")))
+    assert(result.forall(m => m.readOptions("path").contains(s"$baseFolder/csv/account")
+      || m.readOptions("path").contains(s"$baseFolder/csv/transactions")))
   }
 
   test("Can get all distinct folder pathways for parquet file type") {
-    val fileMetadata = FileMetadata("parquet_data", "parquet", Map("path" -> baseFolder))
+    val fileMetadata = FileMetadata("parquet_data", "parquet", Map("path" -> s"$baseFolder/parquet"))
 
     val result = fileMetadata.getSubDataSourcesMetadata
 
@@ -29,13 +30,23 @@ class FileMetadataTest extends SparkSuite {
   }
 
   test("Can get all distinct folder pathways for json file type") {
-    val fileMetadata = FileMetadata("json_data", "json", Map("path" -> baseFolder))
+    val fileMetadata = FileMetadata("json_data", "json", Map("path" -> s"$baseFolder/json"))
 
     val result = fileMetadata.getSubDataSourcesMetadata
 
-    assertResult(2)(result.length)
+    assertResult(1)(result.length)
     assert(result.forall(m => m.readOptions("format") == "json"))
-    assert(result.forall(m => m.readOptions("path").contains(s"$baseFolder/json") || m.readOptions("path").contains(s"$baseFolder/csv/json")))
+    assert(result.forall(m => m.readOptions("path").contains(s"$baseFolder/json")))
+  }
+
+  test("Can get json files from nested csv/json folder when searching specifically there") {
+    val fileMetadata = FileMetadata("json_data", "json", Map("path" -> s"$baseFolder/csv/json"))
+
+    val result = fileMetadata.getSubDataSourcesMetadata
+
+    assertResult(1)(result.length)
+    assert(result.forall(m => m.readOptions("format") == "json"))
+    assert(result.forall(m => m.readOptions("path").contains(s"$baseFolder/csv/json")))
   }
 
 }

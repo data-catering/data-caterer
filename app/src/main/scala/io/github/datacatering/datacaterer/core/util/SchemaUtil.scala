@@ -54,7 +54,7 @@ object SchemaHelper {
    * @return Merged schema
    */
   def mergeSchemaInfo(schema1: List[Field], schema2: List[Field], hasMultipleSubDataSources: Boolean = false): List[Field] = {
-    if (schema1.nonEmpty && schema2.isEmpty) {
+    val result = if (schema1.nonEmpty && schema2.isEmpty) {
       schema1
     } else if (schema1.isEmpty && schema2.nonEmpty) {
       schema2
@@ -80,7 +80,7 @@ object SchemaHelper {
             List()
           }
 
-          val fieldType = mergeFieldType(field, f2)
+          val fieldType = mergeFieldType(field, f2, fieldSchema)
           val fieldGenerator = mergeGenerator(field, f2)
           val fieldNullable = mergeNullable(field, f2)
           val fieldStatic = mergeStaticValue(field, f2)
@@ -94,10 +94,27 @@ object SchemaHelper {
       } else {
         schema2.filter(f2 => !schema1.exists(f1 => f1.name == f2.name))
       }
-      mergedFields ++ fieldsInSchema2NotInSchema1
+      
+      // Also add fields from schema1 that don't exist in schema2 (like JSON schema fields not overridden by user)
+      val fieldsInSchema1NotInSchema2 = schema1.filter(f1 => !schema2.exists(f2 => f2.name == f1.name))
+      
+      // Combine all fields, avoiding duplicates by tracking field names we've already included
+      var result = mergedFields
+      val includedNames = mergedFields.map(_.name).toSet
+      
+      // Add fields from schema2 that aren't in schema1 and aren't already included
+      result = result ++ fieldsInSchema2NotInSchema1.filter(f => !includedNames.contains(f.name))
+      val updatedIncludedNames = includedNames ++ fieldsInSchema2NotInSchema1.map(_.name)
+      
+      // Add fields from schema1 that aren't in schema2 and aren't already included
+      result = result ++ fieldsInSchema1NotInSchema2.filter(f => !updatedIncludedNames.contains(f.name))
+      
+      result
     } else {
       List()
     }
+    
+    result
   }
 
   private def mergeStaticValue(field: Field, f2: Field) = {
@@ -128,15 +145,52 @@ object SchemaHelper {
     field.options ++ f2.options
   }
 
-  private def mergeFieldType(field: Field, f2: Field) = {
+  private def mergeFieldType(field: Field, f2: Field, mergedNestedFields: List[Field] = List()) = {
     (field.`type`, f2.`type`) match {
       case (Some(fType), Some(f2Type)) =>
         if (fType.equalsIgnoreCase(f2Type)) {
           field.`type`
         } else {
-          LOGGER.warn(s"User has defined data type different to metadata source or from data source. " +
-            s"Using data source defined type, field-name=${field.name}, user-type=$f2Type, data-source-type=$fType")
-          field.`type`
+          // Check if we're dealing with struct types that should be merged based on their nested fields
+          val isStructType = fType.toLowerCase.startsWith("struct") || f2Type.toLowerCase.startsWith("struct")
+          val isArrayOfStructType = (fType.toLowerCase.startsWith("array<struct") || f2Type.toLowerCase.startsWith("array<struct"))
+          
+          if (isStructType || isArrayOfStructType) {
+            // For struct types, reconstruct the type from merged nested fields if available
+            if (mergedNestedFields.nonEmpty) {
+              // Reconstruct struct type from merged nested fields
+              val fieldDefs = mergedNestedFields.map(f => {
+                val fieldType = f.`type`.getOrElse("string")
+                s"${f.name}: $fieldType"
+              }).mkString(", ")
+              
+              val reconstructedType = if (isArrayOfStructType) {
+                s"array<struct<$fieldDefs>>"
+              } else {
+                s"struct<$fieldDefs>"
+              }
+              
+              Some(reconstructedType)
+            } else {
+              // Fallback to original logic when no merged fields available
+              if (f2Type.toLowerCase.contains("struct<>") && fType.toLowerCase.startsWith("struct")) {
+                // User defined empty struct with nested fields, use metadata source type as base
+                field.`type`
+              } else if (fType.toLowerCase.contains("struct<>") && f2Type.toLowerCase.startsWith("struct")) {
+                // Metadata source has empty struct, user has complete type
+                f2.`type`
+              } else {
+                // Both have complete struct definitions, use metadata source as base
+                LOGGER.debug(s"Both field definitions have complete struct types. Using metadata source type as base for field merging, field-name=${field.name}, user-type=$f2Type, data-source-type=$fType")
+                field.`type`
+              }
+            }
+          } else {
+            // For non-struct types, log warning and use metadata source type
+            LOGGER.warn(s"User has defined data type different to metadata source or from data source. " +
+              s"Using data source defined type, field-name=${field.name}, user-type=$f2Type, data-source-type=$fType")
+            field.`type`
+          }
         }
       case (Some(_), None) => field.`type`
       case (None, Some(_)) => f2.`type`

@@ -1,6 +1,6 @@
 package io.github.datacatering.datacaterer.core.util
 
-import io.github.datacatering.datacaterer.api.model.Constants.{HTTP, JMS, ONE_OF_GENERATOR, REGEX_GENERATOR, SQL_GENERATOR}
+import io.github.datacatering.datacaterer.api.model.Constants.{EXPRESSION, HTTP, JMS, ONE_OF_GENERATOR, REGEX_GENERATOR, SQL_GENERATOR}
 import io.github.datacatering.datacaterer.api.model.{Step, TaskSummary}
 import io.github.datacatering.datacaterer.core.generator.provider.{DataGenerator, OneOfDataGenerator, RandomDataGenerator, RegexDataGenerator}
 import io.github.datacatering.datacaterer.core.model.Constants.{BATCH, REAL_TIME}
@@ -14,12 +14,19 @@ object GeneratorUtil {
   private val LOGGER = Logger.getLogger(getClass.getName)
 
   def getDataGenerator(structField: StructField, faker: Faker): DataGenerator[_] = {
+    val hasSql = structField.metadata.contains(SQL_GENERATOR)
+    val hasExpression = structField.metadata.contains(EXPRESSION)
     val hasRegex = structField.metadata.contains(REGEX_GENERATOR)
     val hasOneOf = structField.metadata.contains(ONE_OF_GENERATOR)
-    (hasRegex, hasOneOf) match {
-      case (true, _) => RegexDataGenerator.getGenerator(structField, faker)
-      case (_, true) => OneOfDataGenerator.getGenerator(structField, faker)
-      case _ => RandomDataGenerator.getGeneratorForStructField(structField, faker)
+
+    if (hasOneOf) {
+      OneOfDataGenerator.getGenerator(structField, faker)
+    } else if (hasSql || hasExpression) {
+      RandomDataGenerator.getGeneratorForStructField(structField, faker)
+    } else if (hasRegex) {
+      RegexDataGenerator.getGenerator(structField, faker)
+    } else {
+      RandomDataGenerator.getGeneratorForStructField(structField, faker)
     }
   }
 

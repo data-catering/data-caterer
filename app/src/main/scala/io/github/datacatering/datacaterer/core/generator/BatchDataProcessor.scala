@@ -1,6 +1,6 @@
 package io.github.datacatering.datacaterer.core.generator
 
-import io.github.datacatering.datacaterer.api.model.Constants.{DEFAULT_ENABLE_GENERATE_DATA, ENABLE_DATA_GENERATION, SAVE_MODE}
+import io.github.datacatering.datacaterer.api.model.Constants.{DEFAULT_ENABLE_GENERATE_DATA, DEFAULT_ENABLE_REFERENCE_MODE, ENABLE_DATA_GENERATION, ENABLE_REFERENCE_MODE, SAVE_MODE}
 import io.github.datacatering.datacaterer.api.model.{DataSourceResult, FlagsConfig, FoldersConfig, GenerationConfig, MetadataConfig, Plan, Step, Task, TaskSummary, UpstreamDataSourceValidation, ValidationConfiguration}
 import io.github.datacatering.datacaterer.core.exception.InvalidRandomSeedException
 import io.github.datacatering.datacaterer.core.generator.track.RecordTrackingProcessor
@@ -8,7 +8,7 @@ import io.github.datacatering.datacaterer.core.sink.SinkFactory
 import io.github.datacatering.datacaterer.core.util.GeneratorUtil.getDataSourceName
 import io.github.datacatering.datacaterer.core.util.PlanImplicits.PerFieldCountOps
 import io.github.datacatering.datacaterer.core.util.RecordCountUtil.calculateNumBatches
-import io.github.datacatering.datacaterer.core.util.{ForeignKeyUtil, UniqueFieldsUtil}
+import io.github.datacatering.datacaterer.core.util.{DataSourceReader, ForeignKeyUtil, UniqueFieldsUtil}
 import net.datafaker.Faker
 import org.apache.log4j.Logger
 import org.apache.spark.sql.{DataFrame, SaveMode, SparkSession}
@@ -38,8 +38,52 @@ class BatchDataProcessor(connectionConfigsByName: Map[String, Map[String, String
 
     def generateDataForStep(batch: Int, task: (TaskSummary, Task), s: Step): (String, DataFrame) = {
       val isStepEnabledGenerateData = s.options.get(ENABLE_DATA_GENERATION).map(_.toBoolean).getOrElse(DEFAULT_ENABLE_GENERATE_DATA)
+      val isStepEnabledReferenceMode = s.options.get(ENABLE_REFERENCE_MODE).map(_.toBoolean).getOrElse(DEFAULT_ENABLE_REFERENCE_MODE)
       val dataSourceStepName = getDataSourceName(task._1, s)
-      if (isStepEnabledGenerateData) {
+      val dataSourceConfig = connectionConfigsByName.getOrElse(task._1.dataSourceName, Map())
+      
+      // Validate configuration
+      if (isStepEnabledReferenceMode && isStepEnabledGenerateData) {
+        throw new IllegalArgumentException(
+          s"Cannot enable both reference mode and data generation for step: ${s.name} in data source: ${task._1.dataSourceName}. " +
+            "Please enable only one mode."
+        )
+      }
+
+      if (isStepEnabledReferenceMode) {
+        LOGGER.info(s"Reading reference data for step, data-source=${task._1.dataSourceName}, step-name=${s.name}")
+        
+        try {
+          // Validate reference mode configuration
+          DataSourceReader.validateReferenceMode(s, dataSourceConfig)
+          
+          // Read data from the data source
+          val referenceDf = DataSourceReader.readDataFromSource(task._1.dataSourceName, s, dataSourceConfig)
+          
+          if (referenceDf.schema.isEmpty) {
+            LOGGER.warn(s"Reference data source has empty schema, data-source=${task._1.dataSourceName}, step-name=${s.name}")
+          }
+          
+          val recordCount = if (flagsConfig.enableCount && referenceDf.schema.nonEmpty) {
+            referenceDf.count()
+          } else {
+            -1L  // Count disabled or empty schema
+          }
+          
+          if (recordCount == 0) {
+            LOGGER.warn(s"Reference data source contains no records. This may cause issues with foreign key relationships, " +
+              s"data-source=${task._1.dataSourceName}, step-name=${s.name}")
+          } else if (recordCount > 0) {
+            LOGGER.info(s"Successfully loaded reference data, data-source=${task._1.dataSourceName}, step-name=${s.name}, num-records=$recordCount")
+          }
+          
+          (dataSourceStepName, referenceDf)
+        } catch {
+          case ex: Exception =>
+            LOGGER.error(s"Failed to read reference data, data-source=${task._1.dataSourceName}, step-name=${s.name}, error=${ex.getMessage}")
+            throw new RuntimeException(s"Failed to read reference data for ${task._1.dataSourceName}.${s.name}: ${ex.getMessage}", ex)
+        }
+      } else if (isStepEnabledGenerateData) {
         val recordStepName = s"${task._2.name}_${s.name}"
         val stepRecords = trackRecordsPerStep(recordStepName)
         val startIndex = stepRecords.currentNumRecords
@@ -101,7 +145,7 @@ class BatchDataProcessor(connectionConfigsByName: Map[String, Map[String, String
         trackRecordsPerStep = trackRecordsPerStep ++ Map(recordStepName -> stepRecords.copy(currentNumRecords = finalRecordCount + stepRecords.currentNumRecords))
         (dataSourceStepName, finalDf)
       } else {
-        LOGGER.debug(s"Step has data generation disabled, data-source=${task._1.dataSourceName}")
+        LOGGER.debug(s"Step has both data generation and reference mode disabled, data-source=${task._1.dataSourceName}, step-name=${s.name}")
         (dataSourceStepName, sparkSession.emptyDataFrame)
       }
     }
@@ -144,7 +188,22 @@ class BatchDataProcessor(connectionConfigsByName: Map[String, Map[String, String
     val dataSourcesUsedInValidation = getDataSourcesUsedInValidation(optValidations)
 
     val nonEmptyDfs = if (flagsConfig.enableCount) sinkDf.filter(s => !s._2.isEmpty) else sinkDf
-    nonEmptyDfs.map(df => {
+    
+    // Filter out reference data sources - they should not be saved to sinks
+    val nonReferenceDfs = nonEmptyDfs.filter { case (dataSourceStepName, _) =>
+      val dataSourceName = dataSourceStepName.split("\\.").head
+      val (step, _) = stepAndTaskByDataSourceName(dataSourceStepName)
+      val isReferenceMode = step.options.get(ENABLE_REFERENCE_MODE).map(_.toBoolean).getOrElse(DEFAULT_ENABLE_REFERENCE_MODE)
+      
+      if (isReferenceMode) {
+        LOGGER.debug(s"Skipping save for reference data source, data-source=$dataSourceName, step-name=${step.name}")
+        false
+      } else {
+        true
+      }
+    }
+    
+    nonReferenceDfs.map(df => {
       val dataSourceName = df._1.split("\\.").head
       val (step, task) = stepAndTaskByDataSourceName(df._1)
       val dataSourceConfig = connectionConfigsByName.getOrElse(dataSourceName, Map())
