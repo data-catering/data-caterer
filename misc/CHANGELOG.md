@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.16.2
+
+- Add in `referenceMode` to data generation config
+  - `enableReferenceMode` to step and connection task builders and YAML
+- Fix bug when using nested fields with foreign key relationships
+- Change order of data generation precendence
+  - Now order is `oneOf`, `sql`, `expression`, `regex`, `random`
+  - Previous order was `regex`, `oneOf`, `expression`, `sql`, `random`
+
+
 ## 0.16.1
 
 - Fixed issue relating to matching tasks from YAML and tasks from metadata

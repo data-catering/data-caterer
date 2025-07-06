@@ -189,6 +189,21 @@ trait ConnectionTaskBuilder[T] {
   }
 
   /**
+   * Enable reference mode for this data source. When enabled, the data source will read existing data
+   * instead of generating new data. This is useful for using existing datasets as reference data in foreign key
+   * relationships.
+   * 
+   * Note: Enabling reference mode automatically disables data generation to prevent conflicts.
+   *
+   * @param enable Whether to enable reference mode.
+   * @return The connection task builder.
+   */
+  def enableReferenceMode(enable: Boolean): ConnectionTaskBuilder[T] = {
+    this.step = Some(getStep.enableReferenceMode(enable))
+    this
+  }
+
+  /**
    * Enable data validation. Used to validate data from the data source.
    *
    * @param enable Whether to enable data validation.

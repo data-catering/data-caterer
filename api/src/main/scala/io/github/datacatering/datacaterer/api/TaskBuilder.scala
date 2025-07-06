@@ -407,6 +407,27 @@ case class StepBuilder(step: Step = Step(), optValidation: Option[DataSourceVali
     this.modify(_.step.options)(_ ++ Map(ENABLE_DATA_GENERATION -> enable.toString))
 
   /**
+   * Enable/disable reference mode for this step. When enabled, the step will read existing data from the data source
+   * instead of generating new data. This is useful for using existing datasets as reference data in foreign key
+   * relationships. 
+   * 
+   * Note: Enabling reference mode automatically disables data generation to prevent conflicts.
+   *
+   * @param enable Enable reference mode
+   * @return StepBuilder
+   */
+  def enableReferenceMode(enable: Boolean): StepBuilder = {
+    val referenceOptions = Map(ENABLE_REFERENCE_MODE -> enable.toString)
+    val combinedOptions = if (enable) {
+      // When enabling reference mode, automatically disable data generation
+      referenceOptions ++ Map(ENABLE_DATA_GENERATION -> "false")
+    } else {
+      referenceOptions
+    }
+    this.modify(_.step.options)(_ ++ combinedOptions)
+  }
+
+  /**
    * Include only specific fields in data generation. Supports dot notation for nested fields (e.g., "user.name").
    * Can be used with excludeFields, includeFieldPatterns, and excludeFieldPatterns.
    *

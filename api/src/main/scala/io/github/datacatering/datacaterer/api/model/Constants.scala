@@ -210,11 +210,13 @@ object Constants {
 
   //flag names
   lazy val ENABLE_DATA_GENERATION = "enableDataGeneration"
+  lazy val ENABLE_REFERENCE_MODE = "enableReferenceMode"
   lazy val ENABLE_DATA_VALIDATION = "enableDataValidation"
 
   //flags defaults
   lazy val DEFAULT_ENABLE_COUNT = true
   lazy val DEFAULT_ENABLE_GENERATE_DATA = true
+  lazy val DEFAULT_ENABLE_REFERENCE_MODE = false
   lazy val DEFAULT_ENABLE_RECORD_TRACKING = false
   lazy val DEFAULT_ENABLE_DELETE_GENERATED_RECORDS = false
   lazy val DEFAULT_ENABLE_GENERATE_PLAN_AND_TASKS = false

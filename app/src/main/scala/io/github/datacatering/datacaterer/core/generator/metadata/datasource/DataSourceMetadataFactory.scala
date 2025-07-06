@@ -93,9 +93,20 @@ class DataSourceMetadataFactory(dataCatererConfiguration: DataCatererConfigurati
   private def getExternalMetadataFromPlanRun(planRun: PlanRun): PlanRun = {
     val updatedTaskBuilders = planRun._connectionTaskBuilders.map(connectionTaskBuilder => {
       val stepWithUpdatedSchema = connectionTaskBuilder.step.map(stepBuilder => {
-        val stepSchemaFromMetadataSource = getMetadataSourceSchema(stepBuilder.step.fields)
-        //remove the metadata source config from generator options after
-        stepBuilder.step.copy(fields = stepSchemaFromMetadataSource)
+        // Check if there's a connection-level metadata source for this data source
+        val connectionName = connectionTaskBuilder.connectionConfigWithTaskBuilder.dataSourceName
+        val connectionConfig = planRun._configuration.connectionConfigByName.getOrElse(connectionName, Map())
+        val hasConnectionLevelMetadataSource = connectionConfig.contains(METADATA_SOURCE_TYPE)
+        
+        if (hasConnectionLevelMetadataSource) {
+          // If there's a connection-level metadata source, don't process user override fields here
+          // They will be merged later in TaskHelper.fromMetadata
+          stepBuilder.step
+        } else {
+          // Only process field-level metadata sources if there's no connection-level metadata source
+          val stepSchemaFromMetadataSource = getMetadataSourceSchema(stepBuilder.step.fields)
+          stepBuilder.step.copy(fields = stepSchemaFromMetadataSource)
+        }
       })
       connectionTaskBuilder.apply(connectionTaskBuilder.connectionConfigWithTaskBuilder, connectionTaskBuilder.task.map(_.task), stepWithUpdatedSchema)
     })

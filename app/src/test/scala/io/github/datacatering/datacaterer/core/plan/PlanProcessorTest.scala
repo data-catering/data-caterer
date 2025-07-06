@@ -1,7 +1,7 @@
 package io.github.datacatering.datacaterer.core.plan
 
 import io.github.datacatering.datacaterer.api.model.Constants.{OPEN_METADATA_AUTH_TYPE_OPEN_METADATA, OPEN_METADATA_JWT_TOKEN, OPEN_METADATA_TABLE_FQN, PARTITIONS, ROWS_PER_SECOND, SAVE_MODE, VALIDATION_IDENTIFIER}
-import io.github.datacatering.datacaterer.api.model.{ArrayType, DateType, DoubleType, HeaderType, IntegerType, MapType, TimestampType}
+import io.github.datacatering.datacaterer.api.model.{ArrayType, DateType, DoubleType, HeaderType, IntegerType, MapType, StructType, TimestampType}
 import io.github.datacatering.datacaterer.api.{HttpMethodEnum, PlanRun}
 import io.github.datacatering.datacaterer.core.model.Constants.METADATA_FILTER_OUT_SCHEMA
 import io.github.datacatering.datacaterer.core.util.{ObjectMapperUtil, SparkSuite}
@@ -98,6 +98,30 @@ class PlanProcessorTest extends SparkSuite {
 
   test("Can generate JSON data from JSON Schema with field filtering matching mx_pain structure") {
     PlanProcessor.determineAndExecutePlan(Some(new TestJsonSchemaGenerationMatchingMxPain()))
+    
+    // Verify the foreign key relationship is working correctly
+    val generatedData = sparkSession.read.json("/tmp/data/json-schema-mx-pain-test").collect()
+    val csvReferencePath = getClass.getResource("/sample/files/reference/name-email.csv").getPath
+    val referenceData = sparkSession.read.option("header", "true").csv(csvReferencePath).collect()
+    
+    // Extract reference names and emails
+    val referenceNames = referenceData.map(_.getAs[String]("name")).toSet
+    val referenceEmails = referenceData.map(_.getAs[String]("email")).toSet
+    
+    // Verify all generated profile names and emails exist in reference data
+    generatedData.foreach(row => {
+      val profileName = row.getAs[org.apache.spark.sql.Row]("profile").getAs[String]("name")
+      val profileEmail = row.getAs[org.apache.spark.sql.Row]("profile").getAs[String]("email")
+      
+      assert(referenceNames.contains(profileName), s"Generated name '$profileName' should exist in reference data: ${referenceNames.mkString(", ")}")
+      assert(referenceEmails.contains(profileEmail), s"Generated email '$profileEmail' should exist in reference data: ${referenceEmails.mkString(", ")}")
+    })
+    
+    // Verify at least one record was generated
+    assert(generatedData.length > 0, "Should generate at least one record")
+    assert(generatedData.length == 10, "Should generate exactly 10 records as specified")
+    
+    println(s"Successfully validated foreign key relationship with ${generatedData.length} records")
   }
 
   private def verifyGeneratedData(folder: String) = {
@@ -639,51 +663,35 @@ class PlanProcessorTest extends SparkSuite {
   }
 
   class TestJsonSchemaGenerationMatchingMxPain extends PlanRun {
+    // Test reference table in csv
+    val csvReferencePath = getClass.getResource("/sample/files/reference/name-email.csv").getPath
+    val jsonSchemaPath = getClass.getResource("/sample/schema/complex-user-schema.json").getPath
+    val referenceTable = csv("reference_table", csvReferencePath, Map("header" -> "true"))
+      .fields(
+        field.name("name"),
+        field.name("email")
+      )
+      .enableReferenceMode(true)
+
     // Test field filtering to match the exact structure in mx_pain.json
     val jsonSchemaTask = json("json_schema_mx_pain_test", "/tmp/data/json-schema-mx-pain-test", Map("saveMode" -> "overwrite"))
-      .fields(metadataSource.jsonSchema("app/src/test/resources/sample/schema/mx_pain.json"))
-      // Include fields to match mx_pain.json structure exactly
-      // .includeFields(
-      //   // Group header fields
-      //   "customer_direct_debit_initiation_v11.group_header.message_identification",
-      //   "customer_direct_debit_initiation_v11.group_header.creation_date_time",
-      //   "customer_direct_debit_initiation_v11.group_header.number_of_transactions",
-      //   "customer_direct_debit_initiation_v11.group_header.control_sum",
-      //   "customer_direct_debit_initiation_v11.group_header.initiating_party.name",
-        
-      //   // Payment information fields
-      //   "customer_direct_debit_initiation_v11.payment_information.payment_information_identification",
-      //   "customer_direct_debit_initiation_v11.payment_information.payment_method",
-      //   "customer_direct_debit_initiation_v11.payment_information.batch_booking",
-      //   "customer_direct_debit_initiation_v11.payment_information.number_of_transactions",
-      //   "customer_direct_debit_initiation_v11.payment_information.control_sum",
-      //   "customer_direct_debit_initiation_v11.payment_information.payment_type_information.service_level.code",
-      //   "customer_direct_debit_initiation_v11.payment_information.payment_type_information.local_instrument.code",
-      //   "customer_direct_debit_initiation_v11.payment_information.payment_type_information.sequence_type",
-      //   "customer_direct_debit_initiation_v11.payment_information.requested_collection_date",
-      //   "customer_direct_debit_initiation_v11.payment_information.creditor.name",
-      //   "customer_direct_debit_initiation_v11.payment_information.creditor_account.identification.iban",
-      //   "customer_direct_debit_initiation_v11.payment_information.creditor_agent.financial_institution_identification.bic",
-      //   "customer_direct_debit_initiation_v11.payment_information.charge_bearer",
-        
-      //   // Direct debit transaction information fields
-      //   "customer_direct_debit_initiation_v11.payment_information.direct_debit_transaction_information.payment_identification.end_to_end_identification",
-      //   "customer_direct_debit_initiation_v11.payment_information.direct_debit_transaction_information.instructed_amount.value",
-      //   "customer_direct_debit_initiation_v11.payment_information.direct_debit_transaction_information.instructed_amount.currency",
-      //   "customer_direct_debit_initiation_v11.payment_information.direct_debit_transaction_information.direct_debit_transaction.mandate_related_information.mandate_identification",
-      //   "customer_direct_debit_initiation_v11.payment_information.direct_debit_transaction_information.direct_debit_transaction.mandate_related_information.date_of_signature",
-      //   "customer_direct_debit_initiation_v11.payment_information.direct_debit_transaction_information.debtor_agent.financial_institution_identification.bic",
-      //   "customer_direct_debit_initiation_v11.payment_information.direct_debit_transaction_information.debtor.name",
-      //   "customer_direct_debit_initiation_v11.payment_information.direct_debit_transaction_information.debtor_account.identification.iban"
-      // )
+      .fields(metadataSource.jsonSchema(jsonSchemaPath))
+      .fields(
+        field.name("profile").`type`(StructType)
+          .fields(
+            field.name("updatedDate").sql("DATE_ADD(profile.createdDate, INT(ROUND(RAND() * 10)))")
+          )
+      )
       .count(count.records(10))
+
+    val relation = plan.addForeignKeyRelationship(referenceTable, List("name", "email"), List((jsonSchemaTask, List("profile.name", "profile.email"))))
 
     val conf = configuration
       .enableGeneratePlanAndTasks(true)
       .generatedPlanAndTaskFolderPath("/tmp/data-caterer-gen-mx-pain")
       .generatedReportsFolderPath("/tmp/data/report-mx-pain")
 
-    execute(conf, jsonSchemaTask)
+    execute(relation, conf, jsonSchemaTask, referenceTable)
   }
 
   class TestKafka extends PlanRun {

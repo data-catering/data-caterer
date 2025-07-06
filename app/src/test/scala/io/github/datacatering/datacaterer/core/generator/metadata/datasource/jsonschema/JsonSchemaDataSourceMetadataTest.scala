@@ -112,11 +112,13 @@ class JsonSchemaDataSourceMetadataTest extends SparkSuite {
     // Verify nested fields
     val profileField = fieldMetadata.find(_.field == "profile").get
     val nestedFields = profileField.nestedFields
-    assert(nestedFields.length == 4)
+    assert(nestedFields.length == 6)
     assert(nestedFields.map(_.field).toSet.contains("name"))
     assert(nestedFields.map(_.field).toSet.contains("email"))
     assert(nestedFields.map(_.field).toSet.contains("age"))
     assert(nestedFields.map(_.field).toSet.contains("website"))
+    assert(nestedFields.map(_.field).toSet.contains("createdDate"))
+    assert(nestedFields.map(_.field).toSet.contains("updatedDate"))
 
     // Verify nested fields metadata
     val nameField = nestedFields.find(_.field == "name").get

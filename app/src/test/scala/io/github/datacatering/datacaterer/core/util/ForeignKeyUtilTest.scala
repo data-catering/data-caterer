@@ -274,6 +274,233 @@ class ForeignKeyUtilTest extends SparkSuite {
     ))
   }
 
+  test("Can link foreign keys with nested fields") {
+    import org.apache.spark.sql.types._
+    import org.apache.spark.sql.functions._
+
+    val sinkOptions = SinkOptions(None, None,
+      List(ForeignKey(ForeignKeyRelation("reference", "people", List("name", "email")),
+        List(ForeignKeyRelation("target", "users", List("profile.name", "profile.email"))), List()))
+    )
+    val plan = Plan("nested foreign keys", "nested plan", List(
+      TaskSummary("ref_task", "reference"), 
+      TaskSummary("target_task", "target")
+    ), Some(sinkOptions))
+
+    // Create reference data with name-email pairs
+    val referenceData = Seq(
+      ("John Doe", "john.doe@example.com"),
+      ("Jane Smith", "jane.smith@example.com"),
+      ("Bob Johnson", "bob.johnson@example.com")
+    )
+    val referenceDf = sparkSession.createDataFrame(referenceData).toDF("name", "email")
+
+    // Create target data with nested structure using explicit schema
+    val targetSchema = StructType(Array(
+      StructField("id", StringType, nullable = false),
+      StructField("profile", StructType(Array(
+        StructField("name", StringType, nullable = true),
+        StructField("email", StringType, nullable = true),
+        StructField("age", IntegerType, nullable = true)
+      )), nullable = true)
+    ))
+
+    import org.apache.spark.sql.Row
+    val targetRows = Seq(
+      Row("user1", Row("unknown_name", "unknown@email.com", 25)),
+      Row("user2", Row("unknown_name2", "unknown2@email.com", 30)),
+      Row("user3", Row("unknown_name3", "unknown3@email.com", 35))
+    )
+    val targetDf = sparkSession.createDataFrame(sparkSession.sparkContext.parallelize(targetRows), targetSchema)
+
+    val dfMap = List(
+      "reference.people" -> referenceDf,
+      "target.users" -> targetDf
+    )
+
+    val result = ForeignKeyUtil.getDataFramesWithForeignKeys(plan, dfMap)
+    val updatedTargetDf = result.filter(f => f._1.equalsIgnoreCase("target.users")).head._2
+    val resultRows = updatedTargetDf.collect()
+
+    // Verify that name-email combinations come from reference data
+    resultRows.foreach { row =>
+      val profileStruct = row.getAs[org.apache.spark.sql.Row]("profile")
+      val name = profileStruct.getAs[String]("name")
+      val email = profileStruct.getAs[String]("email")
+      val age = profileStruct.getAs[Int]("age")
+
+      // Check that name-email combination exists in reference data
+      val isValidCombination = referenceData.exists { case (refName, refEmail) =>
+        refName == name && refEmail == email
+      }
+      assert(isValidCombination, s"Name-email combination ($name, $email) should exist in reference data")
+      
+      // Age should remain unchanged (not part of foreign key)
+      assert(List(25, 30, 35).contains(age), s"Age should remain unchanged, got: $age")
+    }
+
+    // Verify that only original schema fields are present (no flattened fields)
+    val finalColumnNames = updatedTargetDf.columns.toSet
+    val expectedColumnNames = Set("id", "profile")
+    assert(finalColumnNames == expectedColumnNames, 
+      s"Final columns should only contain original fields. Expected: $expectedColumnNames, Got: $finalColumnNames")
+  }
+
+  test("Can link foreign keys with single nested field") {
+    import org.apache.spark.sql.types._
+
+    val sinkOptions = SinkOptions(None, None,
+      List(ForeignKey(ForeignKeyRelation("reference", "companies", List("company_name")),
+        List(ForeignKeyRelation("target", "employees", List("employment.company"))), List()))
+    )
+    val plan = Plan("single nested foreign key", "single nested plan", List(
+      TaskSummary("ref_task", "reference"), 
+      TaskSummary("target_task", "target")
+    ), Some(sinkOptions))
+
+    // Create reference data
+    val referenceData = Seq("ACME Corp", "TechStart Inc", "DataCorp Ltd")
+    val referenceDf = sparkSession.createDataFrame(referenceData.map(Tuple1(_))).toDF("company_name")
+
+    // Create target data with nested structure using explicit schema
+    val targetSchema = StructType(Array(
+      StructField("id", StringType, nullable = false),
+      StructField("employment", StructType(Array(
+        StructField("company", StringType, nullable = true),
+        StructField("role", StringType, nullable = true),
+        StructField("salary", IntegerType, nullable = true)
+      )), nullable = true)
+    ))
+
+    import org.apache.spark.sql.Row
+    val targetRows = Seq(
+      Row("emp1", Row("unknown_company", "developer", 50000)),
+      Row("emp2", Row("unknown_company2", "manager", 75000))
+    )
+    val targetDf = sparkSession.createDataFrame(sparkSession.sparkContext.parallelize(targetRows), targetSchema)
+
+    val dfMap = List(
+      "reference.companies" -> referenceDf,
+      "target.employees" -> targetDf
+    )
+
+    val result = ForeignKeyUtil.getDataFramesWithForeignKeys(plan, dfMap)
+    val updatedTargetDf = result.filter(f => f._1.equalsIgnoreCase("target.employees")).head._2
+    val resultRows = updatedTargetDf.collect()
+
+    // Verify that company names come from reference data
+    resultRows.foreach { row =>
+      val employmentStruct = row.getAs[org.apache.spark.sql.Row]("employment")
+      val company = employmentStruct.getAs[String]("company")
+      
+      assert(referenceData.contains(company), s"Company name '$company' should exist in reference data: ${referenceData.mkString(", ")}")
+    }
+  }
+
+  test("Can link foreign keys with mixed flat and nested fields") {
+    import org.apache.spark.sql.types._
+
+    val sinkOptions = SinkOptions(None, None,
+      List(ForeignKey(ForeignKeyRelation("reference", "customers", List("customer_id", "name", "email")),
+        List(ForeignKeyRelation("target", "orders", List("customer_id", "shipping.name", "shipping.email"))), List()))
+    )
+    val plan = Plan("mixed foreign keys", "mixed plan", List(
+      TaskSummary("ref_task", "reference"), 
+      TaskSummary("target_task", "target")
+    ), Some(sinkOptions))
+
+    // Create reference data
+    val referenceData = Seq(
+      ("CUST001", "Alice Johnson", "alice.johnson@example.com"),
+      ("CUST002", "Bob Wilson", "bob.wilson@example.com"),
+      ("CUST003", "Carol Davis", "carol.davis@example.com")
+    )
+    val referenceDf = sparkSession.createDataFrame(referenceData).toDF("customer_id", "name", "email")
+
+    // Create target data with mixed flat and nested structure using explicit schema
+    val targetSchema = StructType(Array(
+      StructField("order_id", StringType, nullable = false),
+      StructField("customer_id", StringType, nullable = true),
+      StructField("shipping", StructType(Array(
+        StructField("name", StringType, nullable = true),
+        StructField("email", StringType, nullable = true),
+        StructField("address", StringType, nullable = true)
+      )), nullable = true)
+    ))
+
+    import org.apache.spark.sql.Row
+    val targetRows = Seq(
+      Row("ORD001", "unknown_cust", Row("unknown_name", "unknown@email.com", "123 Main St")),
+      Row("ORD002", "unknown_cust2", Row("unknown_name2", "unknown2@email.com", "456 Oak Ave"))
+    )
+    val targetDf = sparkSession.createDataFrame(sparkSession.sparkContext.parallelize(targetRows), targetSchema)
+
+    val dfMap = List(
+      "reference.customers" -> referenceDf,
+      "target.orders" -> targetDf
+    )
+
+    val result = ForeignKeyUtil.getDataFramesWithForeignKeys(plan, dfMap)
+    val updatedTargetDf = result.filter(f => f._1.equalsIgnoreCase("target.orders")).head._2
+    val resultRows = updatedTargetDf.collect()
+
+    // Verify that customer_id, name, and email all come from the same reference row
+    resultRows.foreach { row =>
+      val customerId = row.getAs[String]("customer_id")
+      val shippingStruct = row.getAs[org.apache.spark.sql.Row]("shipping")
+      val shippingName = shippingStruct.getAs[String]("name")
+      val shippingEmail = shippingStruct.getAs[String]("email")
+      val address = shippingStruct.getAs[String]("address")
+
+      // Find the matching reference record
+      val matchingRef = referenceData.find(_._1 == customerId)
+      assert(matchingRef.isDefined, s"Customer ID '$customerId' should exist in reference data")
+
+      val (_, refName, refEmail) = matchingRef.get
+      assert(shippingName == refName, s"Shipping name '$shippingName' should match reference name '$refName'")
+      assert(shippingEmail == refEmail, s"Shipping email '$shippingEmail' should match reference email '$refEmail'")
+      
+      // Address should remain unchanged (not part of foreign key)
+      assert(List("123 Main St", "456 Oak Ave").contains(address), s"Address should remain unchanged, got: $address")
+    }
+  }
+
+  test("Can handle nested fields with array types") {
+    val nestedStruct = StructType(Array(
+      StructField("account_id", StringType),
+      StructField("details", StructType(Array(
+        StructField("name", StringType),
+        StructField("transactions", ArrayType(StructType(Array(
+          StructField("txn_id", StringType),
+          StructField("amount", StringType)
+        ))))
+      )))
+    ))
+    val fields = Array(StructField("customer", nestedStruct))
+
+    assert(ForeignKeyUtil.hasDfContainField("customer.account_id", fields))
+    assert(ForeignKeyUtil.hasDfContainField("customer.details.name", fields))
+    assert(ForeignKeyUtil.hasDfContainField("customer.details.transactions.txn_id", fields))
+    assert(!ForeignKeyUtil.hasDfContainField("customer.details.invalid_field", fields))
+  }
+
+  test("hasDfContainField should handle deeply nested structures") {
+    val deepNestedStruct = StructType(Array(
+      StructField("level1", StructType(Array(
+        StructField("level2", StructType(Array(
+          StructField("level3", StructType(Array(
+            StructField("target_field", StringType)
+          )))
+        )))
+      )))
+    ))
+    val fields = Array(StructField("root", deepNestedStruct))
+
+    assert(ForeignKeyUtil.hasDfContainField("root.level1.level2.level3.target_field", fields))
+    assert(!ForeignKeyUtil.hasDfContainField("root.level1.level2.level3.missing_field", fields))
+    assert(!ForeignKeyUtil.hasDfContainField("root.level1.level2.missing_level", fields))
+  }
+
   test("Can link foreign keys with nested field names") {
     val nestedStruct = StructType(Array(StructField("account_id", StringType)))
     val nestedInArray = ArrayType(nestedStruct)

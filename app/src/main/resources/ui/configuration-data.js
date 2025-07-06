@@ -590,6 +590,14 @@ configurationOptionsMap.set("flag", {
         choice: ["true", "false"],
         help: "Enable/disable data generation."
     },
+    "enableReferenceMode": {
+        configName: "enableReferenceMode",
+        displayName: "Reference Mode",
+        default: "false",
+        type: "text",
+        choice: ["true", "false"],
+        help: "Enable/disable reference mode. When enabled, reads existing data from the data source instead of generating new data. Useful for using existing datasets as reference data in foreign key relationships. Cannot be used together with data generation."
+    },
     "enableFailOnError": {
         configName: "enableFailOnError",
         displayName: "Fail On Error",
