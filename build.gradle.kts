@@ -103,8 +103,8 @@ idea.project.settings {
 nexusPublishing {
     repositories {
         create("sonatype") {
-            nexusUrl.set(uri("https://s01.oss.sonatype.org/service/local/"))
-            snapshotRepositoryUrl.set(uri("https://s01.oss.sonatype.org/content/repositories/snapshots/"))
+            nexusUrl.set(uri("https://ossrh-staging-api.central.sonatype.com/service/local/"))
+            snapshotRepositoryUrl.set(uri("https://ossrh-staging-api.central.sonatype.com/content/repositories/snapshots/"))
             username.set(System.getenv("MAVEN_USERNAME"))
             password.set(System.getenv("MAVEN_PASSWORD"))
         }
