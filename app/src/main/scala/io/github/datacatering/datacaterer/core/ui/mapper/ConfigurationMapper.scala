@@ -32,7 +32,7 @@ object ConfigurationMapper {
   }
 
   def mapFlagsConfiguration(configurationRequest: ConfigurationRequest, baseConfig: DataCatererConfigurationBuilder): DataCatererConfigurationBuilder = {
-    configurationRequest.flag.foldLeft(baseConfig)((conf, c) => {
+    val mappedConfifurations = configurationRequest.flag.foldLeft(baseConfig)((conf, c) => {
       val boolVal = c._2.toBoolean
       c._1 match {
         case CONFIG_FLAGS_COUNT => conf.enableCount(boolVal)
@@ -48,11 +48,15 @@ object ConfigurationMapper {
         case CONFIG_FLAGS_GENERATE_VALIDATIONS => conf.enableGenerateValidations(boolVal)
         case CONFIG_FLAGS_ALERTS => conf.enableAlerts(boolVal)
         case CONFIG_FLAGS_UNIQUE_CHECK_ONLY_IN_BATCH => conf.enableUniqueCheckOnlyInBatch(boolVal)
+        case CONFIG_FLAGS_FAST_GENERATION => conf.enableFastGeneration(boolVal)
         case _ =>
           LOGGER.warn(s"Unexpected flags configuration key, key=${c._1}")
           conf
       }
     })
+    if (mappedConfifurations.build.flagsConfig.enableFastGeneration) {
+      mappedConfifurations.applyFastGenerationOptimizations()
+    } else mappedConfifurations
   }
 
   def mapAlertConfiguration(configurationRequest: ConfigurationRequest, baseConfig: DataCatererConfigurationBuilder): DataCatererConfigurationBuilder = {

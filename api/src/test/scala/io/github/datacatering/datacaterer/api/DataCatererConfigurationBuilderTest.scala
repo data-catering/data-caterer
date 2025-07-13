@@ -151,6 +151,71 @@ class DataCatererConfigurationBuilderTest extends AnyFunSuite {
     assert(result.enableValidation)
   }
 
+  test("Can enable fast generation mode") {
+    val result = DataCatererConfigurationBuilder()
+      .enableFastGeneration(true)
+      .build
+
+    // Verify fast generation is enabled
+    assert(result.flagsConfig.enableFastGeneration)
+    
+    // Verify that fast generation optimizations are applied automatically
+    assert(!result.flagsConfig.enableRecordTracking)
+    assert(!result.flagsConfig.enableCount)
+    assert(!result.flagsConfig.enableSinkMetadata)
+    assert(!result.flagsConfig.enableUniqueCheck)
+    assert(!result.flagsConfig.enableUniqueCheckOnlyInBatch)
+    assert(!result.flagsConfig.enableSaveReports)
+    assert(!result.flagsConfig.enableValidation)
+    assert(!result.flagsConfig.enableGenerateValidations)
+    assert(!result.flagsConfig.enableAlerts)
+    
+    // Verify generation optimizations
+    assert(result.generationConfig.numRecordsPerBatch >= 1000000L)
+    assertResult(100000L)(result.generationConfig.uniqueBloomFilterNumItems)
+    assertResult(0.1)(result.generationConfig.uniqueBloomFilterFalsePositiveProbability)
+  }
+
+  test("Can disable fast generation mode") {
+    val result = DataCatererConfigurationBuilder()
+      .enableFastGeneration(false)
+      .build
+      .flagsConfig
+
+    assert(!result.enableFastGeneration)
+  }
+
+  test("Fast generation mode applies optimizations on top of existing config") {
+    val result = DataCatererConfigurationBuilder()
+      .enableCount(true)
+      .enableRecordTracking(true)
+      .enableValidation(true)
+      .numRecordsPerBatch(500000L)
+      .enableFastGeneration(true)
+      .build
+
+    // Verify fast generation is enabled
+    assert(result.flagsConfig.enableFastGeneration)
+    
+    // Verify that fast generation optimizations override existing settings
+    assert(!result.flagsConfig.enableCount)
+    assert(!result.flagsConfig.enableRecordTracking)
+    assert(!result.flagsConfig.enableValidation)
+    
+    // Verify numRecordsPerBatch is increased to minimum required
+    assert(result.generationConfig.numRecordsPerBatch >= 1000000L)
+  }
+
+  test("Fast generation mode with existing large batch size preserves larger value") {
+    val result = DataCatererConfigurationBuilder()
+      .numRecordsPerBatch(2000000L)
+      .enableFastGeneration(true)
+      .build
+
+    // Verify the larger batch size is preserved
+    assertResult(2000000L)(result.generationConfig.numRecordsPerBatch)
+  }
+
   test("Can alter folder paths") {
     val result = DataCatererConfigurationBuilder()
       .planFilePath("/my_plan")

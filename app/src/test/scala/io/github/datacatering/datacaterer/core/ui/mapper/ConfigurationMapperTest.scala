@@ -42,6 +42,51 @@ class ConfigurationMapperTest extends AnyFunSuite {
     assert(res.flagsConfig.enableUniqueCheckOnlyInBatch)
   }
 
+  test("Can convert UI flag config with fast generation enabled") {
+    val configRequest = ConfigurationRequest(flag = Map(
+      CONFIG_FLAGS_COUNT -> "true",
+      CONFIG_FLAGS_RECORD_TRACKING -> "true",
+      CONFIG_FLAGS_VALIDATION -> "true",
+      CONFIG_FLAGS_FAST_GENERATION -> "true",
+      "blah" -> "false"
+    ))
+    val baseConf = DataCatererConfigurationBuilder()
+    val res = ConfigurationMapper.mapFlagsConfiguration(configRequest, baseConf).build
+
+    // Verify fast generation is enabled
+    assert(res.flagsConfig.enableFastGeneration)
+    
+    // When fast generation is enabled via ConfigurationMapper, optimizations are applied immediately
+    // The initial flag values are overridden by fast generation optimizations
+    assert(!res.flagsConfig.enableCount)
+    assert(!res.flagsConfig.enableRecordTracking)
+    assert(!res.flagsConfig.enableValidation)
+    
+    // Verify generation optimizations are also applied
+    assert(res.generationConfig.numRecordsPerBatch >= 1000000L)
+    assertResult(100000L)(res.generationConfig.uniqueBloomFilterNumItems)
+    assertResult(0.1)(res.generationConfig.uniqueBloomFilterFalsePositiveProbability)
+  }
+
+  test("Can convert UI flag config with fast generation disabled") {
+    val configRequest = ConfigurationRequest(flag = Map(
+      CONFIG_FLAGS_COUNT -> "true",
+      CONFIG_FLAGS_RECORD_TRACKING -> "true",
+      CONFIG_FLAGS_VALIDATION -> "true",
+      CONFIG_FLAGS_FAST_GENERATION -> "false"
+    ))
+    val baseConf = DataCatererConfigurationBuilder()
+    val res = ConfigurationMapper.mapFlagsConfiguration(configRequest, baseConf).build
+
+    // Verify fast generation is disabled
+    assert(!res.flagsConfig.enableFastGeneration)
+    
+    // Verify that no optimizations are applied
+    assert(res.flagsConfig.enableCount)
+    assert(res.flagsConfig.enableRecordTracking)
+    assert(res.flagsConfig.enableValidation)
+  }
+
   test("Can convert UI alert config") {
     val configRequest = ConfigurationRequest(alert = Map(CONFIG_ALERT_TRIGGER_ON -> "failure", CONFIG_ALERT_SLACK_TOKEN -> "abc123",
       CONFIG_ALERT_SLACK_CHANNELS -> "job-fail", "blah" -> "hello"))

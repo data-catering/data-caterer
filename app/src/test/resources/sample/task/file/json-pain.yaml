@@ -1,0 +1,248 @@
+name: "pain_008_json_task"
+steps:
+  - name: "pain_008"
+    type: "json"
+    count:
+      records: 2
+    options:
+      path: "/tmp/json/pain-008"
+      saveMode: "overwrite"
+      numPartitions: 1
+    fields:
+      - name: "business_application_header"
+        type: "struct"
+        fields:
+          - name: "from"
+            type: "struct"
+            fields:
+              - name: "organisation_identification"
+                type: "struct"
+                fields:
+                  - name: "name"
+                    type: "string"
+                    options:
+                      expression: "#{Company.name}" 
+          - name: "to"
+            type: "struct"
+            fields:
+              - name: "organisation_identification"
+                type: "struct"
+                fields:
+                  - name: "name"
+                    type: "string"
+                    options:
+                      oneOf:
+                      - "Commonwealth Bank of Australia"
+          - name: "business_message_identifier"
+            type: "string"                    
+            options:
+              regex: "MSG[0-9]{10}"
+          - name: "message_definition_identifier"
+            type: "string"                    
+            options:
+              regex: "DEF[0-9]{10}"
+          - name: "creation_date"
+            type: "timestamp"
+            options:
+              min: "2023-07-01T00:00:00Z"
+      - name: "business_document"
+        type: "struct"
+        fields:
+          - name: "customer_direct_debit_initiation_v11"
+            type: "struct"
+            fields:
+              - name: "group_header"
+                type: "struct"
+                fields:
+                  - name: "message_identification"
+                    options:
+                      sql: "business_application_header.business_message_identifier"
+                  - name: "creation_date_time"
+                    type: "timestamp"
+                    options:
+                      min: "2023-07-01T00:00:00Z"
+                      max: "2025-06-30T23:59:59Z"
+                  - name: "number_of_transactions"
+                    type: "integer"
+                    options:
+                      sql: "ARRAY_SIZE(business_document.customer_direct_debit_initiation_v11.payment_information)"         
+                  - name: "initiating_party"
+                    type: "struct"
+                    fields:
+                      - name: "name"
+                        type: "string"
+                        options:
+                          sql: "business_application_header.from.organisation_identification.name.direct_debit_transaction_information"
+                      - name: "postal_address"
+                        type: "struct"
+                        fields:
+                          - name: "address_type"
+                            type: "struct"
+                            fields:
+                              - name: "code"
+                                type: "string"
+                                options:
+                                  oneOf:
+                                    - "ADDR"
+                          - name: "country"
+                            type: "string"
+                            options:
+                              oneOf:
+                                - "AU"
+              - name: "payment_information"
+                type: "array"
+                fields:
+                  - name: "payment_information_identification"
+                    type: "string"
+                    options:
+                      regex: "PAYINF[0-9]{3}"
+                  - name: "payment_method"
+                    type: "string"
+                    options:
+                      oneOf:
+                      - "DD"
+                  - name: "requested_collection_date"
+                    type: "date"
+                    options:
+                      min: now()
+                  - name: "creditor"
+                    type: "struct"
+                    fields:
+                      - name: "name"
+                        type: "string"
+                        options:
+                          oneOf:
+                          - "Commonwealth Bank of Australia"
+                      - name: "postal_address"
+                        type: "struct"
+                        fields:
+                          - name: "address_type"
+                            type: "struct"
+                            fields:
+                              - name: "code"
+                                type: "string"
+                                options:
+                                  oneOf:
+                                  - "ADDR"
+                          - name: "country"
+                            type: "string"
+                            options:
+                              oneOf:
+                              - "AU"
+                  - name: creditor_account
+                    type: "struct"
+                    fields:
+                      - name: "identification"
+                        type: "struct"
+                        fields:
+                          - name: "other"
+                            type: "struct"
+                            fields:
+                              - name: "identification"
+                                type: "string"
+                                options:
+                                  regex: "0620[0-9]{10}"
+                  - name: creditor_agent
+                    type: "struct"
+                    fields:
+                      - name: "financial_institution_identification"
+                        type: "struct"
+                        fields:
+                          - name: "bicfi"
+                            type: "string"
+                            options:
+                              regex: "CTBAAU2S[0-9]{3}"
+                  - name: "direct_debit_transaction_information"
+                    type: "array"
+                    options:
+                      arrayMinLen: "1"
+                      arrayMaxLen: "2"
+                    fields:
+                      - name: "payment_identification"
+                        type: "struct"
+                        fields:
+                          - name: "end_to_end_identification"
+                            type: "string"
+                            options:
+                              regex: "E2E[0-9]{10}"               
+                      - name: "instructed_amount"
+                        type: "struct"
+                        fields:
+                          - name: "currency"
+                            type: "string"
+                            options:
+                              oneOf:
+                                - "AUD"
+                          - name: "amount"
+                            type: "decimal"
+                            options:
+                              min: 10.00
+                              max: 5000.00
+                              scale: 2
+                      - name: "debtor_agent"
+                        type: "struct"
+                        fields:
+                          - name: "financial_institution_identification"
+                            type: "struct"
+                            fields:
+                              - name: "bicfi"
+                                type: "string"
+                                options:
+                                  regex: "CTBAAU2S[0-9]{3}"
+                      - name: "debtor"
+                        type: "struct"
+                        fields: 
+                          - name: "name"
+                            type: "string"
+                            options:
+                              expression: "#{Name.fullName}"
+                          - name: "postal_address"
+                            type: "struct"
+                            fields:
+                              - name: "address_type"
+                                type: "struct"
+                                fields:
+                                  - name: "code"
+                                    type: "string"
+                                    options:
+                                      oneOf:
+                                        - "ADDR"
+                              - name: "country"
+                                type: "string"
+                                options:
+                                  oneOf:
+                                    - "AU"
+                      - name: "debtor_account"
+                        type: "struct"
+                        fields: 
+                          - name: "identification"
+                            type: "struct"
+                            fields:
+                              - name: "other"
+                                type: "struct"
+                                fields:
+                                  - name: "identification"
+                                    options:
+                                      regex: "0620[0-9]{10}"
+                      - name: "remittance_information"
+                        type: "struct"
+                        fields:
+                          - name: "unstructured"
+                            type: "string"
+                            options:
+                              oneOf:
+                                - "Payment for invoice 5"
+                                - "Monthly subscription fee"
+                                - "Donation to charity"
+                                - "Refund for returned item"
+                                - "Service fee for account maintenance"
+                                - "Payment for consulting services"
+                                - "Rent payment for August 2024"
+                                - "Utility bill payment for July 2024"
+                                - "Payment for online course registration"
+                                - "Payment for event ticket"
+                                - "Payment for freelance work"
+                                - "Payment for software license"
+                                - "Payment for medical services"
+                                - "Payment for legal services"
+

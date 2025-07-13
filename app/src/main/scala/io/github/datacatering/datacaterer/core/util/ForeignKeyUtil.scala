@@ -9,7 +9,7 @@ import io.github.datacatering.datacaterer.core.util.ForeignKeyRelationHelper.upd
 import io.github.datacatering.datacaterer.core.util.GeneratorUtil.applySqlExpressions
 import io.github.datacatering.datacaterer.core.util.PlanImplicits.{ForeignKeyRelationOps, SinkOptionsOps}
 import org.apache.log4j.Logger
-import org.apache.spark.sql.functions.col
+import org.apache.spark.sql.functions.{col, expr, struct}
 import org.apache.spark.sql.types.{ArrayType, DataType, LongType, Metadata, MetadataBuilder, StructField, StructType}
 import org.apache.spark.sql.{DataFrame, Dataset, Row}
 
@@ -55,7 +55,7 @@ object ForeignKeyUtil {
         }
 
         val targetDf = optTargetDf.get._2
-        if (target.fields.forall(targetDf.columns.contains)) {
+        if (target.fields.forall(field => hasDfContainField(field, targetDf.schema.fields))) {
           LOGGER.info(s"Applying foreign key values to target data source, source-data=${foreignKeyDetails.source.dataSource}, target-data=${target.dataSource}")
           val dfWithForeignKeys = applyForeignKeysToTargetDf(sourceDf, targetDf, foreignKeyDetails.source.fields, target.fields)
           if (!dfWithForeignKeys.storageLevel.useMemory) dfWithForeignKeys.cache()
@@ -130,40 +130,148 @@ object ForeignKeyUtil {
   private def applyForeignKeysToTargetDf(sourceDf: DataFrame, targetDf: DataFrame, sourceFields: List[String], targetFields: List[String]): DataFrame = {
     if (!sourceDf.storageLevel.useMemory) sourceDf.cache() //TODO do we checkpoint instead of cache? checkpoint based on total number of records?
     if (!targetDf.storageLevel.useMemory) targetDf.cache()
-    val sourceColRename = sourceFields.map(c => {
-      if (c.contains(".")) {
-        val lastCol = c.split("\\.").last
-        (lastCol, s"_src_$lastCol")
-      } else {
-        (c, s"_src_$c")
-      }
-    }).toMap
-    val distinctSourceKeys = zipWithIndex(
-      sourceDf.selectExpr(sourceFields: _*).distinct()
-        .withColumnsRenamed(sourceColRename)
-    )
-    val distinctTargetKeys = zipWithIndex(targetDf.selectExpr(targetFields: _*).distinct())
+    
+    // Separate nested and flat fields
+    val nestedFields = targetFields.zip(sourceFields).filter(_._1.contains("."))
+    val flatFields = targetFields.zip(sourceFields).filter(!_._1.contains("."))
+    
+    LOGGER.debug(s"Applying foreign key values to target DF, source=${sourceFields.mkString(",")}, target=${targetFields.mkString(",")}, nested-fields=${nestedFields.size}, flat-fields=${flatFields.size}")
+    
+    // If we have both flat and nested fields in the same foreign key relationship,
+    // we need to use sampling for ALL fields to ensure consistency
+    val hasMixedFields = flatFields.nonEmpty && nestedFields.nonEmpty
+    
+    val resultDf = if (flatFields.nonEmpty && !hasMixedFields) {
+      // Pure flat fields case - use original join approach
+      val flatSourceFields = flatFields.map(_._2)
+      val flatTargetFields = flatFields.map(_._1)
+      
+      val sourceColRename = flatSourceFields.map(c => {
+        if (c.contains(".")) {
+          val lastCol = c.split("\\.").last
+          (lastCol, s"_src_$lastCol")
+        } else {
+          (c, s"_src_$c")
+        }
+      }).toMap
+      val distinctSourceKeys = zipWithIndex(
+        sourceDf.selectExpr(flatSourceFields: _*).distinct()
+          .withColumnsRenamed(sourceColRename)
+      )
+      val distinctTargetKeys = zipWithIndex(targetDf.selectExpr(flatTargetFields: _*).distinct())
 
-    LOGGER.debug(s"Attempting to join source DF keys with target DF, source=${sourceFields.mkString(",")}, target=${targetFields.mkString(",")}")
-    val joinDf = distinctSourceKeys.join(distinctTargetKeys, Seq("_join_foreign_key"))
-      .drop("_join_foreign_key")
-    val targetColRename = targetFields.zip(sourceFields).map(c => {
-      if (c._2.contains(".")) {
-        val lastCol = c._2.split("\\.").last
-        (c._1, col(s"_src_$lastCol"))
-      } else {
-        (c._1, col(s"_src_${c._2}"))
+      LOGGER.debug(s"Attempting to join source DF keys with target DF, source=${flatSourceFields.mkString(",")}, target=${flatTargetFields.mkString(",")}")
+      val joinDf = distinctSourceKeys.join(distinctTargetKeys, Seq("_join_foreign_key"))
+        .drop("_join_foreign_key")
+      val targetColRename = flatTargetFields.zip(flatSourceFields).map(c => {
+        if (c._2.contains(".")) {
+          val lastCol = c._2.split("\\.").last
+          (c._1, col(s"_src_$lastCol"))
+        } else {
+          (c._1, col(s"_src_${c._2}"))
+        }
+      }).toMap
+      targetDf.join(joinDf, flatTargetFields)
+        .withColumns(targetColRename)
+        .drop(sourceColRename.values.toList: _*)
+    } else {
+      targetDf
+    }
+    
+    // Apply sampling approach for nested fields OR mixed fields
+    val finalResult = if (nestedFields.nonEmpty || hasMixedFields) {
+      // Get all source fields for this foreign key relationship
+      val allSourceFields = sourceFields.distinct
+      val sourceValues = sourceDf.selectExpr(allSourceFields: _*).distinct().collect()
+      
+      // Add a column with a consistent random index for all foreign key fields
+      val dfWithRandomIndex = resultDf.withColumn("_fk_random_index", expr(s"cast(floor(rand() * ${sourceValues.length}) + 1 as int)"))
+      
+      // Apply all fields using the same random index to ensure consistent relationships
+      val allFields = if (hasMixedFields) targetFields.zip(sourceFields) else nestedFields
+      val dfWithUpdatedFields = allFields.foldLeft(dfWithRandomIndex) { case (df, (targetField, sourceField)) =>
+        // Create arrays of all possible values for this source field
+        val fieldValues = sourceValues.map(row => {
+          val value = row.getAs[Any](sourceField)
+          // Convert to string for SQL expression, properly escaping quotes
+          value match {
+            case s: String => s"'${s.replace("'", "''").replace("\\", "\\\\")}'"
+            case other => s"'$other'"
+          }
+        }).mkString(",")
+        
+        // Create SQL expression that uses the same random index for all fields
+        // This ensures that all fields in the same foreign key relationship get values from the same row
+        val sqlExpr = s"element_at(array($fieldValues), _fk_random_index)"
+        
+        if (targetField.contains(".")) {
+          updateNestedField(df, targetField, sqlExpr)
+        } else {
+          // Handle flat fields with sampling approach when mixed with nested fields
+          df.withColumn(targetField, expr(sqlExpr))
+        }
       }
-    }).toMap
-    val res = targetDf.join(joinDf, targetFields)
-      .withColumns(targetColRename)
-      .drop(sourceColRename.values.toList: _*)
+      
+      // Remove the temporary random index column
+      dfWithUpdatedFields.drop("_fk_random_index")
+    } else {
+      resultDf
+    }
 
     LOGGER.debug(s"Applied source DF keys with target DF, source=${sourceFields.mkString(",")}, target=${targetFields.mkString(",")}")
-    if (!res.storageLevel.useMemory) res.cache()
+    if (!finalResult.storageLevel.useMemory) finalResult.cache()
     //need to add back original metadata as it will use the metadata from the sourceDf and override the targetDf metadata
-    val dfMetadata = combineMetadata(sourceDf, sourceFields, targetDf, targetFields, res)
-    applySqlExpressions(dfMetadata, targetFields, false)
+    val dfMetadata = combineMetadata(sourceDf, sourceFields, targetDf, targetFields, finalResult)
+    
+    // Store the original schema to ensure we only keep original fields in the final output
+    val originalSchema = targetDf.schema
+    
+    // Only apply SQL expressions for flat fields that were handled via join (not sampling)
+    val flatFieldsToProcess = if (hasMixedFields) List() else targetFields.filter(!_.contains("."))
+    val dfWithSqlExpressions = applySqlExpressions(dfMetadata, flatFieldsToProcess, false)
+    
+    // Ensure only original schema fields are kept in the final output
+    val originalFieldNames = originalSchema.fieldNames.toSet
+    val finalFieldNames = dfWithSqlExpressions.schema.fieldNames.filter(originalFieldNames.contains)
+    
+    if (finalFieldNames.length != dfWithSqlExpressions.schema.fieldNames.length) {
+      LOGGER.debug(s"Removing flattened fields from final output: " +
+        s"original-fields=${originalFieldNames.mkString(",")}, " +
+        s"current-fields=${dfWithSqlExpressions.schema.fieldNames.mkString(",")}")
+      dfWithSqlExpressions.select(finalFieldNames.map(col): _*)
+    } else {
+      dfWithSqlExpressions
+    }
+  }
+  
+  /**
+   * Update a nested field in a DataFrame properly
+   */
+  private def updateNestedField(df: DataFrame, fieldPath: String, sqlExpr: String): DataFrame = {
+    val parts = fieldPath.split("\\.")
+    if (parts.length == 2) {
+      val structField = parts(0)
+      val nestedField = parts(1)
+      
+      // Get the current struct column
+      val currentStruct = col(structField)
+      
+      // Create a new struct with the updated nested field
+      val existingFields = df.schema.fields.find(_.name == structField).get.dataType.asInstanceOf[StructType].fieldNames
+      val updatedFields = existingFields.map { fieldName =>
+        if (fieldName == nestedField) {
+          expr(sqlExpr).alias(fieldName)
+        } else {
+          col(s"$structField.$fieldName").alias(fieldName)
+        }
+      }
+      
+      df.withColumn(structField, struct(updatedFields: _*))
+    } else {
+      // For now, only handle 2-level nesting (like profile.name)
+      // Could be extended for deeper nesting if needed
+      df.withColumn(fieldPath, expr(sqlExpr))
+    }
   }
 
   //TODO: Need some way to understand potential relationships between fields of different data sources (i.e. correlations, word2vec) https://spark.apache.org/docs/latest/ml-features

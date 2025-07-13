@@ -106,7 +106,7 @@ object JsonSchemaConstraintsConverter {
   def mapFormatToOptions(format: String): Map[String, Any] = {
     format.toLowerCase match {
       case "email" => Map(REGEX_GENERATOR -> "^[a-zA-Z0-9._%+-]{2,20}@[a-zA-Z0-9.-]{3,10}}\\.[a-zA-Z]{2,3}$")
-      case "uri" | "url" => Map(REGEX_GENERATOR -> "^https?://[a-zA-Z0-9.-]{3,20}\\.[a-zA-Z]{2,3}(/[.]{3,20})?$")
+      case "uri" | "url" => Map(REGEX_GENERATOR -> "^https?://[a-zA-Z0-9.-]{3,20}\\.[a-zA-Z]{2,3}(/.{3,20})?$")
       case "uuid" => Map("uuid" -> "")
       case "date" => Map("type" -> "date")
       case "date-time" => Map("type" -> "timestamp")

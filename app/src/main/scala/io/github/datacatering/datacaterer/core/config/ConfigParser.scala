@@ -71,17 +71,102 @@ object ConfigParser {
   }
 
   def toDataCatererConfiguration: DataCatererConfiguration = {
+    val (optimizedFlags, optimizedGeneration, optimizedRuntime) = applyFastGenerationOptimizations(flagsConfig, generationConfig, baseRuntimeConfig)
     DataCatererConfiguration(
-      flagsConfig,
+      optimizedFlags,
       foldersConfig,
       metadataConfig,
-      generationConfig,
+      optimizedGeneration,
       validationConfig,
       alertConfig,
       connectionConfigsByName,
-      baseRuntimeConfig ++ sparkConnectionConfig,
+      optimizedRuntime ++ sparkConnectionConfig,
       master
     )
+  }
+
+  /**
+   * Create a DataCatererConfiguration with fresh config parsing.
+   * This method is useful for testing when config files need to be reloaded.
+   */
+  def toDataCatererConfigurationWithReload: DataCatererConfiguration = {
+    val freshConfig = getConfig
+    val freshFlagsConfig = ObjectMapperUtil.jsonObjectMapper.convertValue(freshConfig.getObject("flags").unwrapped(), classOf[FlagsConfig])
+    val freshFoldersConfig = ObjectMapperUtil.jsonObjectMapper.convertValue(freshConfig.getObject("folders").unwrapped(), classOf[FoldersConfig])
+    val freshMetadataConfig = ObjectMapperUtil.jsonObjectMapper.convertValue(freshConfig.getObject("metadata").unwrapped(), classOf[MetadataConfig])
+    val freshGenerationConfig = ObjectMapperUtil.jsonObjectMapper.convertValue(freshConfig.getObject("generation").unwrapped(), classOf[GenerationConfig])
+    val freshValidationConfig = ObjectMapperUtil.jsonObjectMapper.convertValue(freshConfig.getObject("validation").unwrapped(), classOf[ValidationConfig])
+    val freshAlertConfig = ObjectMapperUtil.jsonObjectMapper.convertValue(freshConfig.getObject("alert").unwrapped(), classOf[AlertConfig])
+    val freshBaseRuntimeConfig = ObjectMapperUtil.jsonObjectMapper.convertValue(freshConfig.getObject("runtime.config").unwrapped(), classOf[Map[String, String]])
+    val freshMaster = freshConfig.getString(RUNTIME_MASTER)
+    val freshConnectionConfigsByName = getConnectionConfigsByName
+    val freshSparkConnectionConfig = getSparkConnectionConfig
+    
+    val (optimizedFlags, optimizedGeneration, optimizedRuntime) = applyFastGenerationOptimizations(freshFlagsConfig, freshGenerationConfig, freshBaseRuntimeConfig)
+    DataCatererConfiguration(
+      optimizedFlags,
+      freshFoldersConfig,
+      freshMetadataConfig,
+      optimizedGeneration,
+      freshValidationConfig,
+      freshAlertConfig,
+      freshConnectionConfigsByName,
+      optimizedRuntime ++ freshSparkConnectionConfig,
+      freshMaster
+    )
+  }
+
+  /**
+   * Apply optimizations when fast generation mode is enabled.
+   * Disables features that slow down data generation in favor of maximum speed.
+   */
+  private def applyFastGenerationOptimizations(
+    flags: FlagsConfig, 
+    generation: GenerationConfig,
+    runtime: Map[String, String]
+  ): (FlagsConfig, GenerationConfig, Map[String, String]) = {
+    if (flags.enableFastGeneration) {
+      LOGGER.info("Fast generation mode enabled - applying performance optimizations")
+      
+      // Disable slow features for maximum speed
+      val optimizedFlags = flags.copy(
+        enableRecordTracking = false,
+        enableCount = false,
+        enableSinkMetadata = false,
+        enableUniqueCheck = false,
+        enableUniqueCheckOnlyInBatch = false,
+        enableSaveReports = false,
+        enableValidation = false,
+        enableGenerateValidations = false,
+        enableAlerts = false
+      )
+      
+      // Optimize generation settings for speed
+      val optimizedGeneration = generation.copy(
+        numRecordsPerBatch = math.max(generation.numRecordsPerBatch, 1000000L), // Increase batch size for better throughput
+        uniqueBloomFilterNumItems = 100000L, // Reduce bloom filter size (not used anyway when unique check disabled)
+        uniqueBloomFilterFalsePositiveProbability = 0.1 // Higher false positive rate for smaller filter
+      )
+      
+      // Optimize Spark runtime settings for speed
+      val optimizedRuntime = runtime ++ Map(
+        "spark.sql.shuffle.partitions" -> "20", // Increase from default of 10 for better parallelism
+        "spark.sql.adaptive.coalescePartitions.enabled" -> "true", // Enable partition coalescing
+        "spark.sql.adaptive.skewJoin.enabled" -> "true", // Handle data skew
+        "spark.serializer" -> "org.apache.spark.serializer.KryoSerializer", // Faster serialization
+        "spark.sql.cbo.enabled" -> "true", // Enable cost-based optimization
+        "spark.sql.adaptive.enabled" -> "true", // Enable adaptive query execution
+      )
+      
+      LOGGER.info("Fast generation optimizations applied: " +
+        "disabled record tracking, count, sink metadata, unique checks, reports, validation, and alerts. " +
+        s"Increased batch size to ${optimizedGeneration.numRecordsPerBatch}. " +
+        "Optimized Spark settings for performance.")
+      
+      (optimizedFlags, optimizedGeneration, optimizedRuntime)
+    } else {
+      (flags, generation, runtime)
+    }
   }
 
 }
