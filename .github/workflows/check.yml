@@ -22,7 +22,7 @@ jobs:
           arguments: ":app:shadowJar"
       - name: Run integration tests
         id: tests
-        uses: data-catering/insta-integration@v2
+        uses: data-catering/insta-integration@v4
       - name: Print results
         run: |
           echo "Records generated:         ${{ steps.tests.outputs.num_records_generated }}"
