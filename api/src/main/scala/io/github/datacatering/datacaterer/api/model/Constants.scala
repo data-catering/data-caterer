@@ -229,6 +229,7 @@ object Constants {
   lazy val DEFAULT_ENABLE_ALERTS = true
   lazy val DEFAULT_ENABLE_TRACK_ACTIVITY = true
   lazy val DEFAULT_ENABLE_UNIQUE_CHECK_ONLY_WITHIN_BATCH = false
+  lazy val DEFAULT_ENABLE_FAST_GENERATION = false
 
   //folders defaults
   lazy val DEFAULT_PLAN_FILE_PATH = "/opt/app/plan/customer-create-plan.yaml"
@@ -596,10 +597,11 @@ object Constants {
   lazy val CONFIG_FLAGS_GENERATE_VALIDATIONS = "enableGenerateValidations"
   lazy val CONFIG_FLAGS_ALERTS = "enableAlerts"
   lazy val CONFIG_FLAGS_UNIQUE_CHECK_ONLY_IN_BATCH = "enableUniqueCheckOnlyInBatch"
+  lazy val CONFIG_FLAGS_FAST_GENERATION = "enableFastGeneration"
   //folder config
   lazy val CONFIG_FOLDER_PLAN_FILE_PATH = "planFilePath"
   lazy val CONFIG_FOLDER_TASK_FOLDER_PATH = "taskFolderPath"
-  lazy val CONFIG_FOLDER_GENERATED_PLAN_AND_TASK_FOLDER_PATH = "generatedPlanAndTasksFolderPath"
+  lazy val CONFIG_FOLDER_GENERATED_PLAN_AND_TASK_FOLDER_PATH = "generatedPlanAndTaskFolderPath"
   lazy val CONFIG_FOLDER_GENERATED_REPORTS_FOLDER_PATH = "generatedReportsFolderPath"
   lazy val CONFIG_FOLDER_RECORD_TRACKING_FOLDER_PATH = "recordTrackingFolderPath"
   lazy val CONFIG_FOLDER_VALIDATION_FOLDER_PATH = "validationFolderPath"

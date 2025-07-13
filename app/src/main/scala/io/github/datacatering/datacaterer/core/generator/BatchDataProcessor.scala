@@ -31,7 +31,7 @@ class BatchDataProcessor(connectionConfigsByName: Map[String, Map[String, String
   def splitAndProcess(plan: Plan, executableTasks: List[(TaskSummary, Task)], optValidations: Option[List[ValidationConfiguration]])
                      (implicit sparkSession: SparkSession): List[DataSourceResult] = {
     val faker = getDataFaker(plan)
-    val dataGeneratorFactory = new DataGeneratorFactory(faker)
+    val dataGeneratorFactory = new DataGeneratorFactory(faker, flagsConfig.enableFastGeneration)
     val uniqueFieldUtil = new UniqueFieldsUtil(plan, executableTasks, flagsConfig.enableUniqueCheckOnlyInBatch, generationConfig)
     val foreignKeys = plan.sinkOptions.map(_.foreignKeys).getOrElse(List())
     var (numBatches, trackRecordsPerStep) = calculateNumBatches(foreignKeys, executableTasks, generationConfig)

@@ -6,8 +6,10 @@ import io.github.datacatering.datacaterer.core.util.SparkSuite
 
 class PlanParserTest extends SparkSuite {
 
+  private val basePath = getClass.getResource("/sample").getPath
+
   test("Can parse plan in YAML file") {
-    val result = PlanParser.parsePlan("src/test/resources/sample/plan/account-create-plan-test.yaml")
+    val result = PlanParser.parsePlan(s"$basePath/plan/account-create-plan-test.yaml")
 
     assert(result.name.nonEmpty)
     assert(result.description.nonEmpty)
@@ -20,13 +22,13 @@ class PlanParserTest extends SparkSuite {
   }
 
   test("Can parse task in YAML file") {
-    val result = PlanParser.parseTasks("src/test/resources/sample/task")
+    val result = PlanParser.parseTasks(s"$basePath/task")
 
-    assertResult(19)(result.length)
+    assertResult(20)(result.length)
   }
 
   test("Can parse plan in YAML file with foreign key") {
-    val result = PlanParser.parsePlan("src/test/resources/sample/plan/large-plan.yaml")
+    val result = PlanParser.parsePlan(s"$basePath/plan/large-plan.yaml")
 
     assert(result.sinkOptions.isDefined)
     assertResult(1)(result.sinkOptions.get.foreignKeys.size)

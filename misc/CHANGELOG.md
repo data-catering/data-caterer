@@ -8,7 +8,8 @@
 - Change order of data generation precendence
   - Now order is `oneOf`, `sql`, `expression`, `regex`, `random`
   - Previous order was `regex`, `oneOf`, `expression`, `sql`, `random`
-
+- Fix bug for deeply nested SQL fields not being applied correctly
+- Add in `enableFastGeneration` for automatically applying optimizations for faster completion of data generation
 
 ## 0.16.1
 

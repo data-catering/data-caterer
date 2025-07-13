@@ -21,7 +21,7 @@ class SinkFactoryTest extends SparkSuite {
 
   test("Can save data in Iceberg format") {
     val sinkFactory = new SinkFactory(FlagsConfig(), MetadataConfig(), FoldersConfig())
-    val step = Step(options = Map(FORMAT -> ICEBERG, TABLE -> "account.transactions", PATH -> "/tmp/iceberg-test"))
+    val step = Step(options = Map(FORMAT -> ICEBERG, TABLE -> "local.account.transactions"))
     val res = sinkFactory.pushToSink(df, "iceberg-data-source", step, LocalDateTime.now())
 
     assert(res.isSuccess)
@@ -44,9 +44,9 @@ class SinkFactoryTest extends SparkSuite {
   }
 
   ignore("Can overwrite existing Iceberg data") {
-    sparkSession.sql("DELETE FROM iceberg.account.transactions_overwrite").count()
+    sparkSession.sql("DELETE FROM local.account.transactions_overwrite").count()
     val sinkFactory = new SinkFactory(FlagsConfig(), MetadataConfig(), FoldersConfig())
-    val options = Map(FORMAT -> ICEBERG, TABLE -> "account.transactions_overwrite", PATH -> "/tmp/iceberg-test-overwrite")
+    val options = Map(FORMAT -> ICEBERG, TABLE -> "local.account.transactions_overwrite")
     val step = Step(options = options)
     val existingDataRes = sinkFactory.pushToSink(df, "iceberg-data-source", step, LocalDateTime.now())
 
@@ -54,7 +54,7 @@ class SinkFactoryTest extends SparkSuite {
     assertResult(4)(existingDataRes.count)
     assertResult(ICEBERG)(existingDataRes.format)
     assert(existingDataRes.exception.isEmpty)
-    assertResult(4)(sparkSession.table("iceberg.account.transactions_overwrite").count())
+    assertResult(4)(sparkSession.table("local.account.transactions_overwrite").count())
 
     val newStep = Step(options = options ++ Map(SAVE_MODE -> "overwrite"))
     val res = sinkFactory.pushToSink(df, "iceberg-data-source", newStep, LocalDateTime.now())
@@ -63,6 +63,6 @@ class SinkFactoryTest extends SparkSuite {
     assertResult(4)(res.count)
     assertResult(ICEBERG)(res.format)
     assert(res.exception.isEmpty)
-    assertResult(4)(sparkSession.table("iceberg.account.transactions_overwrite").count())
+    assertResult(4)(sparkSession.table("local.account.transactions_overwrite").count())
   }
 }

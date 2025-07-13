@@ -23,11 +23,15 @@ import scala.util.Random
 
 case class Holder(__index_inc: Long)
 
-class DataGeneratorFactory(faker: Faker)(implicit val sparkSession: SparkSession) {
+class DataGeneratorFactory(faker: Faker, enableFastGeneration: Boolean = false)(implicit val sparkSession: SparkSession) {
 
   private val LOGGER = Logger.getLogger(getClass.getName)
   private val OBJECT_MAPPER = ObjectMapperUtil.jsonObjectMapper
   registerSparkFunctions()
+
+  if (enableFastGeneration) {
+    LOGGER.info("Fast generation mode enabled - using SQL-only generators for maximum performance")
+  }
 
   def generateDataForStep(step: Step, dataSourceName: String, startIndex: Long, endIndex: Long): DataFrame = {
     val structFieldsWithDataGenerators = getStructWithGenerators(step.fields, step.options)
@@ -56,10 +60,37 @@ class DataGeneratorFactory(faker: Faker)(implicit val sparkSession: SparkSession
 
     if (!allRecordsDf.storageLevel.useMemory) allRecordsDf.cache()
     val dfWithMetadata = attachMetadata(allRecordsDf, structType)
-    val dfAllFields = attachMetadata(applySqlExpressions(dfWithMetadata), structType)
+    
+    // Apply SQL expressions while all fields (including omitted helper fields) are still available
+    val dfWithSqlExpressions = applySqlExpressions(dfWithMetadata)
+    
+    // Attach final metadata after SQL expressions
+    val dfAllFields = attachMetadata(dfWithSqlExpressions, structType)
     if (!dfAllFields.storageLevel.useMemory) dfAllFields.cache()
     allRecordsDf.unpersist()
-    dfAllFields.drop(INDEX_INC_FIELD)
+    
+    // Remove omitted fields after SQL expressions have been applied and can access helper fields
+    val finalDf = removeOmitFields(dfAllFields.drop(INDEX_INC_FIELD))
+    dfAllFields.unpersist()
+    finalDf
+  }
+
+  // Add method to remove omitted fields (similar to SinkFactory implementation)
+  private def removeOmitFields(df: DataFrame): DataFrame = {
+    val dfOmitFields = df.schema.fields
+      .filter(field => field.metadata.contains(OMIT) && field.metadata.getString(OMIT).equalsIgnoreCase("true"))
+      .map(_.name)
+    
+    if (dfOmitFields.nonEmpty) {
+      val columnsToSelect = df.columns.filter(c => !dfOmitFields.contains(c))
+        .map(c => if (c.contains(".")) s"`$c`" else c)
+      LOGGER.debug(s"Removing omitted fields from generated data: ${dfOmitFields.mkString(", ")}")
+      val dfWithoutOmitFields = df.selectExpr(columnsToSelect: _*)
+      if (!dfWithoutOmitFields.storageLevel.useMemory) dfWithoutOmitFields.cache()
+      dfWithoutOmitFields
+    } else {
+      df
+    }
   }
 
   private def generateRecordsPerField(dataGenerators: List[DataGenerator[_]], step: Step,
@@ -79,7 +110,7 @@ class DataGeneratorFactory(faker: Faker)(implicit val sparkSession: SparkSession
       }
 
       val countStructField = StructField(RECORD_COUNT_GENERATOR_FIELD, IntegerType, false, metadata)
-      val generatedCount = getDataGenerator(perFieldCount.options, countStructField, faker).asInstanceOf[DataGenerator[Int]]
+      val generatedCount = getDataGenerator(perFieldCount.options, countStructField, faker, enableFastGeneration).asInstanceOf[DataGenerator[Int]]
       val perFieldRange = generateDataWithSchemaSql(df, generatedCount, fieldsToBeGenerated)
 
       val explodeCount = perFieldRange.withColumn(PER_FIELD_INDEX_FIELD, explode(col(PER_FIELD_COUNT)))
@@ -131,7 +162,8 @@ class DataGeneratorFactory(faker: Faker)(implicit val sparkSession: SparkSession
       .drop(PER_FIELD_COUNT_GENERATED, PER_FIELD_COUNT_GENERATED_NUM, RECORD_COUNT_GENERATOR_WEIGHT_FIELD)
   }
 
-  private def getStructWithGenerators(fields: List[Field], options: Map[String, String] = Map()): List[DataGenerator[_]] = {
+  private def getStructWithGenerators(fields: List[Field], options: Map[String, String]): List[DataGenerator[_]] = {
+    val faker = this.faker
     val indexIncMetadata = new MetadataBuilder().putString(SQL_GENERATOR, INDEX_INC_FIELD).build()
     val indexIncField = new RandomLongDataGenerator(StructField(INDEX_INC_FIELD, LongType, false, indexIncMetadata), faker)
     
@@ -141,7 +173,7 @@ class DataGeneratorFactory(faker: Faker)(implicit val sparkSession: SparkSession
     // Apply user-defined field filters
     val userFilteredFields = applyFieldFilters(filteredFields, options)
     
-    List(indexIncField) ++ userFilteredFields.map(field => getDataGenerator(field.options, field.toStructField, faker))
+    List(indexIncField) ++ userFilteredFields.map(field => getDataGenerator(field.options, field.toStructField, faker, enableFastGeneration))
   }
 
   /**
@@ -362,71 +394,54 @@ class DataGeneratorFactory(faker: Faker)(implicit val sparkSession: SparkSession
   }
 
   private def attachMetadata(df: DataFrame, structType: StructType): DataFrame = {
-    def updateStructColumn(df: DataFrame, fieldName: String, updatedStructType: StructType): DataFrame = {
-      // Check if this is a flattened field name (contains dots) or a true nested structure
-      if (fieldName.contains(".")) {
-        // For flattened field names, just update the metadata directly
-        val escapedFieldName = s"`$fieldName`"
-        df.withColumn(
-          fieldName,
-          col(escapedFieldName).as(fieldName, new MetadataBuilder().withMetadata(updatedStructType.fields.head.metadata).build())
-        )
-      } else {
-        // For true nested structures, handle recursively
-      val originalStructType = df.schema(fieldName).dataType.asInstanceOf[StructType]
-
-      // Recursively update nested fields
-      val updatedFields = originalStructType.fields.map { originalField =>
-        updatedStructType.find(_.name == originalField.name) match {
-          case Some(updatedField) =>
-            // If it's another StructType, recursively update it
-            if (originalField.dataType.isInstanceOf[StructType]) {
-              val updatedNestedStructType = updatedField.dataType.asInstanceOf[StructType]
-              val updatedSchema = attachMetadata(df.select(s"$fieldName.${originalField.name}"), updatedNestedStructType).schema
-              updatedSchema.fields.find(_.name == originalField.name) match {
-                case Some(newSchema) =>
-                  StructField(
-                    originalField.name,
-                    newSchema.dataType,
-                    originalField.nullable,
-                    updatedField.metadata
-                  )
-                case None => originalField
-              }
-            } else {
-              // Update metadata for non-struct fields
-              StructField(originalField.name, originalField.dataType, originalField.nullable, updatedField.metadata)
+    // Helper function to recursively update metadata in nested structures
+    def updateNestedMetadata(originalType: DataType, targetType: DataType): DataType = {
+      (originalType, targetType) match {
+        case (originalStruct: StructType, targetStruct: StructType) =>
+          // For struct types, recursively update each field
+          val updatedFields = originalStruct.fields.map { originalField =>
+            targetStruct.find(_.name == originalField.name) match {
+              case Some(targetField) =>
+                // Recursively update the field's data type and attach metadata
+                val updatedDataType = updateNestedMetadata(originalField.dataType, targetField.dataType)
+                StructField(originalField.name, updatedDataType, originalField.nullable, targetField.metadata)
+              case None =>
+                // Keep original field if not found in target
+                originalField
             }
-          case None => originalField // Keep original if not in updated schema
+          }
+          StructType(updatedFields)
+        
+        case (ArrayType(originalElementType, nullable), ArrayType(targetElementType, _)) =>
+          // For array types, recursively update the element type
+          val updatedElementType = updateNestedMetadata(originalElementType, targetElementType)
+          ArrayType(updatedElementType, nullable)
+        
+        case (_, _) =>
+          // For primitive types, just return the original type (metadata will be handled at field level)
+          originalType
+      }
+    }
+
+    // Create a new schema with updated metadata
+    val updatedSchema = StructType(
+      df.schema.fields.map { originalField =>
+        structType.find(_.name == originalField.name) match {
+          case Some(targetField) =>
+            // Update the field's data type with proper metadata propagation
+            val updatedDataType = updateNestedMetadata(originalField.dataType, targetField.dataType)
+            StructField(originalField.name, updatedDataType, originalField.nullable, targetField.metadata)
+          case None =>
+            // Keep original field if not found in target
+            originalField
         }
       }
+    )
 
-      val finalStructType = StructType(updatedFields)
-
-      df.withColumn(
-        fieldName,
-        col(fieldName).cast(finalStructType)
-          .as(fieldName, new MetadataBuilder().build())
-      )
-      }
-    }
-
-    df.schema.fields.foldLeft(df) { (tempDF, field) =>
-      structType.find(_.name == field.name) match {
-        case Some(updatedField) if field.dataType.isInstanceOf[StructType] =>
-          updateStructColumn(tempDF, field.name, updatedField.dataType.asInstanceOf[StructType])
-
-        case Some(updatedField) =>
-          // Handle flattened field names with dots
-          val escapedFieldName = if (field.name.contains(".")) s"`${field.name}`" else field.name
-          tempDF.withColumn(
-            field.name,
-            col(escapedFieldName).as(field.name, new MetadataBuilder().withMetadata(updatedField.metadata).build())
-          )
-
-        case None => tempDF // If field is not in updated schema, leave it unchanged
-      }
-    }
+    // Apply the updated schema to the DataFrame
+    val sparkSession = df.sparkSession
+    val rdd = df.rdd
+    sparkSession.createDataFrame(rdd, updatedSchema)
   }
 
   private def defineRandomLengthView(): Unit = {

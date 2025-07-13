@@ -347,6 +347,51 @@ case class DataCatererConfigurationBuilder(build: DataCatererConfiguration = Dat
   def enableUniqueCheckOnlyInBatch(enable: Boolean): DataCatererConfigurationBuilder =
     this.modify(_.build.flagsConfig.enableUniqueCheckOnlyInBatch).setTo(enable)
 
+  def enableFastGeneration(enable: Boolean): DataCatererConfigurationBuilder = {
+    val updated = this.modify(_.build.flagsConfig.enableFastGeneration).setTo(enable)
+    if (enable) {
+      // Apply fast generation optimizations immediately
+      updated.applyFastGenerationOptimizations()
+    } else {
+      updated
+    }
+  }
+
+  /**
+   * Set the fast generation flag without applying optimizations.
+   * Used internally by ConfigurationMapper.
+   */
+  def setFastGenerationFlag(enable: Boolean): DataCatererConfigurationBuilder = {
+    this.modify(_.build.flagsConfig.enableFastGeneration).setTo(enable)
+  }
+
+  /**
+   * Apply optimizations for fast generation mode.
+   * Disables features that slow down data generation in favor of maximum speed.
+   */
+  def applyFastGenerationOptimizations(): DataCatererConfigurationBuilder = {
+    this
+      .enableRecordTracking(false)
+      .enableCount(false)
+      .enableSinkMetadata(false)
+      .enableUniqueCheck(false)
+      .enableUniqueCheckOnlyInBatch(false)
+      .enableSaveReports(false)
+      .enableValidation(false)
+      .enableGenerateValidations(false)
+      .enableAlerts(false)
+      .numRecordsPerBatch(math.max(build.generationConfig.numRecordsPerBatch, 1000000L))
+      .uniqueBloomFilterNumItems(100000L)
+      .uniqueBloomFilterFalsePositiveProbability(0.1)
+      // Add runtime optimizations for Spark performance
+      .addRuntimeConfig("spark.sql.shuffle.partitions" -> "20")
+      .addRuntimeConfig("spark.sql.adaptive.coalescePartitions.enabled" -> "true")
+      .addRuntimeConfig("spark.sql.adaptive.skewJoin.enabled" -> "true")
+      .addRuntimeConfig("spark.serializer" -> "org.apache.spark.serializer.KryoSerializer")
+      .addRuntimeConfig("spark.sql.cbo.enabled" -> "true")
+      .addRuntimeConfig("spark.sql.adaptive.enabled" -> "true")
+  }
+
 
   def planFilePath(path: String): DataCatererConfigurationBuilder =
     this.modify(_.build.foldersConfig.planFilePath).setTo(path)

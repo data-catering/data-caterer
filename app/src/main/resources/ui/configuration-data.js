@@ -682,6 +682,14 @@ configurationOptionsMap.set("flag", {
         paid: "true",
         help: "Enable/disable plan and task automatic generation based off data source connections."
     },
+    "enableFastGeneration": {
+        configName: "enableFastGeneration",
+        displayName: "Fast Generation",
+        default: "false",
+        type: "text",
+        choice: ["true", "false"],
+        help: "Enable/disable fast generation mode. When enabled, disables certain features to improve performance."
+    },
 });
 configurationOptionsMap.set("generation", {
     "numRecordsPerBatch": {
@@ -831,8 +839,8 @@ configurationOptionsMap.set("folder", {
         help: "If using YAML task file(s), folder path that contains all the task files (can have nested directories).",
         required: ""
     },
-    "generatedPlanAndTasksFolderPath": {
-        configName: "generatedPlanAndTasksFolderPath",
+    "generatedPlanAndTaskFolderPath": {
+        configName: "generatedPlanAndTaskFolderPath",
         displayName: "Generated Plan And Tasks Folder Path",
         default: "/tmp",
         type: "text",
