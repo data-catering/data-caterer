@@ -157,8 +157,11 @@ object GeneratorUtil {
       return df
     }
     
-    // Step 1: Add temporary columns for all SQL expressions
-    val sqlExpressionsWithoutForeignKeys = sqlExpressions.filter {
+    // Separate array element expressions from regular expressions
+    val (arrayElementExpressions, regularExpressions) = sqlExpressions.partition(_._1.contains(".element."))
+    
+    // Step 1: Add temporary columns for non-array element SQL expressions only
+    val sqlExpressionsWithoutForeignKeys = regularExpressions.filter {
       case (_, sqlExpr) => isIgnoreForeignColExists || foreignKeyFields.exists(col => sqlExpr.contains(col))
     }
     
@@ -168,9 +171,10 @@ object GeneratorUtil {
       resultDf = resultDf.withColumn(tempColName, expr(sqlExpr))
     }
     
-    // Step 2: Build new columns using the temporary values
+    // Step 2: Build new columns using the temporary values for regular expressions
+    // and inline processing for array element expressions
     val newColumns = resultDf.schema.fields.map { field =>
-      buildColumnWithSqlResolution(field, resultDf, sqlExpressions)
+      buildColumnWithSqlResolution(field, resultDf, sqlExpressions, arrayElementExpressions)
     }
     
     // Step 3: Select the new columns
@@ -181,8 +185,30 @@ object GeneratorUtil {
     finalDf.drop(tempColumns: _*)
   }
   
+  /**
+   * Transform SQL expression to work within array element context
+   * This function replaces array field references with element references
+   */
+  private def transformSqlExpressionForArrayElement(sqlExpr: String, arrayPath: String): String = {
+    // Get the array field name from the path (e.g., "transaction_history" from "transaction_history.element")
+    val arrayFieldName = arrayPath.split("\\.element").head
+    
+    // Create a regex pattern to match array field references
+    // This matches patterns like "transaction_history.field_name"
+    val arrayFieldPattern = s"\\b${arrayFieldName}\\.(\\w+)\\b".r
+    
+    // Replace array field references with element references
+    val transformedExpr = arrayFieldPattern.replaceAllIn(sqlExpr, m => {
+      val fieldName = m.group(1)
+      s"x.$fieldName"
+    })
+    
+    LOGGER.debug(s"Transformed SQL expression for array element: '$sqlExpr' -> '$transformedExpr'")
+    transformedExpr
+  }
+  
   // Helper function to build columns with SQL resolution
-  private def buildColumnWithSqlResolution(field: StructField, df: DataFrame, sqlExpressions: List[(String, String)]): org.apache.spark.sql.Column = {
+  private def buildColumnWithSqlResolution(field: StructField, df: DataFrame, sqlExpressions: List[(String, String)], arrayElementExpressions: List[(String, String)] = List()): org.apache.spark.sql.Column = {
     
     def buildNestedColumn(structField: StructField, pathPrefix: String, baseColumnName: String): String = {
       val currentPath = if (pathPrefix.isEmpty) structField.name else s"$pathPrefix.${structField.name}"
@@ -190,9 +216,15 @@ object GeneratorUtil {
       // Check if this field has a SQL expression
       sqlExpressions.find(_._1 == currentPath) match {
         case Some((_, sqlExpr)) =>
-          // Use the temporary column value
-          val tempColName = s"_temp_${currentPath.replace(".", "_")}"
-          s"`$tempColName`"
+          // Check if this is an array element expression
+          if (currentPath.contains(".element.")) {
+            // Transform the SQL expression for array element context
+            transformSqlExpressionForArrayElement(sqlExpr, pathPrefix)
+          } else {
+            // Use the temporary column value for regular expressions
+            val tempColName = s"_temp_${currentPath.replace(".", "_")}"
+            s"`$tempColName`"
+          }
           
         case None =>
           structField.dataType match {

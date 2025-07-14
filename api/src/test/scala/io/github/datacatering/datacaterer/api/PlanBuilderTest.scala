@@ -3,6 +3,7 @@ package io.github.datacatering.datacaterer.api
 import io.github.datacatering.datacaterer.api.model.Constants.ALL_COMBINATIONS
 import io.github.datacatering.datacaterer.api.model.{DataCatererConfiguration, ExpressionValidation, ForeignKeyRelation, PauseWaitCondition}
 import org.scalatest.funsuite.AnyFunSuite
+import io.github.datacatering.datacaterer.api.model.Constants.ENABLE_REFERENCE_MODE
 
 class PlanBuilderTest extends AnyFunSuite {
 
@@ -210,6 +211,57 @@ class PlanBuilderTest extends AnyFunSuite {
     assertResult(1)(fk.size)
     assert(fk.head.generate.isEmpty)
     assertResult(1)(fk.head.delete.size)
+  }
+
+  test("Ability to define foreign key relationship with nested fields") {
+    val jsonTask = ConnectionConfigWithTaskBuilder().file("my_json", "json").fields(FieldBuilder().name("address").fields(FieldBuilder().name("city")))
+    val csvTask = ConnectionConfigWithTaskBuilder().file("my_csv", "csv").fields(FieldBuilder().name("city"))
+    val result = PlanBuilder().addForeignKeyRelationship(
+      jsonTask, List("address.city"),
+      List(csvTask -> List("city"))
+    ).plan
+
+    assert(result.sinkOptions.isDefined)
+    val fk = result.sinkOptions.get.foreignKeys
+    assert(fk.nonEmpty)
+    assertResult(1)(fk.size)
+  }
+
+  test("Ability to define foreign key relationship with deeply nested fields with other fields") {
+    val jsonTask = ConnectionConfigWithTaskBuilder().file("my_json", "json").fields(FieldBuilder().name("address").fields(FieldBuilder().name("city").fields(FieldBuilder().name("country"))))
+    val csvTask = ConnectionConfigWithTaskBuilder().file("my_csv", "csv").fields(FieldBuilder().name("city"))
+    val result = PlanBuilder().addForeignKeyRelationship(
+      jsonTask, List("address.city.country"),
+      List(csvTask -> List("city"))
+    ).plan
+
+    assert(result.sinkOptions.isDefined)
+    val fk = result.sinkOptions.get.foreignKeys
+    assert(fk.nonEmpty)
+    assertResult(1)(fk.size)
+  }
+
+  test("Skip field check if reference mode is enabled") {
+    val jsonTask = ConnectionConfigWithTaskBuilder().file("my_json", "json", options = Map(ENABLE_REFERENCE_MODE -> "true"))
+    val csvTask = ConnectionConfigWithTaskBuilder().file("my_csv", "csv").fields(FieldBuilder().name("city"))
+    val result = PlanBuilder().addForeignKeyRelationship(
+      jsonTask, List("address.city"),
+      List(csvTask -> List("city"))
+    ).plan
+
+    assert(result.sinkOptions.isDefined)
+    val fk = result.sinkOptions.get.foreignKeys
+    assert(fk.nonEmpty)
+    assertResult(1)(fk.size)
+  }
+
+  test("Throw exception when foreign key relationship with nested fields is not defined in data sources") {
+    val jsonTask = ConnectionConfigWithTaskBuilder().file("my_json", "json").fields(FieldBuilder().name("address").fields(FieldBuilder().name("city").fields(FieldBuilder().name("country"))))
+    val csvTask = ConnectionConfigWithTaskBuilder().file("my_csv", "csv").fields(FieldBuilder().name("city"))
+    assertThrows[RuntimeException](PlanBuilder().addForeignKeyRelationship(
+      jsonTask, List("address.country"),
+      List(csvTask -> List("city"))
+    ).plan)
   }
 
   test("Can create a step that will generate records for all combinations") {
