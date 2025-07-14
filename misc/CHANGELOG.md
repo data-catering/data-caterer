@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.16.3
+
+- Fix bug when using foreign key relationships with nested fields beyond 3 levels
+- Allow for referencing array fields in SQL generated fields
+
 ## 0.16.2
 
 - Add in `referenceMode` to data generation config

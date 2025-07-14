@@ -11,7 +11,7 @@ import io.github.datacatering.datacaterer.core.util.PlanImplicits.{ForeignKeyRel
 import org.apache.log4j.Logger
 import org.apache.spark.sql.functions.{col, expr, struct}
 import org.apache.spark.sql.types.{ArrayType, DataType, LongType, Metadata, MetadataBuilder, StructField, StructType}
-import org.apache.spark.sql.{DataFrame, Dataset, Row}
+import org.apache.spark.sql.{DataFrame, Dataset, Row, Column}
 
 import scala.annotation.tailrec
 import scala.collection.mutable
@@ -180,6 +180,8 @@ object ForeignKeyUtil {
     
     // Apply sampling approach for nested fields OR mixed fields
     val finalResult = if (nestedFields.nonEmpty || hasMixedFields) {
+      LOGGER.debug(s"Processing nested fields using sampling approach, nested fields: ${nestedFields.size}")
+      
       // Get all source fields for this foreign key relationship
       val allSourceFields = sourceFields.distinct
       val sourceValues = sourceDf.selectExpr(allSourceFields: _*).distinct().collect()
@@ -249,28 +251,102 @@ object ForeignKeyUtil {
    */
   private def updateNestedField(df: DataFrame, fieldPath: String, sqlExpr: String): DataFrame = {
     val parts = fieldPath.split("\\.")
-    if (parts.length == 2) {
-      val structField = parts(0)
-      val nestedField = parts(1)
+    LOGGER.debug(s"Updating nested field: path=$fieldPath, depth=${parts.length}")
+    
+    try {
+      if (parts.length == 2) {
+        val structField = parts(0)
+        val nestedField = parts(1)
+        
+        // Get the current struct column
+        val currentStruct = col(structField)
+        
+        // Create a new struct with the updated nested field
+        val existingFields = df.schema.fields.find(_.name == structField).get.dataType.asInstanceOf[StructType].fieldNames
+        
+        val updatedFields = existingFields.map { fieldName =>
+          if (fieldName == nestedField) {
+            expr(sqlExpr).alias(fieldName)
+          } else {
+            col(s"$structField.$fieldName").alias(fieldName)
+          }
+        }
+        
+        df.withColumn(structField, struct(updatedFields: _*))
+      } else if (parts.length > 2) {
+        // Handle deeper nesting (depth 3+)
+        LOGGER.debug(s"Handling deep nested field update: path=$fieldPath")
+        updateDeepNestedField(df, parts, sqlExpr)
+      } else {
+        // Single field path - shouldn't happen in nested context
+        LOGGER.warn(s"Single field path in nested context: $fieldPath")
+        df.withColumn(fieldPath, expr(sqlExpr))
+      }
+    } catch {
+      case e: Exception =>
+        LOGGER.error(s"Error updating nested field $fieldPath with SQL expression $sqlExpr", e)
+        throw e
+    }
+  }
+  
+  /**
+   * Update a deeply nested field in a DataFrame (depth 3+)
+   */
+  private def updateDeepNestedField(df: DataFrame, pathParts: Array[String], sqlExpr: String): DataFrame = {
+    if (pathParts.length < 3) {
+      throw new IllegalArgumentException(s"updateDeepNestedField requires at least 3 path parts, got ${pathParts.length}")
+    }
+    
+    val topLevelField = pathParts(0)
+    val remainingPath = pathParts.tail
+    
+    try {
+      // Get the schema of the top-level field
+      val topLevelSchema = df.schema.fields.find(_.name == topLevelField).get.dataType.asInstanceOf[StructType]
       
-      // Get the current struct column
-      val currentStruct = col(structField)
+      // Build the complete path structure
+      val updatedStruct = buildCompleteNestedStruct(topLevelField, remainingPath, topLevelSchema, sqlExpr)
       
-      // Create a new struct with the updated nested field
-      val existingFields = df.schema.fields.find(_.name == structField).get.dataType.asInstanceOf[StructType].fieldNames
-      val updatedFields = existingFields.map { fieldName =>
-        if (fieldName == nestedField) {
+      df.withColumn(topLevelField, updatedStruct)
+    } catch {
+      case e: Exception =>
+        LOGGER.error(s"Error in updateDeepNestedField for path ${pathParts.mkString(".")} with SQL expression $sqlExpr", e)
+        throw e
+    }
+  }
+  
+  /**
+   * Build a complete nested struct with a field update at arbitrary depth
+   */
+  private def buildCompleteNestedStruct(basePath: String, remainingPath: Array[String], schema: StructType, sqlExpr: String): Column = {
+    if (remainingPath.length == 1) {
+      // We're at the target field - build the struct with the updated field
+      val targetField = remainingPath(0)
+      
+      val updatedFields = schema.fieldNames.map { fieldName =>
+        if (fieldName == targetField) {
           expr(sqlExpr).alias(fieldName)
         } else {
-          col(s"$structField.$fieldName").alias(fieldName)
+          col(s"$basePath.$fieldName").alias(fieldName)
         }
       }
-      
-      df.withColumn(structField, struct(updatedFields: _*))
+      struct(updatedFields: _*)
     } else {
-      // For now, only handle 2-level nesting (like profile.name)
-      // Could be extended for deeper nesting if needed
-      df.withColumn(fieldPath, expr(sqlExpr))
+      // We need to go deeper - build the intermediate struct
+      val currentField = remainingPath(0)
+      
+      val nestedSchema = schema.fields.find(_.name == currentField).get.dataType.asInstanceOf[StructType]
+      
+      val nestedStruct = buildCompleteNestedStruct(s"$basePath.$currentField", remainingPath.tail, nestedSchema, sqlExpr)
+      
+      val updatedFields = schema.fieldNames.map { fieldName =>
+        if (fieldName == currentField) {
+          nestedStruct.alias(fieldName)
+        } else {
+          col(s"$basePath.$fieldName").alias(fieldName)
+        }
+      }
+      struct(updatedFields: _*)
     }
   }
 

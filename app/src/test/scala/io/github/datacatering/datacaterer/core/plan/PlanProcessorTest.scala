@@ -1,7 +1,7 @@
 package io.github.datacatering.datacaterer.core.plan
 
 import io.github.datacatering.datacaterer.api.model.Constants.{OPEN_METADATA_AUTH_TYPE_OPEN_METADATA, OPEN_METADATA_JWT_TOKEN, OPEN_METADATA_TABLE_FQN, PARTITIONS, ROWS_PER_SECOND, SAVE_MODE, VALIDATION_IDENTIFIER}
-import io.github.datacatering.datacaterer.api.model.{ArrayType, DateType, DoubleType, HeaderType, IntegerType, MapType, StructType, TimestampType}
+import io.github.datacatering.datacaterer.api.model.{ArrayType, DateType, DecimalType, DoubleType, HeaderType, IntegerType, MapType, StructType, TimestampType}
 import io.github.datacatering.datacaterer.api.{HttpMethodEnum, PlanRun}
 import io.github.datacatering.datacaterer.core.model.Constants.METADATA_FILTER_OUT_SCHEMA
 import io.github.datacatering.datacaterer.core.util.{ObjectMapperUtil, SparkSuite}
@@ -96,6 +96,39 @@ class PlanProcessorTest extends SparkSuite {
     verifyGeneratedData(javaBaseFolder)
   }
 
+  test("Nested foreign key") {
+    PlanProcessor.determineAndExecutePlan(Some(new TestNestedForeignKey()))
+    
+    // Verify the depth 3 nested foreign key relationship is working correctly
+    val generatedData = sparkSession.read.json("/tmp/data/complex").collect()
+    val csvReferencePath = getClass.getResource("/sample/files/reference/name-email.csv").getPath
+    val referenceData = sparkSession.read.option("header", "true").csv(csvReferencePath).collect()
+    
+    // Create a map of name to email from reference data
+    val referenceNamesWithEmails = referenceData.map(row => (row.getAs[String]("name"), row.getAs[String]("email"))).toMap
+    
+    // Verify all generated records have foreign key relationships that match reference data
+    generatedData.foreach(row => {
+      val customerInfo = row.getAs[org.apache.spark.sql.Row]("customer_info")
+      val personalDetails = customerInfo.getAs[org.apache.spark.sql.Row]("personal_details")
+      val fullName = personalDetails.getAs[String]("full_name")
+      val email = personalDetails.getAs[String]("email")
+      
+      // Verify the name exists in reference data
+      val optReferenceEmail = referenceNamesWithEmails.get(fullName)
+      assert(optReferenceEmail.isDefined, s"Generated name '$fullName' should exist in reference data: ${referenceNamesWithEmails.keys.mkString(", ")}")
+      
+      // Verify the email matches the reference email for this name
+      assert(optReferenceEmail.get == email, s"Generated email '$email' should match reference email for name '$fullName': ${optReferenceEmail.get}")
+    })
+    
+    // Verify at least one record was generated
+    assert(generatedData.length > 0, "Should generate at least one record")
+    assert(generatedData.length == 10, "Should generate exactly 10 records as specified")
+    
+    println(s"Successfully validated depth 3 nested foreign key relationship with ${generatedData.length} records")
+  }
+
   test("Can generate JSON data from JSON Schema with field filtering matching mx_pain structure") {
     PlanProcessor.determineAndExecutePlan(Some(new TestJsonSchemaGenerationMatchingMxPain()))
     
@@ -105,16 +138,16 @@ class PlanProcessorTest extends SparkSuite {
     val referenceData = sparkSession.read.option("header", "true").csv(csvReferencePath).collect()
     
     // Extract reference names and emails
-    val referenceNames = referenceData.map(_.getAs[String]("name")).toSet
-    val referenceEmails = referenceData.map(_.getAs[String]("email")).toSet
+    val referenceNamesWithEmails = referenceData.map(row => (row.getAs[String]("name"), row.getAs[String]("email"))).toMap
     
-    // Verify all generated profile names and emails exist in reference data
+    // Verify all generated profile names and emails exist in reference data and are from the same pairing
     generatedData.foreach(row => {
       val profileName = row.getAs[org.apache.spark.sql.Row]("profile").getAs[String]("name")
       val profileEmail = row.getAs[org.apache.spark.sql.Row]("profile").getAs[String]("email")
       
-      assert(referenceNames.contains(profileName), s"Generated name '$profileName' should exist in reference data: ${referenceNames.mkString(", ")}")
-      assert(referenceEmails.contains(profileEmail), s"Generated email '$profileEmail' should exist in reference data: ${referenceEmails.mkString(", ")}")
+      val optReferenceEmail = referenceNamesWithEmails.get(profileName)
+      assert(optReferenceEmail.isDefined, s"Generated name '$profileName' should exist in reference data: ${referenceNamesWithEmails.keys.mkString(", ")}")
+      assert(optReferenceEmail.get == profileEmail, s"Generated email '$profileEmail' should match reference email for name '$profileName': ${optReferenceEmail.get}")
     })
     
     // Verify at least one record was generated
@@ -122,7 +155,7 @@ class PlanProcessorTest extends SparkSuite {
     // assert(generatedData.length == 10, "Should generate exactly 10 records as specified")
     
     println(s"Successfully validated foreign key relationship with ${generatedData.length} records")
-    }
+  }
 
   test("Can generate JSON data from pain-008 task and validate structure") {
     PlanProcessor.determineAndExecutePlan(Some(new TestPain008JsonGeneration()))
@@ -841,10 +874,10 @@ class PlanProcessorTest extends SparkSuite {
     val csvReferencePath = getClass.getResource("/sample/files/reference/name-email.csv").getPath
     val jsonSchemaPath = getClass.getResource("/sample/schema/complex-user-schema.json").getPath
     val referenceTable = csv("reference_table", csvReferencePath, Map("header" -> "true"))
-      .fields(
-        field.name("name"),
-        field.name("email")
-      )
+//      .fields(
+//        field.name("name"),
+//        field.name("email")
+//      )
       .enableReferenceMode(true)
 
     // Test field filtering to match the exact structure in mx_pain.json
@@ -866,6 +899,65 @@ class PlanProcessorTest extends SparkSuite {
       .generatedReportsFolderPath("/tmp/data/report-mx-pain")
 
     execute(relation, conf, jsonSchemaTask, referenceTable)
+  }
+
+  class TestNestedForeignKey extends PlanRun {
+    val csvReferencePath = getClass.getResource("/sample/files/reference/name-email.csv").getPath
+    val referenceTable = csv("reference_table", csvReferencePath, Map("header" -> "true")).enableReferenceMode(true)
+
+    val complexJsonTask = json("complex_financial_data", "/tmp/data/complex", Map("saveMode" -> "overwrite"))
+      .fields(
+        field.name("account_id").regex("ACC[0-9]{8}").unique(true),
+        field.name("created_date").`type`(DateType).min(Date.valueOf("2023-01-01")),
+        field.name("customer_info")
+          .fields(
+            field.name("customer_id").regex("CUST[0-9]{10}"),
+            field.name("personal_details")
+              .fields(
+                field.name("full_name"),
+                field.name("first_name").sql("SPLIT(customer_info.personal_details.full_name, ' ')[0]"),
+                field.name("last_name").sql("SPLIT(customer_info.personal_details.full_name, ' ')[1]"),
+                field.name("email"),
+                field.name("birth_date").`type`(DateType).min(Date.valueOf("1950-01-01")).max(Date.valueOf("2000-12-31")),
+                field.name("age").sql("YEAR(CURRENT_DATE()) - YEAR(customer_info.personal_details.birth_date)"),
+                field.name("age_group").sql("CASE " +
+                  "WHEN customer_info.personal_details.age < 25 THEN 'Young Adult' " +
+                  "WHEN customer_info.personal_details.age < 40 THEN 'Adult' " +
+                  "WHEN customer_info.personal_details.age < 60 THEN 'Middle Age' " +
+                  "ELSE 'Senior' END")
+              ),
+          ),
+        // Simple transaction history with array element references
+        field.name("transaction_history")
+          .`type`(ArrayType)
+          .arrayMinLength(2)
+          .arrayMaxLength(5)
+          .fields(
+            field.name("transaction_id").regex("TXN[0-9]{12}"),
+            field.name("amount").`type`(new DecimalType(10, 2)).min(-1000).max(1000),
+            // This is the key test - referencing transaction_history.amount within the array element
+            field.name("transaction_type").sql("CASE WHEN transaction_history.amount > 0 THEN 'CREDIT' ELSE 'DEBIT' END"),
+            field.name("is_large_transaction").sql("ABS(transaction_history.amount) > 500"),
+            field.name("amount_category").sql("CASE " +
+              "WHEN ABS(transaction_history.amount) < 100 THEN 'SMALL' " +
+              "WHEN ABS(transaction_history.amount) < 500 THEN 'MEDIUM' " +
+              "ELSE 'LARGE' END")
+          )
+      )
+      .count(count.records(10))
+
+    val config = configuration
+      .generatedReportsFolderPath("/tmp/data/report")
+      .enableUniqueCheck(true)
+      .enableSinkMetadata(true)
+
+    val myPlan = plan
+      .addForeignKeyRelationship(
+        referenceTable, List("name", "email"),
+        List(complexJsonTask -> List("customer_info.personal_details.full_name", "customer_info.personal_details.email"))
+      )
+
+    execute(myPlan, config, referenceTable, complexJsonTask)
   }
 
   class TestKafka extends PlanRun {

@@ -4,7 +4,7 @@ import com.softwaremill.quicklens.ModifyPimp
 import io.github.datacatering.datacaterer.api
 import io.github.datacatering.datacaterer.api.connection.ConnectionTaskBuilder
 import io.github.datacatering.datacaterer.api.converter.Converters.toScalaList
-import io.github.datacatering.datacaterer.api.model.Constants.METADATA_SOURCE_TYPE
+import io.github.datacatering.datacaterer.api.model.Constants.{ENABLE_REFERENCE_MODE, METADATA_SOURCE_TYPE}
 import io.github.datacatering.datacaterer.api.model.{ForeignKeyRelation, Plan}
 
 import scala.annotation.varargs
@@ -97,14 +97,17 @@ case class PlanBuilder(plan: Plan = Plan(), tasks: List[TasksBuilder] = List()) 
                                 relations: java.util.List[(ConnectionTaskBuilder[_], java.util.List[String])]): PlanBuilder =
     addForeignKeyRelationship(foreignKey, toScalaList(relations).map(r => toForeignKeyRelation(r._1, toScalaList(r._2))): _*)
 
-  private def toForeignKeyRelation(connectionTaskBuilder: ConnectionTaskBuilder[_], fields: List[String], isDeleteFk: Boolean = false) = {
+  private def toForeignKeyRelation(connectionTaskBuilder: ConnectionTaskBuilder[_], fields: List[String], isDeleteFk: Boolean = false): ForeignKeyRelation = {
     val dataSource = connectionTaskBuilder.connectionConfigWithTaskBuilder.dataSourceName
     val fieldNames = fields.mkString(",")
+    val referenceModeEnabled = isReferenceModeEnabled(connectionTaskBuilder)
+
     connectionTaskBuilder.step match {
       case Some(value) =>
         val schemaFields = value.step.fields
-        val hasFields = fields.forall(c => schemaFields.exists(_.name == c))
-        if (!hasFields && !value.step.options.contains(METADATA_SOURCE_TYPE) && !isDeleteFk) {
+        // Check if the field exists in the schema
+        val hasFields = isForeignKeyInSchema(fields, schemaFields)
+        if (!hasFields && !value.step.options.contains(METADATA_SOURCE_TYPE) && !isDeleteFk && !referenceModeEnabled) {
           throw new RuntimeException(s"Field name defined in foreign key relationship does not exist, data-source=$dataSource, field-name=$fieldNames")
         }
         ForeignKeyRelation(dataSource, value.step.name, fields)
@@ -118,5 +121,29 @@ case class PlanBuilder(plan: Plan = Plan(), tasks: List[TasksBuilder] = List()) 
       case Some(value) => api.SinkOptionsBuilder(value)
       case None => SinkOptionsBuilder()
     }
+  }
+
+  private def isReferenceModeEnabled(connectionTaskBuilder: ConnectionTaskBuilder[_]): Boolean = {
+    val configTaskReferenceMode = connectionTaskBuilder.connectionConfigWithTaskBuilder.options.getOrElse(ENABLE_REFERENCE_MODE, "false").toBoolean
+    val stepReferenceMode = connectionTaskBuilder.step.get.step.options.getOrElse(ENABLE_REFERENCE_MODE, "false").toBoolean
+    configTaskReferenceMode || stepReferenceMode
+  }
+
+  private def isForeignKeyInSchema(fields: List[String], schemaFields: List[api.model.Field]): Boolean = {
+    // For all fields defined in the foreign key relationship, check if all fields exist in the schema
+    fields.forall(f => {
+      val fieldParts = f.split("\\.")
+      // If field is a dot separated string, recursively check if all parts exist in the field's parent
+      if (fieldParts.length > 1) {
+        val parentField = schemaFields.find(_.name == fieldParts.head)
+        if (parentField.isDefined) {
+          isForeignKeyInSchema(List(fieldParts.tail.mkString(".")), parentField.get.fields)
+        } else {
+          false
+        }
+      } else {
+        schemaFields.exists(_.name == fieldParts.head)
+      }
+    })
   }
 }

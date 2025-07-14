@@ -636,6 +636,10 @@ final case class ConnectionConfigWithTaskBuilder(
     val modifiedConnectionConfig = this.modify(_.dataSourceName).setTo(name)
       .modify(_.options).setTo(configBuilder.build.connectionConfigByName(name))
     connectionBuilder.connectionConfigWithTaskBuilder = modifiedConnectionConfig
+    // If reference mode is enabled, we can set initial set of fields to empty
+    if (configBuilder.build.connectionConfigByName(name).getOrElse(ENABLE_REFERENCE_MODE, "false").toBoolean) {
+      connectionBuilder.fields()
+    }
     connectionBuilder
   }
 }
