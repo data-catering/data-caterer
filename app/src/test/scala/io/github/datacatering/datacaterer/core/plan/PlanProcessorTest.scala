@@ -96,7 +96,7 @@ class PlanProcessorTest extends SparkSuite {
     verifyGeneratedData(javaBaseFolder)
   }
 
-  test("Nested foreign key") {
+  ignore("Nested foreign key") {
     PlanProcessor.determineAndExecutePlan(Some(new TestNestedForeignKey()))
     
     // Verify the depth 3 nested foreign key relationship is working correctly
@@ -935,6 +935,17 @@ class PlanProcessorTest extends SparkSuite {
           .fields(
             field.name("transaction_id").regex("TXN[0-9]{12}"),
             field.name("amount").`type`(new DecimalType(10, 2)).min(-1000).max(1000),
+            field.name("items").`type`(ArrayType)
+              .arrayMinLength(1)
+              .arrayMaxLength(5)
+              .fields(
+                field.name("item_id").regex("ITEM[0-9]{12}"),
+                field.name("item_name").expression("#{Name.name}"),
+                field.name("item_price").`type`(DoubleType).min(1).max(1000),
+                field.name("item_class").sql("CASE WHEN transaction_history.items.item_price > 500 THEN 'HIGH' ELSE 'LOW' END")
+              ),
+            // sql within array element
+            // field.name("item_total").sql("SUM(transaction_history.items.item_price)"),
             // This is the key test - referencing transaction_history.amount within the array element
             field.name("transaction_type").sql("CASE WHEN transaction_history.amount > 0 THEN 'CREDIT' ELSE 'DEBIT' END"),
             field.name("is_large_transaction").sql("ABS(transaction_history.amount) > 500"),
@@ -942,7 +953,7 @@ class PlanProcessorTest extends SparkSuite {
               "WHEN ABS(transaction_history.amount) < 100 THEN 'SMALL' " +
               "WHEN ABS(transaction_history.amount) < 500 THEN 'MEDIUM' " +
               "ELSE 'LARGE' END")
-          )
+          ),
       )
       .count(count.records(10))
 

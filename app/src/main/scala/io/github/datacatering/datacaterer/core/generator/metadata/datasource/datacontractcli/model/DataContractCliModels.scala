@@ -283,7 +283,7 @@ case class Field(
                   primary: Option[Boolean],
                   references: Option[String],
                   unique: Option[Boolean],
-                  enum: Option[List[String]],
+                  `enum`: Option[List[String]],
                   minLength: Option[Int],
                   maxLength: Option[Int],
                   format: Option[String],

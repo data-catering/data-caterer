@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.16.4
+
+- Fix bug when using `omit` fields in SQL generated fields
+
 ## 0.16.3
 
 - Fix bug when using foreign key relationships with nested fields beyond 3 levels

@@ -960,7 +960,7 @@ case class FieldValidationBuilder(validationBuilder: ValidationBuilder = Validat
       val selectExpr = s"PERCENTILE($field, $quantile) AS $percentileColName"
       val whereExpr = s"$percentileColName ${prefix}BETWEEN $min AND $max"
       (selectExpr, whereExpr)
-    })
+    }).toMap
     val selectExpr = quantileExprs.keys.toList
     val whereExpr = quantileExprs.values.mkString(" AND ")
     validationBuilder.selectExpr(selectExpr: _*).expr(whereExpr)
