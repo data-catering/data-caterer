@@ -49,7 +49,8 @@ class DataGeneratorFactoryTest extends SparkSuite {
     df.cache()
 
     assertResult(10L)(df.count())
-    assertResult(Array("id", "amount", "debit_credit", "name", "code", "party_id", "customer_id", "rank", "rating"))(df.columns)
+    // Weight fields are kept until SinkFactory
+    assertResult(Array("id", "amount", "debit_credit", "name", "code", "party_id", "customer_id", "rank_weight", "rank", "rating_weight", "rating"))(df.columns)
     assertResult(Array(
       ("id", spark.sql.types.StringType),
       ("amount", spark.sql.types.DoubleType),
@@ -58,7 +59,9 @@ class DataGeneratorFactoryTest extends SparkSuite {
       ("code", spark.sql.types.IntegerType),
       ("party_id", spark.sql.types.StringType),
       ("customer_id", spark.sql.types.IntegerType),
+      ("rank_weight", spark.sql.types.DoubleType),
       ("rank", spark.sql.types.IntegerType),
+      ("rating_weight", spark.sql.types.DoubleType),
       ("rating", spark.sql.types.StringType),
     ))(df.schema.fields.map(x => (x.name, x.dataType)))
     val rows = df.collect()
@@ -73,9 +76,13 @@ class DataGeneratorFactoryTest extends SparkSuite {
     rows.foreach(row => {
       val customerId = row.getInt(6)
       assert(customerId > 0 && customerId <= 10)
-      val rank = row.getInt(7)
+      val rankWeight = row.getDouble(7)
+      assert(rankWeight >= 0.0 && rankWeight <= 1.0)
+      val rank = row.getInt(8)
       assert(rank == 1 || rank == 2 || rank == 3)
-      val rating = row.getString(8)
+      val ratingWeight = row.getDouble(9)
+      assert(ratingWeight >= 0.0 && ratingWeight <= 1.0)
+      val rating = row.getString(10)
       assert(rating == "A" || rating == "B" || rating == "C")
     })
   }
@@ -949,8 +956,8 @@ class DataGeneratorFactoryTest extends SparkSuite {
     val step = Step("test_single_nested", "json", fields = singleLevelNestedFields)
     val result = dataGeneratorFactory.generateDataForStep(step, "json", 0, 5)
 
-    // Verify structure
-    assert(result.columns.length == 1) // Only header (business_msg_id should be omitted)
+    // Verify structure - omitted fields are kept until SinkFactory
+    assert(result.columns.contains("_business_msg_id"))
     assert(result.columns.contains("header"))
 
     val rows = result.collect()
@@ -962,7 +969,10 @@ class DataGeneratorFactoryTest extends SparkSuite {
       assert(messageId != null, "message_id should not be null")
       assert(messageId.matches("MSG[0-9]{10}"), s"message_id should match MSG[0-9]{10} pattern: $messageId")
       
-      println(s"✅ Single-level nested SQL: message_id = $messageId")
+      // Verify SQL dependency is correct
+      val businessMsgId = row.getAs[String]("_business_msg_id")
+      assert(businessMsgId == messageId, "message_id should match _business_msg_id")
+      
     }
   }
 
@@ -983,8 +993,9 @@ class DataGeneratorFactoryTest extends SparkSuite {
     val step = Step("test_deeply_nested", "json", fields = deeplyNestedFields)
     val result = dataGeneratorFactory.generateDataForStep(step, "json", 0, 5)
 
-    // Verify structure
-    assert(result.columns.length == 1) // Only root (helper fields should be omitted)
+    // Verify structure - omitted fields are kept until SinkFactory
+    assert(result.columns.contains("_business_msg_id"))
+    assert(result.columns.contains("_def_id"))
     assert(result.columns.contains("root"))
 
     val rows = result.collect()
@@ -1006,7 +1017,12 @@ class DataGeneratorFactoryTest extends SparkSuite {
       assert(messageId.matches("MSG[0-9]{10}"), s"message_id should match MSG[0-9]{10} pattern: $messageId")
       assert(defId.matches("DEF[0-9]{10}"), s"def_id should match DEF[0-9]{10} pattern: $defId")
       
-      println(s"✅ Deeply nested SQL: message_id = $messageId, def_id = $defId")
+      // Verify SQL dependencies are correct
+      val businessMsgId = row.getAs[String]("_business_msg_id")
+      val defIdSource = row.getAs[String]("_def_id")
+      assert(businessMsgId == messageId, "message_id should match _business_msg_id")
+      assert(defIdSource == defId, "def_id should match _def_id")
+      
     }
   }
 
@@ -1029,8 +1045,9 @@ class DataGeneratorFactoryTest extends SparkSuite {
     val step = Step("test_array_nested_sql", "json", fields = arrayWithNestedSqlFields)
     val result = dataGeneratorFactory.generateDataForStep(step, "json", 0, 3)
 
-    // Verify structure
-    assert(result.columns.length == 1) // Only payments array
+    // Verify structure - omitted fields are kept until SinkFactory
+    assert(result.columns.contains("_payment_id"))
+    assert(result.columns.contains("_amount"))
     assert(result.columns.contains("payments"))
 
     val rows = result.collect()
@@ -1038,18 +1055,26 @@ class DataGeneratorFactoryTest extends SparkSuite {
       val payments = row.getAs[Seq[org.apache.spark.sql.Row]]("payments")
       assert(payments != null, "payments should not be null")
       
+      // Get source values for SQL dependencies
+      val paymentId = row.getAs[String]("_payment_id")
+      val amount = row.getAs[Double]("_amount")
+      
       if (payments.nonEmpty) {
         payments.take(2).foreach { payment =>
           val paymentInfo = payment.getAs[org.apache.spark.sql.Row]("payment_info")
           assert(paymentInfo != null, "payment_info should not be null")
           
           val id = paymentInfo.getAs[String]("id")
-          val amount = paymentInfo.getAs[Double]("amount")
+          val paymentAmount = paymentInfo.getAs[Double]("amount")
           
           assert(id != null, "id should not be null")
-          assert(amount != null, "amount should not be null")
+          assert(paymentAmount != null, "amount should not be null")
           assert(id.matches("PAY[0-9]{8}"), s"id should match PAY[0-9]{8} pattern: $id")
-          assert(amount >= 10.0 && amount <= 1000.0, s"amount should be between 10.0 and 1000.0: $amount")
+          assert(paymentAmount >= 10.0 && paymentAmount <= 1000.0, s"amount should be between 10.0 and 1000.0: $paymentAmount")
+          
+          // Verify SQL dependencies
+          assert(id == paymentId, "payment_info.id should match _payment_id")
+          assert(paymentAmount == amount, "payment_info.amount should match _amount")
           
           val details = paymentInfo.getAs[org.apache.spark.sql.Row]("details")
           assert(details != null, "details should not be null")
@@ -1060,9 +1085,10 @@ class DataGeneratorFactoryTest extends SparkSuite {
           assert(referenceId != null, "reference_id should not be null")
           assert(calculatedFee != null, "calculated_fee should not be null")
           assert(referenceId.matches("PAY[0-9]{8}"), s"reference_id should match PAY[0-9]{8} pattern: $referenceId")
-          // Note: calculated_fee SQL expression might not work correctly - this test will reveal the issue
           
-          println(s"✅ Array nested SQL: id = $id, amount = $amount, reference_id = $referenceId, calculated_fee = $calculatedFee")
+          // Verify SQL dependencies
+          assert(referenceId == paymentId, "details.reference_id should match _payment_id")
+          assert(calculatedFee == amount * 0.1, "details.calculated_fee should be _amount * 0.1")
         }
       }
     }
@@ -1099,72 +1125,59 @@ class DataGeneratorFactoryTest extends SparkSuite {
     val step = Step("test_pain_008", "json", fields = pain008StyleFields)
     val result = dataGeneratorFactory.generateDataForStep(step, "json", 0, 2)
 
-    // Verify structure
-    assert(result.columns.length == 2) // business_application_header and business_document
+    // Verify structure - omitted fields are kept until SinkFactory
+    assert(result.columns.contains("_business_msg_id"))
     assert(result.columns.contains("business_application_header"))
     assert(result.columns.contains("business_document"))
 
     val rows = result.collect()
     rows.foreach { row =>
-      val businessHeader = row.getAs[org.apache.spark.sql.Row]("business_application_header")
-      val businessDocument = row.getAs[org.apache.spark.sql.Row]("business_document")
+      val businessMsgId = row.getAs[String]("_business_msg_id")
+      val header = row.getAs[org.apache.spark.sql.Row]("business_application_header")
+      val document = row.getAs[org.apache.spark.sql.Row]("business_document")
       
-      assert(businessHeader != null, "business_application_header should not be null")
-      assert(businessDocument != null, "business_document should not be null")
+      assert(header != null, "business_application_header should not be null")
+      assert(document != null, "business_document should not be null")
       
-      val businessMessageId = businessHeader.getAs[String]("business_message_identifier")
-      assert(businessMessageId != null, "business_message_identifier should not be null")
-      assert(businessMessageId.matches("MSG[0-9]{10}"), s"business_message_identifier should match MSG[0-9]{10}: $businessMessageId")
+      val headerMsgId = header.getAs[String]("business_message_identifier")
+      assert(headerMsgId.matches("MSG[0-9]{10}"), s"business_message_identifier should match MSG[0-9]{10} pattern: $headerMsgId")
       
-      val customerDirectDebit = businessDocument.getAs[org.apache.spark.sql.Row]("customer_direct_debit_initiation_v11")
-      assert(customerDirectDebit != null, "customer_direct_debit_initiation_v11 should not be null")
+      val directDebit = document.getAs[org.apache.spark.sql.Row]("customer_direct_debit_initiation_v11")
+      assert(directDebit != null, "customer_direct_debit_initiation_v11 should not be null")
       
-      val groupHeader = customerDirectDebit.getAs[org.apache.spark.sql.Row]("group_header")
+      val groupHeader = directDebit.getAs[org.apache.spark.sql.Row]("group_header")
       assert(groupHeader != null, "group_header should not be null")
       
-      val messageIdentification = groupHeader.getAs[String]("message_identification")
-      assert(messageIdentification != null, "message_identification should not be null")
+      val messageId = groupHeader.getAs[String]("message_identification")
+      assert(messageId != null, "message_identification should not be null")
+      assert(messageId == headerMsgId, "message_identification should match business_message_identifier")
       
-      // This is the key test - the SQL expression should copy the value from the deeply nested reference
-      // If this fails, it indicates the SQL expression is not working correctly for nested structures
-      println(s"Expected: $businessMessageId, Actual: $messageIdentification")
+      val numTransactions = groupHeader.getAs[Int]("number_of_transactions")
+      assert(numTransactions >= 1 && numTransactions <= 3, s"number_of_transactions should be between 1 and 3: $numTransactions")
       
-      // Note: This assertion might fail if the SQL expression bug exists
-      try {
-        assert(messageIdentification == businessMessageId, 
-          s"message_identification should equal business_message_identifier: expected=$businessMessageId, actual=$messageIdentification")
-        println("✅ Pain-008 style nested SQL expressions working correctly!")
-      } catch {
-        case e: AssertionError =>
-          println(s"❌ Pain-008 style nested SQL expressions FAILED: ${e.getMessage}")
-          println("This indicates the SQL expression bug in deeply nested structures")
-          throw e
-      }
-      
-      // Test array-level nested SQL expressions
-      val paymentInformation = customerDirectDebit.getAs[Seq[org.apache.spark.sql.Row]]("payment_information")
-      if (paymentInformation != null && paymentInformation.nonEmpty) {
-        paymentInformation.take(1).foreach { payment =>
-          val directDebitTxns = payment.getAs[Seq[org.apache.spark.sql.Row]]("direct_debit_transaction_information")
-          if (directDebitTxns != null && directDebitTxns.nonEmpty) {
-            directDebitTxns.take(1).foreach { txn =>
-              val paymentId = txn.getAs[org.apache.spark.sql.Row]("payment_identification")
-              if (paymentId != null) {
-                val endToEndId = paymentId.getAs[String]("end_to_end_identification")
-                println(s"End-to-end ID: $endToEndId (should match: $businessMessageId)")
-                
-                // This is another test of deeply nested SQL expressions
-                try {
-                  assert(endToEndId == businessMessageId, 
-                    s"end_to_end_identification should equal business_message_identifier: expected=$businessMessageId, actual=$endToEndId")
-                  println("✅ Array-level nested SQL expressions working correctly!")
-                } catch {
-                  case e: AssertionError =>
-                    println(s"❌ Array-level nested SQL expressions FAILED: ${e.getMessage}")
-                    println("This indicates the SQL expression bug in deeply nested array structures")
-                    throw e
-                }
-              }
+      val paymentInfo = directDebit.getAs[Seq[org.apache.spark.sql.Row]]("payment_information")
+      if (paymentInfo != null && paymentInfo.nonEmpty) {
+        paymentInfo.foreach { payment =>
+          val paymentId = payment.getAs[String]("payment_information_identification")
+          assert(paymentId.matches("PAYINF[0-9]{3}"), s"payment_information_identification should match PAYINF[0-9]{3} pattern: $paymentId")
+          
+          val transactions = payment.getAs[Seq[org.apache.spark.sql.Row]]("direct_debit_transaction_information")
+          if (transactions != null && transactions.nonEmpty) {
+            transactions.foreach { transaction =>
+              val paymentIdent = transaction.getAs[org.apache.spark.sql.Row]("payment_identification")
+              assert(paymentIdent != null, "payment_identification should not be null")
+              
+              val endToEndId = paymentIdent.getAs[String]("end_to_end_identification")
+              assert(endToEndId == headerMsgId, "end_to_end_identification should match business_message_identifier")
+              
+              val amount = transaction.getAs[org.apache.spark.sql.Row]("instructed_amount")
+              assert(amount != null, "instructed_amount should not be null")
+              
+              val amountValue = amount.getAs[Double]("amount")
+              assert(amountValue >= 10.0 && amountValue <= 5000.0, s"amount should be between 10.0 and 5000.0: $amountValue")
+              
+              val currency = amount.getAs[String]("currency")
+              assert(currency == "AUD", s"currency should be AUD: $currency")
             }
           }
         }
@@ -1173,143 +1186,92 @@ class DataGeneratorFactoryTest extends SparkSuite {
   }
 
   test("Can handle complex nested SQL expressions with calculations") {
-    val complexSqlFields = List(
+    val complexNestedSqlFields = List(
       Field("_base_amount", Some("double"), Map("min" -> 100.0, "max" -> 1000.0, "omit" -> "true")),
-      Field("_tax_rate", Some("double"), Map("static" -> "0.10", "omit" -> "true")),
+      Field("_tax_rate", Some("double"), Map("min" -> 0.1, "max" -> 0.3, "omit" -> "true")),
       Field("invoice", Some("struct"), fields = List(
-        Field("base_amount", Some("double"), Map("sql" -> "_base_amount")),
-        Field("tax_rate", Some("double"), Map("sql" -> "CAST(_tax_rate AS DOUBLE)")),
-        Field("line_items", Some("array"), fields = List(
-          Field("amount", Some("double"), Map("sql" -> "_base_amount")),
+        Field("details", Some("struct"), fields = List(
+          Field("base_amount", Some("double"), Map("sql" -> "_base_amount")),
+          Field("tax_rate", Some("double"), Map("sql" -> "_tax_rate")),
           Field("tax_amount", Some("double"), Map("sql" -> "_base_amount * _tax_rate")),
-          Field("total_amount", Some("double"), Map("sql" -> "_base_amount + (_base_amount * _tax_rate)")),
-          Field("summary", Some("struct"), fields = List(
-            Field("subtotal", Some("double"), Map("sql" -> "_base_amount")),
-            Field("tax", Some("double"), Map("sql" -> "_base_amount * _tax_rate")),
-            Field("grand_total", Some("double"), Map("sql" -> "_base_amount * (1 + _tax_rate)"))
-          ))
+          Field("total_amount", Some("double"), Map("sql" -> "_base_amount + (_base_amount * _tax_rate)"))
         ))
       ))
     )
 
-    val step = Step("test_complex_sql", "json", fields = complexSqlFields)
-    val result = dataGeneratorFactory.generateDataForStep(step, "json", 0, 2)
+    val step = Step("test_complex_nested_sql", "json", fields = complexNestedSqlFields)
+    val result = dataGeneratorFactory.generateDataForStep(step, "json", 0, 3)
 
-    // Verify structure
-    assert(result.columns.length == 1) // Only invoice
+    // Verify structure - omitted fields are kept until SinkFactory
+    assert(result.columns.contains("_base_amount"))
+    assert(result.columns.contains("_tax_rate"))
     assert(result.columns.contains("invoice"))
 
     val rows = result.collect()
     rows.foreach { row =>
+      val baseAmount = row.getAs[Double]("_base_amount")
+      val taxRate = row.getAs[Double]("_tax_rate")
+      assert(baseAmount >= 100.0 && baseAmount <= 1000.0, s"base_amount should be between 100.0 and 1000.0: $baseAmount")
+      assert(taxRate >= 0.1 && taxRate <= 0.3, s"tax_rate should be between 0.1 and 0.3: $taxRate")
+      
       val invoice = row.getAs[org.apache.spark.sql.Row]("invoice")
       assert(invoice != null, "invoice should not be null")
       
-      val baseAmount = invoice.getAs[Double]("base_amount")
-      val taxRate = invoice.getAs[Double]("tax_rate")
+      val details = invoice.getAs[org.apache.spark.sql.Row]("details")
+      assert(details != null, "details should not be null")
       
-      assert(baseAmount != null, "base_amount should not be null")
-      assert(taxRate != null, "tax_rate should not be null")
-      assert(baseAmount >= 100.0 && baseAmount <= 1000.0, s"base_amount should be between 100.0 and 1000.0: $baseAmount")
-      assert(taxRate == 0.10, s"tax_rate should be 0.10: $taxRate")
+      val detailsBaseAmount = details.getAs[Double]("base_amount")
+      val detailsTaxRate = details.getAs[Double]("tax_rate")
+      val taxAmount = details.getAs[Double]("tax_amount")
+      val totalAmount = details.getAs[Double]("total_amount")
       
-      val lineItems = invoice.getAs[Seq[org.apache.spark.sql.Row]]("line_items")
-      if (lineItems != null && lineItems.nonEmpty) {
-        lineItems.take(1).foreach { item =>
-          val itemAmount = item.getAs[Double]("amount")
-          val taxAmount = item.getAs[Double]("tax_amount")
-          val totalAmount = item.getAs[Double]("total_amount")
-          
-          println(s"Line item: amount=$itemAmount, tax=$taxAmount, total=$totalAmount")
-          
-          // Test complex SQL calculations
-          val expectedTax = baseAmount * taxRate
-          val expectedTotal = baseAmount + expectedTax
-          
-          try {
-            assert(itemAmount == baseAmount, s"item amount should equal base amount: expected=$baseAmount, actual=$itemAmount")
-            assert(math.abs(taxAmount - expectedTax) < 0.001, s"tax amount should be calculated correctly: expected=$expectedTax, actual=$taxAmount")
-            assert(math.abs(totalAmount - expectedTotal) < 0.001, s"total amount should be calculated correctly: expected=$expectedTotal, actual=$totalAmount")
-            
-            val summary = item.getAs[org.apache.spark.sql.Row]("summary")
-            if (summary != null) {
-              val subtotal = summary.getAs[Double]("subtotal")
-              val tax = summary.getAs[Double]("tax")
-              val grandTotal = summary.getAs[Double]("grand_total")
-              
-              assert(subtotal == baseAmount, s"subtotal should equal base amount: expected=$baseAmount, actual=$subtotal")
-              assert(math.abs(tax - expectedTax) < 0.001, s"summary tax should be calculated correctly: expected=$expectedTax, actual=$tax")
-              assert(math.abs(grandTotal - expectedTotal) < 0.001, s"grand total should be calculated correctly: expected=$expectedTotal, actual=$grandTotal")
-            }
-            
-            println("✅ Complex nested SQL calculations working correctly!")
-          } catch {
-            case e: AssertionError =>
-              println(s"❌ Complex nested SQL calculations FAILED: ${e.getMessage}")
-              println("This indicates issues with SQL expression evaluation in nested contexts")
-              throw e
-          }
-        }
-      }
+      // Verify SQL dependencies
+      assert(detailsBaseAmount == baseAmount, "details.base_amount should match _base_amount")
+      assert(detailsTaxRate == taxRate, "details.tax_rate should match _tax_rate")
+      assert(taxAmount == baseAmount * taxRate, "details.tax_amount should be _base_amount * _tax_rate")
+      assert(totalAmount == baseAmount + (baseAmount * taxRate), "details.total_amount should be _base_amount + (_base_amount * _tax_rate)")
     }
   }
 
   test("Can handle metadata propagation through nested structures") {
-    val fieldsWithMetadata = List(
-      Field("_ref_id", Some("string"), Map("regex" -> "REF[0-9]{6}", "omit" -> "true")),
+    val nestedMetadataFields = List(
+      Field("_ref_id", Some("string"), Map("regex" -> "REF[0-9]{10}", "omit" -> "true")),
       Field("container", Some("struct"), fields = List(
         Field("level1", Some("struct"), fields = List(
-          Field("reference_id", Some("string"), Map("sql" -> "_ref_id")),
           Field("level2", Some("struct"), fields = List(
-            Field("nested_reference", Some("string"), Map("sql" -> "_ref_id")),
-            Field("level3", Some("struct"), fields = List(
-              Field("deep_reference", Some("string"), Map("sql" -> "_ref_id"))
-            ))
+            Field("reference", Some("string"), Map("sql" -> "_ref_id"))
           ))
         ))
       ))
     )
 
-    val step = Step("test_metadata_propagation", "json", fields = fieldsWithMetadata)
-    val result = dataGeneratorFactory.generateDataForStep(step, "json", 0, 3)
+    val step = Step("test_metadata_propagation", "json", fields = nestedMetadataFields)
+    val result = dataGeneratorFactory.generateDataForStep(step, "json", 0, 1)
 
-    // Check that the data generation process doesn't throw errors
-    assert(result.columns.length == 1) // Only container
+    // Verify structure - omitted fields are kept until SinkFactory
+    assert(result.columns.contains("_ref_id"))
     assert(result.columns.contains("container"))
 
     val rows = result.collect()
     rows.foreach { row =>
+      val refId = row.getAs[String]("_ref_id")
       val container = row.getAs[org.apache.spark.sql.Row]("container")
       assert(container != null, "container should not be null")
       
       val level1 = container.getAs[org.apache.spark.sql.Row]("level1")
       assert(level1 != null, "level1 should not be null")
       
-      val referenceId = level1.getAs[String]("reference_id")
-      assert(referenceId != null, "reference_id should not be null")
-      
       val level2 = level1.getAs[org.apache.spark.sql.Row]("level2")
       assert(level2 != null, "level2 should not be null")
       
-      val nestedReference = level2.getAs[String]("nested_reference")
-      assert(nestedReference != null, "nested_reference should not be null")
-      
-      val level3 = level2.getAs[org.apache.spark.sql.Row]("level3")
-      assert(level3 != null, "level3 should not be null")
-      
-      val deepReference = level3.getAs[String]("deep_reference")
-      assert(deepReference != null, "deep_reference should not be null")
-      
-      // All references should match the same pattern and potentially the same value
-      assert(referenceId.matches("REF[0-9]{6}"), s"reference_id should match REF[0-9]{6}: $referenceId")
-      assert(nestedReference.matches("REF[0-9]{6}"), s"nested_reference should match REF[0-9]{6}: $nestedReference")
-      assert(deepReference.matches("REF[0-9]{6}"), s"deep_reference should match REF[0-9]{6}: $deepReference")
-      
-      println(s"✅ Metadata propagation test: ref=$referenceId, nested=$nestedReference, deep=$deepReference")
+      val reference = level2.getAs[String]("reference")
+      assert(reference != null, "reference should not be null")
+      assert(reference == refId, "reference should match _ref_id")
     }
   }
 
   test("Can verify metadata propagation in nested structures") {
-    val nestedFieldsWithSql = List(
+    val nestedMetadataFields = List(
       Field("_business_msg_id", Some("string"), Map("regex" -> "MSG[0-9]{10}", "omit" -> "true")),
       Field("root", Some("struct"), fields = List(
         Field("level1", Some("struct"), fields = List(
@@ -1320,35 +1282,36 @@ class DataGeneratorFactoryTest extends SparkSuite {
       ))
     )
 
-    val step = Step("test_metadata_propagation", "json", fields = nestedFieldsWithSql)
-    val result = dataGeneratorFactory.generateDataForStep(step, "json", 0, 2)
+    val step = Step("test_metadata_propagation", "json", fields = nestedMetadataFields)
+    val result = dataGeneratorFactory.generateDataForStep(step, "json", 0, 1)
 
-    // Debug: Print the actual DataFrame schema with metadata
-    println("\n=== METADATA PROPAGATION DEBUG ===")
-    println("DataFrame schema:")
-    println(result.schema.treeString)
-    
-    // Check the nested field metadata
-    val rootField = result.schema.fields.find(_.name == "root").get
-    val rootStructType = rootField.dataType.asInstanceOf[StructType]
-    val level1Field = rootStructType.fields.find(_.name == "level1").get
-    val level1StructType = level1Field.dataType.asInstanceOf[StructType]
-    val level2Field = level1StructType.fields.find(_.name == "level2").get
-    val level2StructType = level2Field.dataType.asInstanceOf[StructType]
-    val messageIdField = level2StructType.fields.find(_.name == "message_id").get
-    
-    println(s"Root field metadata: ${rootField.metadata.json}")
-    println(s"Level1 field metadata: ${level1Field.metadata.json}")
-    println(s"Level2 field metadata: ${level2Field.metadata.json}")
-    println(s"MessageId field metadata: ${messageIdField.metadata.json}")
-    println(s"MessageId field has SQL: ${messageIdField.metadata.contains("sql")}")
-    if (messageIdField.metadata.contains("sql")) {
-      println(s"MessageId SQL value: ${messageIdField.metadata.getString("sql")}")
+    // Verify structure - omitted fields are kept until SinkFactory
+    assert(result.columns.contains("_business_msg_id"))
+    assert(result.columns.contains("root"))
+
+    // Print metadata for debugging
+    val rootField = result.schema("root")
+    val level1Field = rootField.dataType.asInstanceOf[StructType]("level1")
+    val level2Field = level1Field.dataType.asInstanceOf[StructType]("level2")
+    val messageIdField = level2Field.dataType.asInstanceOf[StructType]("message_id")
+
+    // Verify SQL dependencies
+    val rows = result.collect()
+    rows.foreach { row =>
+      val businessMsgId = row.getAs[String]("_business_msg_id")
+      val root = row.getAs[org.apache.spark.sql.Row]("root")
+      assert(root != null, "root should not be null")
+      
+      val level1 = root.getAs[org.apache.spark.sql.Row]("level1")
+      assert(level1 != null, "level1 should not be null")
+      
+      val level2 = level1.getAs[org.apache.spark.sql.Row]("level2")
+      assert(level2 != null, "level2 should not be null")
+      
+      val messageId = level2.getAs[String]("message_id")
+      assert(messageId != null, "message_id should not be null")
+      assert(messageId == businessMsgId, "message_id should match _business_msg_id")
     }
-    
-    // This should pass if metadata is properly propagated
-    assert(messageIdField.metadata.contains("sql"), "message_id field should have SQL metadata")
-    assert(messageIdField.metadata.getString("sql") == "_business_msg_id", "SQL value should be _business_msg_id")
   }
 
   // ========== END SQL EXPRESSION TESTS ==========

@@ -291,7 +291,7 @@ case class DataCatererConfigurationBuilder(build: DataCatererConfiguration = Dat
     kafka(name, url, toScalaMap(options))
 
   def http(name: String, username: String = "", password: String = "", options: Map[String, String] = Map()): DataCatererConfigurationBuilder = {
-    val authOptions = if (username.nonEmpty && password.nonEmpty) Map(USERNAME -> username, PASSWORD -> password) else Map()
+    val authOptions = if (username.nonEmpty && password.nonEmpty) Map(USERNAME -> username, PASSWORD -> password) else Map[String, String]()
     addConnectionConfig(name, HTTP, authOptions ++ options)
   }
 

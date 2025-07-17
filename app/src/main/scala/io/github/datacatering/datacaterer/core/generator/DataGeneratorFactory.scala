@@ -69,28 +69,11 @@ class DataGeneratorFactory(faker: Faker, enableFastGeneration: Boolean = false)(
     if (!dfAllFields.storageLevel.useMemory) dfAllFields.cache()
     allRecordsDf.unpersist()
     
-    // Remove omitted fields after SQL expressions have been applied and can access helper fields
-    val finalDf = removeOmitFields(dfAllFields.drop(INDEX_INC_FIELD))
+    // Only remove the index field here, leave other omitted fields for SinkFactory
+    val finalDf = dfAllFields.drop(INDEX_INC_FIELD)
+    if (!finalDf.storageLevel.useMemory) finalDf.cache()
     dfAllFields.unpersist()
     finalDf
-  }
-
-  // Add method to remove omitted fields (similar to SinkFactory implementation)
-  private def removeOmitFields(df: DataFrame): DataFrame = {
-    val dfOmitFields = df.schema.fields
-      .filter(field => field.metadata.contains(OMIT) && field.metadata.getString(OMIT).equalsIgnoreCase("true"))
-      .map(_.name)
-    
-    if (dfOmitFields.nonEmpty) {
-      val columnsToSelect = df.columns.filter(c => !dfOmitFields.contains(c))
-        .map(c => if (c.contains(".")) s"`$c`" else c)
-      LOGGER.debug(s"Removing omitted fields from generated data: ${dfOmitFields.mkString(", ")}")
-      val dfWithoutOmitFields = df.selectExpr(columnsToSelect: _*)
-      if (!dfWithoutOmitFields.storageLevel.useMemory) dfWithoutOmitFields.cache()
-      dfWithoutOmitFields
-    } else {
-      df
-    }
   }
 
   private def generateRecordsPerField(dataGenerators: List[DataGenerator[_]], step: Step,

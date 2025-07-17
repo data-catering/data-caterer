@@ -19,7 +19,7 @@ trait OpenMetadataDataQuality extends ExternalDataValidation {
   }
 
   protected def stringToNumber(str: String): Double = {
-    if (str.contains(".")) str.toDouble else str.toLong
+    str.toDouble
   }
 }
 
