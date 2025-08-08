@@ -1,0 +1,261 @@
+name: "complex_financial_data_task"
+steps:
+  - name: "complex_financial_data"
+    type: "json"
+    count:
+      records: 100
+    options:
+      path: "/opt/app/data/complex"
+      saveMode: "overwrite"
+    fields:
+      - name: "account_id"
+        type: "string"
+        options:
+          regex: "ACC[0-9]{8}"
+          isUnique: true
+      - name: "created_date"
+        type: "date"
+        options:
+          min: "2023-01-01"
+      
+      # Deeply nested customer information with SQL generation
+      - name: "customer_info"
+        type: "struct"
+        fields:
+          - name: "customer_id"
+            type: "string"
+            options:
+              regex: "CUST[0-9]{10}"
+          - name: "personal_details"
+            type: "struct"
+            fields:
+              - name: "full_name"
+                type: "string"
+                options:
+                  expression: "#{Name.fullName}"
+              - name: "first_name"
+                type: "string"
+                options:
+                  sql: "SPLIT(customer_info.personal_details.full_name, ' ')[0]"
+              - name: "last_name"
+                type: "string"
+                options:
+                  sql: "SPLIT(customer_info.personal_details.full_name, ' ')[1]"
+              - name: "email"
+                type: "string"
+                options:
+                  sql: "LOWER(CONCAT(customer_info.personal_details.first_name, '.', customer_info.personal_details.last_name, '@datacatering.com'))"
+              - name: "birth_date"
+                type: "date"
+                options:
+                  min: "1950-01-01"
+                  max: "2000-12-31"
+              - name: "age"
+                type: "integer"
+                options:
+                  sql: "YEAR(CURRENT_DATE()) - YEAR(customer_info.personal_details.birth_date)"
+              - name: "age_group"
+                type: "string"
+                options:
+                  sql: "CASE WHEN customer_info.personal_details.age < 25 THEN 'Young Adult' WHEN customer_info.personal_details.age < 40 THEN 'Adult' WHEN customer_info.personal_details.age < 60 THEN 'Middle Age' ELSE 'Senior' END"
+          - name: "address_info"
+            type: "struct"
+            fields:
+              - name: "street_address"
+                type: "string"
+                options:
+                  expression: "#{Address.streetAddress}"
+              - name: "city"
+                type: "string"
+                options:
+                  expression: "#{Address.city}"
+              - name: "state"
+                type: "string"
+                options:
+                  expression: "#{Address.state}"
+              - name: "postal_code"
+                type: "string"
+                options:
+                  expression: "#{Address.zipCode}"
+              - name: "country_code"
+                type: "string"
+                # Will be linked via foreign key to reference data
+              - name: "full_address"
+                type: "string"
+                options:
+                  sql: "CONCAT(customer_info.address_info.street_address, ', ', customer_info.address_info.city, ', ', customer_info.address_info.state, ' ', customer_info.address_info.postal_code)"
+              - name: "is_urban"
+                type: "boolean"
+                options:
+                  sql: "CASE WHEN customer_info.address_info.city IN ('New York', 'Los Angeles', 'Chicago', 'Houston', 'Phoenix') THEN true ELSE false END"
+          - name: "contact_preferences"
+            type: "struct"
+            fields:
+              - name: "email_marketing"
+                type: "boolean"
+                options:
+                  sql: "CASE WHEN RAND() > 0.3 THEN true ELSE false END"
+              - name: "sms_notifications"
+                type: "boolean"
+                options:
+                  sql: "CASE WHEN RAND() > 0.5 THEN true ELSE false END"
+              - name: "phone_calls"
+                type: "boolean"
+                options:
+                  sql: "CASE WHEN RAND() > 0.7 THEN true ELSE false END"
+              - name: "preferred_contact_time"
+                type: "string"
+                options:
+                  sql: "CASE WHEN RAND() < 0.3 THEN 'Morning' WHEN RAND() < 0.6 THEN 'Afternoon' ELSE 'Evening' END"
+      
+      # Account details with complex calculations
+      - name: "account_details"
+        type: "struct"
+        fields:
+          - name: "account_type"
+            type: "string"
+            options:
+              oneOf:
+                - "CHECKING"
+                - "SAVINGS"
+                - "INVESTMENT"
+                - "CREDIT"
+          - name: "balance"
+            type: "decimal"
+            options:
+              precision: 15
+              scale: 2
+              min: 0
+              max: 1000000
+          - name: "currency_code"
+            type: "string"
+            # Will be linked via foreign key to reference data
+          - name: "interest_rate"
+            type: "decimal"
+            options:
+              sql: "CASE WHEN account_details.account_type = 'CHECKING' THEN 0.01 WHEN account_details.account_type = 'SAVINGS' THEN 0.02 WHEN account_details.account_type = 'INVESTMENT' THEN 0.05 ELSE 0.18 END"
+          - name: "monthly_fee"
+            type: "decimal"
+            options:
+              sql: "CASE WHEN account_details.account_type = 'CHECKING' AND account_details.balance < 1000 THEN 10.00 WHEN account_details.account_type = 'SAVINGS' AND account_details.balance < 500 THEN 5.00 ELSE 0.00 END"
+          - name: "annual_interest"
+            type: "decimal"
+            options:
+              sql: "account_details.balance * account_details.interest_rate"
+          - name: "account_status"
+            type: "string"
+            options:
+              sql: "CASE WHEN account_details.balance > 100000 THEN 'PREMIUM' WHEN account_details.balance > 10000 THEN 'GOLD' WHEN account_details.balance > 1000 THEN 'STANDARD' ELSE 'BASIC' END"
+      
+      # Transaction history with array of complex objects
+      - name: "transaction_history"
+        type: "array"
+        options:
+          arrayMinLen: 5
+          arrayMaxLen: 20
+        fields:
+          - name: "transaction_id"
+            type: "string"
+            options:
+              regex: "TXN[0-9]{12}"
+          - name: "timestamp"
+            type: "timestamp"
+            options:
+              min: "2023-01-01T00:00:00Z"
+              max: "2024-12-31T23:59:59Z"
+          - name: "amount"
+            type: "decimal"
+            options:
+              precision: 10
+              scale: 2
+              min: -5000
+              max: 5000
+          - name: "transaction_type"
+            type: "string"
+            options:
+              sql: "CASE WHEN transaction_history.amount > 0 THEN 'CREDIT' ELSE 'DEBIT' END"
+          - name: "category"
+            type: "string"
+            options:
+              sql: "CASE WHEN transaction_history.transaction_type = 'CREDIT' THEN CASE WHEN RAND() < 0.3 THEN 'SALARY' WHEN RAND() < 0.6 THEN 'INVESTMENT' ELSE 'TRANSFER' END ELSE CASE WHEN RAND() < 0.2 THEN 'GROCERIES' WHEN RAND() < 0.4 THEN 'ENTERTAINMENT' WHEN RAND() < 0.6 THEN 'UTILITIES' WHEN RAND() < 0.8 THEN 'TRANSPORTATION' ELSE 'MISC' END END"
+          - name: "merchant_info"
+            type: "struct"
+            fields:
+              # - name: "name"
+              #   type: "string"
+              #   options:
+              #     expression: "#{Company.name}"
+              - name: "category"
+                type: "string"
+                options:
+                  sql: "transaction_history.category"
+              - name: "location"
+                type: "string"
+                options:
+                  sql: "CONCAT(customer_info.address_info.city, ', ', customer_info.address_info.state)"
+          - name: "is_large_transaction"
+            type: "boolean"
+            options:
+              sql: "ABS(transaction_history.amount) > 1000"
+          - name: "day_of_week"
+            type: "string"
+            options:
+              sql: "DATE_FORMAT(transaction_history.timestamp, 'EEEE')"
+          - name: "is_weekend"
+            type: "boolean"
+            options:
+              sql: "DATE_FORMAT(transaction_history.timestamp, 'EEEE') IN ('Saturday', 'Sunday')"
+      
+      # Risk assessment with complex nested calculations
+      - name: "risk_assessment"
+        type: "struct"
+        fields:
+          - name: "risk_score"
+            type: "decimal"
+            options:
+              sql: "CASE WHEN customer_info.personal_details.age < 25 THEN 0.8 WHEN customer_info.personal_details.age < 40 THEN 0.5 WHEN customer_info.personal_details.age < 60 THEN 0.3 ELSE 0.4 END * CASE WHEN account_details.balance > 100000 THEN 0.2 WHEN account_details.balance > 10000 THEN 0.5 ELSE 0.8 END"
+          - name: "risk_category"
+            type: "string"
+            options:
+              sql: "CASE WHEN risk_assessment.risk_score < 0.3 THEN 'LOW' WHEN risk_assessment.risk_score < 0.6 THEN 'MEDIUM' ELSE 'HIGH' END"
+          - name: "credit_limit"
+            type: "decimal"
+            options:
+              sql: "CASE WHEN risk_assessment.risk_category = 'LOW' THEN account_details.balance * 5 WHEN risk_assessment.risk_category = 'MEDIUM' THEN account_details.balance * 3 ELSE account_details.balance * 1.5 END"
+          - name: "requires_manual_review"
+            type: "boolean"
+            options:
+              sql: "risk_assessment.risk_score > 0.7 OR account_details.balance > 500000"
+          - name: "last_review_date"
+            type: "date"
+            options:
+              sql: "CASE WHEN risk_assessment.requires_manual_review THEN DATE_SUB(CURRENT_DATE(), 30) ELSE DATE_SUB(CURRENT_DATE(), 90) END"
+      
+      # Aggregated statistics with complex calculations
+      - name: "account_statistics"
+        type: "struct"
+        fields:
+          - name: "total_transactions"
+            type: "integer"
+            options:
+              sql: "SIZE(transaction_history)"
+          - name: "total_credits"
+            type: "integer"
+            options:
+              sql: "SIZE(FILTER(transaction_history, x -> x.transaction_type = 'CREDIT'))"
+          - name: "total_debits"
+            type: "integer"
+            options:
+              sql: "SIZE(FILTER(transaction_history, x -> x.transaction_type = 'DEBIT'))"
+          - name: "weekend_transaction_ratio"
+            type: "decimal"
+            options:
+              sql: "SIZE(FILTER(transaction_history, x -> x.is_weekend)) / SIZE(transaction_history)"
+          - name: "account_age_days"
+            type: "integer"
+            options:
+              sql: "DATEDIFF(CURRENT_DATE(), created_date)"
+          - name: "daily_avg_balance"
+            type: "decimal"
+            options:
+              sql: "account_details.balance / account_statistics.account_age_days" 

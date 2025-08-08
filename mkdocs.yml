@@ -1,0 +1,197 @@
+site_name: Data Catering
+site_url: https://data.catering/
+repo_url: https://github.com/data-catering/data-caterer
+repo_name: data-caterer
+
+extra_css:
+  - stylesheets/extra.css
+
+plugins:
+  - open-in-new-tab
+  - search
+  - social
+  - privacy
+
+theme:
+  name: material
+  logo: diagrams/logo/data_catering_transparent.svg
+  favicon: diagrams/logo/data_catering_transparent.svg
+  features:
+    - navigation.tabs
+    - navigation.instant
+    - navigation.instant.prefetch
+    - navigation.tracking
+    - navigation.top
+    - navigation.footer
+    - navigation.path
+    - content.code.copy
+    - content.code.select
+    - content.tabs.link
+    - toc.integrate
+    - toc.follow
+  palette:
+    # Palette toggle for automatic mode
+    - media: "(prefers-color-scheme)"
+      primary: amber
+      accent: lime
+      toggle:
+        icon: material/brightness-auto
+        name: Switch to light mode
+    # Palette toggle for light mode
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: amber
+      accent: lime
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    # Palette toggle for dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: amber
+      accent: lime
+      toggle:
+        icon: material/brightness-4
+        name: Switch to system preference
+  icon:
+    repo: fontawesome/brands/git-alt
+    admonition:
+      example: fontawesome/solid/database
+      note: simple/spring
+      abstract: simple/apachekafka
+      info: fontawesome/solid/file
+
+nav:
+  - Home: 'index.md'
+  - Get Started: 'get-started/quick-start.md'
+  - Docs:
+      - 'docs/index.md'
+      - Design: 'docs/design.md'
+      - Guide:
+          - 'docs/guide/index.md'
+          - Scenario:
+              - Auto Generate: 'docs/guide/scenario/auto-generate-connection.md'
+              - Data Generation: 'docs/guide/scenario/data-generation.md'
+              - Data Validation: 'docs/guide/scenario/data-validation.md'
+              - Delete Generated Data: 'docs/guide/scenario/delete-generated-data.md'
+              - First Data Generation: 'docs/guide/scenario/first-data-generation.md'
+              - Foreign Keys Across Data Sources: 'docs/guide/scenario/batch-and-event.md'
+              - Generate Batch and Event Data: 'docs/guide/scenario/batch-and-event.md'
+              - Multiple Records Per Field Value: 'docs/guide/scenario/records-per-field.md'
+          - Data Sources:
+              - Database:
+                - BigQuery: 'docs/guide/data-source/database/bigquery.md'
+                - Cassandra: 'docs/guide/data-source/database/cassandra.md'
+                - MySQL: 'docs/guide/data-source/database/mysql.md'
+                - Postgres: 'docs/guide/data-source/database/postgres.md'
+              - Files:
+                - CSV: 'docs/guide/data-source/file/csv.md'
+                - Delta Lake: 'docs/guide/data-source/file/delta-lake.md'
+                - Iceberg: 'docs/guide/data-source/file/iceberg.md'
+                - JSON: 'docs/guide/data-source/file/json.md'
+                - ORC: 'docs/guide/data-source/file/orc.md'
+                - Parquet: 'docs/guide/data-source/file/parquet.md'
+              - HTTP:
+                - REST API: 'docs/guide/data-source/http/http.md'
+              - Messaging:
+                - Kafka: 'docs/guide/data-source/messaging/kafka.md'
+                - RabbitMQ: 'docs/guide/data-source/messaging/rabbitmq.md'
+                - Solace: 'docs/guide/data-source/messaging/solace.md'
+              - Metadata:
+                - Data Contract CLI: 'docs/guide/data-source/metadata/data-contract-cli.md'
+                - Great Expectations: 'docs/guide/data-source/metadata/great-expectations.md'
+                - JSON Schema: 'docs/guide/data-source/metadata/json-schema.md'
+                - Marquez: 'docs/guide/data-source/metadata/marquez.md'
+                - OpenMetadata: 'docs/guide/data-source/metadata/open-metadata.md'
+                - Open Data Contract Standard (ODCS): 'docs/guide/data-source/metadata/open-data-contract-standard.md'
+      - Connections: 'docs/connection.md'
+      - Generator:
+          - Data Generator: 'docs/generator/data-generator.md'
+          - Record Count: 'docs/generator/count.md'
+          - Relationships: 'docs/generator/foreign-key.md'
+      - Validation:
+          - 'docs/validation.md'
+          - Basic: 'docs/validation/basic-validation.md'
+          - Group by/Aggregate: 'docs/validation/group-by-validation.md'
+          - Upstream: 'docs/validation/upstream-data-source-validation.md'
+          - Field Names: 'docs/validation/field-name-validation.md'
+          - External Source: 'docs/validation/external-source-validation.md'
+      - Report:
+          - HTML Report: 'docs/report/html-report.md'
+          - Alert: 'docs/report/alert.md'
+      - Delete Data: 'docs/delete-data.md'
+      - Configuration: 'docs/configuration.md'
+      - Deployment: 'docs/deployment.md'
+      - Advanced: 'docs/advanced.md'
+  - Use Case:
+      - 'use-case.md'
+      - Business Value: 'use-case/business-value.md'
+      - Comparison: 'use-case/comparison.md'
+      - Roadmap: 'use-case/roadmap.md'
+      - Blog:
+          - Rethinking shift-left for data pipelines: 'use-case/blog/rethinking-shift-left-for-data-pipelines.md'
+          - A year of getting paid from Medium articles: 'use-case/blog/a-year-of-getting-paid-from-medium-articles.md'
+          - Shift Left Data Quality: 'use-case/blog/shift-left-data-quality.md'
+      - Changelog:
+          - 0.16.0: 'use-case/changelog/0.16.0.md'
+          - 0.15.0: 'use-case/changelog/0.15.0.md'
+          - 0.14.7: 'use-case/changelog/0.14.7.md'
+          - 0.14.6: 'use-case/changelog/0.14.6.md'
+          - 0.14.5: 'use-case/changelog/0.14.5.md'
+          - 0.14.4: 'use-case/changelog/0.14.4.md'
+          - 0.14.3: 'use-case/changelog/0.14.3.md'
+          - 0.14.2: 'use-case/changelog/0.14.2.md'
+  - About:
+      - 'about.md'
+  - Demo: 'demo.md'
+
+
+extra:
+  social:
+    - icon: fontawesome/brands/slack
+      link: https://join.slack.com/t/data-catering/shared_invite/zt-2664ylbpi-w3n7lWAO~PHeOG9Ujpm~~w
+    - icon: fontawesome/brands/github
+      link: https://github.com/data-catering/data-caterer
+    - icon: fontawesome/brands/medium
+      link: https://medium.com/@pflooky
+    - icon: fontawesome/brands/linkedin
+      link: https://www.linkedin.com/company/data-catering
+    - icon: fontawesome/solid/paper-plane
+      link: mailto:hello@data.catering
+    - icon: fontawesome/brands/youtube
+      link: https://www.youtube.com/channel/UCNJACecY00X3JuV99UOySqQ
+    - icon: fontawesome/brands/x-twitter
+      link: https://twitter.com/datacatering
+    - icon: fontawesome/brands/docker
+      link: https://hub.docker.com/u/datacatering
+  analytics:
+    provider: google
+    property: G-4098CTH5TX
+  version:
+    provider: mike
+
+markdown_extensions:
+  - attr_list
+  - def_list
+  - md_in_html
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.snippets
+  - pymdownx.inlinehilite
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.tasklist:
+      custom_checkbox: true
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format

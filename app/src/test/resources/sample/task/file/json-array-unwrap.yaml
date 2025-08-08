@@ -1,0 +1,28 @@
+name: "json_array_unwrap_example"
+steps:
+  - name: "simple_array"
+    type: "json"
+    count:
+      records: 1
+    options:
+      path: "/tmp/json/unwrap-yaml"
+      saveMode: "overwrite"
+      numPartitions: 1
+    fields:
+      - name: "records"
+        type: "array"
+        options:
+          arrayMinLen: 3
+          arrayMaxLen: 3
+          unwrapTopLevel: true
+        fields:
+          - name: "id"
+            type: "string"
+            options:
+              regex: "ID[0-9]{3}"
+          - name: "name"
+            type: "string"
+            options:
+              expression: "#{Name.firstName}"
+
+

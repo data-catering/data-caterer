@@ -1,0 +1,37 @@
+name: "csv_transaction_file"
+steps:
+  - name: "transactions"
+    type: "csv"
+    options:
+      path: "/opt/app/custom/csv/transactions"
+    count:
+      records: 100
+      perField:
+        fieldNames:
+          - "account_id"
+          - "name"
+        options:
+          max: 10
+          min: 1
+    fields:
+      - name: "account_id"
+        options:
+          regex: "ACC1[0-9]{9}"
+      - name: "name"
+        options:
+          expression: "#{Name.name}"
+      - name: "year"
+        type: "integer"
+        options:
+          min: 2021
+          max: 2022
+      - name: "amount"
+        type: "double"
+        options:
+          min: 10.0
+          max: 100.0
+      - name: "txn_date"
+        type: "date"
+        options:
+          min: "2021-01-01"
+          max: "2021-12-31"

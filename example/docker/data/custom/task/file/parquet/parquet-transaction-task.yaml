@@ -1,0 +1,32 @@
+name: "parquet_transaction_file"
+steps:
+  - name: "transactions"
+    type: "parquet"
+    options:
+      path: "/opt/app/custom/parquet/transactions"
+      partitionBy: "year"
+    count:
+      records: 1000
+      perField:
+        fieldNames:
+          - "account_id"
+        options:
+          max: 10
+          min: 1
+    fields:
+      - name: "account_id"
+      - name: "year"
+        type: "int"
+        options:
+          min: 2021
+          max: 2022
+      - name: "amount"
+        type: "double"
+        options:
+          min: 10.0
+          max: 100.0
+      - name: "txn_date"
+        type: "date"
+        options:
+          min: "2021-01-01"
+          max: "2021-12-31"

@@ -1,0 +1,67 @@
+name: "json_account_http"
+steps:
+  - name: "account"
+    count:
+      records: 50
+    fields:
+      - name: "httpUrl"
+        type: struct
+        fields:
+          - name: "url"
+            static: "http://localhost:80/anything/{id}"
+          - name: "method"
+            static: "PUT"
+          - name: "pathParam"
+            type: struct
+            fields:
+              - name: "id"
+                options:
+                  sql: "body.account_id"
+      - name: "httpHeaders"
+        type: struct
+        fields:
+          - name: "Content-Type"
+            static: "application/json"
+          - name: "account_id"
+            options:
+              sql: "body.account_id"
+          - name: "updated"
+            type: "timestamp"
+            options:
+              sql: "body.details.updated_by.time"
+      - name: "httpBody"
+        type: struct
+        fields:
+          - name: "account_id"
+          - name: "year"
+            type: "int"
+            options:
+              min: 2021
+              max: 2022
+          - name: "amount"
+            type: "double"
+            options:
+              min: 10.0
+              max: 100.0
+          - name: "details"
+            type: struct
+            fields:
+              - name: "name"
+              - name: "txn_date"
+                type: "date"
+                options:
+                  min: "2021-01-01"
+                  max: "2021-12-31"
+              - name: "updated_by"
+                type: struct
+                fields:
+                  - name: "user"
+                  - name: "time"
+                    type: "timestamp"
+          - name: "transactions"
+            type: "array"
+            fields:
+              - name: "txn_date"
+                type: "date"
+              - name: "amount"
+                type: "double"

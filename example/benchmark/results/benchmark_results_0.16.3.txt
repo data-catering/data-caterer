@@ -1,0 +1,41 @@
+Benchmark run
+Data Caterer version: 0.16.3
+Date: Thu Jul 17 02:17:36 UTC 2025
+System info:
+ OSType: linux
+ Architecture: x86_64
+ CPUs: 4
+ Total Memory: 15.62GiB
+Driver memory: DRIVER_MEMORY=2g
+Executor memory: EXECUTOR_MEMORY=2g
+Class name, Num records, Num run, Time taken (s)
+io.github.datacatering.plan.benchmark.BenchmarkParquetPlanRun:default,100000,1,16.56
+io.github.datacatering.plan.benchmark.BenchmarkParquetPlanRun:default,100000,2,15.87
+io.github.datacatering.plan.benchmark.BenchmarkParquetPlanRun:default,100000,3,16.46
+io.github.datacatering.plan.benchmark.BenchmarkParquetPlanRun:blaze,100000,1,16.71
+io.github.datacatering.plan.benchmark.BenchmarkParquetPlanRun:blaze,100000,2,17.22
+io.github.datacatering.plan.benchmark.BenchmarkParquetPlanRun:blaze,100000,3,16.65
+io.github.datacatering.plan.benchmark.BenchmarkParquetPlanRun:comet,100000,1,16.55
+io.github.datacatering.plan.benchmark.BenchmarkParquetPlanRun:comet,100000,2,16.48
+io.github.datacatering.plan.benchmark.BenchmarkParquetPlanRun:comet,100000,3,17.28
+io.github.datacatering.plan.benchmark.BenchmarkParquetPlanRun:gluten,100000,1,17.18
+io.github.datacatering.plan.benchmark.BenchmarkParquetPlanRun:gluten,100000,2,17.05
+io.github.datacatering.plan.benchmark.BenchmarkParquetPlanRun:gluten,100000,3,16.19
+io.github.datacatering.plan.benchmark.BenchmarkParquetPlanRun:,10000,1,11.94
+io.github.datacatering.plan.benchmark.BenchmarkParquetPlanRun:,10000,2,11.83
+io.github.datacatering.plan.benchmark.BenchmarkParquetPlanRun:,10000,3,11.83
+io.github.datacatering.plan.benchmark.BenchmarkParquetPlanRun:,100000,1,16.56
+io.github.datacatering.plan.benchmark.BenchmarkParquetPlanRun:,100000,2,17.02
+io.github.datacatering.plan.benchmark.BenchmarkParquetPlanRun:,100000,3,16.64
+io.github.datacatering.plan.benchmark.BenchmarkParquetPlanRun:,1000000,1,51.08
+io.github.datacatering.plan.benchmark.BenchmarkParquetPlanRun:,1000000,2,49.79
+io.github.datacatering.plan.benchmark.BenchmarkParquetPlanRun:,1000000,3,49.14
+io.github.datacatering.plan.benchmark.BenchmarkForeignKeyPlanRun:,500000,1,9.97
+io.github.datacatering.plan.benchmark.BenchmarkForeignKeyPlanRun:,500000,2,10.09
+io.github.datacatering.plan.benchmark.BenchmarkForeignKeyPlanRun:,500000,3,9.85
+io.github.datacatering.plan.benchmark.BenchmarkJsonPlanRun:,100000,1,16.19
+io.github.datacatering.plan.benchmark.BenchmarkJsonPlanRun:,100000,2,16.70
+io.github.datacatering.plan.benchmark.BenchmarkJsonPlanRun:,100000,3,15.94
+io.github.datacatering.plan.benchmark.BenchmarkParquetPlanRun:,100000,1,17.34
+io.github.datacatering.plan.benchmark.BenchmarkParquetPlanRun:,100000,2,16.51
+io.github.datacatering.plan.benchmark.BenchmarkParquetPlanRun:,100000,3,15.93

@@ -1,0 +1,6 @@
+name: "parquet_example_plan"
+description: "Create transaction data in Parquet file"
+tasks:
+  - name: "parquet_transaction_file"
+    dataSourceName: "parquet"
+    enabled: true

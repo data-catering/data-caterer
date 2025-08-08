@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg width="250" height="200" class="ge-export-svg-auto" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+        <style>
+            @keyframes ge-flow-animation-1 {
+                to {
+                    stroke-dashoffset: 0;
+                }
+            }
+            @media (prefers-color-scheme: dark) {
+                svg.ge-export-svg-auto {
+                    filter: invert(100%) hue-rotate(180deg);
+                }
+                svg.ge-export-svg-auto foreignObject img,
+                svg.ge-export-svg-auto image:not(svg.ge-export-svg-auto switch image),
+                svg.ge-export-svg-auto svg {
+                    filter: invert(100%) hue-rotate(180deg)
+                }
+            }
+        </style>
+    </defs>
+    <path
+            d="M 125 0 L 125 70 M 125 125 L 125 200"
+            pointer-events="stroke"
+            fill="none"
+            stroke="black"
+            style="animation: 500ms linear 0s infinite normal none running ge-flow-animation-1; stroke-dashoffset: 16;"
+            stroke-miterlimit="10"
+            stroke-dasharray="8">
+    </path>
+    <g>
+        <rect width="120" height="60" x="65" y="70" rx="10" ry="10" fill="#E1D5E7" stroke="#9673A6" stroke-width="1px"/>
+        <text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-size="12px" font-family="Helvetica">
+            Data Consumer
+        </text>
+    </g>
+</svg>

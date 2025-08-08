@@ -1,0 +1,9 @@
+name: "reference_data_task"
+steps:
+  - name: "reference_data"
+    type: "csv"
+    options:
+      path: "/opt/app/mount/reference/country_data.csv"
+      header: true
+      enableReferenceMode: true
+      enableDataGeneration: false

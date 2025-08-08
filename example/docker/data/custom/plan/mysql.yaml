@@ -1,0 +1,6 @@
+name: "mysql_example_plan"
+description: "Create account data in MySQL"
+tasks:
+  - name: "mysql_account"
+    dataSourceName: "mysql"
+    enabled: true

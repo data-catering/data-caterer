@@ -1,0 +1,13 @@
+---
+name: "json_account_checks"
+description: "Check account related fields have gone through system correctly"
+dataSources:
+  json:
+    - options:
+        path: "app/src/test/resources/sample/json/account-gen"
+      validations:
+        - expr: "year BETWEEN 2021 AND 2022"
+        - expr: "amount < 90"
+        - expr: "updated_time == details.updated_by.time"
+        - aggType: "count"
+          aggExpr: "count == 1000"

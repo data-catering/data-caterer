@@ -1,0 +1,4 @@
+name: "csv_multiple_relationships_plan"
+tasks:
+  - name: "csv_file"
+    dataSourceName: "csv"

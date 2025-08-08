@@ -1,0 +1,195 @@
+version: "3.9"
+services:
+  datacaterer:
+    build: ../
+    environment:
+      - "PLAN_CLASS=${PLAN_CLASS:-}"
+      - "APPLICATION_CONFIG_PATH=${APPLICATION_CONFIG_PATH:-/opt/app/custom/application.conf}"
+      - "PLAN_FILE_PATH=/opt/app/custom/${PLAN:-plan/${DATA_SOURCE:-postgres}}.yaml"
+      - "ENABLE_GENERATE_DATA=${ENABLE_GENERATE_DATA:-true}"
+      - "ENABLE_RECORD_TRACKING=${ENABLE_RECORD_TRACKING:-false}"
+      - "ENABLE_GENERATE_PLAN_AND_TASKS=${ENABLE_GENERATE_PLAN_AND_TASKS:-false}"
+      - "ENABLE_DELETE_GENERATED_RECORDS=${ENABLE_DELETE_GENERATED_RECORDS:-false}"
+      - "DRIVER_MEMORY=2g"
+      - "EXECUTOR_MEMORY=2g"
+    volumes:
+      - "./data/custom:/opt/app/custom"
+    depends_on:
+      - "${DATA_SOURCE:-postgres}"
+    deploy:
+      resources:
+        limits:
+          cpus: "1.5"
+          memory: "5G"
+    ports:
+      - "4040:4040"
+
+  postgresserver:
+    image: "postgres:16.3"
+    environment:
+      - "POSTGRES_USER=postgres"
+      - "POSTGRES_PASSWORD=postgres"
+      - "PGDATA=/data/postgres"
+    volumes:
+      - "${HOME}/data/postgres:/data/postgres"
+      - "./data/sql/postgres/customer.sql:/docker-entrypoint-initdb.d/customer.sql"
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    ports:
+      - "5432:5432"
+
+  postgres:
+    image: "alpine:3.20.0"
+    depends_on:
+      postgresserver:
+        condition: "service_healthy"
+
+  postgresdvdserver:
+    image: "pflookyy/postgres-dvdrental:latest"
+    environment:
+      - "POSTGRES_USER=postgres"
+      - "POSTGRES_PASSWORD=postgres"
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    ports:
+      - "5432:5432"
+
+  postgresdvd:
+    image: "alpine:3.20.0"
+    depends_on:
+      postgresdvdserver:
+        condition: "service_healthy"
+
+  mysql:
+    image: "mysql:8.4.0"
+    environment:
+      MYSQL_ROOT_PASSWORD: "root"
+    command: "--mysql-native-password=ON"
+    volumes:
+      - "${HOME}/data/mysql:/var/lib/mysql"
+      - "./data/sql/mysql/customer.sql:/docker-entrypoint-initdb.d/customer.sql"
+    healthcheck:
+      test: [ "CMD-SHELL", "mysqladmin" ,"ping", "-h", "localhost", "-u", "root", "-p$$MYSQL_ROOT_PASSWORD" ]
+      timeout: 20s
+      retries: 10
+    ports:
+      - "3306:3306"
+
+  solaceserver:
+    image: "solace/solace-pubsub-standard:10.8"
+    environment:
+      - "username_admin_globalaccesslevel=admin"
+      - "username_admin_password=admin"
+      - "system_scaling_maxconnectioncount=100"
+    volumes:
+      - "${HOME}/data/solace:/var/lib/solace"
+    healthcheck:
+      test: [ "CMD-SHELL", "curl", "--output", "/dev/null", "--silent", "--head", "--fail", "http://localhost:8080" ]
+      interval: "30s"
+      timeout: "5s"
+      retries: 3
+    ports:
+      - "8080:8080"
+      - "55554:55555"
+    shm_size: "1g"
+    ulimits:
+      core: -1
+      nofile:
+        soft: 2448
+        hard: 6592
+    deploy:
+      restart_policy:
+        condition: "on-failure"
+        max_attempts: 1
+
+  solace:
+    image: "solace/solace-pubsub-standard:10.8"
+    entrypoint: [ "/bin/sh", "-c", "/opt/app/setup_solace.sh" ]
+    volumes:
+      - "./data/solace:/opt/app"
+    depends_on:
+      solaceserver:
+        condition: "service_healthy"
+
+  cassandraserver:
+    image: "datastax/dse-server:6.8.48"
+    environment:
+      - "DS_LICENSE=accept"
+    volumes:
+      - "${HOME}/data/cassandra:/var/lib/cassandra"
+      - "./data/cql/customer.cql:/docker-entrypoint-initdb.d/customer.cql"
+    healthcheck:
+      test: [ "CMD-SHELL", "[ $$(nodetool statusgossip) = running ]" ]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    ports:
+      - "9042:9042"
+    # Allow DSE to lock memory with mlock
+    cap_add:
+      - IPC_LOCK
+    ulimits:
+      memlock: -1
+
+  cassandra:
+    image: "alpine:3.20.0"
+    depends_on:
+      cassandraserver:
+        condition: "service_healthy"
+
+  http:
+    image: "kennethreitz/httpbin:latest"
+    ports:
+      - "80:80"
+    environment:
+      - "GUNICORN_CMD_ARGS=--capture-output --error-logfile - --access-logfile - --access-logformat '%(h)s %(t)s %(r)s %(s)s Host: %({Host}i)s}'"
+
+  kafkaserver:
+    image: "confluentinc/confluent-local:7.6.1"
+    environment:
+      - "KAFKA_LISTENER_SECURITY_PROTOCOL_MAP=PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT,CONTROLLER:PLAINTEXT"
+      - "KAFKA_INTER_BROKER_LISTENER_NAME=PLAINTEXT"
+      - "KAFKA_ADVERTISED_LISTENERS=PLAINTEXT://kafkaserver:29092,PLAINTEXT_HOST://localhost:9092"
+      - "KAFKA_LISTENERS=PLAINTEXT://kafkaserver:29092,CONTROLLER://localhost:29093,PLAINTEXT_HOST://0.0.0.0:9092"
+    volumes:
+      - "${HOME}/data/kafka:/var/lib/kafka/data"
+    healthcheck:
+      test: [ "CMD-SHELL", "/bin/sh", "-c", "kafka-topics", "--bootstrap-server", "kafkaserver:29092", "--list" ]
+      interval: "15s"
+      timeout: "5s"
+      retries: 3
+    ports:
+      - "9092:9092"
+    expose:
+      - "29092"
+
+  kafka:
+    image: "confluentinc/confluent-local:7.6.1"
+    entrypoint: [ "/bin/sh", "-c", "/opt/app/setup_kafka.sh" ]
+    volumes:
+      - "./data/kafka:/opt/app"
+    depends_on:
+      kafkaserver:
+        condition: "service_healthy"
+
+  rabbitmq:
+    container_name: rabbitmq
+    environment:
+      - "RABBITMQ_DEFAULT_USER=${RABBITMQ_USER:-guest}"
+      - "RABBITMQ_DEFAULT_PASS=${RABBITMQ_PASSWORD:-guest}"
+    healthcheck:
+      interval: 30s
+      retries: 3
+      test: rabbitmq-diagnostics -q ping
+      timeout: 30s
+    hostname: my-rabbit
+    image: "rabbitmq:${RABBITMQ_VERSION:-4.0.6-management}"
+    ports:
+      - "5672:5672"
+      - "15672:15672"

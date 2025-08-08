@@ -1,0 +1,40 @@
+name: "postgres_balance_and_transaction"
+steps:
+  - name: "balances"
+    type: "postgres"
+    count:
+      records: 1000
+    options:
+      dbtable: "account.balances"
+    fields:
+      - name: "account_number"
+        options:
+          regex: "ACC1[0-9]{5,10}"
+      - name: "create_time"
+        type: "timestamp"
+      - name: "account_status"
+        type: "string"
+        options:
+          oneOf:
+            - "open"
+            - "closed"
+      - name: "balance"
+        type: "double"
+  - name: "transactions"
+    type: "postgres"
+    count:
+      perField:
+        fieldNames:
+          - "account_number"
+        count: 5
+    options:
+      dbtable: "account.transactions"
+    fields:
+      - name: "account_number"
+      - name: "create_time"
+        type: "timestamp"
+      - name: "transaction_id"
+        options:
+          regex: "txn-[0-9]{10}"
+      - name: "amount"
+        type: "double"

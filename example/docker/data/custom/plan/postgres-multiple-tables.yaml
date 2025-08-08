@@ -1,0 +1,17 @@
+name: "postgres_multiple_tables_plan"
+description: "Create balance and transaction data in Postgres"
+tasks:
+  - name: "postgres_balance_and_transaction"
+    dataSourceName: "postgresCustomer"
+    enabled: true
+
+sinkOptions:
+  foreignKeys:
+    - source:
+        dataSource: "postgresCustomer"
+        step: "balances"
+        fields: [ "account_number" ]
+      generate:
+        - dataSource: "postgresCustomer"
+          step: "transactions"
+          fields: [ "account_number" ]

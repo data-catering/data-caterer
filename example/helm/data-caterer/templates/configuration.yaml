@@ -1,0 +1,166 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: configuration-secret
+stringData:
+  .application.conf: |-
+    flags {
+        enableCount = false
+        enableCount = ${?ENABLE_COUNT}
+        enableGenerateData = true
+        enableGenerateData = ${?ENABLE_GENERATE_DATA}
+        enableRecordTracking = false  #paid feature
+        enableRecordTracking = ${?ENABLE_RECORD_TRACKING}
+        enableDeleteGeneratedRecords = false  #paid feature
+        enableDeleteGeneratedRecords = ${?ENABLE_DELETE_GENERATED_RECORDS}
+        enableGeneratePlanAndTasks = false    #paid feature
+        enableGeneratePlanAndTasks = ${?ENABLE_GENERATE_PLAN_AND_TASKS}
+        enableFailOnError = true
+        enableFailOnError = ${?ENABLE_FAIL_ON_ERROR}
+        enableSinkMetadata = true
+        enableSinkMetadata = ${?ENABLED_SINK_METADATA}
+        enableSaveReports = true
+        enableSaveReports = ${?ENABLED_SAVE_REPORTS}
+        enableValidation = false
+        enableValidation = ${?ENABLED_VALIDATION}
+    }
+
+    folders {
+        generatedPlanAndTaskFolderPath = "/opt/app/data-caterer"
+        generatedPlanAndTaskFolderPath = ${?GENERATED_PLAN_AND_TASK_FOLDER_PATH}
+        planFilePath = "/opt/app/plan/customer-create-plan.yaml"
+        planFilePath = ${?PLAN_FILE_PATH}
+        taskFolderPath = "/opt/app/task"
+        taskFolderPath = ${?TASK_FOLDER_PATH}
+        recordTrackingFolderPath = "/opt/app/data-caterer/recordTracking"
+        recordTrackingFolderPath = ${?RECORD_TRACKING_FOLDER_PATH}
+        generatedReportsFolderPath = "app/src/test/resources/sample/html"
+        generatedReportsFolderPath = ${?GENERATED_REPORTS_FOLDER_PATH}
+        validationFolderPath = "app/src/test/resources/sample/validation"
+        validationFolderPath = ${?VALIDATION_FOLDER_PATH}
+    }
+
+    metadata {
+        numRecordsFromDataSource = 10000
+        numRecordsFromDataSource = ${?METADATA_NUM_RECORDS_FROM_DATA_SOURCE}
+        numRecordsForAnalysis = 10000
+        numRecordsForAnalysis = ${?METADATA_NUM_RECORDS_FOR_ANALYSIS}
+        oneOfDistinctCountVsCountThreshold = 0.1
+        oneOfDistinctCountVsCountThreshold = ${?METADATA_ONE_OF_DISTINCT_COUNT_VS_COUNT_THRESHOLD}
+    }
+      
+    generation {
+        numRecordsPerBatch = 100000
+        numRecordsPerBatch = ${?GENERATION_NUM_RECORDS_PER_BATCH}
+    }
+      
+    validation {}
+    alert {}
+
+    runtime {
+        master = "local[*]"
+        master = ${?DATA_CATERER_MASTER}
+        config {
+            "spark.sql.cbo.enabled" = "true"
+            "spark.sql.adaptive.enabled" = "true"
+            "spark.sql.cbo.planStats.enabled" = "true"
+            "spark.sql.legacy.allowUntypedScalaUDF" = "true"
+            "spark.sql.statistics.histogram.enabled" = "true"
+            "spark.sql.shuffle.partitions" = "10"
+            "spark.sql.catalog.postgres" = ""
+            "spark.sql.catalog.cassandra" = "com.datastax.spark.connector.datasource.CassandraCatalog"
+            "spark.hadoop.fs.s3a.directory.marker.retention" = "keep"
+            "spark.hadoop.fs.s3a.bucket.all.committer.magic.enabled" = "true"
+            #"spark.hadoop.fs.defaultFS" = "s3a://my-bucket"
+        }
+    }
+
+    # connection type
+    jdbc {
+    #   connection name
+        postgres {
+    #       connection details
+            url = "jdbc:postgresql://localhost:5432/customer"
+            url = ${?POSTGRES_URL}
+            user = "postgres"
+            user = ${?POSTGRES_USERNAME}
+            password = "postgres"
+            password = ${?POSTGRES_PASSWORD}
+            driver = "org.postgresql.Driver"
+        }
+        postgresDvd {
+            url = "jdbc:postgresql://localhost:5432/dvdrental"
+            url = ${?POSTGRES_DVD_URL}
+            user = "postgres"
+            user = ${?POSTGRES_DVD_USERNAME}
+            password = "postgres"
+            password = ${?POSTGRES_DVD_PASSWORD}
+            driver = "org.postgresql.Driver"
+        }
+        mysql {
+            url = "jdbc:mysql://localhost:3306/customer"
+            url = ${?MYSQL_URL}
+            user = "root"
+            user = ${?MYSQL_USERNAME}
+            password = "root"
+            password = ${?MYSQL_PASSWORD}
+            driver = "com.mysql.cj.jdbc.Driver"
+        }
+    }
+
+    org.apache.spark.sql.cassandra {
+        cassandra {
+            spark.cassandra.connection.host = "localhost"
+            spark.cassandra.connection.host = ${?CASSANDRA_HOST}
+            spark.cassandra.connection.port = "9042"
+            spark.cassandra.connection.port = ${?CASSANDRA_PORT}
+            spark.cassandra.auth.username = "cassandra"
+            spark.cassandra.auth.username = ${?CASSANDRA_USERNAME}
+            spark.cassandra.auth.password = "cassandra"
+            spark.cassandra.auth.password = ${?CASSANDRA_PASSWORD}
+        }
+    }
+
+    http {
+        httpbin {
+            url = "http://localhost:80/put"
+        }
+    }
+
+    jms {
+        solace {
+            initialContextFactory = "com.solacesystems.jndi.SolJNDIInitialContextFactory"
+            connectionFactory = "/jms/cf/default"
+            url = "smf://localhost:55554"
+            url = ${?SOLACE_URL}
+            user = "admin"
+            user = ${?SOLACE_USER}
+            password = "admin"
+            password = ${?SOLACE_PASSWORD}
+            vpnName = "default"
+            vpnName = ${?SOLACE_VPN}
+        }
+    }
+
+    parquet {
+        parquet {
+            path = "/opt/app/sample/parquet"
+            path = ${?PARQUET_PATH}
+        }
+    }
+
+    json {
+        json {
+            path = "/opt/app/sample/json"
+            path = ${?JSON_PATH}
+        }
+    }
+
+    csv {
+        csv {
+            path = "/opt/app/sample/csv"
+            path = ${?CSV_PATH}
+        }
+    }
+    
+    datastax-java-driver.advanced.metadata.schema.refreshed-keyspaces = [ "/.*/" ]

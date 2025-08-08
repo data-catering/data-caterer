@@ -5,6 +5,7 @@ import io.github.datacatering.datacaterer.api.model.{ArrayType, DateType, Decima
 import io.github.datacatering.datacaterer.api.{HttpMethodEnum, PlanRun}
 import io.github.datacatering.datacaterer.core.model.Constants.METADATA_FILTER_OUT_SCHEMA
 import io.github.datacatering.datacaterer.core.util.{ObjectMapperUtil, SparkSuite}
+import org.apache.spark.sql.Row
 import org.asynchttpclient.DefaultAsyncHttpClientConfig
 import org.asynchttpclient.Dsl.asyncHttpClient
 
@@ -96,7 +97,7 @@ class PlanProcessorTest extends SparkSuite {
     verifyGeneratedData(javaBaseFolder)
   }
 
-  ignore("Nested foreign key") {
+  test("Nested foreign key") {
     PlanProcessor.determineAndExecutePlan(Some(new TestNestedForeignKey()))
     
     // Verify the depth 3 nested foreign key relationship is working correctly
@@ -109,8 +110,8 @@ class PlanProcessorTest extends SparkSuite {
     
     // Verify all generated records have foreign key relationships that match reference data
     generatedData.foreach(row => {
-      val customerInfo = row.getAs[org.apache.spark.sql.Row]("customer_info")
-      val personalDetails = customerInfo.getAs[org.apache.spark.sql.Row]("personal_details")
+      val customerInfo = row.getAs[Row]("customer_info")
+      val personalDetails = customerInfo.getAs[Row]("personal_details")
       val fullName = personalDetails.getAs[String]("full_name")
       val email = personalDetails.getAs[String]("email")
       
@@ -142,8 +143,8 @@ class PlanProcessorTest extends SparkSuite {
     
     // Verify all generated profile names and emails exist in reference data and are from the same pairing
     generatedData.foreach(row => {
-      val profileName = row.getAs[org.apache.spark.sql.Row]("profile").getAs[String]("name")
-      val profileEmail = row.getAs[org.apache.spark.sql.Row]("profile").getAs[String]("email")
+      val profileName = row.getAs[Row]("profile").getAs[String]("name")
+      val profileEmail = row.getAs[Row]("profile").getAs[String]("email")
       
       val optReferenceEmail = referenceNamesWithEmails.get(profileName)
       assert(optReferenceEmail.isDefined, s"Generated name '$profileName' should exist in reference data: ${referenceNamesWithEmails.keys.mkString(", ")}")
@@ -169,11 +170,11 @@ class PlanProcessorTest extends SparkSuite {
     
     // Validate the structure and field patterns (without SQL expressions which are not working correctly)
     generatedData.foreach(row => {
-      val businessHeader = row.getAs[org.apache.spark.sql.Row]("business_application_header")
-      val businessDocument = row.getAs[org.apache.spark.sql.Row]("business_document")
-      val customerDirectDebit = businessDocument.getAs[org.apache.spark.sql.Row]("customer_direct_debit_initiation_v11")
-      val groupHeader = customerDirectDebit.getAs[org.apache.spark.sql.Row]("group_header")
-      val paymentInformation = customerDirectDebit.getAs[Seq[org.apache.spark.sql.Row]]("payment_information")
+      val businessHeader = row.getAs[Row]("business_application_header")
+      val businessDocument = row.getAs[Row]("business_document")
+      val customerDirectDebit = businessDocument.getAs[Row]("customer_direct_debit_initiation_v11")
+      val groupHeader = customerDirectDebit.getAs[Row]("group_header")
+      val paymentInformation = customerDirectDebit.getAs[Seq[Row]]("payment_information")
       
       // Validate business_message_identifier pattern
       val businessMessageId = businessHeader.getAs[String]("business_message_identifier")
@@ -195,14 +196,14 @@ class PlanProcessorTest extends SparkSuite {
       assert(numTransactions >= 1 && numTransactions <= 2, s"Number of transactions should be between 1 and 2: $numTransactions")
       
       // Validate organization name structure
-      val fromOrg = businessHeader.getAs[org.apache.spark.sql.Row]("from")
-      val orgId = fromOrg.getAs[org.apache.spark.sql.Row]("organisation_identification")
+      val fromOrg = businessHeader.getAs[Row]("from")
+      val orgId = fromOrg.getAs[Row]("organisation_identification")
       val orgName = orgId.getAs[String]("name")
       assert(orgName != null && orgName.nonEmpty, "Organization name should not be null or empty")
       
       // Validate to organization name is static
-      val toOrg = businessHeader.getAs[org.apache.spark.sql.Row]("to")
-      val toOrgId = toOrg.getAs[org.apache.spark.sql.Row]("organisation_identification")
+      val toOrg = businessHeader.getAs[Row]("to")
+      val toOrgId = toOrg.getAs[Row]("organisation_identification")
       val toOrgName = toOrgId.getAs[String]("name")
       assert(toOrgName == "Commonwealth Bank of Australia", s"To organization name should be 'Commonwealth Bank of Australia': $toOrgName")
       
@@ -217,15 +218,15 @@ class PlanProcessorTest extends SparkSuite {
         val paymentMethod = payment.getAs[String]("payment_method")
         assert(paymentMethod == "DD", s"Payment method should be DD: $paymentMethod")
         
-        val creditor = payment.getAs[org.apache.spark.sql.Row]("creditor")
+        val creditor = payment.getAs[Row]("creditor")
         val creditorName = creditor.getAs[String]("name")
         assert(creditorName == "Commonwealth Bank of Australia", s"Creditor name should be 'Commonwealth Bank of Australia': $creditorName")
         
-        val directDebitTxns = payment.getAs[Seq[org.apache.spark.sql.Row]]("direct_debit_transaction_information")
+        val directDebitTxns = payment.getAs[Seq[Row]]("direct_debit_transaction_information")
         assert(directDebitTxns.length >= 1 && directDebitTxns.length <= 2, s"Direct debit transactions should be between 1 and 2: ${directDebitTxns.length}")
         
         directDebitTxns.foreach(txn => {
-          val instructedAmount = txn.getAs[org.apache.spark.sql.Row]("instructed_amount")
+          val instructedAmount = txn.getAs[Row]("instructed_amount")
           // JSON stores decimal amounts as Double, not BigDecimal
           val amount = instructedAmount.getAs[Double]("amount")
           assert(amount >= 10.00, s"Amount should be >= 10.00: $amount")
@@ -234,7 +235,7 @@ class PlanProcessorTest extends SparkSuite {
           val currency = instructedAmount.getAs[String]("currency")
           assert(currency == "AUD", s"Currency should be AUD: $currency")
           
-          val endToEndId = txn.getAs[org.apache.spark.sql.Row]("payment_identification").getAs[String]("end_to_end_identification")
+          val endToEndId = txn.getAs[Row]("payment_identification").getAs[String]("end_to_end_identification")
           assert(endToEndId.matches("E2E[0-9]{10}"), s"End-to-end ID should match pattern E2E[0-9]{10}: $endToEndId")
         })
       })
@@ -255,11 +256,11 @@ class PlanProcessorTest extends SparkSuite {
     
     // Validate the structure and patterns (simplified without complex SQL expression validation)
     generatedData.foreach(row => {
-      val businessHeader = row.getAs[org.apache.spark.sql.Row]("business_application_header")
-      val businessDocument = row.getAs[org.apache.spark.sql.Row]("business_document")
-      val customerDirectDebit = businessDocument.getAs[org.apache.spark.sql.Row]("customer_direct_debit_initiation_v11")
-      val groupHeader = customerDirectDebit.getAs[org.apache.spark.sql.Row]("group_header")
-      val paymentInformation = customerDirectDebit.getAs[Seq[org.apache.spark.sql.Row]]("payment_information")
+      val businessHeader = row.getAs[Row]("business_application_header")
+      val businessDocument = row.getAs[Row]("business_document")
+      val customerDirectDebit = businessDocument.getAs[Row]("customer_direct_debit_initiation_v11")
+      val groupHeader = customerDirectDebit.getAs[Row]("group_header")
+      val paymentInformation = customerDirectDebit.getAs[Seq[Row]]("payment_information")
       
       // Validate business_message_identifier pattern
       val businessMessageId = businessHeader.getAs[String]("business_message_identifier")
@@ -278,19 +279,19 @@ class PlanProcessorTest extends SparkSuite {
       assert(numTransactions >= 1 && numTransactions <= 2, s"Number of transactions should be between 1 and 2: $numTransactions")
       
       // Validate organization name structure
-      val fromOrg = businessHeader.getAs[org.apache.spark.sql.Row]("from")
-      val orgId = fromOrg.getAs[org.apache.spark.sql.Row]("organisation_identification")
+      val fromOrg = businessHeader.getAs[Row]("from")
+      val orgId = fromOrg.getAs[Row]("organisation_identification")
       val orgName = orgId.getAs[String]("name")
       assert(orgName != null && orgName.nonEmpty, "Organization name should not be null or empty")
       
       // Validate initiating_party name is generated (same pattern as from organization)
-      val initiatingParty = groupHeader.getAs[org.apache.spark.sql.Row]("initiating_party")
+      val initiatingParty = groupHeader.getAs[Row]("initiating_party")
       val initiatingPartyName = initiatingParty.getAs[String]("name")
       assert(initiatingPartyName != null && initiatingPartyName.nonEmpty, "Initiating party name should not be null or empty")
       
       // Validate to organization name is static
-      val toOrg = businessHeader.getAs[org.apache.spark.sql.Row]("to")
-      val toOrgId = toOrg.getAs[org.apache.spark.sql.Row]("organisation_identification")
+      val toOrg = businessHeader.getAs[Row]("to")
+      val toOrgId = toOrg.getAs[Row]("organisation_identification")
       val toOrgName = toOrgId.getAs[String]("name")
       assert(toOrgName == "Commonwealth Bank of Australia", s"To organization name should be 'Commonwealth Bank of Australia': $toOrgName")
       
@@ -305,15 +306,15 @@ class PlanProcessorTest extends SparkSuite {
         val paymentMethod = payment.getAs[String]("payment_method")
         assert(paymentMethod == "DD", s"Payment method should be DD: $paymentMethod")
         
-        val creditor = payment.getAs[org.apache.spark.sql.Row]("creditor")
+        val creditor = payment.getAs[Row]("creditor")
         val creditorName = creditor.getAs[String]("name")
         assert(creditorName == "Commonwealth Bank of Australia", s"Creditor name should be 'Commonwealth Bank of Australia': $creditorName")
         
-        val directDebitTxns = payment.getAs[Seq[org.apache.spark.sql.Row]]("direct_debit_transaction_information")
+        val directDebitTxns = payment.getAs[Seq[Row]]("direct_debit_transaction_information")
         assert(directDebitTxns.length >= 1 && directDebitTxns.length <= 2, s"Direct debit transactions should be between 1 and 2: ${directDebitTxns.length}")
         
         directDebitTxns.foreach(txn => {
-          val instructedAmount = txn.getAs[org.apache.spark.sql.Row]("instructed_amount")
+          val instructedAmount = txn.getAs[Row]("instructed_amount")
           // JSON stores decimal amounts as Double, not BigDecimal
           val amount = instructedAmount.getAs[Double]("amount")
           assert(amount >= 10.00, s"Amount should be >= 10.00: $amount")
@@ -322,7 +323,7 @@ class PlanProcessorTest extends SparkSuite {
           val currency = instructedAmount.getAs[String]("currency")
           assert(currency == "AUD", s"Currency should be AUD: $currency")
           
-          val endToEndId = txn.getAs[org.apache.spark.sql.Row]("payment_identification").getAs[String]("end_to_end_identification")
+          val endToEndId = txn.getAs[Row]("payment_identification").getAs[String]("end_to_end_identification")
           assert(endToEndId.matches("E2E[0-9]{10}"), s"End-to-end ID should match pattern E2E[0-9]{10}: $endToEndId")
         })
       })
@@ -886,7 +887,7 @@ class PlanProcessorTest extends SparkSuite {
       .fields(
         field.name("profile").`type`(StructType)
           .fields(
-            field.name("updatedDate").sql("DATE_ADD(profile.createdDate, INT(ROUND(RAND() * 10)))")
+            field.name("updatedDate").sql("DATE_ADD(profile.createdDate, CAST(ROUND(RAND() * 10) AS INT))")
           )
       )
       .count(count.records(10))

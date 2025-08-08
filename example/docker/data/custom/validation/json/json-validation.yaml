@@ -1,0 +1,133 @@
+---
+name: "account_checks"
+description: "Check account related fields have gone through system correctly"
+dataSources:
+  json:
+    - options:
+        path: "/tmp/yaml-validation-json-test"
+      validations:
+        - expr: "STARTSWITH(transaction_id, 'txn')"
+        - field: name
+          validation:
+            - type: "equal"
+              value: 2021
+              negate: true
+            - type: "null"
+              negate: true
+            - type: "contains"
+              value: "peter"
+              negate: true
+            - type: "in"
+              values: [ "open", "closed" ]
+              negate: true
+            - type: "matches"
+              regex: "ACC[0-9]{8}"
+              negate: true
+            - type: "matchesList"
+              regexes: [ "ACC[0-9]{8}", "ACC[0-9]{10}" ]
+              matchAll: true
+              negate: true
+            - type: "startsWith"
+              value: "ACC"
+              negate: true
+            - type: "endsWith"
+              value: "ACC"
+              negate: true
+            - type: "luhnCheck"
+              negate: true
+            - type: "hasType"
+              value: "string"
+              negate: true
+            - type: "hasTypes"
+              values: [ "string", "double" ]
+              negate: true
+            - type: "distinctInSet"
+              values: [ "peter", "john" ]
+              negate: true
+            - type: "distinctContainsSet"
+              values: [ "peter", "john" ]
+              negate: true
+            - type: "distinctEqual"
+              values: [ "peter", "john" ]
+              negate: true
+            - type: "lengthBetween"
+              min: 1
+              max: 10
+              negate: true
+            - type: "lengthEqual"
+              value: 5
+              negate: true
+            - type: "isJsonParsable"
+              negate: true
+            - type: "matchJsonSchema"
+              schema: "id STRING, amount DOUBLE"
+              negate: true
+        - field: created_date
+          validation:
+            - type: "matchDateTimeFormat"
+              format: "yyyy-MM-dd"
+              negate: true
+        - field: links
+          validation:
+            - type: "size"
+              size: 5
+              negate: true
+            - type: "lessThanSize"
+              size: 5
+              strictly: false
+            - type: "greaterThanSize"
+              size: 5
+              strictly: false
+        - field: amount
+          validation:
+            - type: "lessThan"
+              value: 100
+              strictly: false
+            - type: "greaterThan"
+              value: 100
+              strictly: false
+            - type: "between"
+              min: 100
+              max: 200
+              negate: true
+            - type: "maxBetween"
+              min: 1
+              max: 100
+              negate: true
+            - type: "meanBetween"
+              min: 1
+              max: 100
+              negate: true
+            - type: "medianBetween"
+              min: 1
+              max: 100
+              negate: true
+            - type: "minBetween"
+              min: 1
+              max: 100
+              negate: true
+            - type: "stdDevBetween"
+              min: 1
+              max: 100
+              negate: true
+            - type: "sumBetween"
+              min: 1
+              max: 100
+              negate: true
+            - type: "isDecreasing"
+              strictly: false
+            - type: "isIncreasing"
+              strictly: false
+            - type: "mostCommonValueInSet"
+              values: [ "200.0", "100.0" ]
+              negate: true
+            - type: "uniqueValuesProportionBetween"
+              min: 0.1
+              max: 0.3
+              negate: true
+            - type: "quantileValuesBetween"
+              quantileRanges:
+                0.1:
+                  - - 1.0
+                    - 10.0
+              negate: true

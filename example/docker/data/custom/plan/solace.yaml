@@ -1,0 +1,6 @@
+name: "solace_example_plan"
+description: "Create account data in Solace"
+tasks:
+  - name: "json_account_jms"
+    dataSourceName: "solace"
+    enabled: true
