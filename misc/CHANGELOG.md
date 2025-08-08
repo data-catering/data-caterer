@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.16.5
+
+- Allow for deeply nested SQL references in arrays or objects
+- Ability to use `unwrapTopLevel` to allow for top-level JSON arrays
+
 ## 0.16.4
 
 - Fix bug when using `omit` fields in SQL generated fields

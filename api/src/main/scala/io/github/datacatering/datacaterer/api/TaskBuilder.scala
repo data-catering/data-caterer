@@ -967,6 +967,14 @@ case class FieldBuilder(field: Field = Field()) {
     this.modify(_.field.options).setTo(getGenBuilder.omit(omit).options)
 
   /**
+    * Marks this field such that if it is the sole top-level field and is an array in a JSON task, the sink should
+    * output a bare JSON array (no enclosing object with the field name).
+    * Has no effect for non-JSON sinks or non-top-level contexts.
+    */
+  def unwrapTopLevelArray(enable: Boolean): FieldBuilder =
+    this.modify(_.field.options).setTo(getGenBuilder.unwrapTopLevel(enable).options)
+
+  /**
    * Sets the primary key flag for the current field.
    *
    * @param isPrimaryKey `true` to mark the field as a primary key, `false` otherwise.
@@ -1535,6 +1543,12 @@ case class GeneratorBuilder(options: Map[String, Any] = Map()) {
    */
   def omit(omit: Boolean): GeneratorBuilder =
     this.modify(_.options)(_ ++ Map(OMIT -> omit.toString))
+
+  /**
+    * Instruct JSON sink to unwrap the top-level field if it is a single array field.
+    */
+  def unwrapTopLevel(enable: Boolean): GeneratorBuilder =
+    this.modify(_.options)(_ ++ Map(UNWRAP_TOP_LEVEL -> enable.toString))
 
   /**
    * Field is a primary key of the data source.

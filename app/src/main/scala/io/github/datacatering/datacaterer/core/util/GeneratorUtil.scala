@@ -166,15 +166,74 @@ object GeneratorUtil {
     }
     
     var resultDf = df
+
+    // Identify identity expressions (expr equals original path), e.g., __index_inc
+    def isIdentity(path: String, exprStr: String): Boolean = {
+      val p = path.replace("`", "").trim
+      val e = exprStr.replace("`", "").trim
+      e.equalsIgnoreCase(p)
+    }
+
+    val identityPaths: Set[String] = sqlExpressionsWithoutForeignKeys.collect {
+      case (path, exprStr) if isIdentity(path, exprStr) => path
+    }.toSet
+
+    // Build map of regular (non-array) non-identity sql paths -> temp column names
+    val tempNameByPath: Map[String, String] = sqlExpressionsWithoutForeignKeys.collect {
+      case (path, _) if !identityPaths.contains(path) =>
+        path -> s"_temp_${path.replace(".", "_")}"
+    }.toMap
+
+    def rewriteWithTempRefs(raw: String, currentPath: String): String = {
+      // Replace references to other regular SQL-generated columns with their temp columns
+      // Sort keys by length to avoid partial replacements
+      val keys = tempNameByPath.keys.filterNot(_ == currentPath).toList.sortBy(-_.length)
+      keys.foldLeft(raw) { case (acc, path) =>
+        val temp = tempNameByPath(path)
+        // Match backticked or plain path as a whole token using simpler boundaries
+        val pattern = ("(?i)\\b" + java.util.regex.Pattern.quote(path) + "\\b").r
+        val patternTick = ("(?i)`" + java.util.regex.Pattern.quote(path) + "`").r
+        val replacedTicks = patternTick.replaceAllIn(acc, s"`$temp`")
+        pattern.replaceAllIn(replacedTicks, s"`$temp`")
+      }
+    }
+    def lookupDataType(path: String): Option[DataType] = {
+      val parts = path.split("\\.").toList
+      def loop(fields: Array[StructField], remaining: List[String]): Option[DataType] = remaining match {
+        case Nil => None
+        case name :: Nil => fields.find(_.name == name).map(_.dataType)
+        case name :: tail =>
+          fields.find(_.name == name).flatMap { f =>
+            f.dataType match {
+              case StructType(nested) => loop(nested.toArray, tail)
+              case _ => None
+            }
+          }
+      }
+      loop(df.schema.fields, parts)
+    }
+
     sqlExpressionsWithoutForeignKeys.foreach { case (path, sqlExpr) =>
       val tempColName = s"_temp_${path.replace(".", "_")}"
-      resultDf = resultDf.withColumn(tempColName, expr(sqlExpr))
+      val isIdentityExpr = isIdentity(path, sqlExpr)
+      if (!isIdentityExpr) {
+        val rewired = rewriteWithTempRefs(sqlExpr, path)
+      val finalExpr = lookupDataType(path) match {
+        case Some(dt) if dt.typeName == "string" => s"CAST((${rewired}) AS STRING)"
+        case _ => rewired
+      }
+      LOGGER.debug(s"Adding temp SQL column [$tempColName] for path=[$path], expr=[$finalExpr]")
+      resultDf = resultDf.withColumn(tempColName, expr(finalExpr))
+      } else {
+        LOGGER.debug(s"Skipping temp SQL column for identity expr path=[$path], expr=[$sqlExpr]")
+      }
     }
     
     // Step 2: Build new columns using the temporary values for regular expressions
     // and inline processing for array element expressions
-    val newColumns = resultDf.schema.fields.map { field =>
-      buildColumnWithSqlResolution(field, resultDf, sqlExpressions, arrayElementExpressions)
+    // Build columns only for original schema fields, not for temporary helper columns
+    val newColumns = df.schema.fields.map { field =>
+      buildColumnWithSqlResolution(field, resultDf, sqlExpressions, arrayElementExpressions, identityPaths, tempNameByPath)
     }
     
     // Step 3: Select the new columns
@@ -206,11 +265,145 @@ object GeneratorUtil {
     LOGGER.debug(s"Transformed SQL expression for array element: '$sqlExpr' -> '$transformedExpr'")
     transformedExpr
   }
+
+  /**
+   * Expand SQL expression for an array element by inlining references to other calculated fields
+   * within the same array element. This avoids relying on ordering inside NAMED_STRUCT which
+   * is not supported by Spark SQL during TRANSFORM lambdas.
+   *
+   * Example:
+   *  - Given array "orders" with expressions:
+   *      orders.element.tax = orders.amount * 0.1
+   *      orders.element.total = orders.amount + orders.tax
+   *    Expands `orders.total` to `x.amount + (x.amount * 0.1)`
+   */
+  private def expandArrayElementSqlExpression(
+                                               rawExpr: String,
+                                               arrayPath: String,
+                                               elementExpressionsByArray: Map[String, Map[String, String]],
+                                               lambdaVarByArrayName: Map[String, String]
+                                             ): String = {
+    // Example arrayPath: "organizations.element.departments.element"
+    // We want arrayRootPathKey: "organizations.departments"
+    val arrayRootPathKey = {
+      val lastIdx = arrayPath.lastIndexOf(".element")
+      val upToLast = if (lastIdx >= 0) arrayPath.substring(0, lastIdx) else arrayPath
+      upToLast.replaceAll("\\.element", "")
+    }
+    val elementExprs: Map[String, String] = elementExpressionsByArray.getOrElse(arrayRootPathKey, Map.empty)
+    // Determine the correct lambda variable for this array by matching the innermost array name in scope
+    val currentLambdaVar = {
+      val keysByLength = lambdaVarByArrayName.keys.toList.sortBy(-_.length)
+      keysByLength.find(k => arrayRootPathKey == k || arrayRootPathKey.endsWith(s".$k")).flatMap(lambdaVarByArrayName.get).getOrElse("x")
+    }
+
+    // Build a memoized recursive expander to inline same-element references
+    import scala.collection.mutable
+    val memo: mutable.Map[String, String] = mutable.Map.empty
+
+    def sanitizeFieldPath(path: String): String = path.stripPrefix(".")
+
+    // Recursively expand an element-level field path (relative to element, e.g. "amount", "nested.tax")
+    def expandField(fieldPathRel: String, visited: Set[String]): String = {
+      val clean = sanitizeFieldPath(fieldPathRel)
+      if (memo.contains(clean)) return memo(clean)
+      if (visited.contains(clean)) {
+        // Cycle detected; fallback to x.<field> to avoid infinite recursion
+        val fallback = s"$currentLambdaVar.$clean"
+        memo.update(clean, fallback)
+        return fallback
+      }
+      elementExprs.get(clean) match {
+        case Some(depExprRaw) =>
+          // First transform any array references to lambda element scope
+          val depExprWithX = transformSqlExpressionForArrayElement(depExprRaw, s"$arrayRootPathKey.element")
+          // Now inline any references to other element-level calculated fields
+          val inlined = inlineSameElementReferences(depExprWithX, visited + clean)
+          memo.update(clean, inlined)
+          inlined
+        case None =>
+          val baseRef = s"$currentLambdaVar.$clean"
+          memo.update(clean, baseRef)
+          baseRef
+      }
+    }
+
+    // Replace occurrences of same-element references (either `array.field` or `x.field`) with their expansions
+    def inlineSameElementReferences(exprIn: String, visited: Set[String]): String = {
+      // Matches same-array path prefix (supports dotted array roots) like `organizations.departments.field`
+      val arrayRefPattern = ("(?i)(`?" + java.util.regex.Pattern.quote(arrayRootPathKey) + "`?\\.)([a-zA-Z0-9_`\\.]+)").r
+      // Generic path pattern capturing a dotted prefix and a remainder
+      val anyArrayPattern = "(?s)".r // placeholder, we'll use manual find logic
+
+      // First replace arrayName.* references
+      val replacedArrayRefs = arrayRefPattern.replaceAllIn(exprIn, m => {
+        val relPathRaw = m.group(2)
+        val relPath = relPathRaw.replace("`", "")
+        val expansion = expandField(relPath, visited)
+        // Ensure proper grouping
+        s"(${expansion})"
+      })
+
+      // Replace references to other arrays in scope, retarget to nearest scoped lambda
+      val afterScopeSwap = {
+        // Find all occurrences of a dotted prefix followed by more path, then rewrite selectively
+        val prefixAndRest = "(?i)(`?[a-zA-Z0-9_]+`?(?:\\.`?[a-zA-Z0-9_]+`?)*)\\.([a-zA-Z0-9_`\\.]+)".r
+        prefixAndRest.replaceAllIn(replacedArrayRefs, m => {
+          val prefixFull = m.group(1).replace("`", "")
+          val rest = m.group(2).replace("`", "")
+          val prefixParts = prefixFull.split("\\.").toList
+
+          // Choose the deepest part that is an array in scope
+          val chosenOpt = prefixParts.reverse.find(p => lambdaVarByArrayName.contains(p))
+          chosenOpt match {
+          case Some(chosenArray) =>
+              val lambda = lambdaVarByArrayName.getOrElse(chosenArray, currentLambdaVar)
+              val restParts = rest.split("\\.").toList
+              // Build the path segments AFTER the chosen array within prefixFull
+              val idxChosen = prefixParts.lastIndexOf(chosenArray)
+              val afterChosenInPrefix = if (idxChosen >= 0 && idxChosen < prefixParts.length - 1) prefixParts.drop(idxChosen + 1) else Nil
+              val fullRelAfterChosen = afterChosenInPrefix ++ restParts
+              // If the first segment after chosen is itself an array in scope, retarget to that lambda
+              fullRelAfterChosen match {
+                case head :: tail if lambdaVarByArrayName.contains(head) =>
+                  val innerLambda = lambdaVarByArrayName(head)
+                  val tailStr = tail.mkString(".")
+                  if (tailStr.nonEmpty) s"$innerLambda.$tailStr" else innerLambda
+                case _ => s"$lambda.${fullRelAfterChosen.mkString(".")}"
+              }
+            case None => m.matched // leave unchanged
+          }
+        })
+      }
+
+      // Cleanup: remove accidental prefixes like "organizations.y.*" => "y.*" for all arrays/lambdas in scope
+      val cleaned = lambdaVarByArrayName.foldLeft(afterScopeSwap) { case (accExpr, (arrayName, lambdaVar)) =>
+        val prefixDotPattern = ("(?i)(`?" + java.util.regex.Pattern.quote(arrayName) + "`?\\.)" + java.util.regex.Pattern.quote(lambdaVar) + "\\.").r
+        val prefixWordBoundaryPattern = ("(?i)(`?" + java.util.regex.Pattern.quote(arrayName) + "`?\\.)" + java.util.regex.Pattern.quote(lambdaVar) + "\\b").r
+        val step1 = prefixDotPattern.replaceAllIn(accExpr, _ => s"$lambdaVar.")
+        prefixWordBoundaryPattern.replaceAllIn(step1, _ => s"$lambdaVar")
+      }
+      cleaned
+    }
+
+    val finalExpr = inlineSameElementReferences(rawExpr, Set.empty)
+    LOGGER.debug(s"Inline array element SQL for [$arrayRootPathKey] raw=[$rawExpr] -> [$finalExpr], lambdas=$lambdaVarByArrayName")
+    finalExpr
+  }
   
   // Helper function to build columns with SQL resolution
-  private def buildColumnWithSqlResolution(field: StructField, df: DataFrame, sqlExpressions: List[(String, String)], arrayElementExpressions: List[(String, String)] = List()): org.apache.spark.sql.Column = {
+  private def buildColumnWithSqlResolution(field: StructField, df: DataFrame, sqlExpressions: List[(String, String)], arrayElementExpressions: List[(String, String)] = List(), identityPaths: Set[String] = Set.empty, tempNameByPath: Map[String, String] = Map.empty): org.apache.spark.sql.Column = {
     
-    def buildNestedColumn(structField: StructField, pathPrefix: String, baseColumnName: String): String = {
+    // Allocate readable distinct lambda variable names by depth
+    def allocateLambda(depth: Int): String = depth match {
+      case 0 => "x"
+      case 1 => "y"
+      case 2 => "z"
+      case 3 => "w"
+      case n => s"v$n"
+    }
+
+    def buildNestedColumn(structField: StructField, pathPrefix: String, baseColumnName: String, lambdaVarByArrayName: Map[String, String]): String = {
       val currentPath = if (pathPrefix.isEmpty) structField.name else s"$pathPrefix.${structField.name}"
       
       // Check if this field has a SQL expression
@@ -218,12 +411,19 @@ object GeneratorUtil {
         case Some((_, sqlExpr)) =>
           // Check if this is an array element expression
           if (currentPath.contains(".element.")) {
-            // Transform the SQL expression for array element context
-            transformSqlExpressionForArrayElement(sqlExpr, pathPrefix)
+            // For array elements, inline same-element calculated field references
+            val arrayPath = pathPrefix // e.g., "orders.element"
+            val elementExprsByArray: Map[String, Map[String, String]] = buildElementSqlMapByArray(sqlExpressions)
+            expandArrayElementSqlExpression(sqlExpr, arrayPath, elementExprsByArray, lambdaVarByArrayName)
           } else {
-            // Use the temporary column value for regular expressions
-            val tempColName = s"_temp_${currentPath.replace(".", "_")}"
-            s"`$tempColName`"
+            // For identity expressions (expr equals original path), keep original path
+            if (identityPaths.contains(currentPath)) {
+              currentPath
+            } else {
+              // Use the temporary column value for regular expressions if it exists; otherwise, fall back to original path.
+              val tempColName = tempNameByPath.getOrElse(currentPath, s"_temp_${currentPath.replace(".", "_")}")
+              if (df.columns.contains(tempColName)) s"`$tempColName`" else currentPath
+            }
           }
           
         case None =>
@@ -235,25 +435,13 @@ object GeneratorUtil {
               if (hasNestedSql) {
                 // Build nested structure with potential SQL expressions
                 val fieldExprs = nestedFields.map { f =>
-                  val nestedExpr = buildNestedColumn(f, currentPath, baseColumnName)
+                  val nestedExpr = buildNestedColumn(f, currentPath, baseColumnName, lambdaVarByArrayName)
                   s"'${f.name}', $nestedExpr"
                 }
                 s"NAMED_STRUCT(${fieldExprs.mkString(", ")})"
               } else {
-                // Use original column reference
-                if (baseColumnName == "x") {
-                  // In array context
-                  s"x.${structField.name}"
-                } else {
-                  // Calculate field path relative to base column
-                  val fieldPath = if (pathPrefix.length > baseColumnName.length && pathPrefix.startsWith(baseColumnName)) {
-                    val suffixPath = pathPrefix.substring(baseColumnName.length + 1) // +1 for the dot
-                    s"$baseColumnName.$suffixPath.${structField.name}"
-                  } else {
-                    s"$baseColumnName.${structField.name}"
-                  }
-                  fieldPath
-                }
+                // Use original struct reference (no nested SQL) without duplicating the field name
+                if (baseColumnName.nonEmpty) s"$baseColumnName.${structField.name}" else currentPath
               }
               
             case ArrayType(StructType(arrayFields), _) =>
@@ -262,15 +450,17 @@ object GeneratorUtil {
               
               if (hasArraySql) {
                 // Build TRANSFORM for array elements with SQL expressions
+                val newLambda = allocateLambda(lambdaVarByArrayName.size)
+                val updatedScope = lambdaVarByArrayName + (structField.name -> newLambda)
                 val elementExprs = arrayFields.map { f =>
-                  val nestedExpr = buildNestedColumn(f, s"$currentPath.element", "x")
+                  val nestedExpr = buildNestedColumn(f, s"$currentPath.element", newLambda, updatedScope)
                   s"'${f.name}', $nestedExpr"
                 }
                 
                 // Calculate array field path
-                if (baseColumnName == "x") {
+                if (baseColumnName.nonEmpty) {
                   // In nested array context
-                  s"TRANSFORM(x.${structField.name}, x -> NAMED_STRUCT(${elementExprs.mkString(", ")}))"
+                  s"TRANSFORM($baseColumnName.${structField.name}, $newLambda -> NAMED_STRUCT(${elementExprs.mkString(", ")}))"
                 } else {
                   // Top-level array reference - use the full path to the array
                   val fullArrayPath = if (pathPrefix.isEmpty) {
@@ -283,36 +473,16 @@ object GeneratorUtil {
                     // In nested context, use the full path
                     s"$pathPrefix.${structField.name}"
                   }
-                  s"TRANSFORM($fullArrayPath, x -> NAMED_STRUCT(${elementExprs.mkString(", ")}))"
+                  s"TRANSFORM($fullArrayPath, $newLambda -> NAMED_STRUCT(${elementExprs.mkString(", ")}))"
                 }
               } else {
                 // Use original array reference
-                if (baseColumnName == "x") {
-                  s"x.${structField.name}"
-                } else {
-                  val fieldPath = if (pathPrefix.length > baseColumnName.length && pathPrefix.startsWith(baseColumnName)) {
-                    val suffixPath = pathPrefix.substring(baseColumnName.length + 1) // +1 for the dot
-                    s"$baseColumnName.$suffixPath.${structField.name}"
-                  } else {
-                    s"$baseColumnName.${structField.name}"
-                  }
-                  fieldPath
-                }
+                if (baseColumnName.nonEmpty) s"$baseColumnName.${structField.name}" else currentPath
               }
               
             case _ =>
               // Primitive field - use original reference
-              if (baseColumnName == "x") {
-                s"x.${structField.name}"
-              } else {
-                val fieldPath = if (pathPrefix.length > baseColumnName.length && pathPrefix.startsWith(baseColumnName)) {
-                  val suffixPath = pathPrefix.substring(baseColumnName.length + 1) // +1 for the dot
-                  s"$baseColumnName.$suffixPath.${structField.name}"
-                } else {
-                  s"$baseColumnName.${structField.name}"
-                }
-                fieldPath
-              }
+              if (baseColumnName.nonEmpty) s"$baseColumnName.${structField.name}" else currentPath
           }
       }
     }
@@ -320,9 +490,17 @@ object GeneratorUtil {
     // Check if the top-level field has a SQL expression
     sqlExpressions.find(_._1 == field.name) match {
       case Some((_, sqlExpr)) =>
-        // Use the temporary column
-        val tempColName = s"_temp_${field.name.replace(".", "_")}"
-        col(tempColName).as(field.name)
+        // Always keep the original index column
+        if (field.name == "__index_inc") {
+          col(field.name)
+        } else if (identityPaths.contains(field.name)) {
+          // For identity expressions, keep the original column
+          col(field.name)
+        } else {
+          // Use the temporary column if it exists; otherwise, keep the original column
+          val tempColName = tempNameByPath.getOrElse(field.name, s"_temp_${field.name.replace(".", "_")}")
+          if (df.columns.contains(tempColName)) col(tempColName).as(field.name) else col(field.name)
+        }
         
       case None =>
         field.dataType match {
@@ -333,7 +511,7 @@ object GeneratorUtil {
             if (hasNestedSql) {
               // Build nested structure with SQL resolution
               val fieldExprs = nestedFields.map { f =>
-                val nestedExpr = buildNestedColumn(f, field.name, field.name)
+                val nestedExpr = buildNestedColumn(f, field.name, "", Map.empty)
                 s"'${f.name}', $nestedExpr"
               }
               
@@ -356,12 +534,14 @@ object GeneratorUtil {
             
             if (hasArraySql) {
               // Build TRANSFORM for array elements with SQL expressions
+              val rootLambda = allocateLambda(0)
+              val scope = Map(field.name -> rootLambda)
               val elementExprs = arrayFields.map { f =>
-                val nestedExpr = buildNestedColumn(f, s"${field.name}.element", "x")
+                val nestedExpr = buildNestedColumn(f, s"${field.name}.element", rootLambda, scope)
                 s"'${f.name}', $nestedExpr"
               }
               
-              val exprStr = s"TRANSFORM(${field.name}, x -> NAMED_STRUCT(${elementExprs.mkString(", ")}))"
+              val exprStr = s"TRANSFORM(${field.name}, $rootLambda -> NAMED_STRUCT(${elementExprs.mkString(", ")}))"
               try {
                 expr(exprStr).as(field.name)
               } catch {
@@ -378,6 +558,23 @@ object GeneratorUtil {
             col(field.name)
         }
     }
+  }
+
+  // Build a map from array field name -> (element-relative field path -> SQL expression)
+  private def buildElementSqlMapByArray(sqlExpressions: List[(String, String)]): Map[String, Map[String, String]] = {
+    // Collect paths that are element-level, e.g., "orders.element.total"
+    val elementLevel = sqlExpressions.collect {
+      case (path, expr) if path.contains(".element.") => (path, expr)
+    }
+
+    elementLevel.groupBy { case (path, _) => path.split("\\.element").head }
+      .map { case (arrayField, entries) =>
+        val relMap: Map[String, String] = entries.map { case (path, expr) =>
+          val rel = path.substring(path.indexOf(".element.") + ".element.".length) // relative to element
+          rel -> expr
+        }.toMap
+        arrayField -> relMap
+      }
   }
 
   def determineSaveTiming(dataSourceName: String, format: String, stepName: String): String = {

@@ -539,11 +539,11 @@ class DataGeneratorFactoryTest extends SparkSuite {
     
     // Verify the nested structure is correctly filtered
     val row = result.head()
-    val customerDirectDebit = row.getAs[org.apache.spark.sql.Row]("customer_direct_debit_initiation_v11")
+    val customerDirectDebit = row.getAs[Row]("customer_direct_debit_initiation_v11")
     assert(customerDirectDebit != null, "customer_direct_debit_initiation_v11 should not be null")
     
     // Check group_header structure
-    val groupHeader = customerDirectDebit.getAs[org.apache.spark.sql.Row]("group_header")
+    val groupHeader = customerDirectDebit.getAs[Row]("group_header")
     assert(groupHeader != null, "group_header should not be null")
     
     val groupHeaderSchema = groupHeader.schema
@@ -554,7 +554,7 @@ class DataGeneratorFactoryTest extends SparkSuite {
     assert(groupHeaderSchema.fieldNames.contains("initiating_party"), "group_header should contain initiating_party")
     
     // Check initiating_party nested structure
-    val initiatingParty = groupHeader.getAs[org.apache.spark.sql.Row]("initiating_party")
+    val initiatingParty = groupHeader.getAs[Row]("initiating_party")
     assert(initiatingParty != null, "initiating_party should not be null")
     val initiatingPartySchema = initiatingParty.schema
     assert(initiatingPartySchema.fieldNames.contains("name"), "initiating_party should contain name")
@@ -617,7 +617,7 @@ class DataGeneratorFactoryTest extends SparkSuite {
     assert(result.columns.contains("data_container"))
     
     val row = result.collect().head
-    val dataContainer = row.getAs[org.apache.spark.sql.Row]("data_container")
+    val dataContainer = row.getAs[Row]("data_container")
     assert(dataContainer != null, "data_container should not be null")
     
     val dataContainerSchema = dataContainer.schema
@@ -691,14 +691,14 @@ class DataGeneratorFactoryTest extends SparkSuite {
     assert(result.columns.contains("customer_data"), "Should contain customer_data")
     
     val row = result.collect().head
-    val customerData = row.getAs[org.apache.spark.sql.Row]("customer_data")
+    val customerData = row.getAs[Row]("customer_data")
     assert(customerData != null, "customer_data should not be null")
     
     val customerDataSchema = customerData.schema
     
     // Check basic_info structure
     assert(customerDataSchema.fieldNames.contains("basic_info"), "customer_data should contain basic_info")
-    val basicInfo = customerData.getAs[org.apache.spark.sql.Row]("basic_info")
+    val basicInfo = customerData.getAs[Row]("basic_info")
     if (basicInfo != null) {
       val basicInfoSchema = basicInfo.schema
       assert(basicInfoSchema.fieldNames.contains("name"), "basic_info should contain name")
@@ -742,7 +742,7 @@ class DataGeneratorFactoryTest extends SparkSuite {
     println(s"Generated ${rows.length} rows")
     
     rows.foreach { row =>
-      val users = row.getAs[Seq[org.apache.spark.sql.Row]]("users")
+      val users = row.getAs[Seq[Row]]("users")
       println(s"Users array length: ${if (users != null) users.length else "null"}")
       
       if (users != null && users.nonEmpty) {
@@ -753,7 +753,7 @@ class DataGeneratorFactoryTest extends SparkSuite {
           println(s"  Email: ${user.getAs[String]("email")} (should be valid email)")
           println(s"  Age: ${user.getAs[Any]("age")} (should be 18-65)")
           
-          val profile = user.getAs[org.apache.spark.sql.Row]("profile")
+          val profile = user.getAs[Row]("profile")
           if (profile != null) {
             println(s"  Profile Bio: ${profile.getAs[String]("bio")} (should be 10-100 chars)")
             println(s"  Profile Score: ${profile.getAs[Any]("score")} (should be 0.0-10.0)")
@@ -807,7 +807,7 @@ class DataGeneratorFactoryTest extends SparkSuite {
     println(s"Generated ${rows.length} rows")
     
     rows.foreach { row =>
-      val companies = row.getAs[Seq[org.apache.spark.sql.Row]]("companies")
+      val companies = row.getAs[Seq[Row]]("companies")
       println(s"Companies array length: ${if (companies != null) companies.length else "null"}")
       
       if (companies != null && companies.nonEmpty) {
@@ -816,7 +816,7 @@ class DataGeneratorFactoryTest extends SparkSuite {
           println(s"  ID: ${company.getAs[String]("company_id")} (should match ^COMP-[0-9]{4}$$)")
           println(s"  Name: ${company.getAs[String]("company_name")} (should match company name pattern)")
           
-          val departments = company.getAs[Seq[org.apache.spark.sql.Row]]("departments")
+          val departments = company.getAs[Seq[Row]]("departments")
           println(s"  Departments array length: ${if (departments != null) departments.length else "null"}")
           
           if (departments != null && departments.nonEmpty) {
@@ -826,7 +826,7 @@ class DataGeneratorFactoryTest extends SparkSuite {
               println(s"      Name: ${dept.getAs[String]("dept_name")} (should be from oneOf list)")
               println(s"      Budget: ${dept.getAs[Any]("budget")} (should be 50000-500000)")
               
-              val employees = dept.getAs[Seq[org.apache.spark.sql.Row]]("employees")
+              val employees = dept.getAs[Seq[Row]]("employees")
               println(s"      Employees array length: ${if (employees != null) employees.length else "null"}")
               
               if (employees != null && employees.nonEmpty) {
@@ -836,7 +836,7 @@ class DataGeneratorFactoryTest extends SparkSuite {
                   println(s"          Name: ${emp.getAs[String]("first_name")} ${emp.getAs[String]("last_name")}")
                   println(s"          Salary: ${emp.getAs[Any]("salary")} (should be 30000-200000)")
                   
-                  val skills = emp.getAs[Seq[org.apache.spark.sql.Row]]("skills")
+                  val skills = emp.getAs[Seq[Row]]("skills")
                   println(s"          Skills array length: ${if (skills != null) skills.length else "null"}")
                   
                   if (skills != null && skills.nonEmpty) {
@@ -845,7 +845,7 @@ class DataGeneratorFactoryTest extends SparkSuite {
                     }
                   }
                   
-                  val contact = emp.getAs[org.apache.spark.sql.Row]("contact")
+                  val contact = emp.getAs[Row]("contact")
                   if (contact != null) {
                     println(s"          Contact: ${contact.getAs[String]("phone")}, ${contact.getAs[String]("email")}")
                   }
@@ -962,7 +962,7 @@ class DataGeneratorFactoryTest extends SparkSuite {
 
     val rows = result.collect()
     rows.foreach { row =>
-      val header = row.getAs[org.apache.spark.sql.Row]("header")
+      val header = row.getAs[Row]("header")
       assert(header != null, "header should not be null")
       
       val messageId = header.getAs[String]("message_id")
@@ -1000,13 +1000,13 @@ class DataGeneratorFactoryTest extends SparkSuite {
 
     val rows = result.collect()
     rows.foreach { row =>
-      val root = row.getAs[org.apache.spark.sql.Row]("root")
+      val root = row.getAs[Row]("root")
       assert(root != null, "root should not be null")
       
-      val level1 = root.getAs[org.apache.spark.sql.Row]("level1")
+      val level1 = root.getAs[Row]("level1")
       assert(level1 != null, "level1 should not be null")
       
-      val level2 = level1.getAs[org.apache.spark.sql.Row]("level2")
+      val level2 = level1.getAs[Row]("level2")
       assert(level2 != null, "level2 should not be null")
       
       val messageId = level2.getAs[String]("message_id")
@@ -1052,7 +1052,7 @@ class DataGeneratorFactoryTest extends SparkSuite {
 
     val rows = result.collect()
     rows.foreach { row =>
-      val payments = row.getAs[Seq[org.apache.spark.sql.Row]]("payments")
+      val payments = row.getAs[Seq[Row]]("payments")
       assert(payments != null, "payments should not be null")
       
       // Get source values for SQL dependencies
@@ -1061,14 +1061,13 @@ class DataGeneratorFactoryTest extends SparkSuite {
       
       if (payments.nonEmpty) {
         payments.take(2).foreach { payment =>
-          val paymentInfo = payment.getAs[org.apache.spark.sql.Row]("payment_info")
+          val paymentInfo = payment.getAs[Row]("payment_info")
           assert(paymentInfo != null, "payment_info should not be null")
           
           val id = paymentInfo.getAs[String]("id")
           val paymentAmount = paymentInfo.getAs[Double]("amount")
           
           assert(id != null, "id should not be null")
-          assert(paymentAmount != null, "amount should not be null")
           assert(id.matches("PAY[0-9]{8}"), s"id should match PAY[0-9]{8} pattern: $id")
           assert(paymentAmount >= 10.0 && paymentAmount <= 1000.0, s"amount should be between 10.0 and 1000.0: $paymentAmount")
           
@@ -1076,14 +1075,13 @@ class DataGeneratorFactoryTest extends SparkSuite {
           assert(id == paymentId, "payment_info.id should match _payment_id")
           assert(paymentAmount == amount, "payment_info.amount should match _amount")
           
-          val details = paymentInfo.getAs[org.apache.spark.sql.Row]("details")
+          val details = paymentInfo.getAs[Row]("details")
           assert(details != null, "details should not be null")
           
           val referenceId = details.getAs[String]("reference_id")
           val calculatedFee = details.getAs[Double]("calculated_fee")
           
           assert(referenceId != null, "reference_id should not be null")
-          assert(calculatedFee != null, "calculated_fee should not be null")
           assert(referenceId.matches("PAY[0-9]{8}"), s"reference_id should match PAY[0-9]{8} pattern: $referenceId")
           
           // Verify SQL dependencies
@@ -1133,8 +1131,8 @@ class DataGeneratorFactoryTest extends SparkSuite {
     val rows = result.collect()
     rows.foreach { row =>
       val businessMsgId = row.getAs[String]("_business_msg_id")
-      val header = row.getAs[org.apache.spark.sql.Row]("business_application_header")
-      val document = row.getAs[org.apache.spark.sql.Row]("business_document")
+      val header = row.getAs[Row]("business_application_header")
+      val document = row.getAs[Row]("business_document")
       
       assert(header != null, "business_application_header should not be null")
       assert(document != null, "business_document should not be null")
@@ -1142,10 +1140,10 @@ class DataGeneratorFactoryTest extends SparkSuite {
       val headerMsgId = header.getAs[String]("business_message_identifier")
       assert(headerMsgId.matches("MSG[0-9]{10}"), s"business_message_identifier should match MSG[0-9]{10} pattern: $headerMsgId")
       
-      val directDebit = document.getAs[org.apache.spark.sql.Row]("customer_direct_debit_initiation_v11")
+      val directDebit = document.getAs[Row]("customer_direct_debit_initiation_v11")
       assert(directDebit != null, "customer_direct_debit_initiation_v11 should not be null")
       
-      val groupHeader = directDebit.getAs[org.apache.spark.sql.Row]("group_header")
+      val groupHeader = directDebit.getAs[Row]("group_header")
       assert(groupHeader != null, "group_header should not be null")
       
       val messageId = groupHeader.getAs[String]("message_identification")
@@ -1155,22 +1153,22 @@ class DataGeneratorFactoryTest extends SparkSuite {
       val numTransactions = groupHeader.getAs[Int]("number_of_transactions")
       assert(numTransactions >= 1 && numTransactions <= 3, s"number_of_transactions should be between 1 and 3: $numTransactions")
       
-      val paymentInfo = directDebit.getAs[Seq[org.apache.spark.sql.Row]]("payment_information")
+      val paymentInfo = directDebit.getAs[Seq[Row]]("payment_information")
       if (paymentInfo != null && paymentInfo.nonEmpty) {
         paymentInfo.foreach { payment =>
           val paymentId = payment.getAs[String]("payment_information_identification")
           assert(paymentId.matches("PAYINF[0-9]{3}"), s"payment_information_identification should match PAYINF[0-9]{3} pattern: $paymentId")
           
-          val transactions = payment.getAs[Seq[org.apache.spark.sql.Row]]("direct_debit_transaction_information")
+          val transactions = payment.getAs[Seq[Row]]("direct_debit_transaction_information")
           if (transactions != null && transactions.nonEmpty) {
             transactions.foreach { transaction =>
-              val paymentIdent = transaction.getAs[org.apache.spark.sql.Row]("payment_identification")
+              val paymentIdent = transaction.getAs[Row]("payment_identification")
               assert(paymentIdent != null, "payment_identification should not be null")
               
               val endToEndId = paymentIdent.getAs[String]("end_to_end_identification")
               assert(endToEndId == headerMsgId, "end_to_end_identification should match business_message_identifier")
               
-              val amount = transaction.getAs[org.apache.spark.sql.Row]("instructed_amount")
+              val amount = transaction.getAs[Row]("instructed_amount")
               assert(amount != null, "instructed_amount should not be null")
               
               val amountValue = amount.getAs[Double]("amount")
@@ -1214,10 +1212,10 @@ class DataGeneratorFactoryTest extends SparkSuite {
       assert(baseAmount >= 100.0 && baseAmount <= 1000.0, s"base_amount should be between 100.0 and 1000.0: $baseAmount")
       assert(taxRate >= 0.1 && taxRate <= 0.3, s"tax_rate should be between 0.1 and 0.3: $taxRate")
       
-      val invoice = row.getAs[org.apache.spark.sql.Row]("invoice")
+      val invoice = row.getAs[Row]("invoice")
       assert(invoice != null, "invoice should not be null")
       
-      val details = invoice.getAs[org.apache.spark.sql.Row]("details")
+      val details = invoice.getAs[Row]("details")
       assert(details != null, "details should not be null")
       
       val detailsBaseAmount = details.getAs[Double]("base_amount")
@@ -1255,13 +1253,13 @@ class DataGeneratorFactoryTest extends SparkSuite {
     val rows = result.collect()
     rows.foreach { row =>
       val refId = row.getAs[String]("_ref_id")
-      val container = row.getAs[org.apache.spark.sql.Row]("container")
+      val container = row.getAs[Row]("container")
       assert(container != null, "container should not be null")
       
-      val level1 = container.getAs[org.apache.spark.sql.Row]("level1")
+      val level1 = container.getAs[Row]("level1")
       assert(level1 != null, "level1 should not be null")
       
-      val level2 = level1.getAs[org.apache.spark.sql.Row]("level2")
+      val level2 = level1.getAs[Row]("level2")
       assert(level2 != null, "level2 should not be null")
       
       val reference = level2.getAs[String]("reference")
@@ -1299,13 +1297,13 @@ class DataGeneratorFactoryTest extends SparkSuite {
     val rows = result.collect()
     rows.foreach { row =>
       val businessMsgId = row.getAs[String]("_business_msg_id")
-      val root = row.getAs[org.apache.spark.sql.Row]("root")
+      val root = row.getAs[Row]("root")
       assert(root != null, "root should not be null")
       
-      val level1 = root.getAs[org.apache.spark.sql.Row]("level1")
+      val level1 = root.getAs[Row]("level1")
       assert(level1 != null, "level1 should not be null")
       
-      val level2 = level1.getAs[org.apache.spark.sql.Row]("level2")
+      val level2 = level1.getAs[Row]("level2")
       assert(level2 != null, "level2 should not be null")
       
       val messageId = level2.getAs[String]("message_id")
@@ -1315,5 +1313,724 @@ class DataGeneratorFactoryTest extends SparkSuite {
   }
 
   // ========== END SQL EXPRESSION TESTS ==========
+
+  // ========== NESTED ARRAY SQL REFERENCE TESTS ==========
+
+  test("Can handle SQL references within same array level") {
+    val sameArrayLevelFields = List(
+      Field("transactions", Some("array"), fields = List(
+        Field("amount", Some("double"), Map("min" -> 10.0, "max" -> 1000.0)),
+        Field("fee", Some("double"), Map("sql" -> "transactions.amount * 0.05")),
+        Field("net_amount", Some("double"), Map("sql" -> "transactions.amount - transactions.fee")),
+        Field("transaction_type", Some("string"), Map("sql" -> "CASE WHEN transactions.amount > 500 THEN 'LARGE' ELSE 'SMALL' END"))
+      ))
+    )
+
+    val step = Step("test_same_array_level", "json", fields = sameArrayLevelFields)
+    val result = dataGeneratorFactory.generateDataForStep(step, "json", 0, 3)
+
+    assert(result.columns.contains("transactions"))
+
+    val rows = result.collect()
+    rows.foreach { row =>
+      val transactions = row.getAs[Seq[Row]]("transactions")
+      assert(transactions != null, "transactions should not be null")
+      
+      if (transactions.nonEmpty) {
+        transactions.foreach { transaction =>
+          val amount = transaction.getAs[Double]("amount")
+          val fee = transaction.getAs[Double]("fee")
+          val netAmount = transaction.getAs[Double]("net_amount")
+          val transactionType = transaction.getAs[String]("transaction_type")
+          
+          assert(amount >= 10.0 && amount <= 1000.0, s"amount should be between 10.0 and 1000.0: $amount")
+          assert(fee == amount * 0.05, s"fee should be amount * 0.05: $fee")
+          assert(netAmount == amount - fee, s"net_amount should be amount - fee: $netAmount")
+          assert(
+            (amount > 500 && transactionType == "LARGE") || (amount <= 500 && transactionType == "SMALL"),
+            s"transaction_type should be 'LARGE' for amount > 500, 'SMALL' otherwise: $transactionType"
+          )
+        }
+      }
+    }
+  }
+
+  test("Can handle SQL references to nested arrays from outer arrays") {
+    val outerToNestedArrayFields = List(
+      Field("orders", Some("array"), fields = List(
+        Field("order_id", Some("string"), Map("regex" -> "ORD[0-9]{8}")),
+        Field("total_amount", Some("double"), Map("min" -> 100.0, "max" -> 2000.0)),
+        Field("items", Some("array"), fields = List(
+          Field("item_id", Some("string"), Map("regex" -> "ITEM[0-9]{8}")),
+          Field("price", Some("double"), Map("min" -> 10.0, "max" -> 200.0)),
+          Field("parent_order_id", Some("string"), Map("sql" -> "orders.order_id")),
+          Field("percentage_of_total", Some("double"), Map("sql" -> "orders.items.price / orders.total_amount * 100"))
+        ))
+      ))
+    )
+
+    val step = Step("test_outer_to_nested_array", "json", fields = outerToNestedArrayFields)
+    val result = dataGeneratorFactory.generateDataForStep(step, "json", 0, 2)
+
+    assert(result.columns.contains("orders"))
+
+    val rows = result.collect()
+    rows.foreach { row =>
+      val orders = row.getAs[Seq[Row]]("orders")
+      assert(orders != null, "orders should not be null")
+      
+      if (orders.nonEmpty) {
+        orders.foreach { order =>
+          val orderId = order.getAs[String]("order_id")
+          val totalAmount = order.getAs[Double]("total_amount")
+          val items = order.getAs[Seq[Row]]("items")
+          
+          assert(orderId.matches("ORD[0-9]{8}"), s"order_id should match ORD[0-9]{8} pattern: $orderId")
+          assert(totalAmount >= 100.0 && totalAmount <= 2000.0, s"total_amount should be between 100.0 and 2000.0: $totalAmount")
+          
+          if (items != null && items.nonEmpty) {
+            items.foreach { item =>
+              val itemId = item.getAs[String]("item_id")
+              val price = item.getAs[Double]("price")
+              val parentOrderId = item.getAs[String]("parent_order_id")
+              val percentageOfTotal = item.getAs[Double]("percentage_of_total")
+              
+              assert(itemId.matches("ITEM[0-9]{8}"), s"item_id should match ITEM[0-9]{8} pattern: $itemId")
+              assert(price >= 10.0 && price <= 200.0, s"price should be between 10.0 and 200.0: $price")
+              assert(parentOrderId == orderId, s"parent_order_id should match order_id: $parentOrderId")
+              assert(percentageOfTotal == (price / totalAmount * 100), s"percentage_of_total should be price / total_amount * 100: $percentageOfTotal")
+            }
+          }
+        }
+      }
+    }
+  }
+
+  test("Can handle SQL references to parent struct fields from within arrays") {
+    val parentStructToArrayFields = List(
+      Field("customer_id", Some("string"), Map("regex" -> "CUST[0-9]{8}")),
+      Field("customer_name", Some("string"), Map("expression" -> "#{Name.name}")),
+      Field("account_balance", Some("double"), Map("min" -> 1000.0, "max" -> 10000.0)),
+      Field("transactions", Some("array"), fields = List(
+        Field("transaction_id", Some("string"), Map("regex" -> "TXN[0-9]{10}")),
+        Field("amount", Some("double"), Map("min" -> 10.0, "max" -> 500.0)),
+        Field("owner_id", Some("string"), Map("sql" -> "customer_id")),
+        Field("owner_name", Some("string"), Map("sql" -> "customer_name")),
+        Field("balance_after_transaction", Some("double"), Map("sql" -> "account_balance - transactions.amount")),
+        Field("is_large_for_balance", Some("boolean"), Map("sql" -> "transactions.amount > (account_balance * 0.1)"))
+      ))
+    )
+
+    val step = Step("test_parent_struct_to_array", "json", fields = parentStructToArrayFields)
+    val result = dataGeneratorFactory.generateDataForStep(step, "json", 0, 2)
+
+    assert(result.columns.contains("customer_id"))
+    assert(result.columns.contains("customer_name"))
+    assert(result.columns.contains("account_balance"))
+    assert(result.columns.contains("transactions"))
+
+    val rows = result.collect()
+    rows.foreach { row =>
+      val customerId = row.getAs[String]("customer_id")
+      val customerName = row.getAs[String]("customer_name")
+      val accountBalance = row.getAs[Double]("account_balance")
+      val transactions = row.getAs[Seq[Row]]("transactions")
+      
+      assert(customerId.matches("CUST[0-9]{8}"), s"customer_id should match CUST[0-9]{8} pattern: $customerId")
+      assert(customerName != null && customerName.nonEmpty, "customer_name should not be null or empty")
+      assert(accountBalance >= 1000.0 && accountBalance <= 10000.0, s"account_balance should be between 1000.0 and 10000.0: $accountBalance")
+      assert(transactions != null, "transactions should not be null")
+      
+      if (transactions.nonEmpty) {
+        transactions.foreach { transaction =>
+          val transactionId = transaction.getAs[String]("transaction_id")
+          val amount = transaction.getAs[Double]("amount")
+          val ownerId = transaction.getAs[String]("owner_id")
+          val ownerName = transaction.getAs[String]("owner_name")
+          val balanceAfterTransaction = transaction.getAs[Double]("balance_after_transaction")
+          val isLargeForBalance = transaction.getAs[Boolean]("is_large_for_balance")
+          
+          assert(transactionId.matches("TXN[0-9]{10}"), s"transaction_id should match TXN[0-9]{10} pattern: $transactionId")
+          assert(amount >= 10.0 && amount <= 500.0, s"amount should be between 10.0 and 500.0: $amount")
+          assert(ownerId == customerId, s"owner_id should match customer_id: $ownerId")
+          assert(ownerName == customerName, s"owner_name should match customer_name: $ownerName")
+          assert(balanceAfterTransaction == accountBalance - amount, s"balance_after_transaction should be account_balance - amount: $balanceAfterTransaction")
+          assert(isLargeForBalance == (amount > (accountBalance * 0.1)), s"is_large_for_balance should be amount > (account_balance * 0.1): $isLargeForBalance")
+        }
+      }
+    }
+  }
+
+  test("Can handle SQL references across different array levels") {
+    val crossArrayLevelFields = List(
+      Field("customers", Some("array"), fields = List(
+        Field("customer_id", Some("string"), Map("regex" -> "CUST[0-9]{8}")),
+        Field("customer_name", Some("string"), Map("expression" -> "#{Name.name}")),
+        Field("orders", Some("array"), fields = List(
+          Field("order_id", Some("string"), Map("regex" -> "ORD[0-9]{8}")),
+          Field("order_total", Some("double"), Map("min" -> 100.0, "max" -> 1000.0)),
+          Field("customer_ref", Some("string"), Map("sql" -> "customers.customer_id")),
+          Field("customer_name_ref", Some("string"), Map("sql" -> "customers.customer_name")),
+          Field("line_items", Some("array"), fields = List(
+            Field("item_id", Some("string"), Map("regex" -> "ITEM[0-9]{8}")),
+            Field("item_price", Some("double"), Map("min" -> 10.0, "max" -> 200.0)),
+            Field("grandparent_customer_id", Some("string"), Map("sql" -> "customers.customer_id")),
+            Field("parent_order_id", Some("string"), Map("sql" -> "customers.orders.order_id")),
+            Field("percentage_of_order", Some("double"), Map("sql" -> "customers.orders.line_items.item_price / customers.orders.order_total * 100"))
+          ))
+        ))
+      ))
+    )
+
+    val step = Step("test_cross_array_level", "json", fields = crossArrayLevelFields)
+    val result = dataGeneratorFactory.generateDataForStep(step, "json", 0, 1)
+
+    assert(result.columns.contains("customers"))
+
+    val rows = result.collect()
+    rows.foreach { row =>
+      val customers = row.getAs[Seq[Row]]("customers")
+      assert(customers != null, "customers should not be null")
+      
+      if (customers.nonEmpty) {
+        customers.foreach { customer =>
+          val customerId = customer.getAs[String]("customer_id")
+          val customerName = customer.getAs[String]("customer_name")
+          val orders = customer.getAs[Seq[Row]]("orders")
+          
+          assert(customerId.matches("CUST[0-9]{8}"), s"customer_id should match CUST[0-9]{8} pattern: $customerId")
+          assert(customerName != null && customerName.nonEmpty, "customer_name should not be null or empty")
+          assert(orders != null, "orders should not be null")
+          
+          if (orders.nonEmpty) {
+            orders.foreach { order =>
+              val orderId = order.getAs[String]("order_id")
+              val orderTotal = order.getAs[Double]("order_total")
+              val customerRef = order.getAs[String]("customer_ref")
+              val customerNameRef = order.getAs[String]("customer_name_ref")
+              val lineItems = order.getAs[Seq[Row]]("line_items")
+              
+              assert(orderId.matches("ORD[0-9]{8}"), s"order_id should match ORD[0-9]{8} pattern: $orderId")
+              assert(orderTotal >= 100.0 && orderTotal <= 1000.0, s"order_total should be between 100.0 and 1000.0: $orderTotal")
+              assert(customerRef == customerId, s"customer_ref should match customer_id: $customerRef")
+              assert(customerNameRef == customerName, s"customer_name_ref should match customer_name: $customerNameRef")
+              assert(lineItems != null, "line_items should not be null")
+              
+              if (lineItems.nonEmpty) {
+                lineItems.foreach { lineItem =>
+                  val itemId = lineItem.getAs[String]("item_id")
+                  val itemPrice = lineItem.getAs[Double]("item_price")
+                  val grandparentCustomerId = lineItem.getAs[String]("grandparent_customer_id")
+                  val parentOrderId = lineItem.getAs[String]("parent_order_id")
+                  val percentageOfOrder = lineItem.getAs[Double]("percentage_of_order")
+                  
+                  assert(itemId.matches("ITEM[0-9]{8}"), s"item_id should match ITEM[0-9]{8} pattern: $itemId")
+                  assert(itemPrice >= 10.0 && itemPrice <= 200.0, s"item_price should be between 10.0 and 200.0: $itemPrice")
+                  assert(grandparentCustomerId == customerId, s"grandparent_customer_id should match customer_id: $grandparentCustomerId")
+                  assert(parentOrderId == orderId, s"parent_order_id should match order_id: $parentOrderId")
+                  assert(percentageOfOrder == (itemPrice / orderTotal * 100), s"percentage_of_order should be item_price / order_total * 100: $percentageOfOrder")
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  test("Can handle SQL references that skip intermediate array levels (pain-008 style)") {
+    val skipIntermediateArrayFields = List(
+      Field("business_application_header", Some("struct"), fields = List(
+        Field("business_message_identifier", Some("string"), Map("regex" -> "MSG[0-9]{10}"))
+      )),
+      Field("business_document", Some("struct"), fields = List(
+        Field("customer_direct_debit_initiation_v11", Some("struct"), fields = List(
+          Field("payment_information", Some("array"), fields = List(
+            Field("payment_information_identification", Some("string"), Map("regex" -> "PAYINF[0-9]{3}")),
+            Field("debtor_agent", Some("struct"), fields = List(
+              Field("financial_institution_identification", Some("struct"), fields = List(
+                Field("bicfi", Some("string"), Map("regex" -> "CTBAAU2S[0-9]{3}"))
+              ))
+            )),
+            Field("direct_debit_transaction_information", Some("array"), fields = List(
+              Field("payment_identification", Some("struct"), fields = List(
+                Field("end_to_end_identification", Some("string"), Map("regex" -> "E2E[0-9]{10}"))
+              )),
+              Field("debtor_account", Some("struct"), fields = List(
+                Field("identification", Some("struct"), fields = List(
+                  Field("other", Some("struct"), fields = List(
+                    // This should work: references bicfi field that's in the same payment_information array
+                    // but skips the direct_debit_transaction_information level
+                    Field("identification", Some("string"), Map("sql" -> "CASE WHEN business_document.customer_direct_debit_initiation_v11.payment_information.debtor_agent.financial_institution_identification.bicfi = 'CTBAAU2S123' THEN '06223622993847' ELSE '12345612345678' END"))
+                  ))
+                ))
+              ))
+            ))
+          ))
+        ))
+      ))
+    )
+
+    val step = Step("test_skip_intermediate_array", "json", fields = skipIntermediateArrayFields)
+    val result = dataGeneratorFactory.generateDataForStep(step, "json", 0, 2)
+
+    assert(result.columns.contains("business_application_header"))
+    assert(result.columns.contains("business_document"))
+
+    val rows = result.collect()
+    rows.foreach { row =>
+      val header = row.getAs[Row]("business_application_header")
+      val document = row.getAs[Row]("business_document")
+      
+      assert(header != null, "business_application_header should not be null")
+      assert(document != null, "business_document should not be null")
+      
+      val headerMsgId = header.getAs[String]("business_message_identifier")
+      assert(headerMsgId.matches("MSG[0-9]{10}"), s"business_message_identifier should match MSG[0-9]{10} pattern: $headerMsgId")
+      
+      val directDebit = document.getAs[Row]("customer_direct_debit_initiation_v11")
+      assert(directDebit != null, "customer_direct_debit_initiation_v11 should not be null")
+      
+      val paymentInfo = directDebit.getAs[Seq[Row]]("payment_information")
+      assert(paymentInfo != null, "payment_information should not be null")
+      
+      if (paymentInfo.nonEmpty) {
+        paymentInfo.foreach { payment =>
+          val paymentId = payment.getAs[String]("payment_information_identification")
+          assert(paymentId.matches("PAYINF[0-9]{3}"), s"payment_information_identification should match PAYINF[0-9]{3} pattern: $paymentId")
+          
+          val debtorAgent = payment.getAs[Row]("debtor_agent")
+          assert(debtorAgent != null, "debtor_agent should not be null")
+          
+          val financialInstitution = debtorAgent.getAs[Row]("financial_institution_identification")
+          assert(financialInstitution != null, "financial_institution_identification should not be null")
+          
+          val bicfi = financialInstitution.getAs[String]("bicfi")
+          assert(bicfi.matches("CTBAAU2S[0-9]{3}"), s"bicfi should match CTBAAU2S[0-9]{3} pattern: $bicfi")
+          
+          val transactions = payment.getAs[Seq[Row]]("direct_debit_transaction_information")
+          assert(transactions != null, "direct_debit_transaction_information should not be null")
+          
+          if (transactions.nonEmpty) {
+            transactions.foreach { transaction =>
+              val paymentIdent = transaction.getAs[Row]("payment_identification")
+              assert(paymentIdent != null, "payment_identification should not be null")
+              
+              val endToEndId = paymentIdent.getAs[String]("end_to_end_identification")
+              assert(endToEndId.matches("E2E[0-9]{10}"), s"end_to_end_identification should match E2E[0-9]{10} pattern: $endToEndId")
+              
+              val debtorAccount = transaction.getAs[Row]("debtor_account")
+              assert(debtorAccount != null, "debtor_account should not be null")
+              
+              val identification = debtorAccount.getAs[Row]("identification")
+              assert(identification != null, "identification should not be null")
+              
+              val other = identification.getAs[Row]("other")
+              assert(other != null, "other should not be null")
+              
+              val accountIdentification = other.getAs[String]("identification")
+              assert(accountIdentification != null, "account identification should not be null")
+              
+              // This is the key test - the account identification should be based on the bicfi field
+              // from the same payment_information array, but the SQL reference skips the 
+              // direct_debit_transaction_information level
+              if (bicfi == "CTBAAU2S123") {
+                assert(accountIdentification == "06223622993847", s"account identification should be '06223622993847' for bicfi 'CTBAAU2S123', but was: $accountIdentification")
+              } else {
+                assert(accountIdentification == "12345612345678", s"account identification should be '12345612345678' for bicfi other than 'CTBAAU2S123', but was: $accountIdentification")
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  test("Can handle complex nested array SQL with multiple references") {
+    val complexNestedArrayFields = List(
+      Field("global_id", Some("string"), Map("regex" -> "GLOBAL[0-9]{8}")),
+      Field("root_amount", Some("double"), Map("min" -> 10000.0, "max" -> 50000.0)),
+      Field("organizations", Some("array"), fields = List(
+        Field("org_id", Some("string"), Map("regex" -> "ORG[0-9]{8}")),
+        Field("org_name", Some("string"), Map("expression" -> "#{Company.name}")),
+        Field("org_budget", Some("double"), Map("min" -> 5000.0, "max" -> 20000.0)),
+        Field("departments", Some("array"), fields = List(
+          Field("dept_id", Some("string"), Map("regex" -> "DEPT[0-9]{8}")),
+          Field("dept_name", Some("string"), Map("expression" -> "#{Commerce.department}")),
+          Field("dept_budget", Some("double"), Map("min" -> 1000.0, "max" -> 5000.0)),
+          Field("parent_org_id", Some("string"), Map("sql" -> "organizations.org_id")),
+          Field("parent_org_name", Some("string"), Map("sql" -> "organizations.org_name")),
+          Field("budget_percentage", Some("double"), Map("sql" -> "organizations.departments.dept_budget / organizations.org_budget * 100")),
+          Field("employees", Some("array"), fields = List(
+            Field("emp_id", Some("string"), Map("regex" -> "EMP[0-9]{8}")),
+            Field("emp_name", Some("string"), Map("expression" -> "#{Name.name}")),
+            Field("salary", Some("double"), Map("min" -> 50000.0, "max" -> 150000.0)),
+            Field("global_ref", Some("string"), Map("sql" -> "global_id")),
+            Field("org_ref", Some("string"), Map("sql" -> "organizations.org_id")),
+            Field("dept_ref", Some("string"), Map("sql" -> "organizations.departments.dept_id")),
+            Field("salary_vs_root_amount", Some("double"), Map("sql" -> "organizations.departments.employees.salary / root_amount * 100")),
+            Field("salary_vs_org_budget", Some("double"), Map("sql" -> "organizations.departments.employees.salary / organizations.org_budget * 100")),
+            Field("salary_vs_dept_budget", Some("double"), Map("sql" -> "organizations.departments.employees.salary / organizations.departments.dept_budget * 100"))
+          ))
+        ))
+      ))
+    )
+
+    val step = Step("test_complex_nested_array", "json", fields = complexNestedArrayFields)
+    val result = dataGeneratorFactory.generateDataForStep(step, "json", 0, 1)
+
+    assert(result.columns.contains("global_id"))
+    assert(result.columns.contains("root_amount"))
+    assert(result.columns.contains("organizations"))
+
+    val rows = result.collect()
+    rows.foreach { row =>
+      val globalId = row.getAs[String]("global_id")
+      val rootAmount = row.getAs[Double]("root_amount")
+      val organizations = row.getAs[Seq[Row]]("organizations")
+      
+      assert(globalId.matches("GLOBAL[0-9]{8}"), s"global_id should match GLOBAL[0-9]{8} pattern: $globalId")
+      assert(rootAmount >= 10000.0 && rootAmount <= 50000.0, s"root_amount should be between 10000.0 and 50000.0: $rootAmount")
+      assert(organizations != null, "organizations should not be null")
+      
+      if (organizations.nonEmpty) {
+        organizations.foreach { org =>
+          val orgId = org.getAs[String]("org_id")
+          val orgName = org.getAs[String]("org_name")
+          val orgBudget = org.getAs[Double]("org_budget")
+          val departments = org.getAs[Seq[Row]]("departments")
+          
+          assert(orgId.matches("ORG[0-9]{8}"), s"org_id should match ORG[0-9]{8} pattern: $orgId")
+          assert(orgName != null && orgName.nonEmpty, "org_name should not be null or empty")
+          assert(orgBudget >= 5000.0 && orgBudget <= 20000.0, s"org_budget should be between 5000.0 and 20000.0: $orgBudget")
+          assert(departments != null, "departments should not be null")
+          
+          if (departments.nonEmpty) {
+            departments.foreach { dept =>
+              val deptId = dept.getAs[String]("dept_id")
+              val deptName = dept.getAs[String]("dept_name")
+              val deptBudget = dept.getAs[Double]("dept_budget")
+              val parentOrgId = dept.getAs[String]("parent_org_id")
+              val parentOrgName = dept.getAs[String]("parent_org_name")
+              val budgetPercentage = dept.getAs[Double]("budget_percentage")
+              val employees = dept.getAs[Seq[Row]]("employees")
+              
+              assert(deptId.matches("DEPT[0-9]{8}"), s"dept_id should match DEPT[0-9]{8} pattern: $deptId")
+              assert(deptName != null && deptName.nonEmpty, "dept_name should not be null or empty")
+              assert(deptBudget >= 1000.0 && deptBudget <= 5000.0, s"dept_budget should be between 1000.0 and 5000.0: $deptBudget")
+              assert(parentOrgId == orgId, s"parent_org_id should match org_id: $parentOrgId")
+              assert(parentOrgName == orgName, s"parent_org_name should match org_name: $parentOrgName")
+              assert(budgetPercentage == (deptBudget / orgBudget * 100), s"budget_percentage should be dept_budget / org_budget * 100: $budgetPercentage")
+              assert(employees != null, "employees should not be null")
+              
+              if (employees.nonEmpty) {
+                employees.foreach { emp =>
+                  val empId = emp.getAs[String]("emp_id")
+                  val empName = emp.getAs[String]("emp_name")
+                  val salary = emp.getAs[Double]("salary")
+                  val globalRef = emp.getAs[String]("global_ref")
+                  val orgRef = emp.getAs[String]("org_ref")
+                  val deptRef = emp.getAs[String]("dept_ref")
+                  val salaryVsRootAmount = emp.getAs[Double]("salary_vs_root_amount")
+                  val salaryVsOrgBudget = emp.getAs[Double]("salary_vs_org_budget")
+                  val salaryVsDeptBudget = emp.getAs[Double]("salary_vs_dept_budget")
+                  
+                  assert(empId.matches("EMP[0-9]{8}"), s"emp_id should match EMP[0-9]{8} pattern: $empId")
+                  assert(empName != null && empName.nonEmpty, "emp_name should not be null or empty")
+                  assert(salary >= 50000.0 && salary <= 150000.0, s"salary should be between 50000.0 and 150000.0: $salary")
+                  assert(globalRef == globalId, s"global_ref should match global_id: $globalRef")
+                  assert(orgRef == orgId, s"org_ref should match org_id: $orgRef")
+                  assert(deptRef == deptId, s"dept_ref should match dept_id: $deptRef")
+                  assert(salaryVsRootAmount == (salary / rootAmount * 100), s"salary_vs_root_amount should be salary / root_amount * 100: $salaryVsRootAmount")
+                  assert(salaryVsOrgBudget == (salary / orgBudget * 100), s"salary_vs_org_budget should be salary / org_budget * 100: $salaryVsOrgBudget")
+                  assert(salaryVsDeptBudget == (salary / deptBudget * 100), s"salary_vs_dept_budget should be salary / dept_budget * 100: $salaryVsDeptBudget")
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  // ========== END NESTED ARRAY SQL REFERENCE TESTS ==========
+
+  // ========== SQL AGGREGATES FOR DATA GENERATION TESTS ==========
+  
+  test("Can use SQL aggregates for realistic data generation - Running totals") {
+    val runningTotalFields = List(
+      Field("order_id", Some("string"), Map("regex" -> "ORD[0-9]{6}")),
+      Field("customer_id", Some("string"), Map("regex" -> "CUST[0-9]{4}")),
+      Field("item_amount", Some("double"), Map("min" -> 10.0, "max" -> 1000.0)),
+      Field("running_total", Some("double"), Map("sql" -> "SUM(item_amount) OVER (PARTITION BY customer_id ORDER BY order_id ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW)")),
+      Field("order_rank", Some("int"), Map("sql" -> "ROW_NUMBER() OVER (PARTITION BY customer_id ORDER BY item_amount DESC)")),
+      Field("avg_customer_order", Some("double"), Map("sql" -> "AVG(item_amount) OVER (PARTITION BY customer_id)"))
+    )
+    
+    val step = Step("orders", "parquet", Count(records = Some(10)), Map("path" -> "sample/output/parquet/orders"), runningTotalFields)
+    val df = dataGeneratorFactory.generateDataForStep(step, "parquet", 0, 10)
+    df.cache()
+    
+    assertResult(10L)(df.count())
+    val rows = df.collect()
+    
+    // Verify running totals are calculated correctly
+    val customerGroups = rows.groupBy(_.getAs[String]("customer_id"))
+    customerGroups.foreach { case (customerId, customerRows) =>
+      val sortedRows = customerRows.sortBy(_.getAs[String]("order_id"))
+      var runningSum = 0.0
+      
+      sortedRows.foreach { row =>
+        val itemAmount = row.getAs[Double]("item_amount")
+        runningSum += itemAmount
+        val calculatedRunningTotal = row.getAs[Double]("running_total")
+        
+        assert(math.abs(calculatedRunningTotal - runningSum) < 0.001, 
+          s"Running total mismatch for customer $customerId: expected $runningSum, got $calculatedRunningTotal")
+      }
+    }
+    
+    df.unpersist()
+  }
+  
+  test("Can use SQL aggregates for data distribution - Percentiles and quartiles") {
+    val distributionFields = List(
+      Field("product_id", Some("string"), Map("regex" -> "PROD[0-9]{4}")),
+      Field("sales_amount", Some("double"), Map("min" -> 1000.0, "max" -> 50000.0)),
+      Field("sales_percentile", Some("double"), Map("sql" -> "PERCENT_RANK() OVER (ORDER BY sales_amount)")),
+      Field("sales_quartile", Some("int"), Map("sql" -> "NTILE(4) OVER (ORDER BY sales_amount)")),
+      // Use supported PERCENT_RANK instead of unavailable PERCENTILE_CONT
+      Field("sales_category", Some("string"), Map("sql" -> "CASE WHEN PERCENT_RANK() OVER (ORDER BY sales_amount) > 0.75 THEN 'HIGH' WHEN PERCENT_RANK() OVER (ORDER BY sales_amount) > 0.5 THEN 'MEDIUM' ELSE 'LOW' END"))
+    )
+    
+    val step = Step("sales", "parquet", Count(records = Some(20)), Map("path" -> "sample/output/parquet/sales"), distributionFields)
+    val df = dataGeneratorFactory.generateDataForStep(step, "parquet", 0, 20)
+    df.cache()
+    
+    assertResult(20L)(df.count())
+    val rows = df.collect()
+    
+    // Verify percentiles are between 0 and 1
+    rows.foreach { row =>
+      val percentile = row.getAs[Double]("sales_percentile")
+      assert(percentile >= 0.0 && percentile <= 1.0, s"Percentile should be between 0 and 1: $percentile")
+    }
+    
+    // Verify quartiles are 1, 2, 3, or 4
+    rows.foreach { row =>
+      val quartile = row.getAs[Int]("sales_quartile")
+      assert(quartile >= 1 && quartile <= 4, s"Quartile should be between 1 and 4: $quartile")
+    }
+    
+    // Verify categories are correctly assigned
+    val categories = rows.map(_.getAs[String]("sales_category")).distinct
+    assert(categories.toSet.subsetOf(Set("HIGH", "MEDIUM", "LOW")), 
+      s"Categories should be HIGH, MEDIUM, or LOW: ${categories.mkString(", ")}")
+    
+    df.unpersist()
+  }
+  
+  test("Can use SQL aggregates for time series data generation") {
+    val timeSeriesFields = List(
+      Field("timestamp", Some("string"), Map("sql" -> "DATE_ADD('2023-01-01', CAST(__index_inc AS INT))")),
+      Field("sensor_value", Some("double"), Map("min" -> 20.0, "max" -> 80.0)),
+      Field("moving_avg_3", Some("double"), Map("sql" -> "AVG(sensor_value) OVER (ORDER BY timestamp ROWS BETWEEN 2 PRECEDING AND CURRENT ROW)")),
+      Field("moving_avg_7", Some("double"), Map("sql" -> "AVG(sensor_value) OVER (ORDER BY timestamp ROWS BETWEEN 6 PRECEDING AND CURRENT ROW)")),
+      Field("daily_diff", Some("double"), Map("sql" -> "sensor_value - LAG(sensor_value, 1, sensor_value) OVER (ORDER BY timestamp)")),
+      Field("trend_direction", Some("string"), Map("sql" -> "CASE WHEN sensor_value > LAG(sensor_value, 1, sensor_value) OVER (ORDER BY timestamp) THEN 'UP' WHEN sensor_value < LAG(sensor_value, 1, sensor_value) OVER (ORDER BY timestamp) THEN 'DOWN' ELSE 'FLAT' END"))
+    )
+    
+    val step = Step("timeseries", "parquet", Count(records = Some(15)), Map("path" -> "sample/output/parquet/timeseries"), timeSeriesFields)
+    val df = dataGeneratorFactory.generateDataForStep(step, "parquet", 0, 15)
+    df.cache()
+    
+    assertResult(15L)(df.count())
+    val rows = df.collect()
+    
+    // Verify moving averages are calculated correctly
+    val sortedRows = rows.sortBy(_.getAs[String]("timestamp"))
+    sortedRows.zipWithIndex.foreach { case (row, index) =>
+      val movingAvg3 = row.getAs[Double]("moving_avg_3")
+      val movingAvg7 = row.getAs[Double]("moving_avg_7")
+      
+      assert(movingAvg3 >= 20.0 && movingAvg3 <= 80.0, s"Moving average 3 should be within sensor value range: $movingAvg3")
+      assert(movingAvg7 >= 20.0 && movingAvg7 <= 80.0, s"Moving average 7 should be within sensor value range: $movingAvg7")
+    }
+    
+    // Verify trend directions are valid
+    val trendDirections = rows.map(_.getAs[String]("trend_direction")).distinct
+    assert(trendDirections.toSet.subsetOf(Set("UP", "DOWN", "FLAT")), 
+      s"Trend directions should be UP, DOWN, or FLAT: ${trendDirections.mkString(", ")}")
+    
+    df.unpersist()
+  }
+  
+  test("Can use SQL aggregates for complex business logic - Order fulfillment") {
+    val orderFulfillmentFields = List(
+      Field("order_id", Some("string"), Map("regex" -> "ORD[0-9]{6}")),
+      Field("customer_segment", Some("string"), Map("oneOf" -> Array("PREMIUM", "STANDARD", "BASIC"))),
+      Field("order_amount", Some("double"), Map("min" -> 100.0, "max" -> 5000.0)),
+      Field("base_shipping_days", Some("int"), Map("min" -> 3, "max" -> 10)),
+      Field("customer_lifetime_value", Some("double"), Map("sql" -> "CASE WHEN customer_segment = 'PREMIUM' THEN 10000 + RAND() * 40000 WHEN customer_segment = 'STANDARD' THEN 5000 + RAND() * 20000 ELSE 1000 + RAND() * 10000 END")),
+      Field("priority_score", Some("double"), Map("sql" -> "PERCENT_RANK() OVER (ORDER BY customer_lifetime_value DESC) * 0.4 + PERCENT_RANK() OVER (ORDER BY order_amount DESC) * 0.6")),
+      Field("expedited_shipping", Some("boolean"), Map("sql" -> "priority_score > 0.75")),
+      Field("estimated_delivery_days", Some("int"), Map("sql" -> "CASE WHEN expedited_shipping THEN GREATEST(1, base_shipping_days - 2) ELSE base_shipping_days END")),
+      Field("shipping_cost", Some("double"), Map("sql" -> "CASE WHEN expedited_shipping THEN order_amount * 0.05 + 25 ELSE order_amount * 0.02 + 10 END"))
+    )
+    
+    val step = Step("fulfillment", "parquet", Count(records = Some(50)), Map("path" -> "sample/output/parquet/fulfillment"), orderFulfillmentFields)
+    val df = dataGeneratorFactory.generateDataForStep(step, "parquet", 0, 50)
+    df.cache()
+    
+    assertResult(50L)(df.count())
+    val rows = df.collect()
+    
+    // Verify business logic is applied correctly
+    rows.foreach { row =>
+      val customerSegment = row.getAs[String]("customer_segment")
+      val customerLifetimeValue = row.getAs[Double]("customer_lifetime_value")
+      val priorityScore = row.getAs[Double]("priority_score")
+      val expeditedShipping = row.getAs[Boolean]("expedited_shipping")
+      val estimatedDeliveryDays = row.getAs[Int]("estimated_delivery_days")
+      val baseShippingDays = row.getAs[Int]("base_shipping_days")
+      val orderAmount = row.getAs[Double]("order_amount")
+      val shippingCost = row.getAs[Double]("shipping_cost")
+      
+      // Verify customer lifetime value ranges based on segment
+      customerSegment match {
+        case "PREMIUM" => assert(customerLifetimeValue >= 10000 && customerLifetimeValue <= 50000, 
+          s"Premium customer lifetime value should be between 10000 and 50000: $customerLifetimeValue")
+        case "STANDARD" => assert(customerLifetimeValue >= 5000 && customerLifetimeValue <= 25000, 
+          s"Standard customer lifetime value should be between 5000 and 25000: $customerLifetimeValue")
+        case "BASIC" => assert(customerLifetimeValue >= 1000 && customerLifetimeValue <= 11000, 
+          s"Basic customer lifetime value should be between 1000 and 11000: $customerLifetimeValue")
+      }
+      
+      // Verify priority score is between 0 and 1
+      assert(priorityScore >= 0.0 && priorityScore <= 1.0, s"Priority score should be between 0 and 1: $priorityScore")
+      
+      // Verify expedited shipping logic
+      if (expeditedShipping) {
+        assert(priorityScore > 0.75, s"Expedited shipping should only be true for priority score > 0.75: $priorityScore")
+        assert(estimatedDeliveryDays >= 1 && estimatedDeliveryDays <= baseShippingDays - 2, 
+          s"Expedited delivery should be faster: estimated=$estimatedDeliveryDays, base=$baseShippingDays")
+      } else {
+        assert(estimatedDeliveryDays == baseShippingDays, 
+          s"Regular shipping should match base shipping days: estimated=$estimatedDeliveryDays, base=$baseShippingDays")
+      }
+      
+      // Verify shipping cost calculation
+      val expectedShippingCost = if (expeditedShipping) orderAmount * 0.05 + 25 else orderAmount * 0.02 + 10
+      assert(math.abs(shippingCost - expectedShippingCost) < 0.001, 
+        s"Shipping cost calculation mismatch: expected $expectedShippingCost, got $shippingCost")
+    }
+    
+    df.unpersist()
+  }
+  
+  test("Can use SQL aggregates for financial data generation - Portfolio analysis") {
+    val portfolioFields = List(
+      Field("security_id", Some("string"), Map("regex" -> "SEC[0-9]{4}")),
+      Field("sector", Some("string"), Map("oneOf" -> Array("TECH", "FINANCE", "HEALTHCARE", "ENERGY", "CONSUMER"))),
+      Field("market_cap", Some("double"), Map("min" -> 1000000000.0, "max" -> 1000000000000.0)), // 1B to 1T
+      Field("daily_return", Some("double"), Map("min" -> -0.15, "max" -> 0.15)), // -15% to +15%
+      Field("sector_avg_return", Some("double"), Map("sql" -> "AVG(daily_return) OVER (PARTITION BY sector)")),
+      Field("sector_volatility", Some("double"), Map("sql" -> "STDDEV(daily_return) OVER (PARTITION BY sector)")),
+      Field("relative_performance", Some("double"), Map("sql" -> "daily_return - sector_avg_return")),
+      Field("market_cap_percentile", Some("double"), Map("sql" -> "PERCENT_RANK() OVER (ORDER BY market_cap)")),
+      Field("risk_category", Some("string"), Map("sql" -> "CASE WHEN sector_volatility > 0.08 THEN 'HIGH_RISK' WHEN sector_volatility > 0.05 THEN 'MEDIUM_RISK' ELSE 'LOW_RISK' END")),
+      Field("investment_grade", Some("string"), Map("sql" -> "CASE WHEN market_cap_percentile > 0.8 AND relative_performance > 0 THEN 'A' WHEN market_cap_percentile > 0.6 THEN 'B' WHEN market_cap_percentile > 0.4 THEN 'C' ELSE 'D' END"))
+    )
+    
+    val step = Step("portfolio", "parquet", Count(records = Some(100)), Map("path" -> "sample/output/parquet/portfolio"), portfolioFields)
+    val df = dataGeneratorFactory.generateDataForStep(step, "parquet", 0, 100)
+    df.cache()
+    
+    assertResult(100L)(df.count())
+    val rows = df.collect()
+    
+    // Verify sector-based calculations
+    val sectorGroups = rows.groupBy(_.getAs[String]("sector"))
+    sectorGroups.foreach { case (sector, sectorRows) =>
+      val sectorReturns = sectorRows.map(_.getAs[Double]("daily_return"))
+      val expectedSectorAvg = sectorReturns.sum / sectorReturns.length
+      
+      sectorRows.foreach { row =>
+        val sectorAvgReturn = row.getAs[Double]("sector_avg_return")
+        val relativePerformance = row.getAs[Double]("relative_performance")
+        val dailyReturn = row.getAs[Double]("daily_return")
+        
+        assert(math.abs(sectorAvgReturn - expectedSectorAvg) < 0.001, 
+          s"Sector average return mismatch for $sector: expected $expectedSectorAvg, got $sectorAvgReturn")
+        assert(math.abs(relativePerformance - (dailyReturn - sectorAvgReturn)) < 0.001, 
+          s"Relative performance calculation error: expected ${dailyReturn - sectorAvgReturn}, got $relativePerformance")
+      }
+    }
+    
+    // Verify risk categories and investment grades are valid
+    val riskCategories = rows.map(_.getAs[String]("risk_category")).distinct
+    assert(riskCategories.toSet.subsetOf(Set("HIGH_RISK", "MEDIUM_RISK", "LOW_RISK")), 
+      s"Risk categories should be HIGH_RISK, MEDIUM_RISK, or LOW_RISK: ${riskCategories.mkString(", ")}")
+    
+    val investmentGrades = rows.map(_.getAs[String]("investment_grade")).distinct
+    assert(investmentGrades.toSet.subsetOf(Set("A", "B", "C", "D")), 
+      s"Investment grades should be A, B, C, or D: ${investmentGrades.mkString(", ")}")
+    
+    df.unpersist()
+  }
+  
+  test("Can use SQL aggregates for hierarchical data generation - Organizational structure") {
+    val orgStructureFields = List(
+      Field("employee_id", Some("string"), Map("regex" -> "EMP[0-9]{4}")),
+      Field("department", Some("string"), Map("oneOf" -> Array("SALES", "ENGINEERING", "MARKETING", "FINANCE", "HR"))),
+      Field("level", Some("int"), Map("min" -> 1, "max" -> 5)),
+      Field("salary", Some("double"), Map("min" -> 50000.0, "max" -> 200000.0)),
+      Field("dept_avg_salary", Some("double"), Map("sql" -> "AVG(salary) OVER (PARTITION BY department)")),
+      Field("dept_salary_rank", Some("int"), Map("sql" -> "RANK() OVER (PARTITION BY department ORDER BY salary DESC)")),
+      Field("company_salary_percentile", Some("double"), Map("sql" -> "PERCENT_RANK() OVER (ORDER BY salary)")),
+      Field("salary_vs_dept_avg", Some("double"), Map("sql" -> "salary - dept_avg_salary")),
+      Field("is_top_performer", Some("boolean"), Map("sql" -> "dept_salary_rank <= 3")),
+      Field("compensation_band", Some("string"), Map("sql" -> "CASE WHEN company_salary_percentile > 0.9 THEN 'EXECUTIVE' WHEN company_salary_percentile > 0.75 THEN 'SENIOR' WHEN company_salary_percentile > 0.5 THEN 'MID' ELSE 'JUNIOR' END"))
+    )
+    
+    val step = Step("organization", "parquet", Count(records = Some(50)), Map("path" -> "sample/output/parquet/organization"), orgStructureFields)
+    val df = dataGeneratorFactory.generateDataForStep(step, "parquet", 0, 50)
+    df.cache()
+    
+    assertResult(50L)(df.count())
+    val rows = df.collect()
+    
+    // Verify department-based calculations
+    val deptGroups = rows.groupBy(_.getAs[String]("department"))
+    deptGroups.foreach { case (department, deptRows) =>
+      val deptSalaries = deptRows.map(_.getAs[Double]("salary"))
+      val expectedDeptAvg = deptSalaries.sum / deptSalaries.length
+      
+      deptRows.foreach { row =>
+        val deptAvgSalary = row.getAs[Double]("dept_avg_salary")
+        val salaryVsDeptAvg = row.getAs[Double]("salary_vs_dept_avg")
+        val salary = row.getAs[Double]("salary")
+        
+        assert(math.abs(deptAvgSalary - expectedDeptAvg) < 0.001, 
+          s"Department average salary mismatch for $department: expected $expectedDeptAvg, got $deptAvgSalary")
+        assert(math.abs(salaryVsDeptAvg - (salary - deptAvgSalary)) < 0.001, 
+          s"Salary vs department average calculation error: expected ${salary - deptAvgSalary}, got $salaryVsDeptAvg")
+      }
+      
+      // Verify top performers (should be at most 3 per department)
+      val topPerformers = deptRows.filter(_.getAs[Boolean]("is_top_performer"))
+      assert(topPerformers.length <= 3, 
+        s"Department $department should have at most 3 top performers, got ${topPerformers.length}")
+    }
+    
+    // Verify compensation bands are valid
+    val compensationBands = rows.map(_.getAs[String]("compensation_band")).distinct
+    assert(compensationBands.toSet.subsetOf(Set("EXECUTIVE", "SENIOR", "MID", "JUNIOR")), 
+      s"Compensation bands should be EXECUTIVE, SENIOR, MID, or JUNIOR: ${compensationBands.mkString(", ")}")
+    
+    df.unpersist()
+  }
+
+  // ========== END SQL AGGREGATES TESTS ==========
 
 }

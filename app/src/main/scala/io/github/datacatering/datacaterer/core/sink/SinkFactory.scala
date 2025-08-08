@@ -1,7 +1,7 @@
 package io.github.datacatering.datacaterer.core.sink
 
 import com.google.common.util.concurrent.RateLimiter
-import io.github.datacatering.datacaterer.api.model.Constants.{DELTA, DELTA_LAKE_SPARK_CONF, DRIVER, FORMAT, ICEBERG, ICEBERG_SPARK_CONF, JDBC, OMIT, PARTITIONS, PARTITION_BY, POSTGRES_DRIVER, RATE, ROWS_PER_SECOND, SAVE_MODE, TABLE}
+import io.github.datacatering.datacaterer.api.model.Constants.{DELTA, DELTA_LAKE_SPARK_CONF, DRIVER, FORMAT, ICEBERG, ICEBERG_SPARK_CONF, JDBC, JSON, OMIT, PARTITIONS, PARTITION_BY, PATH, POSTGRES_DRIVER, RATE, ROWS_PER_SECOND, SAVE_MODE, TABLE, UNWRAP_TOP_LEVEL}
 import io.github.datacatering.datacaterer.api.model.{FlagsConfig, FoldersConfig, MetadataConfig, SinkResult, Step}
 import io.github.datacatering.datacaterer.api.util.ConfigUtil
 import io.github.datacatering.datacaterer.core.exception.{FailedSaveDataDataFrameV2Exception, FailedSaveDataException}
@@ -91,6 +91,10 @@ class SinkFactory(
       .foreach(conf => df.sqlContext.setConf(conf._1, conf._2))
     val trySaveData = if (format == ICEBERG) {
       Try(tryPartitionAndSaveDfV2(df, saveMode, connectionConfig))
+    } else if (format == JSON) {
+      // Special-case: allow unwrapping top-level array to emit a bare JSON array file
+      val tryMaybeUnwrap = Try(trySaveJsonPossiblyUnwrapped(df, saveMode, connectionConfig))
+      tryMaybeUnwrap
     } else {
       val partitionedDf = partitionDf(df, connectionConfig)
       Try(partitionedDf
@@ -110,6 +114,36 @@ class SinkFactory(
       saveBatchData(dataSourceName, df, saveMode, connectionConfigWithBatchSize, count, startTime, retry + 1)
     }
     mapToSinkResult(dataSourceName, df, saveMode, connectionConfig, count, format, trySaveData.isSuccess, startTime, optException)
+  }
+
+  private def trySaveJsonPossiblyUnwrapped(df: DataFrame, saveMode: SaveMode, connectionConfig: Map[String, String]): Unit = {
+    val shouldUnwrap = detectTopLevelArrayToUnwrap(df)
+    shouldUnwrap match {
+      case Some(arrayFieldName) =>
+        // Write a single file containing the JSON array string using Spark text writer
+        // We keep directory semantics consistent with other sinks
+        val path = connectionConfig.getOrElse(PATH, throw new IllegalArgumentException("Missing path for JSON sink"))
+        val jsonArrayDf = df.selectExpr(s"TO_JSON(`" + arrayFieldName + "`) AS value").coalesce(1)
+        jsonArrayDf.write.mode(saveMode).text(path)
+      case None =>
+        // Default JSON behavior
+        val partitionedDf = partitionDf(df, connectionConfig)
+        partitionedDf
+          .format(JSON)
+          .mode(saveMode)
+          .options(connectionConfig)
+          .save()
+    }
+  }
+
+  private def detectTopLevelArrayToUnwrap(df: DataFrame): Option[String] = {
+    val fields = df.schema.fields
+    if (fields.length == 1) {
+      val f = fields.head
+      val hasFlag = f.metadata.contains(UNWRAP_TOP_LEVEL) && f.metadata.getString(UNWRAP_TOP_LEVEL).equalsIgnoreCase("true")
+      val isArray = f.dataType.typeName == "array"
+      if (hasFlag && isArray) Some(f.name) else None
+    } else None
   }
 
   private def partitionDf(df: DataFrame, stepOptions: Map[String, String]): DataFrameWriter[Row] = {
