@@ -1,0 +1,11 @@
+name: "json_schema_file"
+steps:
+  - name: "json_schema"
+    type: "json"
+    count:
+      records: 100
+    options:
+      path: "/opt/app/custom/json/schema/complex-user"
+      metadataSourceType: "jsonSchema"
+      jsonSchemaFile: "/opt/app/mount/json-schema/complex-user-schema.json"
+      saveMode: "overwrite"

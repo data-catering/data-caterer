@@ -1,0 +1,6 @@
+name: "postgres_example_plan"
+description: "Create account data in Postgres"
+tasks:
+  - name: "postgres_account"
+    dataSourceName: "postgresCustomer"
+    enabled: true

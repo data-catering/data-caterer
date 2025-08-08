@@ -1,0 +1,25 @@
+---
+name: "csv_customer_checks"
+description: "Check customer related fields have gone through system correctly"
+dataSources:
+  csv:
+    - options:
+        path: "/opt/app/custom/csv/multi-relationship/products"
+      validations:
+        - aggType: count
+          aggExpr: count == 100
+    - options:
+        path: "/opt/app/custom/csv/multi-relationship/customers"
+      validations:
+        - aggType: count
+          aggExpr: count == 1000000
+    - options:
+        path: "/opt/app/custom/csv/multi-relationship/accounts"
+      validations:
+        - aggType: count
+          aggExpr: count > 2000000 and count < 3000000
+    - options:
+        path: "/opt/app/custom/csv/multi-relationship/customer-access"
+      validations:
+        - aggType: count
+          aggExpr: count > 2000000 and count < 3000000

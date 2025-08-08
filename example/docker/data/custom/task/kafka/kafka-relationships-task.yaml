@@ -1,0 +1,66 @@
+name: "relationships_kafka"
+steps:
+  - name: "customer"
+    type: "kafka"
+    count:
+      records: 2
+    options:
+      topic: "account-topic"
+    fields:
+      - name: "key"
+        type: "string"
+        options:
+          sql: "body.customer_id"
+      - name: "messageHeaders"
+        type: "struct"
+        fields:
+          - name: "customer_id"
+            type: "string"
+            options:
+              sql: "body.customer_id"
+      - name: "messageBody"
+        type: struct
+        fields:
+          - name: "customer_id"
+            options:
+              uuid: ""
+              incremental: 1
+          - name: "first_name"
+            options:
+              expression: "#{Name.firstName}"
+          - name: "last_name"
+            options:
+              expression: "#{Name.lastName}"
+  - name: "customer_product"
+    type: "kafka"
+    count:
+      records: 2
+      perField:
+        count: 2
+        fieldNames:
+          - "body.customer_id"
+    options:
+      topic: "account-topic"
+    fields:
+      - name: "key"
+        type: "string"
+        options:
+          sql: "body.customer_id"
+      - name: "customer_product_id_int"
+        type: "int"
+        options:
+          min: 10
+          max: 12
+          omit: true
+      - name: "messageBody"
+        type: struct
+        fields:
+          - name: "customer_id"
+            options:
+              uuid: ""
+              incremental: 1
+              isPrimaryKey: true
+          - name: "customer_product_id"
+            options:
+              uuid: "customer_product_id_int"
+              isPrimaryKey: true

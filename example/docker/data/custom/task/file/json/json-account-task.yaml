@@ -1,0 +1,67 @@
+name: "json_account_file"
+steps:
+  - name: "account"
+    type: "json"
+    count:
+      records: 1000
+    options:
+      path: "/opt/app/custom/json/account"
+      saveMode: "overwrite"
+    fields:
+      - name: "account_id"
+        type: "string"
+      - name: "year"
+        type: "integer"
+        options:
+          min: 2021
+          max: 2022
+      - name: "is_early_customer"
+        type: "boolean"
+        options:
+          sql: "CASE WHEN year == 2021 THEN true ELSE false END"
+      - name: "amount"
+        type: "double"
+        options:
+          min: 10.0
+          max: 100.0
+      - name: "is_large_amount"
+        type: "boolean"
+        options:
+          sql: >-
+            CASE WHEN amount > 50 THEN
+              true
+            ELSE
+              false
+            END
+      - name: "updated_time"
+        type: "timestamp"
+        options:
+          sql: "details.updated_by.time"
+      - name: "first_txn_date"
+        type: "date"
+        options:
+          sql: "element_at(sort_array(transactions.txn_date), 1)"
+      - name: "details"
+        type: struct
+        fields:
+          - name: "name"
+          - name: "txn_date"
+            type: "date"
+            options:
+              min: "2021-01-01"
+              max: "2021-12-31"
+          - name: "updated_by"
+            type: struct
+            fields:
+              - name: "user"
+              - name: "time"
+                type: "timestamp"
+      - name: "transactions"
+        type: "array<struct<txn_date: date, amount: double, tags: array<string>>>"
+        fields:
+          - name: "txn_date"
+            type: "date"
+          - name: "amount"
+            type: "double"
+          - name: "tags"
+            type: "array<string>"

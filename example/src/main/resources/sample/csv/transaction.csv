@@ -1,0 +1,5 @@
+account_id,year,name,date,amount,debit_credit
+ACC123456,2022,Peter Flook,2022-01-20,100.4,D
+ACC123456,2022,Peter Flook,2022-01-21,-2.5,C
+ACC123456,2022,Peter Flook,2022-01-23,8.12,D
+ACC123456,2022,Peter Flook,2022-01-29,291.0,D

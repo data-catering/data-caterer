@@ -1,0 +1,6 @@
+truncate account.accounts;
+truncate account.balances;
+truncate account.mapping;
+truncate account.transactions;
+
+select (select count(1) from account.accounts) as account_count, (select count(1) from account.balances) as balance_count, (select count(1) from account.mapping) as mapping_count, (select count(1) from account.transactions) as transaction_count;

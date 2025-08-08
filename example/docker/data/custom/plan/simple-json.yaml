@@ -1,0 +1,6 @@
+name: "account_create_plan"
+description: "Create account data in JSON"
+tasks:
+  - name: "json_account_file"
+    dataSourceName: "json"
+    enabled: true

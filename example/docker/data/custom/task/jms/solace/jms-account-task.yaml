@@ -1,0 +1,49 @@
+name: "json_account_jms"
+steps:
+  - name: "jms_account"
+    type: "solace"
+    count:
+      records: 50
+    options:
+#      destinationName: "/JNDI/Q/test_queue"
+      destinationName: "/JNDI/T/test_topic"
+    fields:
+      - name: "value"
+        options:
+          sql: "to_json(content)"
+      - name: "content"
+        type: struct
+        fields:
+          - name: "account_id"
+          - name: "year"
+            type: "integer"
+            options:
+              min: 2021
+              max: 2022
+          - name: "amount"
+            type: "double"
+            options:
+              min: 10.0
+              max: 100.0
+          - name: "details"
+            type: "struct"
+            fields:
+              - name: "name"
+              - name: "txn_date"
+                type: "date"
+                options:
+                  min: "2021-01-01"
+                  max: "2021-12-31"
+              - name: "updated_by"
+                type: "struct"
+                fields:
+                  - name: "user"
+                  - name: "time"
+                    type: "timestamp"
+          - name: "transactions"
+            type: "array"
+            fields:
+              - name: "txn_date"
+                type: "date"
+              - name: "amount"
+                type: "double"
