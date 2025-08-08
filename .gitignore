@@ -18,6 +18,10 @@ tmp
 site
 .cache
 
+# Python/virtualenvs used by docs
+.venv
+.python-version
+
 app/out
 app/src/test/resources/sample/parquet
 app/src/test/resources/sample/json
@@ -32,8 +36,21 @@ app/src/test/resources/sample/plan-gen
 api/out
 api/src/test/resources/sample/documentation
 
+# UI
 ui/node_modules
 ui/coverage
+
+# Docs build caches
+.docs
+docs/site
+docs/.cache
+docs/.venv
+
+# Example module
+example/build
+example/.gradle
+example/benchmark/build
+example/benchmark/jars
 
 *.class
 *.log
