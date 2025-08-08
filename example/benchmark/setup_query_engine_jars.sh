@@ -1,8 +1,25 @@
 #!/usr/bin/env bash
 
-spark_major_version=$(grep sparkMajorVersion gradle.properties | cut -d= -f2)
+# Resolve project root relative to this script
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+EXAMPLE_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+REPO_ROOT="$(cd "$EXAMPLE_DIR/.." && pwd)"
+
+PROP_FILE_LOCAL="$EXAMPLE_DIR/gradle.properties"
+PROP_FILE_ROOT="$REPO_ROOT/gradle.properties"
+
+if [[ -f "$PROP_FILE_ROOT" ]]; then
+  PROP_FILE="$PROP_FILE_ROOT"
+else
+  PROP_FILE="$PROP_FILE_LOCAL"
+fi
+
+spark_major_version=$(grep -E "^sparkMajorVersion=" "$PROP_FILE" | cut -d= -f2)
 
 mkdir -p benchmark/jars
+
+# Download jars for the appropriate Spark major version (placeholder logic)
+echo "Using Spark major version: $spark_major_version"
 
 echo "Downloading query engine jars with Spark version: ${spark_major_version}"
 echo "Getting blaze jar..."

@@ -1,11 +1,25 @@
 #!/usr/bin/env bash
 
+# Resolve project root relative to this script
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+EXAMPLE_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+REPO_ROOT="$(cd "$EXAMPLE_DIR/.." && pwd)"
+
+PROP_FILE_LOCAL="$EXAMPLE_DIR/gradle.properties"
+PROP_FILE_ROOT="$REPO_ROOT/gradle.properties"
+
+if [[ -f "$PROP_FILE_ROOT" ]]; then
+  PROP_FILE="$PROP_FILE_ROOT"
+else
+  PROP_FILE="$PROP_FILE_LOCAL"
+fi
+
 enable_query_engine_run=${ENABLE_QUERY_ENGINE_RUN:-true}
 enable_data_size_run=${ENABLE_DATA_SIZE_RUN:-true}
 enable_data_sink_run=${ENABLE_DATA_SINK_RUN:-true}
 data_caterer_track=${DATA_CATERER_MANAGEMENT_TRACK:-}
 
-data_caterer_version=$(grep dataCatererVersion gradle.properties | cut -d= -f2)
+data_caterer_version=$(grep -E "^dataCatererVersion=" "$PROP_FILE" | cut -d= -f2)
 default_job="io.github.datacatering.plan.benchmark.BenchmarkParquetPlanRun"
 #default_job="io.github.datacatering.plan.benchmark.BenchmarkValidationPlanRun"
 default_record_count="100000"

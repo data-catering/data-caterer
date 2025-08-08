@@ -1,6 +1,19 @@
 #!/usr/bin/env bash
 
-data_caterer_version=$(grep dataCatererVersion gradle.properties | cut -d= -f2)
+# Resolve project root relative to this script
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+
+PROP_FILE_LOCAL="$SCRIPT_DIR/gradle.properties"
+PROP_FILE_ROOT="$REPO_ROOT/gradle.properties"
+
+if [[ -f "$PROP_FILE_ROOT" ]]; then
+  PROP_FILE="$PROP_FILE_ROOT"
+else
+  PROP_FILE="$PROP_FILE_LOCAL"
+fi
+
+data_caterer_version=$(grep -E "^dataCatererVersion=" "$PROP_FILE" | cut -d= -f2)
 
 if [[ -s ".tmp_prev_class_name" ]]; then
   prev_class_name=$(cat .tmp_prev_class_name)
