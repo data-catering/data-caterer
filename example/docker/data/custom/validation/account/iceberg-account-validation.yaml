@@ -1,0 +1,25 @@
+---
+name: "iceberg_account_checks"
+description: "Check account related fields have gone through system correctly"
+dataSources:
+  iceberg:
+    - options:
+        path: "/data/iceberg/customer/account"
+      validations:
+        - field: account_id
+          validation:
+            - type: unique
+        - field: open_time
+          validation:
+            - type: isIncreasing
+        - groupByFields: [ account_id ]
+          aggType: sum
+          aggExpr: sum(balance) > 0
+        - preFilterExpr: status == 'closed'
+          expr: balance == 0
+        - aggType: count
+          aggExpr: count == 1000
+        - upstreamDataSource: "csv_accounts"
+          joinFields: ["account_id"]
+          validations:
+            - expr: "balance == csv_accounts.balance"

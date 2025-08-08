@@ -1,0 +1,1883 @@
+{
+  "$schema": "https://json-schema.org/draft/2019-09/schema",
+  "title": "Data Caterer schema",
+  "description": "Configuration to run data generation and validations with Data Caterer",
+  "type": "object",
+  "allOf": [
+    {
+      "$ref": "#/$defs/DataCatererPlan"
+    },
+    {
+      "$ref": "#/$defs/DataCatererTask"
+    },
+    {
+      "$ref": "#/$defs/DataCatererValidation"
+    }
+  ],
+  "$defs": {
+    "DataCatererPlan": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Name of the plan."
+        },
+        "description": {
+          "type": "string",
+          "description": "Description of the plan."
+        },
+        "tasks": {
+          "type": "array",
+          "description": "Data generation tasks to run for the plan.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string",
+                "description": "Name of the task to run for data generation."
+              },
+              "dataSourceName": {
+                "type": "string",
+                "description": "Name of the data source to push data into."
+              },
+              "enabled": {
+                "type": "boolean",
+                "description": "Disable/enable the data generation task."
+              }
+            }
+          }
+        },
+        "sinkOptions": {
+          "type": "object",
+          "description": "Define relationships between fields or seed values for all tasks.",
+          "properties": {
+            "foreignKeys": {
+              "type": "array",
+              "description": "Define relationship between fields across data sources.",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "source": {
+                    "$ref": "#/$defs/ForeignKeyRelation",
+                    "description": "Source of the relationship. Requires: dataSource, step and fields."
+                  },
+                  "generate": {
+                    "type": "array",
+                    "description": "Generate the same values as create in the source of the relationship. Requires: dataSource, step and fields.",
+                    "items": {
+                      "$ref": "#/$defs/ForeignKeyRelation"
+                    }
+                  },
+                  "delete": {
+                    "type": "array",
+                    "description": "Delete the same values as create in the source of the relationship. Requires: dataSource, step and fields.",
+                    "items": {
+                      "$ref": "#/$defs/ForeignKeyRelation"
+                    }
+                  }
+                },
+                "required": ["source"],
+                "additionalProperties": false
+              }
+            },
+            "seed": {
+              "type": "integer",
+              "description": "Random seed value to be used across all generated data."
+            },
+            "locale": {
+              "type": "string",
+              "description": "Locale used when generating data via DataFaker expressions."
+            }
+          }
+        },
+        "validations": {
+          "type": "array",
+          "description": "List of validation names to run.",
+          "items": {
+            "type": "string"
+          }
+        },
+        "runId": {
+          "type": "string",
+          "description": "Identifier for the plan run. Random UUID used if not defined."
+        }
+      }
+    },
+    "DataCatererTask": {
+      "type": "object",
+      "description": "Data generation task details with information about data source, number of records and schema.",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Name of the data generation task. Needs to match with the name provided in the plan."
+        },
+        "steps": {
+          "type": "array",
+          "description": "List of data generation steps to execute within a task (within the same data source).",
+          "items": {
+            "type": "object",
+            "description": "Details of data to generate including schema, number of records, etc.",
+            "properties": {
+              "name": {
+                "type": "string",
+                "description": "Name of the step."
+              },
+              "type": {
+                "type": "string",
+                "description": "Type of data source.",
+                "enum": ["bigquery", "cassandra", "postgres", "mysql", "kafka", "solace", "csv", "delta", "json", "orc", "parquet", "iceberg", "rabbitmq"]
+              },
+              "options": {
+                "type": "object",
+                "description": "Data source configuration for data generation.",
+                "properties": {
+                  "metadataSourceType": {
+                    "description": "Type of metadata source for retrieval of schema information.",
+                    "enum": [
+                      "marquez",
+                      "openApi",
+                      "openMetadata",
+                      "openDataContractStandard",
+                      "dataContractCli",
+                      "jsonSchema"
+                    ]
+                  },
+                  "allCombinations": {
+                    "type": "boolean",
+                    "description": "Generate all combinations of the schema.",
+                    "default": false
+                  },
+                  "includeFields": {
+                    "type": "array",
+                    "description": "Include fields from the schema.",
+                    "items": {
+                      "type": "string"
+                    },
+                    "examples": [
+                      "name",
+                      "address.street",
+                      "address.city",
+                      "address.state",
+                      "address.zip"
+                    ]
+                  },
+                  "excludeFields": {
+                    "type": "array",
+                    "description": "Exclude fields from the schema.",
+                    "items": {
+                      "type": "string"
+                    },
+                    "examples": [
+                      "name",
+                      "address.street",
+                      "address.city",
+                      "address.state",
+                      "address.zip"
+                    ]
+                  },
+                  "includeFieldPatterns": {
+                    "type": "array",
+                    "description": "Include fields from the schema based on a pattern.",
+                    "items": {
+                      "type": "string"
+                    },
+                    "examples": [
+                      ".*_id",
+                      "name_.*"
+                    ]
+                  },
+                  "excludeFieldPattern": {
+                    "type": "array",
+                    "description": "Exclude fields from the schema based on a pattern.",
+                    "items": {
+                      "type": "string"
+                    },
+                    "examples": [
+                      ".*_id",
+                      "name_.*"
+                    ]
+                  }
+                }
+              },
+              "count": {
+                "type": "object",
+                "description": "Define the number of records to generate.",
+                "properties": {
+                  "records": {
+                    "type": "integer",
+                    "description": "Total number of records to generate."
+                  },
+                  "options": {
+                    "description": "Random number of records.",
+                    "$ref": "#/$defs/CountGeneratorOptions"
+                  },
+                  "perField": {
+                    "type": "object",
+                    "description": "Generate records per unique set of field values. For example, generate 5 transactions for each 'account_number'.",
+                    "properties": {
+                      "fieldNames": {
+                        "type": "array",
+                        "description": "Array of field names to generate records for each set of unique values.",
+                        "items": {
+                          "type": "string",
+                          "description": "Field name found within schema fields."
+                        }
+                      },
+                      "count": {
+                        "type": "integer",
+                        "description": "Static number of records per unique set of field values."
+                      },
+                      "options": {
+                        "description": "Random number of records per unique set of field values.",
+                        "$ref": "#/$defs/CountGeneratorOptions"
+                      }
+                    },
+                    "additionalProperties": false
+                  }
+                }
+              },
+              "fields": {
+                "type": "array",
+                "description": "Fields to generate.",
+                "items": {
+                  "$ref": "#/$defs/SchemaField"
+                }
+              },
+              "enabled": {
+                "type": "boolean",
+                "description": "Disable/enable step to run (enabled by default).",
+                "default": true
+              }
+            },
+            "allOf": [
+              {
+                "if": {
+                  "properties": {
+                    "type": {
+                      "enum": ["postgres", "mysql"]
+                    }
+                  },
+                  "required": ["type"]
+                },
+                "then": {
+                  "properties": {
+                    "options": {
+                      "type": "object",
+                      "properties": {
+                        "dbtable": {
+                          "description": "Name of the schema and table to connect to (<schema>.<table> format).",
+                          "type": "string",
+                          "pattern": "^(.+?)\\.(.+?)$"
+                        }
+                      },
+                      "required": ["dbtable"]
+                    }
+                  },
+                  "required": ["options"]
+                }
+              },
+              {
+                "if": {
+                  "properties": {
+                    "type": {
+                      "enum": ["bigquery"]
+                    }
+                  },
+                  "required": ["type"]
+                },
+                "then": {
+                  "properties": {
+                    "options": {
+                      "type": "object",
+                      "properties": {
+                        "table": {
+                          "type": "string",
+                          "description": "BigQuery table name. Follows format '<project>.<dataset>.<table>'."
+                        }
+                      },
+                      "required": ["table"]
+                    }
+                  },
+                  "required": ["options"]
+                }
+              },
+              {
+                "if": {
+                  "properties": {
+                    "type": {
+                      "enum": ["cassandra"]
+                    }
+                  },
+                  "required": ["type"]
+                },
+                "then": {
+                  "properties": {
+                    "options": {
+                      "type": "object",
+                      "properties": {
+                        "keyspace": {
+                          "type": "string",
+                          "description": "Cassandra keyspace name."
+                        },
+                        "table": {
+                          "type": "string",
+                          "description": "Cassandra table name."
+                        }
+                      },
+                      "required": ["keyspace", "table"]
+                    }
+                  },
+                  "required": ["options"]
+                }
+              },
+              {
+                "if": {
+                  "properties": {
+                    "type": {
+                      "enum": ["csv", "delta", "json", "orc", "parquet"]
+                    }
+                  },
+                  "required": ["type"]
+                },
+                "then": {
+                  "properties": {
+                    "options": {
+                      "type": "object",
+                      "properties": {
+                        "partitions": {
+                          "type": "integer",
+                          "description": "Number of file partitions to create."
+                        },
+                        "path": {
+                          "type": "string",
+                          "description": "Path to file."
+                        },
+                        "partitionBy": {
+                          "type": "string",
+                          "description": "Field name(s) to partition dataset by (comma separated)."
+                        }
+                      },
+                      "required": ["path"]
+                    }
+                  },
+                  "required": ["options"]
+                }
+              },
+              {
+                "if": {
+                  "properties": {
+                    "type": {
+                      "enum": ["iceberg"]
+                    }
+                  },
+                  "required": ["type"]
+                },
+                "then": {
+                  "properties": {
+                    "options": {
+                      "type": "object",
+                      "properties": {
+                        "catalogType": {
+                          "description": "Type of Iceberg catalog.",
+                          "enum": [
+                            "hive",
+                            "hadoop",
+                            "rest",
+                            "glue",
+                            "jdbc",
+                            "nessie"
+                          ]
+                        },
+                        "catalogUri": {
+                          "type": "string",
+                          "description": "URI for catalog."
+                        },
+                        "path": {
+                          "type": "string",
+                          "description": "Warehouse path for catalog."
+                        },
+                        "table": {
+                          "type": "string",
+                          "description": "Table name of Iceberg dataset."
+                        }
+                      },
+                      "required": ["catalogType", "catalogUri", "path", "table"]
+                    }
+                  },
+                  "required": ["options"]
+                }
+              },
+              {
+                "if": {
+                  "properties": {
+                    "type": {
+                      "enum": ["kafka"]
+                    }
+                  },
+                  "required": ["type"]
+                },
+                "then": {
+                  "properties": {
+                    "options": {
+                      "type": "object",
+                      "properties": {
+                        "topic": {
+                          "type": "string",
+                          "description": "Topic name."
+                        },
+                        "rowsPerSecond": {
+                          "type": "integer",
+                          "description": "Number of records to create per second."
+                        }
+                      },
+                      "required": ["topic"]
+                    }
+                  },
+                  "required": ["options"]
+                }
+              },
+              {
+                "if": {
+                  "properties": {
+                    "type": {
+                      "enum": ["solace", "rabbitmq"]
+                    }
+                  },
+                  "required": ["type"]
+                },
+                "then": {
+                  "properties": {
+                    "options": {
+                      "type": "object",
+                      "properties": {
+                        "destinationName": {
+                          "type": "string",
+                          "description": "Name of the topic/queue."
+                        },
+                        "rowsPerSecond": {
+                          "type": "integer",
+                          "description": "Number of records to create per second."
+                        }
+                      },
+                      "required": ["destinationName"]
+                    }
+                  },
+                  "required": ["options"]
+                }
+              },
+              {
+                "if": {
+                  "properties": {
+                    "options": {
+                      "type": "object",
+                      "properties": {
+                        "metadataSourceType": {
+                          "const": "openApi"
+                        }
+                      },
+                      "required": ["metadataSourceType"]
+                    }
+                  }
+                },
+                "then": {
+                  "properties": {
+                    "options": {
+                      "type": "object",
+                      "properties": {
+                        "schemaLocation": {
+                          "description": "Location of OpenAPI spec file (can be a URL or file pathway).",
+                          "type": "string"
+                        }
+                      },
+                      "required": ["schemaLocation"]
+                    }
+                  }
+                }
+              },
+              {
+                "if": {
+                  "properties": {
+                    "options": {
+                      "type": "object",
+                      "properties": {
+                        "metadataSourceType": {
+                          "const": "openMetadata"
+                        }
+                      },
+                      "required": ["metadataSourceType"]
+                    }
+                  }
+                },
+                "then": {
+                  "properties": {
+                    "options": {
+                      "type": "object",
+                      "properties": {
+                        "tableFqn": {
+                          "type": "string",
+                          "description": "Table full qualified name."
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              {
+                "if": {
+                  "properties": {
+                    "options": {
+                      "type": "object",
+                      "properties": {
+                        "metadataSourceType": {
+                          "const": "marquez"
+                        }
+                      },
+                      "required": ["metadataSourceType"]
+                    }
+                  }
+                },
+                "then": {
+                  "properties": {
+                    "options": {
+                      "type": "object",
+                      "properties": {
+                        "metadataSourceUrl": {
+                          "type": "string",
+                          "description": "Marquez URL."
+                        },
+                        "namespace": {
+                          "type": "string",
+                          "description": "Namespace to retrieve metadata from."
+                        },
+                        "dataset": {
+                          "type": "string",
+                          "description": "Dataset to retrieve metadata from."
+                        }
+                      },
+                      "required": ["metadataSourceUrl", "namespace"]
+                    }
+                  }
+                }
+              },
+              {
+                "if": {
+                  "properties": {
+                    "options": {
+                      "type": "object",
+                      "properties": {
+                        "metadataSourceType": {
+                          "const": "openDataContractStandard"
+                        }
+                      },
+                      "required": ["metadataSourceType"]
+                    }
+                  }
+                },
+                "then": {
+                  "properties": {
+                    "options": {
+                      "type": "object",
+                      "properties": {
+                        "dataContractFile": {
+                          "type": "string",
+                          "description": "Data contract file location."
+                        }
+                      },
+                      "required": ["dataContractFile"]
+                    }
+                  }
+                }
+              },
+              {
+                "if": {
+                  "properties": {
+                    "options": {
+                      "type": "object",
+                      "properties": {
+                        "metadataSourceType": {
+                          "const": "dataContractCli"
+                        }
+                      },
+                      "required": ["metadataSourceType"]
+                    }
+                  }
+                },
+                "then": {
+                  "properties": {
+                    "options": {
+                      "type": "object",
+                      "properties": {
+                        "dataContractFile": {
+                          "type": "string",
+                          "description": "Data contract file location."
+                        }
+                      },
+                      "required": ["dataContractFile"]
+                    }
+                  }
+                }
+              },
+              {
+                "if": {
+                  "properties": {
+                    "options": {
+                      "type": "object",
+                      "properties": {
+                        "metadataSourceType": {
+                          "const": "jsonSchema"
+                        }
+                      },
+                      "required": ["metadataSourceType"]
+                    }
+                  }
+                },
+                "then": {
+                  "properties": {
+                    "options": {
+                      "type": "object",
+                      "properties": {
+                        "jsonSchemaFile": {
+                          "type": "string",
+                          "description": "JSON schema file location."
+                        }
+                      },
+                      "required": ["jsonSchemaFile"]
+                    }
+                  }
+                }
+              }
+            ],
+            "unevaluatedProperties": false
+          }
+        }
+      }
+    },
+    "DataCatererValidation": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Name of the validation. Needs to match name in plan validations."
+        },
+        "description": {
+          "type": "string",
+          "description": "Description of the validations."
+        },
+        "dataSources": {
+          "type": "object",
+          "description": "Map of data source names to list of validations to be applied to the data source.",
+          "additionalProperties": {
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/DataCatererBaseValidation"
+            }
+          }
+        }
+      }
+    },
+    "DataCatererValidationRule": {
+      "type": "object",
+      "description": "Data validation rule.",
+      "anyOf": [
+        {
+          "$ref": "#/$defs/BasicValidation"
+        },
+        {
+          "$ref": "#/$defs/AggregationValidation"
+        },
+        {
+          "$ref": "#/$defs/UpstreamValidation"
+        },
+        {
+          "$ref": "#/$defs/FieldNameValidation"
+        },
+        {
+          "$ref": "#/$defs/FieldValidations"
+        }
+      ]
+    },
+    "DataCatererBaseValidation": {
+      "type": "object",
+      "properties": {
+        "options": {
+          "type": "object",
+          "description": "Data source configuration details."
+        },
+        "validations": {
+          "type": "array",
+          "description": "Array of data validation rules.",
+          "items": {
+            "$ref": "#/$defs/DataCatererValidationRule"
+          }
+        },
+        "waitCondition": {
+          "type": "object"
+        },
+        "additionalProperties": false
+      }
+    },
+    "ForeignKeyRelation": {
+      "type": "object",
+      "description": "Relationship defined by: dataSource, step and fields.",
+      "examples": [{
+        "dataSource": "my_csv",
+        "step": "account_create_step",
+        "fields": ["account_id", "year"]
+      }],
+      "default": {
+        "dataSource": "",
+        "step": "",
+        "fields": []
+      },
+      "properties": {
+        "dataSource": {
+          "type": "string",
+          "description": "Name of the data source."
+        },
+        "step": {
+          "type": "string",
+          "description": "Name of the step within the task to get field from."
+        },
+        "fields": {
+          "type": "array",
+          "description": "Name of the field(s) to relate with."
+        }
+      },
+      "required": ["dataSource", "step", "fields"],
+      "additionalProperties": false
+    },
+    "EnvironmentVariables": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      }
+    },
+    "CountGeneratorOptions": {
+      "type": "object",
+      "propertyNames": {
+        "enum": ["sql", "min", "max", "stddev", "mean", "oneOf"]
+      },
+      "allOf": [
+        {
+          "if": {
+            "required": ["oneOf"]
+          },
+          "then": {
+            "properties": {
+              "oneOf": {
+                "oneOf": [
+                  {
+                    "type": "array",
+                    "items": {
+                      "type": "integer"
+                    }
+                  },
+                  {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "pattern": "^0|[1-9]\\d*->(0|[1-9]\\d*|\\d+\\.\\d+)$"
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        }
+      ]
+    },
+    "SchemaFieldDataTypes": {
+      "enum": [
+        "string",
+        "int",
+        "integer",
+        "long",
+        "double",
+        "short",
+        "decimal",
+        "float",
+        "date",
+        "timestamp",
+        "boolean",
+        "binary",
+        "byte",
+        "array",
+        "struct"
+      ]
+    },
+    "SchemaFieldBaseOptions": {
+      "type": "object",
+      "properties": {
+        "enabledEdgeCase": {
+          "type": "boolean",
+          "description": "Enable generating edge case values for data type.",
+          "default": false
+        },
+        "edgeCaseProb": {
+          "type": "number",
+          "description": "Probability of generating edge case values. Range from 0-1.",
+          "minimum": 0,
+          "maximum": 1,
+          "default": 0
+        },
+        "isUnique": {
+          "type": "boolean",
+          "description": "Generate only unique values.",
+          "default": false
+        },
+        "isPrimaryKey": {
+          "type": "boolean",
+          "description": "Define the field as part of the primary key.",
+          "default": false
+        },
+        "seed": {
+          "type": "number",
+          "description": "Seed for generating consistent random values.",
+          "default": -1
+        },
+        "sql": {
+          "type": "string",
+          "description": "Spark SQL expression for generating data."
+        },
+        "oneOf": {
+          "type": "array",
+          "description": "Generated values will be one of the defined values."
+        },
+        "omit": {
+          "type": "boolean",
+          "description": "Exclude the field from the final output. Can be used for intermediate data generation.",
+          "default": false
+        }
+      }
+    },
+    "SchemaNullOptions": {
+      "type": "object",
+      "properties": {
+        "enableNull": {
+          "type": "boolean",
+          "description": "Enable generation of null values.",
+          "default": false
+        },
+        "nullProbability": {
+          "type": "number",
+          "description": "Probability of generating null values. Range from 0-1.",
+          "minimum": 0,
+          "maximum": 1,
+          "default": 0
+        }
+      }
+    },
+    "SchemaBaseNumberOptions": {
+      "type": "object",
+      "properties": {
+        "stddev": {
+          "type": "number",
+          "description": "Standard deviation of generated values.",
+          "default": 1.0
+        },
+        "mean": {
+          "type": "number",
+          "description": "Mean of generated values.",
+          "default": 500.0
+        },
+        "distribution": {
+          "type": "string",
+          "description": "Type of distribution values follow.",
+          "enum": ["normal", "exponential"]
+        },
+        "distributionRateParam": {
+          "type": "number",
+          "description": "If distribution is `exponential`, rate parameter to adjust exponential distribution."
+        },
+        "incremental": {
+          "type": "number",
+          "description": "Generate incremental numbers. By default, starts at 1. You can define a starting number.",
+          "default": 1
+        }
+      },
+      "allOf": [
+        {
+          "$ref": "#/$defs/SchemaFieldBaseOptions"
+        }
+      ]
+    },
+    "SchemaStringOptions": {
+      "type": "object",
+      "properties": {
+        "minLen": {
+          "type": "integer",
+          "description": "Minimum length of generated values.",
+          "default": 1
+        },
+        "maxLen": {
+          "type": "integer",
+          "description": "Maximum length of generated values.",
+          "default": 10
+        },
+        "expression": {
+          "type": "string",
+          "description": "Faker expression to generate values.",
+          "examples": ["#{Name.name}"]
+        },
+        "regex": {
+          "type": "string",
+          "description": "Regex for generating values.",
+          "examples": ["ACC[0-9]{8}"]
+        },
+        "uuid": {
+          "type": "string",
+          "description": "Generate UUID values. If non-empty, you can define another column name to generate UUID values from another columns value."
+        },
+        "incremental": {
+          "type": "number",
+          "description": "Generate incremental numbers. By default, starts at 1. You can define a starting number.",
+          "default": 1
+        }
+      },
+      "allOf": [
+        {
+          "$ref": "#/$defs/SchemaFieldBaseOptions"
+        },
+        {
+          "$ref": "#/$defs/SchemaNullOptions"
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "SchemaIntegerOptions": {
+      "type": "object",
+      "properties": {
+        "min": {
+          "type": "integer",
+          "description": "Minimum generated value.",
+          "default": 0
+        },
+        "max": {
+          "type": "integer",
+          "description": "Maximum generated value.",
+          "default": 1000
+        }
+      },
+      "allOf": [
+        {
+          "$ref": "#/$defs/SchemaBaseNumberOptions"
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "SchemaNumberOptions": {
+      "type": "object",
+      "properties": {
+        "min": {
+          "type": "number",
+          "description": "Minimum generated value.",
+          "default": 0.0
+        },
+        "max": {
+          "type": "number",
+          "description": "Maximum generated value.",
+          "default": 1000.0
+        }
+      },
+      "allOf": [
+        {
+          "$ref": "#/$defs/SchemaFieldBaseOptions"
+        },
+        {
+          "$ref": "#/$defs/SchemaBaseNumberOptions"
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "SchemaDateOptions": {
+      "type": "object",
+      "properties": {
+        "min": {
+          "type": "string",
+          "description": "Maximum generated value."
+        },
+        "max": {
+          "type": "string",
+          "description": "Maximum generated value."
+        }
+      },
+      "allOf": [
+        {
+          "$ref": "#/$defs/SchemaFieldBaseOptions"
+        },
+        {
+          "$ref": "#/$defs/SchemaNullOptions"
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "SchemaBinaryOptions": {
+      "type": "object",
+      "properties": {
+        "minLen": {
+          "type": "number",
+          "description": "Minimum length of generated values."
+        },
+        "maxLen": {
+          "type": "number",
+          "description": "Maximum length of generated values."
+        }
+      },
+      "allOf": [
+        {
+          "$ref": "#/$defs/SchemaFieldBaseOptions"
+        },
+        {
+          "$ref": "#/$defs/SchemaNullOptions"
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "SchemaArrayOptions": {
+      "type": "object",
+      "properties": {
+        "arrayMinLen": {
+          "type": "number",
+          "description": "Minimum generated array length."
+        },
+        "arrayMaxLen": {
+          "type": "number",
+          "description": "Maximum generated array length."
+        },
+        "arrayType": {
+          "type": "string",
+          "description": "Data type of array values.",
+          "$ref": "#/$defs/SchemaFieldDataTypes"
+        }
+      },
+      "allOf": [
+        {
+          "$ref": "#/$defs/SchemaFieldBaseOptions"
+        },
+        {
+          "$ref": "#/$defs/SchemaNullOptions"
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "SchemaField": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Name of the field."
+        },
+        "type": {
+          "type": "string",
+          "description": "Data type of the field.",
+          "default": "string",
+          "allOf": [
+            {
+              "$ref": "#/$defs/SchemaFieldDataTypes"
+            }
+          ]
+        },
+        "static": {
+          "type": "string",
+          "description": "Field is only equal to a static value."
+        },
+        "options": {
+          "type": "object"
+        }
+      },
+      "required": ["name"],
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "type": false
+            }
+          },
+          "then": {
+            "properties": {
+              "options": {
+                "$ref": "#/$defs/SchemaStringOptions"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "string"
+              }
+            },
+            "required": ["type"]
+          },
+          "then": {
+            "properties": {
+              "options": {
+                "$ref": "#/$defs/SchemaStringOptions"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "anyOf": [
+                  {
+                    "const": "integer"
+                  },
+                  {
+                    "const": "int"
+                  }
+                ]
+              }
+            },
+            "required": ["type"]
+          },
+          "then": {
+            "properties": {
+              "options": {
+                "$ref": "#/$defs/SchemaIntegerOptions"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "anyOf": [
+                  {
+                    "const": "long"
+                  },
+                  {
+                    "const": "short"
+                  },
+                  {
+                    "const": "decimal"
+                  },
+                  {
+                    "const": "double"
+                  },
+                  {
+                    "const": "float"
+                  }
+                ]
+              }
+            },
+            "required": ["type"]
+          },
+          "then": {
+            "properties": {
+              "options": {
+                "$ref": "#/$defs/SchemaNumberOptions"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "anyOf": [
+                  {
+                    "const": "date"
+                  },
+                  {
+                    "const": "timestamp"
+                  }
+                ]
+              }
+            },
+            "required": ["type"]
+          },
+          "then": {
+            "properties": {
+              "options": {
+                "$ref": "#/$defs/SchemaDateOptions"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "binary"
+              }
+            },
+            "required": ["type"]
+          },
+          "then": {
+            "properties": {
+              "options": {
+                "$ref": "#/$defs/SchemaBinaryOptions"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "array"
+              }
+            },
+            "required": ["type"]
+          },
+          "then": {
+            "properties": {
+              "options": {
+                "$ref": "#/$defs/SchemaArrayOptions"
+              },
+              "fields": {
+                "type": "array",
+                "description": "Inner structure of fields.",
+                "items": {
+                  "$ref": "#/$defs/SchemaField"
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "struct"
+              }
+            },
+            "required": ["type"]
+          },
+          "then": {
+            "properties": {
+              "options": {
+                "$ref": "#/$defs/SchemaFieldBaseOptions"
+              },
+              "fields": {
+                "type": "array",
+                "description": "Inner structure of fields.",
+                "items": {
+                  "$ref": "#/$defs/SchemaField"
+                }
+              }
+            }
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "ValidationDescription": {
+      "type": "string",
+      "description": "Description of the validation rule. Helpful to provide additional context."
+    },
+    "ValidationErrorThreshold": {
+      "type": "number",
+      "description": "Define the number of records or percentage of records that do not meet the validation rule before marking the validation as failed."
+    },
+    "ValidationPreFilterExpression": {
+      "type": "string",
+      "description": "SQL expression that is run to filter data before running the validation."
+    },
+    "ValidationExpression": {
+      "type": "string",
+      "description": "SQL expression to define validation. Check https://spark.apache.org/docs/latest/api/sql for reference."
+    },
+    "ValidationSelectExpression": {
+      "type": "string",
+      "description": "SQL expression used to apply to fields before running validations."
+    },
+    "ValidationAdditionalProperties": {
+      "type": "object",
+      "properties": {
+        "description": {
+          "$ref": "#/$defs/ValidationDescription"
+        },
+        "errorThreshold": {
+          "$ref": "#/$defs/ValidationErrorThreshold"
+        },
+        "preFilterExpr": {
+          "$ref": "#/$defs/ValidationPreFilterExpression"
+        }
+      }
+    },
+    "ValidationAggregateExpression": {
+      "type": "string",
+      "description": "SQL expression to define validation after aggregation. Check https://spark.apache.org/docs/latest/api/sql for reference."
+    },
+    "ValidationAggregateField": {
+      "type": "string",
+      "description": "Field name to run aggregation on."
+    },
+    "ValidationAggregateType": {
+      "type": "string",
+      "description": "Type of aggregation to run. Can be either: sum, avg, max, min, mean, stddev, count.",
+      "enum": ["sum", "avg", "max", "min", "mean", "stddev", "count"]
+    },
+    "ValidationAggregateGroupByFields": {
+      "type": "array",
+      "description": "Field names to group by for aggregation calculation.",
+      "items": {
+        "type": "string"
+      }
+    },
+    "ValidationUpstreamJoinFields": {
+      "type": "array",
+      "description": "Field names to run join operation on.",
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1
+    },
+    "ValidationUpstreamJoinType": {
+      "type": "string",
+      "description": "Type of join to run.",
+      "enum": [
+        "inner",
+        "outer", "full", "full_outer",
+        "left", "left_outer",
+        "right", "right_outer",
+        "left_semi", "semi",
+        "left_anti", "anti",
+        "cross"
+      ],
+      "default": "inner"
+    },
+    "ValidationUpstreamDataSource": {
+      "type": "string",
+      "description": "Name of the upstream data source."
+    },
+    "ValidationUpstreamReadOptions": {
+      "type": "object",
+      "description": "Additional configuration to connect to upstream data source."
+    },
+    "ValidationUpstreamNestedValidations": {
+      "type": "array",
+      "description": "Validation to run after join with upstream data source.",
+      "items": {
+        "$ref": "#/$defs/DataCatererValidationRule"
+      },
+      "minItems": 1
+    },
+    "ValidationFieldNameType": {
+      "type": "string",
+      "description": "Type of field name validation to run.",
+      "enum": ["fieldCountEqual", "fieldCountBetween", "fieldNameMatchOrder", "fieldNameMatchSet"]
+    },
+    "ValidationFieldNameCount": {
+      "type": "integer",
+      "description": "Expected number of field names."
+    },
+    "ValidationFieldNameMaxCount": {
+      "type": "integer",
+      "description": "Maximum number of field names."
+    },
+    "ValidationFieldNameMinCount": {
+      "type": "integer",
+      "description": "Minimum number of field names."
+    },
+    "ValidationFieldNames": {
+      "type": "array",
+      "description": "Expected field names.",
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1
+    },
+    "FieldValidationType": {
+      "type": "string",
+      "description": "Type of field validation to run on field.",
+      "enum": [
+        "equal", "null", "contains", "unique", "lessThan", "greaterThan", "between", "in", "matches",
+        "matchesList", "startsWith", "endsWith", "size", "lessThanSize", "greaterThanSize", "luhnCheck", "hasType",
+        "hasTypes", "distinctInSet", "distinctContainsSet", "distinctEqual", "maxBetween", "meanBetween", "medianBetween",
+        "minBetween", "stdDevBetween", "sumBetween", "lengthBetween", "lengthEqual", "isDecreasing", "isIncreasing",
+        "isJsonParsable", "matchJsonSchema", "matchDateTimeFormat", "mostCommonValueInSet", "uniqueValuesProportionBetween",
+        "quantileValuesBetween"
+      ]
+    },
+    "FieldValidationNegate": {
+      "type": "boolean",
+      "description": "Negate the validation rule.",
+      "default": false
+    },
+    "FieldValidationStrictly": {
+      "type": "boolean",
+      "description": "Strictly compare the value. For example, if set to false for lessThan, the comparison will be <=.",
+      "default": true
+    },
+    "FieldValidationAnyValue": {
+      "description": "Value to compare against.",
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "number"
+        },
+        {
+          "type": "integer"
+        },
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "object"
+        },
+        {
+          "type": "array"
+        }
+      ]
+    },
+    "FieldValidation": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "$ref": "#/$defs/FieldValidationType"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "enum": ["equal"]
+              }
+            },
+            "required": ["type"]
+          },
+          "then": {
+            "properties": {
+              "value": {
+                "$ref": "#/$defs/FieldValidationAnyValue"
+              },
+              "negate": {
+                "$ref": "#/$defs/FieldValidationNegate"
+              }
+            },
+            "required": ["value"]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "enum": ["null", "unique", "luhnCheck", "isJsonParsable"]
+              }
+            },
+            "required": ["type"]
+          },
+          "then": {
+            "properties": {
+              "negate": {
+                "$ref": "#/$defs/FieldValidationNegate"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "enum": ["contains", "startsWith", "endsWith", "hasType"]
+              }
+            },
+            "required": ["type"]
+          },
+          "then": {
+            "properties": {
+              "value": {
+                "type": "string",
+                "description": "Value to check if field contains."
+              },
+              "negate": {
+                "$ref": "#/$defs/FieldValidationNegate"
+              }
+            },
+            "required": ["value"]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "enum": ["matches"]
+              }
+            },
+            "required": ["type"]
+          },
+          "then": {
+            "properties": {
+              "regex": {
+                "type": "string",
+                "description": "Regex pattern to match against."
+              },
+              "negate": {
+                "$ref": "#/$defs/FieldValidationNegate"
+              }
+            },
+            "required": ["regex"]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "enum": ["matchJsonSchema"]
+              }
+            },
+            "required": ["type"]
+          },
+          "then": {
+            "properties": {
+              "schema": {
+                "type": "string",
+                "description": "JSON schema to match against."
+              },
+              "negate": {
+                "$ref": "#/$defs/FieldValidationNegate"
+              }
+            },
+            "required": ["schema"]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "enum": ["matchDateTimeFormat"]
+              }
+            },
+            "required": ["type"]
+          },
+          "then": {
+            "properties": {
+              "format": {
+                "type": "string",
+                "description": "DateTime format to match against."
+              },
+              "negate": {
+                "$ref": "#/$defs/FieldValidationNegate"
+              }
+            },
+            "required": ["format"]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "enum": ["lessThan", "greaterThan"]
+              }
+            },
+            "required": ["type"]
+          },
+          "then": {
+            "properties": {
+              "value": {
+                "$ref": "#/$defs/FieldValidationAnyValue"
+              },
+              "strictly": {
+                "$ref": "#/$defs/FieldValidationStrictly"
+              }
+            },
+            "required": ["value"]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "enum": ["maxBetween", "meanBetween", "medianBetween", "minBetween", "stdDevBetween", "sumBetween", "lengthBetween", "uniqueValuesProportionBetween"]
+              }
+            },
+            "required": ["type"]
+          },
+          "then": {
+            "properties": {
+              "min": {
+                "$ref": "#/$defs/FieldValidationAnyValue"
+              },
+              "max": {
+                "$ref": "#/$defs/FieldValidationAnyValue"
+              },
+              "negate": {
+                "$ref": "#/$defs/FieldValidationNegate"
+              }
+            },
+            "required": ["min", "max"]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "enum": ["isDecreasing", "isIncreasing"]
+              }
+            },
+            "required": ["type"]
+          },
+          "then": {
+            "properties": {
+              "strictly": {
+                "$ref": "#/$defs/FieldValidationStrictly"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "enum": ["distinctInSet", "distinctContainsSet", "distinctEqual", "mostCommonValueInSet"]
+              }
+            },
+            "required": ["type"]
+          },
+          "then": {
+            "properties": {
+              "values": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/FieldValidationAnyValue"
+                }
+              },
+              "negate": {
+                "$ref": "#/$defs/FieldValidationNegate"
+              }
+            },
+            "required": ["values"]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "enum": ["hasTypes"]
+              }
+            },
+            "required": ["type"]
+          },
+          "then": {
+            "properties": {
+              "values": {
+                "type": "array",
+                "description": "List of data types to check for.",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "negate": {
+                "$ref": "#/$defs/FieldValidationNegate"
+              }
+            },
+            "required": ["values"]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "enum": ["size", "lessThanSize", "greaterThanSize"]
+              }
+            },
+            "required": ["type"]
+          },
+          "then": {
+            "properties": {
+              "size": {
+                "type": "integer",
+                "description": "Expected size of field."
+              },
+              "negate": {
+                "$ref": "#/$defs/FieldValidationNegate"
+              }
+            },
+            "required": ["size"]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "enum": ["matchesList"]
+              }
+            },
+            "required": ["type"]
+          },
+          "then": {
+            "properties": {
+              "regexes": {
+                "type": "array",
+                "description": "List of regex patterns to match against.",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "matchAll": {
+                "type": "boolean",
+                "description": "Match all regex patterns.",
+                "default": true
+              },
+              "negate": {
+                "$ref": "#/$defs/FieldValidationNegate"
+              }
+            },
+            "required": ["regexes"]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "enum": ["quantileValuesBetween"]
+              }
+            },
+            "required": ["type"]
+          },
+          "then": {
+            "properties": {
+              "quantileRanges": {
+                "type": "object",
+                "description": "Quantile ranges to check for.",
+                "patternProperties": {
+                  "^([0,1]\\.\\d+)$": {
+                    "type": "array",
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "type": "number"
+                      },
+                      "maxItems": 2,
+                      "minItems": 2
+                    },
+                    "maxItems": 1,
+                    "minItems": 1
+                  }
+                }
+              },
+              "negate": {
+                "$ref": "#/$defs/FieldValidationNegate"
+              }
+            },
+            "required": ["quantileRanges"]
+          }
+        }
+      ]
+    },
+    "FieldValidations": {
+      "type": "object",
+      "properties": {
+        "field": {
+          "type": "string",
+          "description": "Field name to run validation on."
+        },
+        "validation": {
+          "type": "array",
+          "description": "List of validation rules to run on the field.",
+          "items": {
+            "$ref": "#/$defs/FieldValidation"
+          }
+        }
+      },
+      "required": ["field", "validation"],
+      "unevaluatedProperties": false
+    },
+    "BasicValidation": {
+      "type": "object",
+      "properties": {
+        "expr": {
+          "$ref": "#/$defs/ValidationExpression"
+        },
+        "selectExpr": {
+          "$ref": "#/$defs/ValidationSelectExpression"
+        }
+      },
+      "anyOf": [
+        {
+          "$ref": "#/$defs/ValidationAdditionalProperties"
+        }
+      ],
+      "required": ["expr"],
+      "unevaluatedProperties": false
+    },
+    "AggregationValidation": {
+      "type": "object",
+      "properties": {
+        "aggField": {
+          "$ref": "#/$defs/ValidationAggregateField"
+        },
+        "aggType": {
+          "$ref": "#/$defs/ValidationAggregateType"
+        },
+        "groupByFields": {
+          "$ref": "#/$defs/ValidationAggregateGroupByFields"
+        },
+        "aggExpr": {
+          "$ref": "#/$defs/ValidationAggregateExpression"
+        }
+      },
+      "anyOf": [
+        {
+          "$ref": "#/$defs/ValidationAdditionalProperties"
+        }
+      ],
+      "required": ["aggType"],
+      "unevaluatedProperties": false
+    },
+    "UpstreamValidation": {
+      "type": "object",
+      "properties": {
+        "upstreamDataSource": {
+          "$ref": "#/$defs/ValidationUpstreamDataSource"
+        },
+        "joinFields": {
+          "$ref": "#/$defs/ValidationUpstreamJoinFields"
+        },
+        "joinType": {
+          "$ref": "#/$defs/ValidationUpstreamJoinType"
+        },
+        "validations": {
+          "$ref": "#/$defs/ValidationUpstreamNestedValidations"
+        },
+        "upstreamReadOptions": {
+          "$ref": "#/$defs/ValidationUpstreamReadOptions"
+        }
+      },
+      "anyOf": [
+        {
+          "$ref": "#/$defs/ValidationAdditionalProperties"
+        }
+      ],
+      "required": ["upstreamDataSource", "joinFields", "validations"],
+      "unevaluatedProperties": false
+    },
+    "FieldNameValidation": {
+      "type": "object",
+      "properties": {
+        "fieldNameType": {
+          "$ref": "#/$defs/ValidationFieldNameType"
+        },
+        "count": {
+          "$ref": "#/$defs/ValidationFieldNameCount"
+        },
+        "maxCount": {
+          "$ref": "#/$defs/ValidationFieldNameMaxCount"
+        },
+        "minCount": {
+          "$ref": "#/$defs/ValidationFieldNameMinCount"
+        },
+        "names": {
+          "$ref": "#/$defs/ValidationFieldNames"
+        }
+      },
+      "anyOf": [
+        {
+          "$ref": "#/$defs/ValidationAdditionalProperties"
+        }
+      ],
+      "required": ["fieldNameType"],
+      "unevaluatedProperties": false
+    }
+  }
+}

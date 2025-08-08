@@ -1,0 +1,55 @@
+name: "json_account_kafka"
+steps:
+  - name: "kafka_account"
+    type: "kafka"
+    count:
+      records: 10
+    options:
+      topic: "account-topic"
+    fields:
+      - name: "key"
+        options:
+          sql: "content.account_id"
+      - name: "value"
+        options:
+          sql: "to_json(content)"
+#        - name: "partition"
+#          type: "int"
+#          options:
+#            sql: "1"
+      - name: "content"
+        type: struct
+        fields:
+          - name: "account_id"
+          - name: "year"
+            type: "int"
+            options:
+              min: 2021
+              max: 2022
+          - name: "amount"
+            type: "double"
+            options:
+              min: 10.0
+              max: 100.0
+          - name: "details"
+            type: struct
+            fields:
+              - name: "name"
+              - name: "txn_date"
+                type: "date"
+                options:
+                  min: "2021-01-01"
+                  max: "2021-12-31"
+              - name: "updated_by"
+                type: struct
+                fields:
+                  - name: "user"
+                  - name: "time"
+                    type: "timestamp"
+          - name: "transactions"
+            type: "array"
+            fields:
+              - name: "txn_date"
+                type: "date"
+              - name: "amount"
+                type: "double"

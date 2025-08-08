@@ -1,0 +1,53 @@
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ template "data-caterer.fullname" . }}
+spec:
+  template:
+    spec:
+      {{- if .Values.imagePullSecrets }}
+      imagePullSecrets:
+        - name: {{ .Values.imagePullSecrets }}
+      {{- end }}
+      {{- if .Values.securityContext }}
+      securityContext:
+      {{- range $k, $v := .Values.securityContext }}
+        {{ $k }}: {{ $v }}
+      {{- end }}
+      {{- end }}
+      containers:
+        - image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: "{{ .Values.image.pullPolicy }}"
+          name: "datagen"
+          env:
+          {{- range $k, $v := .Values.environment }}
+          - name: {{ $k | quote }}
+            value: {{ $v | quote }}
+          {{- end }}
+          {{- with .Values.resources }}
+          resources:
+{{ toYaml . | indent 10 }}
+          {{- end }}
+          {{- with .Values.volumeMounts }}
+          volumeMounts:
+{{ toYaml . | indent 10 }}
+          {{- end }}
+        {{- with .Values.nodeSelector }}
+        nodeSelector:
+{{ toYaml . | indent 8 }}
+        {{- end }}
+{{- with .Values.affinity }}
+        affinity:
+{{ toYaml . | indent 8 }}
+        {{- end }}
+{{- with .Values.tolerations }}
+        tolerations:
+{{ toYaml . | indent 8 }}
+        {{- end }}
+      restartPolicy: {{ .Values.restartPolicy }}
+      {{- with .Values.volumes }}
+      volumes:
+{{ toYaml . | indent 10 }}
+      {{- end }}
+    backoffLimit: {{ .Values.backoffLimit }}

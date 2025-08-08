@@ -1,0 +1,65 @@
+name: "cassandra_accounts"
+steps:
+  - name: "accounts"
+    type: "cassandra"
+    count:
+      records: 10
+    options:
+      keyspace: "account"
+      table: "accounts"
+    fields:
+      - name: "account_id"
+        options:
+          regex: "ACC1[0-9]{5,10}"
+      - name: "amount"
+        type: "double"
+        options:
+          min: 10.0
+          max: 100.0
+      - name: "name"
+        options:
+          expression: "#{Name.name}"
+      - name: "created_by"
+        options:
+          expression: "#{Name.username}"
+      - name: "status"
+        options:
+          oneOf:
+            - "open"
+            - "closed"
+      - name: "open_time"
+        type: "timestamp"
+  - name: "account_status_history"
+    type: "cassandra"
+    count:
+      records: 10
+      perField:
+        fieldNames:
+          - "account_id"
+        options:
+          max: 5
+          min: 1
+    options:
+      keyspace: "account"
+      table: "account_status_history"
+    fields:
+      - name: "account_id"
+        options:
+          regex: "ACC1[0-9]{5,10}"
+      - name: "eod_date"
+        type: "date"
+        options:
+          sql: "TO_DATE(updated_time)"
+      - name: "status"
+        options:
+          oneOf:
+            - "open"
+            - "closed"
+            - "pending"
+            - "active"
+            - "disabled"
+      - name: "updated_by"
+        options:
+          expression: "#{Name.username}"
+      - name: "updated_time"
+        type: "timestamp"

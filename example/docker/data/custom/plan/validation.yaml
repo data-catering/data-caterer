@@ -1,0 +1,23 @@
+name: "foreign_key_example_plan"
+description: "Create account data in JSON and Postgres"
+tasks:
+  - name: "json_account_file"
+    dataSourceName: "json"
+    enabled: true
+  - name: "postgres_account"
+    dataSourceName: "postgresCustomer"
+    enabled: true
+
+sinkOptions:
+  foreignKeys:
+    - source:
+        dataSource: "postgresCustomer"
+        step: "accounts"
+        fields: [ "account_number" ]
+      generate:
+        - dataSource: "json"
+          step: "account"
+          fields: [ "account_id" ]
+
+validations:
+  - "json_account_checks"

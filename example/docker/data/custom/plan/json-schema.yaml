@@ -1,0 +1,6 @@
+name: "json_schema_create_plan"
+description: "Create JSON schema data"
+tasks:
+  - name: "json_schema_file"
+    dataSourceName: "json"
+    enabled: true

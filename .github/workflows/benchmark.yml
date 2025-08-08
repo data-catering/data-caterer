@@ -1,0 +1,46 @@
+name: Run performance benchmark tests
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: example
+    steps:
+      - name: Checkout monorepo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - name: Check if benchmark has already run
+        run: |
+          version=$(grep dataCatererVersion gradle.properties | cut -d= -f2)
+          if [ ! -f benchmark/results/benchmark_results_${version}.txt ]; then
+              echo "No benchmark results for version: $version, starting to run benchmarks"
+          else
+              echo "Benchmarks already run!"
+              exit 1
+          fi
+      - name: Checkout datafusion-comet repo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+          repository: apache/datafusion-comet
+          path: example/benchmark/build/datafusion-comet
+      - name: Get Spark query engine jars
+        run: bash benchmark/setup_query_engine_jars.sh
+      - name: Run benchmark script
+        env:
+          DATA_CATERER_MANAGEMENT_TRACK: ${{ secrets.DATA_CATERER_MANAGEMENT_TRACK }}
+        run: |
+          version=$(grep dataCatererVersion gradle.properties | cut -d= -f2)
+          bash benchmark/run_benchmark.sh
+          bash benchmark/compare_benchmark_results.sh "$version"
+      - name: Create pull request
+        uses: peter-evans/create-pull-request@v6
+        with:
+          title: Add benchmark results

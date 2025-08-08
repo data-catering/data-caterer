@@ -1,0 +1,6 @@
+name: "kafka_example_plan"
+description: "Create account data in Kafka"
+tasks:
+  - name: "relationships_kafka"
+    dataSourceName: "kafkaAccount"
+    enabled: true

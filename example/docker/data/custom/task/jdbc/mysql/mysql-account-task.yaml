@@ -1,0 +1,22 @@
+name: "mysql_account"
+steps:
+  - name: "accounts"
+    type: "mysql"
+    count:
+      records: 50
+    options:
+      dbtable: "customer.accounts"
+    fields:
+      - name: "account_number"
+        options:
+          regex: "ACC1[0-9]{5,10}"
+      - name: "account_status"
+        options:
+          oneOf:
+            - "open"
+            - "closed"
+      - name: "open_date"
+        type: "date"
+      - name: "created_by"
+      - name: "customer_id_int"
+        type: "int"

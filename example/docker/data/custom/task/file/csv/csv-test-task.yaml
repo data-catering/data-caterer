@@ -1,0 +1,42 @@
+name: "csv_test_files"
+steps:
+  - name: "customers"
+    type: "csv"
+    options:
+      path: "/opt/app/custom/csv/test/customers"
+      header: true
+      saveMode: "Overwrite"
+    count:
+      records: 1
+    fields:
+      - name: "id"
+        type: "long"
+        options:
+          incremental: 1
+      - name: "customer_id"
+        options:
+          uuid: ""
+          incremental: 1
+      - name: "first_name"
+        options:
+          expression: "#{Name.firstName}"
+      - name: "last_name"
+        options:
+          expression: "#{Name.lastName}"
+  - name: "accounts"
+    type: "csv"
+    options:
+      path: "/opt/app/custom/csv/test/accounts"
+      header: true
+      saveMode: "Overwrite"
+    count:
+      records: 1
+    fields:
+      - name: "id"
+        type: "long"
+        options:
+          incremental: 1
+      - name: "customer_id"
+        options:
+          uuid: ""
+          incremental: 1

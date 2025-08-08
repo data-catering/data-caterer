@@ -1,0 +1,45 @@
+.gradle
+**/build/
+!src/**/build/
+.DS_Store
+.metals
+.vscode
+
+# Ignore Gradle GUI config
+gradle-app.setting
+
+# Avoid ignoring Gradle wrapper jar file (.jar files are usually ignored)
+!gradle-wrapper.jar
+
+# Avoid ignore Gradle wrappper properties
+!gradle-wrapper.properties
+
+# Cache of project
+.gradletasknamecache
+
+# Eclipse Gradle plugin generated files
+# Eclipse Core
+.project
+# JDT-specific (Eclipse Java Development Tools)
+.classpath
+
+# Ignore Gradle build output directory
+build
+.idea
+out
+
+docker/data/custom/csv
+docker/data/custom/json
+docker/data/custom/parquet
+docker/data/custom/generated
+docker/data/custom/recordTracking
+docker/data/custom/report
+docker/sample
+docker/tmp
+
+benchmark/jars
+
+.tmp_prev_class_name
+
+*.cast
+*.gif

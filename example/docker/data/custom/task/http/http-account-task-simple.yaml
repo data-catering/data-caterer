@@ -1,0 +1,79 @@
+name: "simple_http"
+steps:
+  - name: "account"
+    count:
+      records: 5
+    fields:
+      - name: "httpUrl"
+        type: struct
+        fields:
+          - name: "url"
+            static: "http://localhost:80/anything/{id}"
+          - name: "method"
+            static: "PUT"
+          - name: "pathParam"
+            type: array
+            fields:
+              - name: "id"
+                options:
+                  sql: "body.account_id"
+          - name: "queryParam"
+            type: array
+            fields:
+              - name: "limit"
+                type: "integer"
+                options:
+                  min: 1
+                  max: 10
+      - name: "httpHeaders"
+        type: array
+        fields:
+          - name: "Content-Type"
+            static: "application/json"
+          - name: "Content-Length"
+            type: "integer"
+          - name: "X-Account-Id"
+            options:
+              sql: "body.account_id"
+          - name: "X-Updated"
+            type: "timestamp"
+            options:
+              sql: "body.details.updated_by.time"
+      - name: "httpBody"
+        type: struct
+        fields:
+          - name: "account_id"
+            options:
+              regex: "ACC[0-9]{8}"
+          - name: "year"
+            type: "int"
+            options:
+              min: 2021
+              max: 2022
+          - name: "amount"
+            type: "double"
+            options:
+              min: 10.0
+              max: 100.0
+          - name: "details"
+            type: struct
+            fields:
+              - name: "name"
+              - name: "txn_date"
+                type: "date"
+                options:
+                  min: "2021-01-01"
+                  max: "2021-12-31"
+              - name: "updated_by"
+                type: struct
+                fields:
+                  - name: "user"
+                  - name: "time"
+                    type: "timestamp"
+          - name: "transactions"
+            type: "array"
+            fields:
+              - name: "txn_date"
+                type: "date"
+              - name: "amount"
+                type: "double"

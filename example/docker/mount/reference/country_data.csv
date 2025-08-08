@@ -1,0 +1,4 @@
+country_code,country_name,currency_code,timezone
+AU,Australia,AUD,Australia/Sydney
+US,United States,USD,America/New_York
+CA,Canada,CAD,America/Toronto
