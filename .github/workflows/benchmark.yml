@@ -18,7 +18,7 @@ jobs:
           fetch-depth: 2
       - name: Check if benchmark has already run
         run: |
-          version=$(grep dataCatererVersion gradle.properties | cut -d= -f2)
+          version=$(grep dataCatererVersion ../gradle.properties | cut -d= -f2)
           if [ ! -f benchmark/results/benchmark_results_${version}.txt ]; then
               echo "No benchmark results for version: $version, starting to run benchmarks"
           else
@@ -34,10 +34,8 @@ jobs:
       - name: Get Spark query engine jars
         run: bash benchmark/setup_query_engine_jars.sh
       - name: Run benchmark script
-        env:
-          DATA_CATERER_MANAGEMENT_TRACK: ${{ secrets.DATA_CATERER_MANAGEMENT_TRACK }}
         run: |
-          version=$(grep dataCatererVersion gradle.properties | cut -d= -f2)
+          version=$(grep dataCatererVersion ../gradle.properties | cut -d= -f2)
           bash benchmark/run_benchmark.sh
           bash benchmark/compare_benchmark_results.sh "$version"
       - name: Create pull request
