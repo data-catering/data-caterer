@@ -17,7 +17,6 @@ fi
 enable_query_engine_run=${ENABLE_QUERY_ENGINE_RUN:-true}
 enable_data_size_run=${ENABLE_DATA_SIZE_RUN:-true}
 enable_data_sink_run=${ENABLE_DATA_SINK_RUN:-true}
-data_caterer_track=${DATA_CATERER_MANAGEMENT_TRACK:-}
 
 data_caterer_version=$(grep -E "^dataCatererVersion=" "$PROP_FILE" | cut -d= -f2)
 default_job="io.github.datacatering.plan.benchmark.BenchmarkParquetPlanRun"
@@ -64,17 +63,17 @@ run_docker() {
 
     time_taken=$({
       time -p docker run -p 4040:4040 \
-        -v "$(pwd)/build/libs/data-caterer-example-0.1.0.jar:/opt/app/job.jar" \
-        -v "$(pwd)/benchmark/jars/blaze.jar:/opt/app/jars/blaze.jar" \
-        -v "$(pwd)/benchmark/jars/comet.jar:/opt/app/jars/comet.jar" \
-        -v "$(pwd)/benchmark/jars/gluten.jar:/opt/app/jars/gluten.jar" \
+        -v "${EXAMPLE_DIR}/build/libs/data-caterer-example-0.1.0.jar:/opt/app/job.jar" \
+        -v "${EXAMPLE_DIR}/benchmark/jars/blaze.jar:/opt/app/jars/blaze.jar" \
+        -v "${EXAMPLE_DIR}/benchmark/jars/comet.jar:/opt/app/jars/comet.jar" \
+        -v "${EXAMPLE_DIR}/benchmark/jars/gluten.jar:/opt/app/jars/gluten.jar" \
         -v "/tmp:/opt/app/data" \
         -e "PLAN_CLASS=$1" \
         -e "RECORD_COUNT=$2" \
         -e "DEPLOY_MODE=client" \
         -e "$driver_memory" \
         -e "$executor_memory" \
-        -e "DATA_CATERER_MANAGEMENT_TRACK=$data_caterer_track" \
+        -e "DATA_CATERER_VERSION=$data_caterer_version" \
         -e "ADDITIONAL_OPTS=$additional_conf" \
         datacatering/data-caterer:"$data_caterer_version";
     } 2>&1 | grep "real " | sed "$sed_option" "s/^.*real ([0-9\.]+)$/\1/")
