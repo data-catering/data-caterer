@@ -63,7 +63,7 @@ run_docker() {
 
     time_taken=$({
       time -p docker run -p 4040:4040 \
-        -v "${EXAMPLE_DIR}/build/libs/data-caterer-example-0.1.0.jar:/opt/app/job.jar" \
+        -v "${JOB_JAR}:/opt/app/job.jar" \
         -v "${EXAMPLE_DIR}/benchmark/jars/blaze.jar:/opt/app/jars/blaze.jar" \
         -v "${EXAMPLE_DIR}/benchmark/jars/comet.jar:/opt/app/jars/comet.jar" \
         -v "${EXAMPLE_DIR}/benchmark/jars/gluten.jar:/opt/app/jars/gluten.jar" \
@@ -93,6 +93,15 @@ if [[ $? -ne 0 ]]; then
   echo "Failed to build!"
   exit 1
 fi
+
+  # Resolve the latest non-sources/non-javadoc jar produced by the example project
+  JOB_JAR=$(ls -t "${EXAMPLE_DIR}/build/libs"/*.jar 2>/dev/null | grep -v -E "(sources|javadoc)" | head -1)
+  if [[ -z "$JOB_JAR" || ! -f "$JOB_JAR" ]]; then
+    echo "Could not locate built job jar under ${EXAMPLE_DIR}/build/libs. Ensure the build produced a jar."
+    ls -al "${EXAMPLE_DIR}/build/libs" || true
+    exit 1
+  fi
+  echo "Using job jar: $JOB_JAR"
 
 echo "Pulling image before starting benchmarks"
 docker pull datacatering/data-caterer:"$data_caterer_version"
