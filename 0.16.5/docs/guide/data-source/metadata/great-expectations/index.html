@@ -2903,7 +2903,7 @@
 <h1 id="great-expectations-source">Great Expectations Source</h1>
 <p>Creating a data generator for a JSON file and validating the data based on expectations 
 in <a href="https://github.com/great-expectations/great_expectations">Great Expectations</a>.</p>
-<p><a href="https://github.com/data-catering/data-caterer-example/blob/main/src/main/scala/io/github/datacatering/plan/GreatExpectationsPlanRun.scala"><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M16.5 5.5a2 2 0 0 0 2-2 2 2 0 0 0-2-2 2 2 0 0 0-2 2 2 2 0 0 0 2 2m-3.6 13.9 1-4.4 2.1 2v6h2v-7.5l-2.1-2 .6-3A7.3 7.3 0 0 0 22 13v-2c-1.76.03-3.4-.89-4.3-2.4l-1-1.6c-.36-.6-1-1-1.7-1-.3 0-.5.1-.8.1L9 8.3V13h2V9.6l1.8-.7-1.6 8.1-4.9-1-.4 2zM4 9a1 1 0 0 1-1-1 1 1 0 0 1 1-1h3v2zm1-4a1 1 0 0 1-1-1 1 1 0 0 1 1-1h5v2zm-2 8a1 1 0 0 1-1-1 1 1 0 0 1 1-1h4v2z"/></svg></span> Scala Example</a></p>
+<p><a href="https://github.com/data-catering/data-caterer/blob/main/example/src/main/scala/io/github/datacatering/plan/GreatExpectationsPlanRun.scala"><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M16.5 5.5a2 2 0 0 0 2-2 2 2 0 0 0-2-2 2 2 0 0 0-2 2 2 2 0 0 0 2 2m-3.6 13.9 1-4.4 2.1 2v6h2v-7.5l-2.1-2 .6-3A7.3 7.3 0 0 0 22 13v-2c-1.76.03-3.4-.89-4.3-2.4l-1-1.6c-.36-.6-1-1-1.7-1-.3 0-.5.1-.8.1L9 8.3V13h2V9.6l1.8-.7-1.6 8.1-4.9-1-.4 2zM4 9a1 1 0 0 1-1-1 1 1 0 0 1 1-1h3v2zm1-4a1 1 0 0 1-1-1 1 1 0 0 1 1-1h5v2zm-2 8a1 1 0 0 1-1-1 1 1 0 0 1 1-1h4v2z"/></svg></span> Scala Example</a></p>
 <h2 id="requirements">Requirements</h2>
 <ul>
 <li>10 minutes</li>
@@ -2912,19 +2912,22 @@ in <a href="https://github.com/great-expectations/great_expectations">Great Expe
 <li>Docker</li>
 </ul>
 <h2 id="get-started">Get Started</h2>
-<p>First, we will clone the data-caterer-example repo which will already have the base project setup required.</p>
+<p>First, we will clone the data-caterer repo which will already have the base project setup required.</p>
 <div class="tabbed-set tabbed-alternate" data-tabs="1:4"><input checked="checked" id="__tabbed_1_1" name="__tabbed_1" type="radio" /><input id="__tabbed_1_2" name="__tabbed_1" type="radio" /><input id="__tabbed_1_3" name="__tabbed_1" type="radio" /><input id="__tabbed_1_4" name="__tabbed_1" type="radio" /><div class="tabbed-labels"><label for="__tabbed_1_1">Java</label><label for="__tabbed_1_2">Scala</label><label for="__tabbed_1_3">YAML</label><label for="__tabbed_1_4">UI</label></div>
 <div class="tabbed-content">
 <div class="tabbed-block">
-<div class="language-shell highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>git<span class="w"> </span>clone<span class="w"> </span>git@github.com:data-catering/data-caterer-example.git
+<div class="language-shell highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>git<span class="w"> </span>clone<span class="w"> </span>git@github.com:data-catering/data-caterer.git
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="nb">cd</span><span class="w"> </span>data-caterer/example
 </span></code></pre></div>
 </div>
 <div class="tabbed-block">
-<div class="language-shell highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>git<span class="w"> </span>clone<span class="w"> </span>git@github.com:data-catering/data-caterer-example.git
+<div class="language-shell highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>git<span class="w"> </span>clone<span class="w"> </span>git@github.com:data-catering/data-caterer.git
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="nb">cd</span><span class="w"> </span>data-caterer/example
 </span></code></pre></div>
 </div>
 <div class="tabbed-block">
-<div class="language-shell highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>git<span class="w"> </span>clone<span class="w"> </span>git@github.com:data-catering/data-caterer-example.git
+<div class="language-shell highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>git<span class="w"> </span>clone<span class="w"> </span>git@github.com:data-catering/data-caterer.git
+</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="nb">cd</span><span class="w"> </span>data-caterer/example
 </span></code></pre></div>
 </div>
 <div class="tabbed-block">
@@ -2934,7 +2937,7 @@ in <a href="https://github.com/great-expectations/great_expectations">Great Expe
 </div>
 <h3 id="great-expectations-setup">Great Expectations Setup</h3>
 <p>A sample expectations file that will be used for this guide can be found 
-<a href="https://github.com/data-catering/data-caterer-example/tree/main/docker/mount/ge/taxi-expectations.json"><strong>here</strong></a>.</p>
+<a href="https://github.com/data-catering/data-caterer/blob/main/example/docker/mount/ge/taxi-expectations.json"><strong>here</strong></a>.</p>
 <p>If you want to use your own expectations file, simply add it into the <code>docker/mount/ge</code> folder path and follow the below
 steps.</p>
 <h3 id="plan-setup">Plan Setup</h3>
@@ -3024,7 +3027,7 @@ under a folder we can easily access.</p>
 <ol>
 <li>Click on <code>Connection</code> tab at the top</li>
 <li>Select <code>Great Expectations</code> as the data source and enter <code>my-great-expectations</code></li>
-<li>Copy <a href="https://github.com/data-catering/data-caterer-example/blob/main/docker/mount/ge/taxi-expectations.json">this file</a> into <code>/tmp/ge/taxi-expectations.json</code></li>
+<li>Copy <a href="https://github.com/data-catering/data-caterer/blob/main/example/docker/mount/ge/taxi-expectations.json">this file</a> into <code>/tmp/ge/taxi-expectations.json</code></li>
 <li>Enter <code>/tmp/ge/taxi-expectations.json</code> as the <code>Expectations File</code></li>
 </ol>
 </div>

@@ -3027,9 +3027,9 @@ and how many steps (sub data sources) there are (i.e. tables in a database, topi
 more steps.</p>
 <h3 id="plan">Plan</h3>
 <h4 id="foreign-keys">Foreign Keys</h4>
-<p><a href="https://github.com/data-catering/data-caterer-example/blob/main/docker/data/custom/plan/foreign-key-example.yaml">Define foreign keys across data sources in your plan to ensure generated data can match</a><br />
-<a href="https://github.com/data-catering/data-caterer-example/blob/main/docker/data/custom/task/file/json/json-account-task.yaml">Link to associated task 1</a><br />
-<a href="https://github.com/data-catering/data-caterer-example/blob/main/docker/data/custom/task/jdbc/postgres/postgres-account-task.yaml">Link to associated task 2</a></p>
+<p><a href="https://github.com/data-catering/data-caterer/blob/main/example/docker/data/custom/plan/foreign-key-example.yaml">Define foreign keys across data sources in your plan to ensure generated data can match</a><br />
+<a href="https://github.com/data-catering/data-caterer/blob/main/example/docker/data/custom/task/file/json/json-account-task.yaml">Link to associated task 1</a><br />
+<a href="https://github.com/data-catering/data-caterer/blob/main/example/docker/data/custom/task/jdbc/postgres/postgres-account-task.yaml">Link to associated task 2</a></p>
 <h3 id="task">Task</h3>
 <table>
 <thead>
@@ -3044,61 +3044,61 @@ more steps.</p>
 <tr>
 <td>Database</td>
 <td>Postgres</td>
-<td><a href="https://github.com/data-catering/data-caterer-example/blob/main/docker/data/custom/task/jdbc/postgres/postgres-account-task.yaml">Sample</a></td>
+<td><a href="https://github.com/data-catering/data-caterer/blob/main/example/docker/data/custom/task/jdbc/postgres/postgres-account-task.yaml">Sample</a></td>
 <td></td>
 </tr>
 <tr>
 <td>Database</td>
 <td>MySQL</td>
-<td><a href="https://github.com/data-catering/data-caterer-example/blob/main/docker/data/custom/task/jdbc/mysql/mysql-account-task.yaml">Sample</a></td>
+<td><a href="https://github.com/data-catering/data-caterer/blob/main/example/docker/data/custom/task/jdbc/mysql/mysql-account-task.yaml">Sample</a></td>
 <td></td>
 </tr>
 <tr>
 <td>Database</td>
 <td>Cassandra</td>
-<td><a href="https://github.com/data-catering/data-caterer-example/blob/main/docker/data/custom/task/cassandra/cassandra-customer-task.yaml">Sample</a></td>
+<td><a href="https://github.com/data-catering/data-caterer/blob/main/example/docker/data/custom/task/cassandra/cassandra-customer-task.yaml">Sample</a></td>
 <td></td>
 </tr>
 <tr>
 <td>File</td>
 <td>CSV</td>
-<td><a href="https://github.com/data-catering/data-caterer-example/blob/main/docker/data/custom/task/file/csv/csv-transaction-task.yaml">Sample</a></td>
+<td><a href="https://github.com/data-catering/data-caterer/blob/main/example/docker/data/custom/task/file/csv/csv-transaction-task.yaml">Sample</a></td>
 <td></td>
 </tr>
 <tr>
 <td>File</td>
 <td>JSON</td>
-<td><a href="https://github.com/data-catering/data-caterer-example/blob/main/docker/data/custom/task/file/json/json-account-task.yaml">Sample</a></td>
+<td><a href="https://github.com/data-catering/data-caterer/blob/main/example/docker/data/custom/task/file/json/json-account-task.yaml">Sample</a></td>
 <td>Contains nested schemas and use of SQL for generated values</td>
 </tr>
 <tr>
 <td>File</td>
 <td>Parquet</td>
-<td><a href="https://github.com/data-catering/data-caterer-example/blob/main/docker/data/custom/task/file/parquet/parquet-transaction-task.yaml">Sample</a></td>
+<td><a href="https://github.com/data-catering/data-caterer/blob/main/example/docker/data/custom/task/file/parquet/parquet-transaction-task.yaml">Sample</a></td>
 <td>Partition by year field</td>
 </tr>
 <tr>
 <td>Messaging System</td>
 <td>Kafka</td>
-<td><a href="https://github.com/data-catering/data-caterer-example/blob/main/docker/data/custom/task/kafka/kafka-account-task.yaml">Sample</a></td>
+<td><a href="https://github.com/data-catering/data-caterer/blob/main/example/docker/data/custom/task/kafka/kafka-account-task.yaml">Sample</a></td>
 <td>Specific base schema to be used, define headers, key, value, etc.</td>
 </tr>
 <tr>
 <td>Messaging System</td>
 <td>Solace</td>
-<td><a href="https://github.com/data-catering/data-caterer-example/blob/main/docker/data/custom/task/jms/solace/jms-account-task.yaml">Sample</a></td>
+<td><a href="https://github.com/data-catering/data-caterer/blob/main/example/docker/data/custom/task/jms/solace/jms-account-task.yaml">Sample</a></td>
 <td>JSON formatted message</td>
 </tr>
 <tr>
 <td>HTTP</td>
 <td>PUT</td>
-<td><a href="https://github.com/data-catering/data-caterer-example/blob/main/docker/data/custom/task/http/http-account-task.yaml">Sample</a></td>
+<td><a href="https://github.com/data-catering/data-caterer/blob/main/example/docker/data/custom/task/http/http-account-task.yaml">Sample</a></td>
 <td>JSON formatted PUT body</td>
 </tr>
 </tbody>
 </table>
 <h3 id="configuration">Configuration</h3>
-<p><a href="https://github.com/data-catering/data-caterer-example/blob/main/docker/data/custom/application.conf">Basic configuration</a></p>
+<p><a href="https://github.com/data-catering/data-caterer/blob/main/example/docker/data/custom/application.conf">Basic configuration</a></p>
 <h2 id="docker-compose">Docker-compose</h2>
 <p>To see how it runs against different data sources, you can run using <code>docker-compose</code> and set <code>DATA_SOURCE</code> like below</p>
 <div class="language-shell highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>./gradlew<span class="w"> </span>build

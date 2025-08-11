@@ -2934,9 +2934,9 @@ into Postgres and transactions related to those accounts into a parquet file.
 You can alter the <code>status</code> field in the account data to only generate <code>open</code> accounts
 and define a foreign key between Postgres and parquet to ensure the same <code>account_id</code> is being used.<br />
 Then in the parquet task, define 1 to 10 transactions per <code>account_id</code> to be generated.</p>
-<p><a href="https://github.com/data-catering/data-caterer-example/blob/main/docker/data/custom/task/jdbc/postgres/postgres-account-task.yaml">Postgres account generation example task</a><br />
-<a href="https://github.com/data-catering/data-caterer-example/blob/main/docker/data/custom/task/file/parquet/parquet-transaction-task.yaml">Parquet transaction generation example task</a><br />
-<a href="https://github.com/data-catering/data-caterer-example/blob/main/docker/data/custom/plan/scenario-based.yaml">Plan</a></p>
+<p><a href="https://github.com/data-catering/data-caterer/blob/main/example/docker/data/custom/task/jdbc/postgres/postgres-account-task.yaml">Postgres account generation example task</a><br />
+<a href="https://github.com/data-catering/data-caterer/blob/main/example/docker/data/custom/task/file/parquet/parquet-transaction-task.yaml">Parquet transaction generation example task</a><br />
+<a href="https://github.com/data-catering/data-caterer/blob/main/example/docker/data/custom/plan/scenario-based.yaml">Plan</a></p>
 <h2 id="cloud-storage">Cloud storage</h2>
 <h3 id="data-source">Data source</h3>
 <p>If you want to save the file types CSV, JSON, Parquet or ORC into cloud storage, you can do so via adding extra

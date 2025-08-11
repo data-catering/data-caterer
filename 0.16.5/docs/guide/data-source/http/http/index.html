@@ -2986,7 +2986,7 @@
 
 <h1 id="http-source">HTTP Source</h1>
 <p>Creating a data generator based on an <a href="https://spec.openapis.org/oas/latest.html">OpenAPI/Swagger</a> document.</p>
-<p><a href="https://github.com/data-catering/data-caterer-example/blob/main/src/main/scala/io/github/datacatering/plan/HttpPlanRun.scala"><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M16.5 5.5a2 2 0 0 0 2-2 2 2 0 0 0-2-2 2 2 0 0 0-2 2 2 2 0 0 0 2 2m-3.6 13.9 1-4.4 2.1 2v6h2v-7.5l-2.1-2 .6-3A7.3 7.3 0 0 0 22 13v-2c-1.76.03-3.4-.89-4.3-2.4l-1-1.6c-.36-.6-1-1-1.7-1-.3 0-.5.1-.8.1L9 8.3V13h2V9.6l1.8-.7-1.6 8.1-4.9-1-.4 2zM4 9a1 1 0 0 1-1-1 1 1 0 0 1 1-1h3v2zm1-4a1 1 0 0 1-1-1 1 1 0 0 1 1-1h5v2zm-2 8a1 1 0 0 1-1-1 1 1 0 0 1 1-1h4v2z"/></svg></span> Scala Example</a> | <a href="https://github.com/data-catering/data-caterer-example/blob/main/src/main/java/io/github/datacatering/plan/HttpJavaPlanRun.java"><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M2 21h18v-2H2M20 8h-2V5h2m0-2H4v10a4 4 0 0 0 4 4h6a4 4 0 0 0 4-4v-3h2a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2"/></svg></span> Java Example</a> | <a href="https://github.com/data-catering/data-caterer-example/blob/main/docker/data/custom/task/http">:material-file-yaml-outline: YAML Example</a></p>
+<p><a href="https://github.com/data-catering/data-caterer/blob/main/example/src/main/scala/io/github/datacatering/plan/HttpPlanRun.scala"><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M16.5 5.5a2 2 0 0 0 2-2 2 2 0 0 0-2-2 2 2 0 0 0-2 2 2 2 0 0 0 2 2m-3.6 13.9 1-4.4 2.1 2v6h2v-7.5l-2.1-2 .6-3A7.3 7.3 0 0 0 22 13v-2c-1.76.03-3.4-.89-4.3-2.4l-1-1.6c-.36-.6-1-1-1.7-1-.3 0-.5.1-.8.1L9 8.3V13h2V9.6l1.8-.7-1.6 8.1-4.9-1-.4 2zM4 9a1 1 0 0 1-1-1 1 1 0 0 1 1-1h3v2zm1-4a1 1 0 0 1-1-1 1 1 0 0 1 1-1h5v2zm-2 8a1 1 0 0 1-1-1 1 1 0 0 1 1-1h4v2z"/></svg></span> Scala Example</a> | <a href="https://github.com/data-catering/data-caterer/blob/main/example/src/main/java/io/github/datacatering/plan/HttpJavaPlanRun.java"><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M2 21h18v-2H2M20 8h-2V5h2m0-2H4v10a4 4 0 0 0 4 4h6a4 4 0 0 0 4-4v-3h2a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2"/></svg></span> Java Example</a> | <a href="https://github.com/data-catering/data-caterer/blob/main/example/docker/data/custom/task/http">:material-file-yaml-outline: YAML Example</a></p>
 <p><img alt="Generate HTTP requests" src="../../../../../diagrams/data-source/http_generation_run.gif" /></p>
 <h2 id="requirements">Requirements</h2>
 <ul>
@@ -2996,19 +2996,22 @@
 <li>Docker</li>
 </ul>
 <h2 id="get-started">Get Started</h2>
-<p>First, we will clone the data-caterer-example repo which will already have the base project setup required.</p>
+<p>First, we will clone the data-caterer repo which will already have the base project setup required.</p>
 <div class="tabbed-set tabbed-alternate" data-tabs="1:4"><input checked="checked" id="__tabbed_1_1" name="__tabbed_1" type="radio" /><input id="__tabbed_1_2" name="__tabbed_1" type="radio" /><input id="__tabbed_1_3" name="__tabbed_1" type="radio" /><input id="__tabbed_1_4" name="__tabbed_1" type="radio" /><div class="tabbed-labels"><label for="__tabbed_1_1">Java</label><label for="__tabbed_1_2">Scala</label><label for="__tabbed_1_3">YAML</label><label for="__tabbed_1_4">UI</label></div>
 <div class="tabbed-content">
 <div class="tabbed-block">
-<div class="language-shell highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>git<span class="w"> </span>clone<span class="w"> </span>git@github.com:data-catering/data-caterer-example.git
+<div class="language-shell highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>git<span class="w"> </span>clone<span class="w"> </span>git@github.com:data-catering/data-caterer.git
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="nb">cd</span><span class="w"> </span>data-caterer/example
 </span></code></pre></div>
 </div>
 <div class="tabbed-block">
-<div class="language-shell highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>git<span class="w"> </span>clone<span class="w"> </span>git@github.com:data-catering/data-caterer-example.git
+<div class="language-shell highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>git<span class="w"> </span>clone<span class="w"> </span>git@github.com:data-catering/data-caterer.git
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="nb">cd</span><span class="w"> </span>data-caterer/example
 </span></code></pre></div>
 </div>
 <div class="tabbed-block">
-<div class="language-shell highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>git<span class="w"> </span>clone<span class="w"> </span>git@github.com:data-catering/data-caterer-example.git
+<div class="language-shell highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>git<span class="w"> </span>clone<span class="w"> </span>git@github.com:data-catering/data-caterer.git
+</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="nb">cd</span><span class="w"> </span>data-caterer/example
 </span></code></pre></div>
 </div>
 <div class="tabbed-block">
@@ -3083,7 +3086,7 @@
 under a folder we can easily access.</p>
 <h4 id="schema">Schema</h4>
 <p>We can point the schema of a data source to a OpenAPI/Swagger document or URL. For this example, we will use the OpenAPI
-document found under <code>docker/mount/http/petstore.json</code> in the data-caterer-example repo. This is a simplified version of
+document found under <code>docker/mount/http/petstore.json</code> in the data-caterer repo. This is a simplified version of
 the original OpenAPI spec that can be found <a href="https://petstore.swagger.io/"><strong>here</strong></a>.</p>
 <p>We have kept the following endpoints to test out:</p>
 <ul>
@@ -3743,7 +3746,7 @@ as expected.</p>
 </div>
 <h4 id="query-parameter-styles">Query parameter styles</h4>
 <p>You can generate query parameters with different serialization styles (per OpenAPI specification).</p>
-<p><a href="https://github.com/data-catering/data-caterer-example/blob/main/src/main/scala/io/github/datacatering/plan/FastGenerationAndReferencePlanRun.scala"><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M16.5 5.5a2 2 0 0 0 2-2 2 2 0 0 0-2-2 2 2 0 0 0-2 2 2 2 0 0 0 2 2m-3.6 13.9 1-4.4 2.1 2v6h2v-7.5l-2.1-2 .6-3A7.3 7.3 0 0 0 22 13v-2c-1.76.03-3.4-.89-4.3-2.4l-1-1.6c-.36-.6-1-1-1.7-1-.3 0-.5.1-.8.1L9 8.3V13h2V9.6l1.8-.7-1.6 8.1-4.9-1-.4 2zM4 9a1 1 0 0 1-1-1 1 1 0 0 1 1-1h3v2zm1-4a1 1 0 0 1-1-1 1 1 0 0 1 1-1h5v2zm-2 8a1 1 0 0 1-1-1 1 1 0 0 1 1-1h4v2z"/></svg></span> Example</a></p>
+<p><a href="https://github.com/data-catering/data-caterer/blob/main/example/src/main/scala/io/github/datacatering/plan/FastGenerationAndReferencePlanRun.scala"><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M16.5 5.5a2 2 0 0 0 2-2 2 2 0 0 0-2-2 2 2 0 0 0-2 2 2 2 0 0 0 2 2m-3.6 13.9 1-4.4 2.1 2v6h2v-7.5l-2.1-2 .6-3A7.3 7.3 0 0 0 22 13v-2c-1.76.03-3.4-.89-4.3-2.4l-1-1.6c-.36-.6-1-1-1.7-1-.3 0-.5.1-.8.1L9 8.3V13h2V9.6l1.8-.7-1.6 8.1-4.9-1-.4 2zM4 9a1 1 0 0 1-1-1 1 1 0 0 1 1-1h3v2zm1-4a1 1 0 0 1-1-1 1 1 0 0 1 1-1h5v2zm-2 8a1 1 0 0 1-1-1 1 1 0 0 1 1-1h4v2z"/></svg></span> Example</a></p>
 <div class="tabbed-set tabbed-alternate" data-tabs="11:3"><input checked="checked" id="__tabbed_11_1" name="__tabbed_11" type="radio" /><input id="__tabbed_11_2" name="__tabbed_11" type="radio" /><input id="__tabbed_11_3" name="__tabbed_11" type="radio" /><div class="tabbed-labels"><label for="__tabbed_11_1">Java</label><label for="__tabbed_11_2">Scala</label><label for="__tabbed_11_3">YAML</label></div>
 <div class="tabbed-content">
 <div class="tabbed-block">

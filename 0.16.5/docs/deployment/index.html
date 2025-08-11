@@ -2848,18 +2848,19 @@
 <p>Run the OS native application from <a href="../../get-started/quick-start/#quick-start">downloading the specific OS application here</a>.</p>
 <h2 id="docker">Docker</h2>
 <p>To package up your class along with the Data Caterer base image, you can follow
-the <a href="https://github.com/data-catering/data-caterer-example/blob/main/Dockerfile">Dockerfile that is created for you here</a>.</p>
+the <a href="https://github.com/data-catering/data-caterer/blob/main/example/Dockerfile">Dockerfile that is created for you here</a>.</p>
 <p>Then you can run the following:</p>
 <div class="language-shell highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>./gradlew<span class="w"> </span>clean<span class="w"> </span>build
 </span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>docker<span class="w"> </span>build<span class="w"> </span>-t<span class="w"> </span>&lt;my_image_name&gt;:&lt;my_image_tag&gt;<span class="w"> </span>.
 </span></code></pre></div>
 <h2 id="helm">Helm</h2>
-<p><a href="https://github.com/data-catering/data-caterer-example/tree/main/helm/data-caterer">Link to sample helm on GitHub here</a></p>
+<p><a href="https://github.com/data-catering/data-caterer/tree/main/example/helm/data-caterer">Link to sample helm on GitHub here</a></p>
 <p>Update
-the <a href="https://github.com/data-catering/data-caterer-example/blob/main/helm/data-caterer/templates/configuration.yaml">configuration</a>
+the <a href="https://github.com/data-catering/data-caterer/blob/main/example/helm/data-caterer/templates/configuration.yaml">configuration</a>
 to your own data connections and configuration or own image created from above.</p>
-<div class="language-shell highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>git<span class="w"> </span>clone<span class="w"> </span>git@github.com:data-catering/data-caterer-example.git
-</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>helm<span class="w"> </span>install<span class="w"> </span>data-caterer<span class="w"> </span>./data-caterer-example/helm/data-caterer
+<div class="language-shell highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>git<span class="w"> </span>clone<span class="w"> </span>git@github.com:data-catering/data-caterer.git
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="w">    </span><span class="nb">cd</span><span class="w"> </span>data-caterer/example
+</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>helm<span class="w"> </span>install<span class="w"> </span>data-caterer<span class="w"> </span>./data-caterer/example/helm/data-caterer
 </span></code></pre></div>
 
 
