@@ -1291,6 +1291,15 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#json-output-options" class="md-nav__link">
+    <span class="md-ellipsis">
+      JSON output options
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -2902,6 +2911,7 @@
 
 <h1 id="json">JSON</h1>
 <p>Creating a data generator for JSON. You will have the ability to generate and validate JSON files via Docker.</p>
+<p><a href="https://github.com/data-catering/data-caterer-example/blob/main/src/main/scala/io/github/datacatering/plan/JsonPlan.scala"><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M16.5 5.5a2 2 0 0 0 2-2 2 2 0 0 0-2-2 2 2 0 0 0-2 2 2 2 0 0 0 2 2m-3.6 13.9 1-4.4 2.1 2v6h2v-7.5l-2.1-2 .6-3A7.3 7.3 0 0 0 22 13v-2c-1.76.03-3.4-.89-4.3-2.4l-1-1.6c-.36-.6-1-1-1.7-1-.3 0-.5.1-.8.1L9 8.3V13h2V9.6l1.8-.7-1.6 8.1-4.9-1-.4 2zM4 9a1 1 0 0 1-1-1 1 1 0 0 1 1-1h3v2zm1-4a1 1 0 0 1-1-1 1 1 0 0 1 1-1h5v2zm-2 8a1 1 0 0 1-1-1 1 1 0 0 1 1-1h4v2z"/></svg></span> Scala Example</a> | <a href="https://github.com/data-catering/data-caterer-example/blob/main/src/main/java/io/github/datacatering/plan/JsonJavaPlan.java"><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M2 21h18v-2H2M20 8h-2V5h2m0-2H4v10a4 4 0 0 0 4 4h6a4 4 0 0 0 4-4v-3h2a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2"/></svg></span> Java Example</a> | <a href="https://github.com/data-catering/data-caterer-example/blob/main/docker/data/custom/task/file/json">:material-file-yaml-outline: Basic YAML</a> | <a href="https://github.com/data-catering/data-caterer-example/blob/main/docker/data/custom/task/file/json/advanced-json-task.yaml">:material-file-yaml-outline: Advanced YAML</a></p>
 <h2 id="requirements">Requirements</h2>
 <ul>
 <li>10 minutes</li>
@@ -3157,39 +3167,99 @@ have unique values generated.</p>
 </div>
 </div>
 </div>
-<h3 id="run">Run</h3>
-<p>Now we can run via the script <code>./run.sh</code> that is in the top level directory of the <code>data-caterer-example</code> to run the class we just
-created.</p>
+<h4 id="json-output-options">JSON output options</h4>
+<p>If your JSON sink should output a bare top-level array when there is a single top-level array field, enable unwrap.</p>
+<p><a href="https://github.com/data-catering/data-caterer-example/blob/main/src/main/scala/io/github/datacatering/plan/FastGenerationAndReferencePlanRun.scala"><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M16.5 5.5a2 2 0 0 0 2-2 2 2 0 0 0-2-2 2 2 0 0 0-2 2 2 2 0 0 0 2 2m-3.6 13.9 1-4.4 2.1 2v6h2v-7.5l-2.1-2 .6-3A7.3 7.3 0 0 0 22 13v-2c-1.76.03-3.4-.89-4.3-2.4l-1-1.6c-.36-.6-1-1-1.7-1-.3 0-.5.1-.8.1L9 8.3V13h2V9.6l1.8-.7-1.6 8.1-4.9-1-.4 2zM4 9a1 1 0 0 1-1-1 1 1 0 0 1 1-1h3v2zm1-4a1 1 0 0 1-1-1 1 1 0 0 1 1-1h5v2zm-2 8a1 1 0 0 1-1-1 1 1 0 0 1 1-1h4v2z"/></svg></span> Example</a></p>
 <div class="tabbed-set tabbed-alternate" data-tabs="6:4"><input checked="checked" id="__tabbed_6_1" name="__tabbed_6" type="radio" /><input id="__tabbed_6_2" name="__tabbed_6" type="radio" /><input id="__tabbed_6_3" name="__tabbed_6" type="radio" /><input id="__tabbed_6_4" name="__tabbed_6" type="radio" /><div class="tabbed-labels"><label for="__tabbed_6_1">Java</label><label for="__tabbed_6_2">Scala</label><label for="__tabbed_6_3">YAML</label><label for="__tabbed_6_4">UI</label></div>
 <div class="tabbed-content">
 <div class="tabbed-block">
-<div class="language-shell highlight"><pre><span></span><code><span id="__span-15-1"><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a>./run.sh<span class="w"> </span>MyJSONJavaPlan
-</span><span id="__span-15-2"><a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a><span class="nv">account</span><span class="o">=</span><span class="k">$(</span>head<span class="w"> </span>-1<span class="w"> </span>docker/sample/customer/account_json/part-00000-*<span class="w"> </span><span class="p">|</span><span class="w"> </span>sed<span class="w"> </span>-nr<span class="w"> </span><span class="s1">&#39;s/.*account_id&quot;:&quot;(.+)&quot;,&quot;balance.*/\1/p&#39;</span><span class="k">)</span>
-</span><span id="__span-15-3"><a id="__codelineno-15-3" name="__codelineno-15-3" href="#__codelineno-15-3"></a><span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;Head account record:&quot;</span>
-</span><span id="__span-15-4"><a id="__codelineno-15-4" name="__codelineno-15-4" href="#__codelineno-15-4"></a>head<span class="w"> </span>-1<span class="w"> </span>docker/sample/customer/account_json/part-00000-*
-</span><span id="__span-15-5"><a id="__codelineno-15-5" name="__codelineno-15-5" href="#__codelineno-15-5"></a><span class="nb">echo</span><span class="w"> </span><span class="nv">$account</span>
-</span><span id="__span-15-6"><a id="__codelineno-15-6" name="__codelineno-15-6" href="#__codelineno-15-6"></a><span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;Transaction records:&quot;</span>
-</span><span id="__span-15-7"><a id="__codelineno-15-7" name="__codelineno-15-7" href="#__codelineno-15-7"></a>cat<span class="w"> </span>docker/sample/customer/transaction_json/part-0000*<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span><span class="nv">$account</span>
+<div class="language-java highlight"><pre><span></span><code><span id="__span-15-1"><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a><span class="n">json</span><span class="p">(</span><span class="s">&quot;json_array&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;/opt/app/data/json-array&quot;</span><span class="p">)</span>
+</span><span id="__span-15-2"><a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a><span class="w">  </span><span class="p">.</span><span class="na">fields</span><span class="p">(</span>
+</span><span id="__span-15-3"><a id="__codelineno-15-3" name="__codelineno-15-3" href="#__codelineno-15-3"></a><span class="w">    </span><span class="n">field</span><span class="p">().</span><span class="na">name</span><span class="p">(</span><span class="s">&quot;items&quot;</span><span class="p">).</span><span class="na">type</span><span class="p">(</span><span class="n">ArrayType</span><span class="p">.</span><span class="na">instance</span><span class="p">()).</span><span class="na">unwrapTopLevelArray</span><span class="p">(</span><span class="kc">true</span><span class="p">)</span>
+</span><span id="__span-15-4"><a id="__codelineno-15-4" name="__codelineno-15-4" href="#__codelineno-15-4"></a><span class="w">      </span><span class="p">.</span><span class="na">fields</span><span class="p">(</span>
+</span><span id="__span-15-5"><a id="__codelineno-15-5" name="__codelineno-15-5" href="#__codelineno-15-5"></a><span class="w">        </span><span class="n">field</span><span class="p">().</span><span class="na">name</span><span class="p">(</span><span class="s">&quot;id&quot;</span><span class="p">),</span>
+</span><span id="__span-15-6"><a id="__codelineno-15-6" name="__codelineno-15-6" href="#__codelineno-15-6"></a><span class="w">        </span><span class="n">field</span><span class="p">().</span><span class="na">name</span><span class="p">(</span><span class="s">&quot;score&quot;</span><span class="p">).</span><span class="na">type</span><span class="p">(</span><span class="n">DoubleType</span><span class="p">.</span><span class="na">instance</span><span class="p">()).</span><span class="na">min</span><span class="p">(</span><span class="mi">0</span><span class="p">).</span><span class="na">max</span><span class="p">(</span><span class="mi">100</span><span class="p">)</span>
+</span><span id="__span-15-7"><a id="__codelineno-15-7" name="__codelineno-15-7" href="#__codelineno-15-7"></a><span class="w">      </span><span class="p">)</span>
+</span><span id="__span-15-8"><a id="__codelineno-15-8" name="__codelineno-15-8" href="#__codelineno-15-8"></a><span class="w">  </span><span class="p">);</span>
 </span></code></pre></div>
 </div>
 <div class="tabbed-block">
-<div class="language-shell highlight"><pre><span></span><code><span id="__span-16-1"><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a>./run.sh<span class="w"> </span>MyJSONPlan
-</span><span id="__span-16-2"><a id="__codelineno-16-2" name="__codelineno-16-2" href="#__codelineno-16-2"></a><span class="nv">account</span><span class="o">=</span><span class="k">$(</span>head<span class="w"> </span>-1<span class="w"> </span>docker/sample/customer/account_json/part-00000-*<span class="w"> </span><span class="p">|</span><span class="w"> </span>sed<span class="w"> </span>-nr<span class="w"> </span><span class="s1">&#39;s/.*account_id&quot;:&quot;(.+)&quot;,&quot;balance.*/\1/p&#39;</span><span class="k">)</span>
-</span><span id="__span-16-3"><a id="__codelineno-16-3" name="__codelineno-16-3" href="#__codelineno-16-3"></a><span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;Head account record:&quot;</span>
-</span><span id="__span-16-4"><a id="__codelineno-16-4" name="__codelineno-16-4" href="#__codelineno-16-4"></a>head<span class="w"> </span>-1<span class="w"> </span>docker/sample/customer/account_json/part-00000-*
-</span><span id="__span-16-5"><a id="__codelineno-16-5" name="__codelineno-16-5" href="#__codelineno-16-5"></a><span class="nb">echo</span><span class="w"> </span><span class="nv">$account</span>
-</span><span id="__span-16-6"><a id="__codelineno-16-6" name="__codelineno-16-6" href="#__codelineno-16-6"></a><span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;Transaction records:&quot;</span>
-</span><span id="__span-16-7"><a id="__codelineno-16-7" name="__codelineno-16-7" href="#__codelineno-16-7"></a>cat<span class="w"> </span>docker/sample/customer/transaction_json/part-0000*<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span><span class="nv">$account</span>
+<div class="language-scala highlight"><pre><span></span><code><span id="__span-16-1"><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a><span class="n">json</span><span class="p">(</span><span class="s">&quot;json_array&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;/opt/app/data/json-array&quot;</span><span class="p">)</span>
+</span><span id="__span-16-2"><a id="__codelineno-16-2" name="__codelineno-16-2" href="#__codelineno-16-2"></a><span class="w">  </span><span class="p">.</span><span class="n">fields</span><span class="p">(</span>
+</span><span id="__span-16-3"><a id="__codelineno-16-3" name="__codelineno-16-3" href="#__codelineno-16-3"></a><span class="w">    </span><span class="n">field</span><span class="p">.</span><span class="n">name</span><span class="p">(</span><span class="s">&quot;items&quot;</span><span class="p">).</span><span class="n">`type`</span><span class="p">(</span><span class="nc">ArrayType</span><span class="p">).</span><span class="n">unwrapTopLevelArray</span><span class="p">(</span><span class="kc">true</span><span class="p">)</span>
+</span><span id="__span-16-4"><a id="__codelineno-16-4" name="__codelineno-16-4" href="#__codelineno-16-4"></a><span class="w">      </span><span class="p">.</span><span class="n">fields</span><span class="p">(</span>
+</span><span id="__span-16-5"><a id="__codelineno-16-5" name="__codelineno-16-5" href="#__codelineno-16-5"></a><span class="w">        </span><span class="n">field</span><span class="p">.</span><span class="n">name</span><span class="p">(</span><span class="s">&quot;id&quot;</span><span class="p">),</span>
+</span><span id="__span-16-6"><a id="__codelineno-16-6" name="__codelineno-16-6" href="#__codelineno-16-6"></a><span class="w">        </span><span class="n">field</span><span class="p">.</span><span class="n">name</span><span class="p">(</span><span class="s">&quot;score&quot;</span><span class="p">).</span><span class="n">`type`</span><span class="p">(</span><span class="nc">DoubleType</span><span class="p">).</span><span class="n">min</span><span class="p">(</span><span class="mi">0</span><span class="p">).</span><span class="n">max</span><span class="p">(</span><span class="mi">100</span><span class="p">)</span>
+</span><span id="__span-16-7"><a id="__codelineno-16-7" name="__codelineno-16-7" href="#__codelineno-16-7"></a><span class="w">      </span><span class="p">)</span>
+</span><span id="__span-16-8"><a id="__codelineno-16-8" name="__codelineno-16-8" href="#__codelineno-16-8"></a><span class="w">  </span><span class="p">)</span>
 </span></code></pre></div>
 </div>
 <div class="tabbed-block">
-<div class="language-shell highlight"><pre><span></span><code><span id="__span-17-1"><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a>./run.sh<span class="w"> </span>my-json.yaml
-</span><span id="__span-17-2"><a id="__codelineno-17-2" name="__codelineno-17-2" href="#__codelineno-17-2"></a><span class="nv">account</span><span class="o">=</span><span class="k">$(</span>head<span class="w"> </span>-1<span class="w"> </span>docker/sample/customer/account_json/part-00000-*<span class="w"> </span><span class="p">|</span><span class="w"> </span>sed<span class="w"> </span>-nr<span class="w"> </span><span class="s1">&#39;s/.*account_id&quot;:&quot;(.+)&quot;,&quot;balance.*/\1/p&#39;</span><span class="k">)</span>
-</span><span id="__span-17-3"><a id="__codelineno-17-3" name="__codelineno-17-3" href="#__codelineno-17-3"></a><span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;Head account record:&quot;</span>
-</span><span id="__span-17-4"><a id="__codelineno-17-4" name="__codelineno-17-4" href="#__codelineno-17-4"></a>head<span class="w"> </span>-1<span class="w"> </span>docker/sample/customer/account_json/part-00000-*
-</span><span id="__span-17-5"><a id="__codelineno-17-5" name="__codelineno-17-5" href="#__codelineno-17-5"></a><span class="nb">echo</span><span class="w"> </span><span class="nv">$account</span>
-</span><span id="__span-17-6"><a id="__codelineno-17-6" name="__codelineno-17-6" href="#__codelineno-17-6"></a><span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;Transaction records:&quot;</span>
-</span><span id="__span-17-7"><a id="__codelineno-17-7" name="__codelineno-17-7" href="#__codelineno-17-7"></a>cat<span class="w"> </span>docker/sample/customer/transaction_json/part-0000*<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span><span class="nv">$account</span>
+<div class="language-yaml highlight"><pre><span></span><code><span id="__span-17-1"><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;json_array_task&quot;</span>
+</span><span id="__span-17-2"><a id="__codelineno-17-2" name="__codelineno-17-2" href="#__codelineno-17-2"></a><span class="nt">steps</span><span class="p">:</span>
+</span><span id="__span-17-3"><a id="__codelineno-17-3" name="__codelineno-17-3" href="#__codelineno-17-3"></a><span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;json_array&quot;</span>
+</span><span id="__span-17-4"><a id="__codelineno-17-4" name="__codelineno-17-4" href="#__codelineno-17-4"></a><span class="w">    </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;json&quot;</span>
+</span><span id="__span-17-5"><a id="__codelineno-17-5" name="__codelineno-17-5" href="#__codelineno-17-5"></a><span class="w">    </span><span class="nt">options</span><span class="p">:</span>
+</span><span id="__span-17-6"><a id="__codelineno-17-6" name="__codelineno-17-6" href="#__codelineno-17-6"></a><span class="w">      </span><span class="nt">path</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;/opt/app/data/json-array&quot;</span>
+</span><span id="__span-17-7"><a id="__codelineno-17-7" name="__codelineno-17-7" href="#__codelineno-17-7"></a><span class="w">    </span><span class="nt">fields</span><span class="p">:</span>
+</span><span id="__span-17-8"><a id="__codelineno-17-8" name="__codelineno-17-8" href="#__codelineno-17-8"></a><span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;items&quot;</span>
+</span><span id="__span-17-9"><a id="__codelineno-17-9" name="__codelineno-17-9" href="#__codelineno-17-9"></a><span class="w">        </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;array&quot;</span>
+</span><span id="__span-17-10"><a id="__codelineno-17-10" name="__codelineno-17-10" href="#__codelineno-17-10"></a><span class="w">        </span><span class="nt">options</span><span class="p">:</span>
+</span><span id="__span-17-11"><a id="__codelineno-17-11" name="__codelineno-17-11" href="#__codelineno-17-11"></a><span class="w">          </span><span class="nt">unwrapTopLevelArray</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+</span><span id="__span-17-12"><a id="__codelineno-17-12" name="__codelineno-17-12" href="#__codelineno-17-12"></a><span class="w">        </span><span class="nt">fields</span><span class="p">:</span>
+</span><span id="__span-17-13"><a id="__codelineno-17-13" name="__codelineno-17-13" href="#__codelineno-17-13"></a><span class="w">          </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;id&quot;</span>
+</span><span id="__span-17-14"><a id="__codelineno-17-14" name="__codelineno-17-14" href="#__codelineno-17-14"></a><span class="w">          </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;score&quot;</span>
+</span><span id="__span-17-15"><a id="__codelineno-17-15" name="__codelineno-17-15" href="#__codelineno-17-15"></a><span class="w">            </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;double&quot;</span>
+</span><span id="__span-17-16"><a id="__codelineno-17-16" name="__codelineno-17-16" href="#__codelineno-17-16"></a><span class="w">            </span><span class="nt">options</span><span class="p">:</span>
+</span><span id="__span-17-17"><a id="__codelineno-17-17" name="__codelineno-17-17" href="#__codelineno-17-17"></a><span class="w">              </span><span class="nt">min</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0</span>
+</span><span id="__span-17-18"><a id="__codelineno-17-18" name="__codelineno-17-18" href="#__codelineno-17-18"></a><span class="w">              </span><span class="nt">max</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">100</span>
+</span></code></pre></div>
+</div>
+<div class="tabbed-block">
+<ol>
+<li>Click on <code>+ Field</code></li>
+<li>Add name as <code>items</code></li>
+<li>Click on <code>Select data type</code> and select <code>array</code></li>
+<li>Click on <code>+ Field</code> and add name as <code>unwrapTopLevelArray</code></li>
+<li>Click on <code>Select data type</code> and select <code>boolean</code></li>
+<li>Set value to <code>true</code></li>
+</ol>
+</div>
+</div>
+</div>
+<h3 id="run">Run</h3>
+<p>Now we can run via the script <code>./run.sh</code> that is in the top level directory of the <code>data-caterer-example</code> to run the class we just
+created.</p>
+<div class="tabbed-set tabbed-alternate" data-tabs="7:4"><input checked="checked" id="__tabbed_7_1" name="__tabbed_7" type="radio" /><input id="__tabbed_7_2" name="__tabbed_7" type="radio" /><input id="__tabbed_7_3" name="__tabbed_7" type="radio" /><input id="__tabbed_7_4" name="__tabbed_7" type="radio" /><div class="tabbed-labels"><label for="__tabbed_7_1">Java</label><label for="__tabbed_7_2">Scala</label><label for="__tabbed_7_3">YAML</label><label for="__tabbed_7_4">UI</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
+<div class="language-shell highlight"><pre><span></span><code><span id="__span-18-1"><a id="__codelineno-18-1" name="__codelineno-18-1" href="#__codelineno-18-1"></a>./run.sh<span class="w"> </span>MyJSONJavaPlan
+</span><span id="__span-18-2"><a id="__codelineno-18-2" name="__codelineno-18-2" href="#__codelineno-18-2"></a><span class="nv">account</span><span class="o">=</span><span class="k">$(</span>head<span class="w"> </span>-1<span class="w"> </span>docker/sample/customer/account_json/part-00000-*<span class="w"> </span><span class="p">|</span><span class="w"> </span>sed<span class="w"> </span>-nr<span class="w"> </span><span class="s1">&#39;s/.*account_id&quot;:&quot;(.+)&quot;,&quot;balance.*/\1/p&#39;</span><span class="k">)</span>
+</span><span id="__span-18-3"><a id="__codelineno-18-3" name="__codelineno-18-3" href="#__codelineno-18-3"></a><span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;Head account record:&quot;</span>
+</span><span id="__span-18-4"><a id="__codelineno-18-4" name="__codelineno-18-4" href="#__codelineno-18-4"></a>head<span class="w"> </span>-1<span class="w"> </span>docker/sample/customer/account_json/part-00000-*
+</span><span id="__span-18-5"><a id="__codelineno-18-5" name="__codelineno-18-5" href="#__codelineno-18-5"></a><span class="nb">echo</span><span class="w"> </span><span class="nv">$account</span>
+</span><span id="__span-18-6"><a id="__codelineno-18-6" name="__codelineno-18-6" href="#__codelineno-18-6"></a><span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;Transaction records:&quot;</span>
+</span><span id="__span-18-7"><a id="__codelineno-18-7" name="__codelineno-18-7" href="#__codelineno-18-7"></a>cat<span class="w"> </span>docker/sample/customer/transaction_json/part-0000*<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span><span class="nv">$account</span>
+</span></code></pre></div>
+</div>
+<div class="tabbed-block">
+<div class="language-shell highlight"><pre><span></span><code><span id="__span-19-1"><a id="__codelineno-19-1" name="__codelineno-19-1" href="#__codelineno-19-1"></a>./run.sh<span class="w"> </span>MyJSONPlan
+</span><span id="__span-19-2"><a id="__codelineno-19-2" name="__codelineno-19-2" href="#__codelineno-19-2"></a><span class="nv">account</span><span class="o">=</span><span class="k">$(</span>head<span class="w"> </span>-1<span class="w"> </span>docker/sample/customer/account_json/part-00000-*<span class="w"> </span><span class="p">|</span><span class="w"> </span>sed<span class="w"> </span>-nr<span class="w"> </span><span class="s1">&#39;s/.*account_id&quot;:&quot;(.+)&quot;,&quot;balance.*/\1/p&#39;</span><span class="k">)</span>
+</span><span id="__span-19-3"><a id="__codelineno-19-3" name="__codelineno-19-3" href="#__codelineno-19-3"></a><span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;Head account record:&quot;</span>
+</span><span id="__span-19-4"><a id="__codelineno-19-4" name="__codelineno-19-4" href="#__codelineno-19-4"></a>head<span class="w"> </span>-1<span class="w"> </span>docker/sample/customer/account_json/part-00000-*
+</span><span id="__span-19-5"><a id="__codelineno-19-5" name="__codelineno-19-5" href="#__codelineno-19-5"></a><span class="nb">echo</span><span class="w"> </span><span class="nv">$account</span>
+</span><span id="__span-19-6"><a id="__codelineno-19-6" name="__codelineno-19-6" href="#__codelineno-19-6"></a><span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;Transaction records:&quot;</span>
+</span><span id="__span-19-7"><a id="__codelineno-19-7" name="__codelineno-19-7" href="#__codelineno-19-7"></a>cat<span class="w"> </span>docker/sample/customer/transaction_json/part-0000*<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span><span class="nv">$account</span>
+</span></code></pre></div>
+</div>
+<div class="tabbed-block">
+<div class="language-shell highlight"><pre><span></span><code><span id="__span-20-1"><a id="__codelineno-20-1" name="__codelineno-20-1" href="#__codelineno-20-1"></a>./run.sh<span class="w"> </span>my-json.yaml
+</span><span id="__span-20-2"><a id="__codelineno-20-2" name="__codelineno-20-2" href="#__codelineno-20-2"></a><span class="nv">account</span><span class="o">=</span><span class="k">$(</span>head<span class="w"> </span>-1<span class="w"> </span>docker/sample/customer/account_json/part-00000-*<span class="w"> </span><span class="p">|</span><span class="w"> </span>sed<span class="w"> </span>-nr<span class="w"> </span><span class="s1">&#39;s/.*account_id&quot;:&quot;(.+)&quot;,&quot;balance.*/\1/p&#39;</span><span class="k">)</span>
+</span><span id="__span-20-3"><a id="__codelineno-20-3" name="__codelineno-20-3" href="#__codelineno-20-3"></a><span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;Head account record:&quot;</span>
+</span><span id="__span-20-4"><a id="__codelineno-20-4" name="__codelineno-20-4" href="#__codelineno-20-4"></a>head<span class="w"> </span>-1<span class="w"> </span>docker/sample/customer/account_json/part-00000-*
+</span><span id="__span-20-5"><a id="__codelineno-20-5" name="__codelineno-20-5" href="#__codelineno-20-5"></a><span class="nb">echo</span><span class="w"> </span><span class="nv">$account</span>
+</span><span id="__span-20-6"><a id="__codelineno-20-6" name="__codelineno-20-6" href="#__codelineno-20-6"></a><span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;Transaction records:&quot;</span>
+</span><span id="__span-20-7"><a id="__codelineno-20-7" name="__codelineno-20-7" href="#__codelineno-20-7"></a>cat<span class="w"> </span>docker/sample/customer/transaction_json/part-0000*<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span><span class="nv">$account</span>
 </span></code></pre></div>
 </div>
 <div class="tabbed-block">
@@ -3204,13 +3274,13 @@ created.</p>
 </div>
 </div>
 <p>It should look something like this.</p>
-<div class="language-shell highlight"><pre><span></span><code><span id="__span-18-1"><a id="__codelineno-18-1" name="__codelineno-18-1" href="#__codelineno-18-1"></a>Head<span class="w"> </span>account<span class="w"> </span>record:
-</span><span id="__span-18-2"><a id="__codelineno-18-2" name="__codelineno-18-2" href="#__codelineno-18-2"></a><span class="o">{</span><span class="s2">&quot;account_id&quot;</span>:<span class="s2">&quot;ACC00047541&quot;</span>,<span class="s2">&quot;balance&quot;</span>:445.62,<span class="s2">&quot;created_by&quot;</span>:<span class="s2">&quot;event&quot;</span>,<span class="s2">&quot;open_time&quot;</span>:<span class="s2">&quot;2024-03-13T00:31:38.836Z&quot;</span>,<span class="s2">&quot;status&quot;</span>:<span class="s2">&quot;suspended&quot;</span>,<span class="s2">&quot;customer_details&quot;</span>:<span class="o">{</span><span class="s2">&quot;name&quot;</span>:<span class="s2">&quot;Joey Gaylord&quot;</span>,<span class="s2">&quot;age&quot;</span>:44,<span class="s2">&quot;city&quot;</span>:<span class="s2">&quot;Lake Jose&quot;</span><span class="o">}}</span>
-</span><span id="__span-18-3"><a id="__codelineno-18-3" name="__codelineno-18-3" href="#__codelineno-18-3"></a>ACC00047541
-</span><span id="__span-18-4"><a id="__codelineno-18-4" name="__codelineno-18-4" href="#__codelineno-18-4"></a>Transaction<span class="w"> </span>records:
-</span><span id="__span-18-5"><a id="__codelineno-18-5" name="__codelineno-18-5" href="#__codelineno-18-5"></a><span class="o">{</span><span class="s2">&quot;account_id&quot;</span>:<span class="s2">&quot;ACC00047541&quot;</span>,<span class="s2">&quot;full_name&quot;</span>:<span class="s2">&quot;Joey Gaylord&quot;</span>,<span class="s2">&quot;amount&quot;</span>:31.485424217447527,<span class="s2">&quot;time&quot;</span>:<span class="s2">&quot;2023-11-07T04:50:20.875Z&quot;</span>,<span class="s2">&quot;date&quot;</span>:<span class="s2">&quot;2023-11-07&quot;</span><span class="o">}</span>
-</span><span id="__span-18-6"><a id="__codelineno-18-6" name="__codelineno-18-6" href="#__codelineno-18-6"></a><span class="o">{</span><span class="s2">&quot;account_id&quot;</span>:<span class="s2">&quot;ACC00047541&quot;</span>,<span class="s2">&quot;full_name&quot;</span>:<span class="s2">&quot;Joey Gaylord&quot;</span>,<span class="s2">&quot;amount&quot;</span>:79.22177964401857,<span class="s2">&quot;time&quot;</span>:<span class="s2">&quot;2024-02-01T15:15:38.289Z&quot;</span>,<span class="s2">&quot;date&quot;</span>:<span class="s2">&quot;2024-02-01&quot;</span><span class="o">}</span>
-</span><span id="__span-18-7"><a id="__codelineno-18-7" name="__codelineno-18-7" href="#__codelineno-18-7"></a><span class="o">{</span><span class="s2">&quot;account_id&quot;</span>:<span class="s2">&quot;ACC00047541&quot;</span>,<span class="s2">&quot;full_name&quot;</span>:<span class="s2">&quot;Joey Gaylord&quot;</span>,<span class="s2">&quot;amount&quot;</span>:56.06230355456882,<span class="s2">&quot;time&quot;</span>:<span class="s2">&quot;2024-02-29T21:42:42.473Z&quot;</span>,<span class="s2">&quot;date&quot;</span>:<span class="s2">&quot;2024-02-29&quot;</span><span class="o">}</span>
+<div class="language-shell highlight"><pre><span></span><code><span id="__span-21-1"><a id="__codelineno-21-1" name="__codelineno-21-1" href="#__codelineno-21-1"></a>Head<span class="w"> </span>account<span class="w"> </span>record:
+</span><span id="__span-21-2"><a id="__codelineno-21-2" name="__codelineno-21-2" href="#__codelineno-21-2"></a><span class="o">{</span><span class="s2">&quot;account_id&quot;</span>:<span class="s2">&quot;ACC00047541&quot;</span>,<span class="s2">&quot;balance&quot;</span>:445.62,<span class="s2">&quot;created_by&quot;</span>:<span class="s2">&quot;event&quot;</span>,<span class="s2">&quot;open_time&quot;</span>:<span class="s2">&quot;2024-03-13T00:31:38.836Z&quot;</span>,<span class="s2">&quot;status&quot;</span>:<span class="s2">&quot;suspended&quot;</span>,<span class="s2">&quot;customer_details&quot;</span>:<span class="o">{</span><span class="s2">&quot;name&quot;</span>:<span class="s2">&quot;Joey Gaylord&quot;</span>,<span class="s2">&quot;age&quot;</span>:44,<span class="s2">&quot;city&quot;</span>:<span class="s2">&quot;Lake Jose&quot;</span><span class="o">}}</span>
+</span><span id="__span-21-3"><a id="__codelineno-21-3" name="__codelineno-21-3" href="#__codelineno-21-3"></a>ACC00047541
+</span><span id="__span-21-4"><a id="__codelineno-21-4" name="__codelineno-21-4" href="#__codelineno-21-4"></a>Transaction<span class="w"> </span>records:
+</span><span id="__span-21-5"><a id="__codelineno-21-5" name="__codelineno-21-5" href="#__codelineno-21-5"></a><span class="o">{</span><span class="s2">&quot;account_id&quot;</span>:<span class="s2">&quot;ACC00047541&quot;</span>,<span class="s2">&quot;full_name&quot;</span>:<span class="s2">&quot;Joey Gaylord&quot;</span>,<span class="s2">&quot;amount&quot;</span>:31.485424217447527,<span class="s2">&quot;time&quot;</span>:<span class="s2">&quot;2023-11-07T04:50:20.875Z&quot;</span>,<span class="s2">&quot;date&quot;</span>:<span class="s2">&quot;2023-11-07&quot;</span><span class="o">}</span>
+</span><span id="__span-21-6"><a id="__codelineno-21-6" name="__codelineno-21-6" href="#__codelineno-21-6"></a><span class="o">{</span><span class="s2">&quot;account_id&quot;</span>:<span class="s2">&quot;ACC00047541&quot;</span>,<span class="s2">&quot;full_name&quot;</span>:<span class="s2">&quot;Joey Gaylord&quot;</span>,<span class="s2">&quot;amount&quot;</span>:79.22177964401857,<span class="s2">&quot;time&quot;</span>:<span class="s2">&quot;2024-02-01T15:15:38.289Z&quot;</span>,<span class="s2">&quot;date&quot;</span>:<span class="s2">&quot;2024-02-01&quot;</span><span class="o">}</span>
+</span><span id="__span-21-7"><a id="__codelineno-21-7" name="__codelineno-21-7" href="#__codelineno-21-7"></a><span class="o">{</span><span class="s2">&quot;account_id&quot;</span>:<span class="s2">&quot;ACC00047541&quot;</span>,<span class="s2">&quot;full_name&quot;</span>:<span class="s2">&quot;Joey Gaylord&quot;</span>,<span class="s2">&quot;amount&quot;</span>:56.06230355456882,<span class="s2">&quot;time&quot;</span>:<span class="s2">&quot;2024-02-29T21:42:42.473Z&quot;</span>,<span class="s2">&quot;date&quot;</span>:<span class="s2">&quot;2024-02-29&quot;</span><span class="o">}</span>
 </span></code></pre></div>
 <p>Congratulations! You have now made a data generator that has simulated a real world data scenario. You can check the
 <code>JsonJavaPlan.java</code> or <code>JsonPlan.scala</code> files as well to check that your plan is the same.</p>
