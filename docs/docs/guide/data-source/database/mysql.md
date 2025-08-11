@@ -9,7 +9,7 @@ image: "https://data.catering/diagrams/logo/data_catering_logo.svg"
 Creating a data generator for MySQL. You will build a Docker image that will be able to populate data in MySQL
 for the tables you configure.
 
-[:material-run-fast: Scala Example](https://github.com/data-catering/data-caterer-example/blob/main/src/main/scala/io/github/datacatering/plan/MySqlPlanRun.scala) | [:material-coffee: Java Example](https://github.com/data-catering/data-caterer-example/blob/main/src/main/java/io/github/datacatering/plan/MySqlJavaPlanRun.java) | [:material-file-yaml-outline: YAML Example](https://github.com/data-catering/data-caterer-example/blob/main/docker/data/custom/task/jdbc/mysql)
+[:material-run-fast: Scala Example](https://github.com/data-catering/data-caterer/blob/main/example/src/main/scala/io/github/datacatering/plan/MySqlPlanRun.scala) | [:material-coffee: Java Example](https://github.com/data-catering/data-caterer/blob/main/example/src/main/java/io/github/datacatering/plan/MySqlJavaPlanRun.java) | [:material-file-yaml-outline: YAML Example](https://github.com/data-catering/data-caterer/blob/main/example/docker/data/custom/task/jdbc/mysql)
 
 ## Requirements
 
@@ -20,24 +20,27 @@ for the tables you configure.
 
 ## Get Started
 
-First, we will clone the data-caterer-example repo which will already have the base project setup required.
+First, we will clone the data-caterer repo which will already have the base project setup required.
 
 === "Java"
 
     ```shell
-    git clone git@github.com:data-catering/data-caterer-example.git
+    git clone git@github.com:data-catering/data-caterer.git
+    cd data-caterer/example
     ```
 
 === "Scala"
 
     ```shell
-    git clone git@github.com:data-catering/data-caterer-example.git
+    git clone git@github.com:data-catering/data-caterer.git
+    cd data-caterer/example
     ```
 
 === "YAML"
 
     ```shell
-    git clone git@github.com:data-catering/data-caterer-example.git
+    git clone git@github.com:data-catering/data-caterer.git
+    cd data-caterer/example
     ```
 
 === "UI"
@@ -374,7 +377,7 @@ To tell Data Caterer that we want to run with the configurations along with the 
 
 ### Run
 
-Now we can run via the script `./run.sh` that is in the top level directory of the `data-caterer-example` to run the
+Now we can run via the script `./run.sh` that is in the top level directory of the `data-caterer/example` folder to run the
 class we just
 created.
 

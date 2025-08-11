@@ -60,7 +60,7 @@ Förlåt", "你好吗", "Nhà vệ sinh ở đâu", "こんにちは", "नम�
 
 #### Sample
 
-[:material-run-fast: Scala Example](https://github.com/data-catering/data-caterer-example/blob/main/src/main/scala/io/github/datacatering/plan/DocumentationPlanRun.scala) | [:material-coffee: Java Example](https://github.com/data-catering/data-caterer-example/blob/main/src/main/java/io/github/datacatering/plan/DocumentationJavaPlanRun.java)
+[:material-run-fast: Scala Example](https://github.com/data-catering/data-caterer/blob/main/example/src/main/scala/io/github/datacatering/plan/DocumentationPlanRun.scala) | [:material-coffee: Java Example](https://github.com/data-catering/data-caterer/blob/main/example/src/main/java/io/github/datacatering/plan/DocumentationJavaPlanRun.java)
 
 === "Java"
 
@@ -643,7 +643,7 @@ You can control behavior at the step level for generation.
 
 Disable data generation for specific steps when you want to use them only for reference in foreign key relationships.
 
-[:material-run-fast: Example](https://github.com/data-catering/data-caterer-example/blob/main/src/main/scala/io/github/datacatering/plan/FastGenerationAndReferencePlanRun.scala)
+[:material-run-fast: Example](https://github.com/data-catering/data-caterer/blob/main/example/src/main/scala/io/github/datacatering/plan/FastGenerationAndReferencePlanRun.scala)
 
 === "Java"
 
@@ -688,7 +688,7 @@ Disable data generation for specific steps when you want to use them only for re
 
 Control data partitioning and parallelism for improved performance with large datasets.
 
-[:material-run-fast: Example](https://github.com/data-catering/data-caterer-example/blob/main/src/main/scala/io/github/datacatering/plan/FastGenerationAndReferencePlanRun.scala)
+[:material-run-fast: Example](https://github.com/data-catering/data-caterer/blob/main/example/src/main/scala/io/github/datacatering/plan/FastGenerationAndReferencePlanRun.scala)
 
 === "Java"
 
@@ -727,7 +727,7 @@ Control data partitioning and parallelism for improved performance with large da
 
 Use existing data as reference instead of generating new data for a step. This is useful when you want to reference real data in foreign key relationships.
 
-[:material-run-fast: Example](https://github.com/data-catering/data-caterer-example/blob/main/src/main/scala/io/github/datacatering/plan/FastGenerationAndReferencePlanRun.scala)
+[:material-run-fast: Example](https://github.com/data-catering/data-caterer/blob/main/example/src/main/scala/io/github/datacatering/plan/FastGenerationAndReferencePlanRun.scala)
 
 === "Java"
 
@@ -760,7 +760,7 @@ Use existing data as reference instead of generating new data for a step. This i
 
 For databases that support primary key positions and clustering order (like Cassandra), you can specify the order of primary keys and clustering keys.
 
-[:material-run-fast: Example](https://github.com/data-catering/data-caterer-example/blob/main/src/main/scala/io/github/datacatering/plan/FastGenerationAndReferencePlanRun.scala)
+[:material-run-fast: Example](https://github.com/data-catering/data-caterer/blob/main/example/src/main/scala/io/github/datacatering/plan/FastGenerationAndReferencePlanRun.scala)
 
 === "Java"
 
@@ -809,7 +809,7 @@ For databases that support primary key positions and clustering order (like Cass
 
 Data Caterer supports complex SQL expressions for generating sophisticated data relationships and calculations. SQL expressions are evaluated after all non-SQL fields have been generated.
 
-[:material-run-fast: Scala Example](https://github.com/data-catering/data-caterer-example/blob/main/src/main/scala/io/github/datacatering/plan/DocumentationPlanRun.scala) | [:material-coffee: Java Example](https://github.com/data-catering/data-caterer-example/blob/main/src/main/java/io/github/datacatering/plan/DocumentationJavaPlanRun.java)
+[:material-run-fast: Scala Example](https://github.com/data-catering/data-caterer/blob/main/example/src/main/scala/io/github/datacatering/plan/DocumentationPlanRun.scala) | [:material-coffee: Java Example](https://github.com/data-catering/data-caterer/blob/main/example/src/main/java/io/github/datacatering/plan/DocumentationJavaPlanRun.java)
 
 ### Array Operations and Aggregations
 

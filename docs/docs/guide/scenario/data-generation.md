@@ -19,24 +19,27 @@ Go through the available options for data generation. Creating a data generator 
 
 ## Get Started
 
-First, we will clone the data-caterer-example repo which will already have the base project setup required.
+First, we will clone the data-caterer repo and navigate to the example folder which will already have the base project setup required.
 
 === "Java"
 
     ```shell
-    git clone git@github.com:data-catering/data-caterer-example.git
+    git clone git@github.com:data-catering/data-caterer.git
+    cd data-caterer/example
     ```
 
 === "Scala"
 
     ```shell
-    git clone git@github.com:data-catering/data-caterer-example.git
+    git clone git@github.com:data-catering/data-caterer.git
+    cd data-caterer/example
     ```
 
 === "YAML"
 
     ```shell
-    git clone git@github.com:data-catering/data-caterer-example.git
+    git clone git@github.com:data-catering/data-caterer.git
+    cd data-caterer/example
     ```
 
 === "UI"
@@ -643,7 +646,7 @@ To tell Data Caterer that we want to run with the configurations along with the 
 
 ### Run
 
-Now we can run via the script `./run.sh` that is in the top level directory of the `data-caterer-example` to run the
+Now we can run via the script `./run.sh` that is in the top level directory of the `data-caterer/example` folder to run the
 class we just created.
 
 === "Java"

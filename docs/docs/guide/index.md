@@ -129,27 +129,27 @@ more steps.
 
 #### Foreign Keys
 
-[Define foreign keys across data sources in your plan to ensure generated data can match](https://github.com/data-catering/data-caterer-example/blob/main/docker/data/custom/plan/foreign-key-example.yaml)  
-[Link to associated task 1](https://github.com/data-catering/data-caterer-example/blob/main/docker/data/custom/task/file/json/json-account-task.yaml)  
-[Link to associated task 2](https://github.com/data-catering/data-caterer-example/blob/main/docker/data/custom/task/jdbc/postgres/postgres-account-task.yaml)
+[Define foreign keys across data sources in your plan to ensure generated data can match](https://github.com/data-catering/data-caterer/blob/main/example/docker/data/custom/plan/foreign-key-example.yaml)  
+[Link to associated task 1](https://github.com/data-catering/data-caterer/blob/main/example/docker/data/custom/task/file/json/json-account-task.yaml)  
+[Link to associated task 2](https://github.com/data-catering/data-caterer/blob/main/example/docker/data/custom/task/jdbc/postgres/postgres-account-task.yaml)
 
 ### Task
 
 | Data Source Type | Data Source | Sample Task                                                                                                                                  | Notes                                                             |
 |------------------|-------------|----------------------------------------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------|
-| Database         | Postgres    | [Sample](https://github.com/data-catering/data-caterer-example/blob/main/docker/data/custom/task/jdbc/postgres/postgres-account-task.yaml)   |                                                                   |
-| Database         | MySQL       | [Sample](https://github.com/data-catering/data-caterer-example/blob/main/docker/data/custom/task/jdbc/mysql/mysql-account-task.yaml)         |                                                                   |
-| Database         | Cassandra   | [Sample](https://github.com/data-catering/data-caterer-example/blob/main/docker/data/custom/task/cassandra/cassandra-customer-task.yaml)     |                                                                   |
-| File             | CSV         | [Sample](https://github.com/data-catering/data-caterer-example/blob/main/docker/data/custom/task/file/csv/csv-transaction-task.yaml)         |                                                                   |
-| File             | JSON        | [Sample](https://github.com/data-catering/data-caterer-example/blob/main/docker/data/custom/task/file/json/json-account-task.yaml)           | Contains nested schemas and use of SQL for generated values       |
-| File             | Parquet     | [Sample](https://github.com/data-catering/data-caterer-example/blob/main/docker/data/custom/task/file/parquet/parquet-transaction-task.yaml) | Partition by year field                                           |
-| Messaging System | Kafka       | [Sample](https://github.com/data-catering/data-caterer-example/blob/main/docker/data/custom/task/kafka/kafka-account-task.yaml)              | Specific base schema to be used, define headers, key, value, etc. |
-| Messaging System | Solace      | [Sample](https://github.com/data-catering/data-caterer-example/blob/main/docker/data/custom/task/jms/solace/jms-account-task.yaml)           | JSON formatted message                                            |
-| HTTP             | PUT         | [Sample](https://github.com/data-catering/data-caterer-example/blob/main/docker/data/custom/task/http/http-account-task.yaml)                | JSON formatted PUT body                                           |
+| Database         | Postgres    | [Sample](https://github.com/data-catering/data-caterer/blob/main/example/docker/data/custom/task/jdbc/postgres/postgres-account-task.yaml)   |                                                                   |
+| Database         | MySQL       | [Sample](https://github.com/data-catering/data-caterer/blob/main/example/docker/data/custom/task/jdbc/mysql/mysql-account-task.yaml)         |                                                                   |
+| Database         | Cassandra   | [Sample](https://github.com/data-catering/data-caterer/blob/main/example/docker/data/custom/task/cassandra/cassandra-customer-task.yaml)     |                                                                   |
+| File             | CSV         | [Sample](https://github.com/data-catering/data-caterer/blob/main/example/docker/data/custom/task/file/csv/csv-transaction-task.yaml)         |                                                                   |
+| File             | JSON        | [Sample](https://github.com/data-catering/data-caterer/blob/main/example/docker/data/custom/task/file/json/json-account-task.yaml)           | Contains nested schemas and use of SQL for generated values       |
+| File             | Parquet     | [Sample](https://github.com/data-catering/data-caterer/blob/main/example/docker/data/custom/task/file/parquet/parquet-transaction-task.yaml) | Partition by year field                                           |
+| Messaging System | Kafka       | [Sample](https://github.com/data-catering/data-caterer/blob/main/example/docker/data/custom/task/kafka/kafka-account-task.yaml)              | Specific base schema to be used, define headers, key, value, etc. |
+| Messaging System | Solace      | [Sample](https://github.com/data-catering/data-caterer/blob/main/example/docker/data/custom/task/jms/solace/jms-account-task.yaml)           | JSON formatted message                                            |
+| HTTP             | PUT         | [Sample](https://github.com/data-catering/data-caterer/blob/main/example/docker/data/custom/task/http/http-account-task.yaml)                | JSON formatted PUT body                                           |
 
 ### Configuration
 
-[Basic configuration](https://github.com/data-catering/data-caterer-example/blob/main/docker/data/custom/application.conf)
+[Basic configuration](https://github.com/data-catering/data-caterer/blob/main/example/docker/data/custom/application.conf)
 
 ## Docker-compose
 

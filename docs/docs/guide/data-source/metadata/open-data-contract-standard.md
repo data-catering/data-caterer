@@ -11,7 +11,7 @@ image: "https://data.catering/diagrams/logo/data_catering_logo.svg"
 Creating a data generator for a CSV file based on metadata stored
 in [Open Data Contract Standard (ODCS)](https://github.com/bitol-io/open-data-contract-standard).
 
-[:material-run-fast: Scala Example](https://github.com/data-catering/data-caterer-example/blob/main/src/main/scala/io/github/datacatering/plan/ODCSPlanRun.scala)
+[:material-run-fast: Scala Example](https://github.com/data-catering/data-caterer/blob/main/example/src/main/scala/io/github/datacatering/plan/ODCSPlanRun.scala)
 
 ## Requirements
 
@@ -22,24 +22,27 @@ in [Open Data Contract Standard (ODCS)](https://github.com/bitol-io/open-data-co
 
 ## Get Started
 
-First, we will clone the data-caterer-example repo which will already have the base project setup required.
+First, we will clone the data-caterer repo which will already have the base project setup required.
 
 === "Java"
 
     ```shell
-    git clone git@github.com:data-catering/data-caterer-example.git
+    git clone git@github.com:data-catering/data-caterer.git
+    cd data-caterer/example
     ```
 
 === "Scala"
 
     ```shell
-    git clone git@github.com:data-catering/data-caterer-example.git
+    git clone git@github.com:data-catering/data-caterer.git
+    cd data-caterer/example
     ```
 
 === "YAML"
 
     ```shell
-    git clone git@github.com:data-catering/data-caterer-example.git
+    git clone git@github.com:data-catering/data-caterer.git
+    cd data-caterer/example
     ```
 
 === "UI"
@@ -49,7 +52,7 @@ First, we will clone the data-caterer-example repo which will already have the b
 ### Open Data Contract Standard (ODCS) Setup
 
 We will be using
-[the following ODCS file](https://github.com/data-catering/data-caterer-example/blob/main/docker/mount/odcs/full-example.odcs.yaml)
+[the following ODCS file](https://github.com/data-catering/data-caterer/blob/main/example/docker/mount/odcs/full-example.odcs.yaml)
 for this example.
 
 ### Plan Setup
@@ -158,13 +161,13 @@ We can point the schema of a data source to our Open Data Contract Standard (ODC
 
     1. Click on `Connection` tab at the top
     1. Select `ODCS` as the data source and enter `example-odcs`
-    1. Copy [this file](https://github.com/data-catering/data-caterer-example/blob/main/docker/mount/odcs/full-example.yaml) into `/tmp/odcs/full-example.yaml`
+    1. Copy [this file](https://github.com/data-catering/data-caterer/blob/main/example/docker/mount/odcs/full-example.yaml) into `/tmp/odcs/full-example.yaml`
     1. Enter `/tmp/odcs/full-example.yaml` as the `Contract File`
 
 The above defines that the schema will come from Open Data Contract Standard (ODCS), which is a type of metadata source
 that contains information about schemas.
-[Specifically, it points to the schema provided here](https://github.com/data-catering/data-caterer-example/blob/main/docker/mount/odcs/full-example.yaml#L42)
-in the `docker/mount/odcs` folder of data-caterer-example repo.
+[Specifically, it points to the schema provided here](https://github.com/data-catering/data-caterer/blob/main/example/docker/mount/odcs/full-example.yaml#L42)
+in the `docker/mount/odcs` folder of data-caterer repo.
 
 ### Run
 

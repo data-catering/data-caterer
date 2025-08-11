@@ -17,24 +17,27 @@ Data testing for Iceberg. You will have the ability to generate and validate Ice
 
 ## Get Started
 
-First, we will clone the data-caterer-example repo which will already have the base project setup required.
+First, we will clone the data-caterer repo which will already have the base project setup required.
 
 === "Java"
 
     ```shell
-    git clone git@github.com:data-catering/data-caterer-example.git
+    git clone git@github.com:data-catering/data-caterer.git
+    cd data-caterer/example
     ```
 
 === "Scala"
 
     ```shell
-    git clone git@github.com:data-catering/data-caterer-example.git
+    git clone git@github.com:data-catering/data-caterer.git
+    cd data-caterer/example
     ```
 
 === "YAML"
 
     ```shell
-    git clone git@github.com:data-catering/data-caterer-example.git
+    git clone git@github.com:data-catering/data-caterer.git
+    cd data-caterer/example
     ```
 
 === "UI"
@@ -197,7 +200,7 @@ have unique values generated.
 
 ### Run
 
-Now we can run via the script `./run.sh` that is in the top level directory of the `data-caterer-example` to run the class we just
+Now we can run via the script `./run.sh` that is in the top level directory of the `data-caterer/example` folder to run the class we just
 created.
 
 === "Java"
