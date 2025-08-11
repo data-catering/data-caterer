@@ -8,7 +8,7 @@ image: "https://data.catering/diagrams/logo/data_catering_logo.svg"
 
 Creating a data generator based on an [OpenAPI/Swagger](https://spec.openapis.org/oas/latest.html) document.
 
-[:material-run-fast: Scala Example](https://github.com/data-catering/data-caterer-example/blob/main/src/main/scala/io/github/datacatering/plan/HttpPlanRun.scala) | [:material-coffee: Java Example](https://github.com/data-catering/data-caterer-example/blob/main/src/main/java/io/github/datacatering/plan/HttpJavaPlanRun.java) | [:material-file-yaml-outline: YAML Example](https://github.com/data-catering/data-caterer-example/blob/main/docker/data/custom/task/http)
+[:material-run-fast: Scala Example](https://github.com/data-catering/data-caterer/blob/main/example/src/main/scala/io/github/datacatering/plan/HttpPlanRun.scala) | [:material-coffee: Java Example](https://github.com/data-catering/data-caterer/blob/main/example/src/main/java/io/github/datacatering/plan/HttpJavaPlanRun.java) | [:material-file-yaml-outline: YAML Example](https://github.com/data-catering/data-caterer/blob/main/example/docker/data/custom/task/http)
 
 ![Generate HTTP requests](../../../../diagrams/data-source/http_generation_run.gif)
 
@@ -21,24 +21,27 @@ Creating a data generator based on an [OpenAPI/Swagger](https://spec.openapis.or
 
 ## Get Started
 
-First, we will clone the data-caterer-example repo which will already have the base project setup required.
+First, we will clone the data-caterer repo which will already have the base project setup required.
 
 === "Java"
 
     ```shell
-    git clone git@github.com:data-catering/data-caterer-example.git
+    git clone git@github.com:data-catering/data-caterer.git
+    cd data-caterer/example
     ```
 
 === "Scala"
 
     ```shell
-    git clone git@github.com:data-catering/data-caterer-example.git
+    git clone git@github.com:data-catering/data-caterer.git
+    cd data-caterer/example
     ```
 
 === "YAML"
 
     ```shell
-    git clone git@github.com:data-catering/data-caterer-example.git
+    git clone git@github.com:data-catering/data-caterer.git
+    cd data-caterer/example
     ```
 
 === "UI"
@@ -123,7 +126,7 @@ under a folder we can easily access.
 #### Schema
 
 We can point the schema of a data source to a OpenAPI/Swagger document or URL. For this example, we will use the OpenAPI
-document found under `docker/mount/http/petstore.json` in the data-caterer-example repo. This is a simplified version of
+document found under `docker/mount/http/petstore.json` in the data-caterer repo. This is a simplified version of
 the original OpenAPI spec that can be found [**here**](https://petstore.swagger.io/).
 
 We have kept the following endpoints to test out:
@@ -744,7 +747,7 @@ The following fields are made available to you to validate against:
 
 You can generate query parameters with different serialization styles (per OpenAPI specification).
 
-[:material-run-fast: Example](https://github.com/data-catering/data-caterer-example/blob/main/src/main/scala/io/github/datacatering/plan/FastGenerationAndReferencePlanRun.scala)
+[:material-run-fast: Example](https://github.com/data-catering/data-caterer/blob/main/example/src/main/scala/io/github/datacatering/plan/FastGenerationAndReferencePlanRun.scala)
 
 === "Java"
 

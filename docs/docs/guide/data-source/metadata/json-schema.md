@@ -10,7 +10,7 @@ image: "https://data.catering/diagrams/logo/data_catering_logo.svg"
 
 Creating a data generator for JSON files based on metadata stored in [JSON Schema](https://json-schema.org/) format. JSON Schema provides a powerful way to describe and validate the structure of JSON data, making it an excellent metadata source for generating realistic test data.
 
-[:material-run-fast: Scala Example](https://github.com/data-catering/data-caterer-example/blob/main/src/main/scala/io/github/datacatering/plan/JsonSchemaValidationPlanRun.scala)
+[:material-run-fast: Scala Example](https://github.com/data-catering/data-caterer/blob/main/example/src/main/scala/io/github/datacatering/plan/JsonSchemaValidationPlanRun.scala)
 
 ## Requirements
 
@@ -21,24 +21,27 @@ Creating a data generator for JSON files based on metadata stored in [JSON Schem
 
 ## Get Started
 
-First, we will clone the data-caterer-example repo which will already have the base project setup required.
+First, we will clone the data-caterer repo which will already have the base project setup required.
 
 === "Java"
 
     ```shell
-    git clone git@github.com:data-catering/data-caterer-example.git
+    git clone git@github.com:data-catering/data-caterer.git
+    cd data-caterer/example
     ```
 
 === "Scala"
 
     ```shell
-    git clone git@github.com:data-catering/data-caterer-example.git
+    git clone git@github.com:data-catering/data-caterer.git
+    cd data-caterer/example
     ```
 
 === "YAML"
 
     ```shell
-    git clone git@github.com:data-catering/data-caterer-example.git
+    git clone git@github.com:data-catering/data-caterer.git
+    cd data-caterer/example
     ```
 
 === "UI"
@@ -408,7 +411,7 @@ At the end of data generation, a report gets generated that summarises the actio
 
 ### Run
 
-Now we can run via the script `./run.sh` that is in the top level directory of the `data-caterer-example` to run the class we just created.
+Now we can run via the script `./run.sh` that is in the top level directory of the `data-caterer/example` folder to run the class we just created.
 
 === "Java"
 

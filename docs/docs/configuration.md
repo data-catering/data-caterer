@@ -11,7 +11,7 @@ metadata gets saved.
 
 These configurations are defined from within your Java or Scala class via `configuration` or for YAML file setup,
 `application.conf` file as seen 
-[**here**](https://github.com/data-catering/data-caterer-example/blob/main/docker/data/custom/application.conf).
+[**here**](https://github.com/data-catering/data-caterer/blob/main/example/docker/data/custom/application.conf).
 
 ## Flags
 
@@ -109,7 +109,7 @@ Enable fast generation to maximize throughput. This automatically disables slowe
 sink metadata, unique checks, save reports, validations, alerts) and applies runtime optimizations (e.g. lower shuffle
 partitions, enable AQE, Kryo serializer) and increases `numRecordsPerBatch`.
 
-[:material-run-fast: Scala Example](https://github.com/data-catering/data-caterer-example/blob/main/src/main/scala/io/github/datacatering/plan/FastGenerationAndReferencePlanRun.scala) | [:material-coffee: Java Example](https://github.com/data-catering/data-caterer-example/blob/main/src/main/java/io/github/datacatering/plan/FastGenerationAndReferenceJavaPlanRun.java)
+[:material-run-fast: Scala Example](https://github.com/data-catering/data-caterer/blob/main/example/src/main/scala/io/github/datacatering/plan/FastGenerationAndReferencePlanRun.scala) | [:material-coffee: Java Example](https://github.com/data-catering/data-caterer/blob/main/example/src/main/java/io/github/datacatering/plan/FastGenerationAndReferenceJavaPlanRun.java)
 
 === "Java"
 

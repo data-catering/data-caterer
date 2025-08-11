@@ -20,24 +20,27 @@ in [Data Contract CLI](https://github.com/datacontract/datacontract-cli).
 
 ## Get Started
 
-First, we will clone the data-caterer-example repo which will already have the base project setup required.
+First, we will clone the data-caterer repo which will already have the base project setup required.
 
 === "Java"
 
     ```shell
-    git clone git@github.com:data-catering/data-caterer-example.git
+    git clone git@github.com:data-catering/data-caterer.git
+    cd data-caterer/example
     ```
 
 === "Scala"
 
     ```shell
-    git clone git@github.com:data-catering/data-caterer-example.git
+    git clone git@github.com:data-catering/data-caterer.git
+    cd data-caterer/example
     ```
 
 === "YAML"
 
     ```shell
-    git clone git@github.com:data-catering/data-caterer-example.git
+    git clone git@github.com:data-catering/data-caterer.git
+    cd data-caterer/example
     ```
 
 === "UI"
@@ -47,7 +50,7 @@ First, we will clone the data-caterer-example repo which will already have the b
 ### Data Contract CLI Setup
 
 We will be using
-[the following Data Contract CLI file](https://github.com/data-catering/data-caterer-example/blob/main/docker/mount/datacontract-cli/datacontract.yaml)
+[the following Data Contract CLI file](https://github.com/data-catering/data-caterer/blob/main/example/docker/mount/datacontract-cli/datacontract.yaml)
 for this example.
 
 ### Plan Setup
@@ -154,13 +157,13 @@ We can point the schema of a data source to our Data Contract CLI file.
 
     1. Click on `Connection` tab at the top
     1. Select `Data Contract CLI` as the data source and enter `example-datacontract-cli`
-    1. Copy [this file](https://github.com/data-catering/data-caterer-example/blob/main/docker/mount/datacontract-cli/datacontract.yaml) into `/tmp/datacontract-cli/datacontract.yaml`
+    1. Copy [this file](https://github.com/data-catering/data-caterer/blob/main/example/docker/mount/datacontract-cli/datacontract.yaml) into `/tmp/datacontract-cli/datacontract.yaml`
     1. Enter `/tmp/datacontract-cli/datacontract.yaml` as the `Contract File`
 
 The above defines that the schema will come from Data Contract CLI, which is a type of metadata source
 that contains information about schemas.
-[Specifically, it points to the schema provided here](https://github.com/data-catering/data-caterer-example/blob/main/docker/mount/datacontract-cli/datacontract.yaml)
-in the `docker/mount/datacontract-cli` folder of data-caterer-example repo.
+[Specifically, it points to the schema provided here](https://github.com/data-catering/data-caterer/blob/main/example/docker/mount/datacontract-cli/datacontract.yaml)
+in the `docker/mount/datacontract-cli` folder of data-caterer repo.
 
 ### Run
 

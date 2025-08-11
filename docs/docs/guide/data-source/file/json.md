@@ -8,7 +8,7 @@ image: "https://data.catering/diagrams/logo/data_catering_logo.svg"
 
 Creating a data generator for JSON. You will have the ability to generate and validate JSON files via Docker.
 
-[:material-run-fast: Scala Example](https://github.com/data-catering/data-caterer-example/blob/main/src/main/scala/io/github/datacatering/plan/JsonPlan.scala) | [:material-coffee: Java Example](https://github.com/data-catering/data-caterer-example/blob/main/src/main/java/io/github/datacatering/plan/JsonJavaPlan.java) | [:material-file-yaml-outline: Basic YAML](https://github.com/data-catering/data-caterer-example/blob/main/docker/data/custom/task/file/json) | [:material-file-yaml-outline: Advanced YAML](https://github.com/data-catering/data-caterer-example/blob/main/docker/data/custom/task/file/json/advanced-json-task.yaml)
+[:material-run-fast: Scala Example](https://github.com/data-catering/data-caterer/blob/main/example/src/main/scala/io/github/datacatering/plan/JsonPlan.scala) | [:material-coffee: Java Example](https://github.com/data-catering/data-caterer/blob/main/example/src/main/java/io/github/datacatering/plan/JsonJavaPlan.java) | [:material-file-yaml-outline: Basic YAML](https://github.com/data-catering/data-caterer/blob/main/example/docker/data/custom/task/file/json) | [:material-file-yaml-outline: Advanced YAML](https://github.com/data-catering/data-caterer/blob/main/example/docker/data/custom/task/file/json/advanced-json-task.yaml)
 
 ## Requirements
 
@@ -19,24 +19,27 @@ Creating a data generator for JSON. You will have the ability to generate and va
 
 ## Get Started
 
-First, we will clone the data-caterer-example repo which will already have the base project setup required.
+First, we will clone the data-caterer repo which will already have the base project setup required.
 
 === "Java"
 
     ```shell
-    git clone git@github.com:data-catering/data-caterer-example.git
+    git clone git@github.com:data-catering/data-caterer.git
+    cd data-caterer/example
     ```
 
 === "Scala"
 
     ```shell
-    git clone git@github.com:data-catering/data-caterer-example.git
+    git clone git@github.com:data-catering/data-caterer.git
+    cd data-caterer/example
     ```
 
 === "YAML"
 
     ```shell
-    git clone git@github.com:data-catering/data-caterer-example.git
+    git clone git@github.com:data-catering/data-caterer.git
+    cd data-caterer/example
     ```
 
 === "UI"
@@ -284,7 +287,7 @@ have unique values generated.
 
 If your JSON sink should output a bare top-level array when there is a single top-level array field, enable unwrap.
 
-[:material-run-fast: Example](https://github.com/data-catering/data-caterer-example/blob/main/src/main/scala/io/github/datacatering/plan/FastGenerationAndReferencePlanRun.scala)
+[:material-run-fast: Example](https://github.com/data-catering/data-caterer/blob/main/example/src/main/scala/io/github/datacatering/plan/FastGenerationAndReferencePlanRun.scala)
 
 === "Java"
 
@@ -346,7 +349,7 @@ If your JSON sink should output a bare top-level array when there is a single to
 
 ### Run
 
-Now we can run via the script `./run.sh` that is in the top level directory of the `data-caterer-example` to run the class we just
+Now we can run via the script `./run.sh` that is in the top level directory of the `data-caterer/example` folder to run the class we just
 created.
 
 === "Java"

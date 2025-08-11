@@ -534,7 +534,7 @@ found [**here**](https://spark.apache.org/docs/latest/structured-streaming-kafka
 
 When defining your schema for pushing data to Kafka, it follows a specific top level schema.  
 An example can be
-found [**here**](https://github.com/data-catering/data-caterer-example/blob/main/docker/data/custom/task/kafka/kafka-account-task.yaml)
+found [**here**](https://github.com/data-catering/data-caterer/blob/main/example/docker/data/custom/task/kafka/kafka-account-task.yaml)
 . You can define the key, value, headers, partition or topic by following the linked schema.
 
 ### JMS
