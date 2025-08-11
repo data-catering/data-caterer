@@ -9,6 +9,8 @@ image: "https://data.catering/diagrams/logo/data_catering_logo.svg"
 Creating a data generator for a JSON file and validating the data based on expectations 
 in [Great Expectations](https://github.com/great-expectations/great_expectations).
 
+[:material-run-fast: Scala Example](https://github.com/data-catering/data-caterer-example/blob/main/src/main/scala/io/github/datacatering/plan/GreatExpectationsPlanRun.scala)
+
 ## Requirements
 
 - 10 minutes

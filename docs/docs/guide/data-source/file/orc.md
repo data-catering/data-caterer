@@ -8,6 +8,8 @@ image: "https://data.catering/diagrams/logo/data_catering_logo.svg"
 
 Creating a data generator for ORC. You will have the ability to generate and validate ORC files via Docker.
 
+[:material-run-fast: Scala Example](https://github.com/data-catering/data-caterer-example/blob/main/src/main/scala/io/github/datacatering/plan/OrcPlan.scala) | [:material-coffee: Java Example](https://github.com/data-catering/data-caterer-example/blob/main/src/main/java/io/github/datacatering/plan/OrcJavaPlan.java)
+
 ## Requirements
 
 - 10 minutes

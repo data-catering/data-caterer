@@ -8,6 +8,8 @@ image: "https://data.catering/diagrams/logo/data_catering_logo.svg"
 
 Creating a data generator for Parquet. You will have the ability to generate and validate Parquet files via Docker.
 
+[:material-run-fast: Scala Example](https://github.com/data-catering/data-caterer-example/blob/main/src/main/scala/io/github/datacatering/plan/ParquetPlan.scala) | [:material-coffee: Java Example](https://github.com/data-catering/data-caterer-example/blob/main/src/main/java/io/github/datacatering/plan/ParquetJavaPlan.java) | [:material-file-yaml-outline: YAML Example](https://github.com/data-catering/data-caterer-example/blob/main/docker/data/custom/task/file/parquet)
+
 ## Requirements
 
 - 10 minutes

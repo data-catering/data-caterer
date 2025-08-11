@@ -131,6 +131,24 @@ the `count` function.
       .count(count.recordsPerField(5, "account_id", "full_name"))
     ```
 
+=== "YAML"
+
+    ```yaml
+    name: "csv_transaction_task"
+    steps:
+      - name: "customer_transactions"
+        type: "csv"
+        options:
+          path: "/opt/app/data/customer/transaction"
+          header: "true"
+        count:
+          perField:
+            count: 5
+            fieldNames:
+              - "account_id"
+              - "full_name"
+    ```
+
 This will generate `1000 * 5 = 5000` records as the default number of records is set (1000) and
 per `account_id, full_name` from the initial 1000 records, 5 records will be generated.
 
@@ -158,6 +176,26 @@ of records per field.
         ...
       )
       .count(count.recordsPerFieldGenerator(generator.min(0).max(5), "account_id", "full_name"))
+    ```
+
+=== "YAML"
+
+    ```yaml
+    name: "csv_transaction_task"
+    steps:
+      - name: "customer_transactions"
+        type: "csv"
+        options:
+          path: "/opt/app/data/customer/transaction"
+          header: "true"
+        count:
+          perField:
+            fieldNames:
+              - "account_id"
+              - "full_name"
+            options:
+              min: 0
+              max: 5
     ```
 
 Here we set the minimum number of records per field to be 0 and the maximum to 5. This will follow a uniform

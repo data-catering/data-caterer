@@ -73,7 +73,7 @@ Ensure all data in field is null or not null.
     ```scala
     validation.field("year").isNull()
 
-    validation().field("year").isNull(true) //check not null
+    validation.field("year").isNull(true) //check not null
     ```
 
 === "YAML"

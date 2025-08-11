@@ -9,6 +9,8 @@ image: "https://data.catering/diagrams/logo/data_catering_logo.svg"
 Creating a data generator for Cassandra. You will build a Docker image that will be able to populate data in Cassandra
 for the tables you configure.
 
+[:material-run-fast: Scala Example](https://github.com/data-catering/data-caterer-example/blob/main/src/main/scala/io/github/datacatering/plan/CassandraPlanRun.scala) | [:material-coffee: Java Example](https://github.com/data-catering/data-caterer-example/blob/main/src/main/java/io/github/datacatering/plan/CassandraJavaPlanRun.java) | [:material-file-yaml-outline: Basic YAML](https://github.com/data-catering/data-caterer-example/blob/main/docker/data/custom/task/cassandra) | [:material-file-yaml-outline: Advanced YAML](https://github.com/data-catering/data-caterer-example/blob/main/docker/data/custom/task/cassandra/advanced-cassandra-task.yaml)
+
 ## Requirements
 
 - 10 minutes
@@ -377,11 +379,11 @@ To tell Data Caterer that we want to run with the configurations along with the 
       val accountTask = cassandra("customer_cassandra", "host.docker.internal:9042")
         .table("account", "accounts")
         .fields(
-          field.name("account_id").primaryKey(true),
+          field.name("account_id").primaryKey(true).primaryKeyPosition(1),
           field.name("amount").`type`(DoubleType).min(1).max(1000),
           field.name("created_by").sql("CASE WHEN status IN ('open', 'closed') THEN 'eod' ELSE 'event' END"),
           field.name("name").expression("#{Name.name}"),
-          field.name("open_time").`type`(TimestampType).min(java.sql.Date.valueOf("2022-01-01")),
+          field.name("open_time").`type`(TimestampType).min(java.sql.Date.valueOf("2022-01-01")).clusteringPosition(1),
           field.name("status").oneOf("open", "closed", "suspended", "pending")
         )
     

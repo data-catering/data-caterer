@@ -30,4 +30,50 @@ receive an alert like the below.
     execute(conf, ...)
     ```
 
+=== "application.conf"
+
+    ```
+    flags {
+      enableAlerts = true
+    }
+    alerts {
+      triggerOn = "onFailure"  # onFailure | onCompletion | always
+      slack {
+        token = "abc123"
+        channels = ["#test-alerts", "#pre-prod-testing"]
+      }
+    }
+    ```
+
+### Trigger conditions
+
+Control when alerts are sent based on execution results.
+
+=== "Java"
+
+    ```java
+    configuration()
+      .enableAlerts(true)
+      .alertTriggerOn("onFailure"); // options: onFailure | onCompletion | always
+    ```
+
+=== "Scala"
+
+    ```scala
+    configuration
+      .enableAlerts(true)
+      .alertTriggerOn("onFailure") // options: onFailure | onCompletion | always
+    ```
+    
+=== "application.conf"
+
+    ```
+    flags {
+      enableAlerts = true
+    }
+    alerts {
+      triggerOn = "onFailure"  # onFailure | onCompletion | always
+    }
+    ```
+
 

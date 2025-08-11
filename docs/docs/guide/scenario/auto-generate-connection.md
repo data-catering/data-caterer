@@ -89,6 +89,29 @@ Make sure your class extends `PlanRun`.
     }
     ```
 
+=== "YAML"
+
+    Create file `docker/data/custom/application.conf`:
+    ```yaml
+    flags {
+      enableGeneratePlanAndTasks = true      # (2)
+      enableUniqueCheck = true               # (4)
+    }
+    folders {
+      generatedPlanAndTaskFolderPath = "/opt/app/data/generated"    # (3)
+      generatedReportsFolderPath = "/opt/app/data/report"
+    }
+    connectionConfigurations {
+      postgres {
+        my_postgres {                        # (1)
+          url = "jdbc:postgresql://host.docker.internal:5432/customer"
+          user = "postgres"
+          password = "password"
+        }
+      }
+    }
+    ```
+
 In the above code, we note the following:
 
 1. Data source configuration to a Postgres data source called `my_postgres`
@@ -212,3 +235,4 @@ You can control the record count per sub data source via `numRecordsPerStep`.
          
       execute(configuration = autoRun)
       ```
+

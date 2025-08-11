@@ -40,7 +40,7 @@ descriptions:
 | `isUnique`            | false   | `isUnique: "true"`                                                                                  | Enable/disable generated data to be unique for that field. Errors will be thrown when it is unable to generate unique data                                                                                                                                                                      |
 | `regex`               | <empty> | `regex: "ACC[0-9]{10}"`                                                                             | Regular expression to define pattern generated data should follow                                                                                                                                                                                                                               |
 | `seed`                | <empty> | `seed: "1"`                                                                                         | Defines the random seed for generating data for that particular field. It will override any seed defined at a global level                                                                                                                                                                      |
-| `sql`                 | <empty> | `sql: "CASE WHEN amount < 10 THEN true ELSE false END"`                                             | Define any SQL statement for generating that fields value. Computation occurs after all non-SQL fields are generated. This means any fields used in the SQL cannot be based on other SQL generated fields. Data type of generated value from SQL needs to match data type defined for the field |
+| `sql`                 | <empty> | `sql: "CASE WHEN amount < 10 THEN true ELSE false END"`                                             | Define any SQL statement for generating that fields value. Computation occurs after all non-SQL fields are generated. This means any fields used in the SQL cannot be based on other SQL generated fields. Data type of generated value from SQL needs to match data type defined for the field. See [Advanced SQL Generation](#advanced-sql-generation) for more examples |
 | `oneOf`               | <empty> | `oneOf: ["open", "closed", "suspended"]` or `oneOf: ["open->0.8", "closed->0.1", "suspended->0.1"]` | Field can only take one of the prescribed values. Chance of value being chosen is based on the weight assigned to it. Weight can be any double value.                                                                                                                                           |
 | `omit`                | false   | `omit: "true"`                                                                                      | If true, field will not be included in final data generated. Useful for intermediate transformations that are not included in final outcome                                                                                                                                                     |
 
@@ -59,6 +59,8 @@ descriptions:
 Förlåt", "你好吗", "Nhà vệ sinh ở đâu", "こんにちは", "नमस्ते", "Բարեւ", "Здравейте")
 
 #### Sample
+
+[:material-run-fast: Scala Example](https://github.com/data-catering/data-caterer-example/blob/main/src/main/scala/io/github/datacatering/plan/DocumentationPlanRun.scala) | [:material-coffee: Java Example](https://github.com/data-catering/data-caterer-example/blob/main/src/main/java/io/github/datacatering/plan/DocumentationJavaPlanRun.java)
 
 === "Java"
 
@@ -631,6 +633,447 @@ NaN)
             options:
               sql: "CASE WHEN transaction_amount > 1000 THEN 1.5 ELSE 1.0 END"
               round: 1
+    ```
+
+## Step options
+
+You can control behavior at the step level for generation.
+
+### Enable/disable generation per step
+
+Disable data generation for specific steps when you want to use them only for reference in foreign key relationships.
+
+[:material-run-fast: Example](https://github.com/data-catering/data-caterer-example/blob/main/src/main/scala/io/github/datacatering/plan/FastGenerationAndReferencePlanRun.scala)
+
+=== "Java"
+
+    ```java
+    csv("customer_accounts", "/opt/app/data/customer/account", Map.of("header", "true"))
+      .enableDataGeneration(false);
+    ```
+
+=== "Scala"
+
+    ```scala
+    csv("customer_accounts", "/opt/app/data/customer/account", Map("header" -> "true"))
+      .enableDataGeneration(false)
+    ```
+
+=== "YAML"
+
+    In `plan.yaml`:
+    
+    ```yaml
+    name: "my_plan"
+    tasks:
+      - name: "csv_accounts_task"
+        dataSourceName: "csv_accounts"
+        enabled: false  # disable generation for this task
+    ```
+    
+    In task file:
+    
+    ```yaml
+    name: "csv_accounts_task"
+    steps:
+      - name: "accounts"
+        type: "csv"
+        options:
+          path: "/opt/app/data/customer/account"
+          header: "true"
+        enableDataGeneration: false
+    ```
+
+### Partitioning and throughput
+
+Control data partitioning and parallelism for improved performance with large datasets.
+
+[:material-run-fast: Example](https://github.com/data-catering/data-caterer-example/blob/main/src/main/scala/io/github/datacatering/plan/FastGenerationAndReferencePlanRun.scala)
+
+=== "Java"
+
+    ```java
+    csv("customer_accounts", "/opt/app/data/customer/account")
+      .partitionBy("year", "account_id")
+      .numPartitions(8);
+    ```
+
+=== "Scala"
+
+    ```scala
+    csv("customer_accounts", "/opt/app/data/customer/account")
+      .partitionBy("year", "account_id")
+      .numPartitions(8)
+    ```
+
+=== "YAML"
+
+    ```yaml
+    name: "csv_accounts_task" 
+    steps:
+      - name: "accounts"
+        type: "csv"
+        options:
+          path: "/opt/app/data/customer/account"
+          partitionBy: "year,account_id"
+          partitions: 8
+        fields:
+          - name: "account_id"
+          - name: "year"
+            type: "integer"
+    ```
+
+## Reference mode
+
+Use existing data as reference instead of generating new data for a step. This is useful when you want to reference real data in foreign key relationships.
+
+[:material-run-fast: Example](https://github.com/data-catering/data-caterer-example/blob/main/src/main/scala/io/github/datacatering/plan/FastGenerationAndReferencePlanRun.scala)
+
+=== "Java"
+
+    ```java
+    json("reference_json", "/opt/app/data/reference/json")
+      .enableReferenceMode(true);
+    ```
+
+=== "Scala"
+
+    ```scala
+    json("reference_json", "/opt/app/data/reference/json")
+      .enableReferenceMode(true)
+    ```
+
+=== "YAML"
+
+    ```yaml
+    name: "reference_json_task"
+    steps:
+      - name: "reference_data"
+        type: "json"
+        options:
+          path: "/opt/app/data/reference/json"
+        enableReferenceMode: true
+        enableDataGeneration: false
+    ```
+
+## Key positions and clustering
+
+For databases that support primary key positions and clustering order (like Cassandra), you can specify the order of primary keys and clustering keys.
+
+[:material-run-fast: Example](https://github.com/data-catering/data-caterer-example/blob/main/src/main/scala/io/github/datacatering/plan/FastGenerationAndReferencePlanRun.scala)
+
+=== "Java"
+
+    ```java
+    cassandra("customer_cassandra", "localhost:9042")
+      .table("account", "accounts")
+      .fields(
+        field().name("id").primaryKey(true).primaryKeyPosition(1),
+        field().name("event_time").clusteringPosition(1)
+      );
+    ```
+
+=== "Scala"
+
+    ```scala
+    cassandra("customer_cassandra", "localhost:9042")
+      .table("account", "accounts")
+      .fields(
+        field.name("id").primaryKey(true).primaryKeyPosition(1),
+        field.name("event_time").clusteringPosition(1)
+      )
+    ```
+
+=== "YAML"
+
+    ```yaml
+    name: "cassandra_accounts_task"
+    steps:
+      - name: "accounts"
+        type: "cassandra"
+        options:
+          keyspace: "account"
+          table: "accounts"
+        fields:
+          - name: "id"
+            options:
+              isPrimaryKey: true
+              primaryKeyPosition: 1
+          - name: "event_time"
+            type: "timestamp"
+            options:
+              clusteringPosition: 1
+    ```
+
+## Advanced SQL Generation
+
+Data Caterer supports complex SQL expressions for generating sophisticated data relationships and calculations. SQL expressions are evaluated after all non-SQL fields have been generated.
+
+[:material-run-fast: Scala Example](https://github.com/data-catering/data-caterer-example/blob/main/src/main/scala/io/github/datacatering/plan/DocumentationPlanRun.scala) | [:material-coffee: Java Example](https://github.com/data-catering/data-caterer-example/blob/main/src/main/java/io/github/datacatering/plan/DocumentationJavaPlanRun.java)
+
+### Array Operations and Aggregations
+
+Extract data from arrays, perform aggregations, and create complex nested data structures.
+
+=== "Java"
+
+    ```java
+    // Extract latest status from array of updates
+    field().name("current_status")
+        .sql("element_at(sort_array(update_history.status, false), 1)"),
+    
+    // Calculate year from date field    
+    field().name("year").type(IntegerType.instance())
+        .sql("YEAR(date)"),
+        
+    // Get first transaction date from sorted array
+    field().name("first_transaction_date").type(DateType.instance())
+        .sql("element_at(sort_array(transactions.transaction_date), 1)")
+    ```
+
+=== "Scala" 
+
+    ```scala
+    // Extract latest status from array of updates
+    field.name("current_status")
+      .sql("element_at(sort_array(update_history.status, false), 1)"),
+    
+    // Calculate year from date field
+    field.name("year").`type`(IntegerType)
+      .sql("YEAR(date)"),
+      
+    // Get first transaction date from sorted array  
+    field.name("first_transaction_date").`type`(DateType)
+      .sql("element_at(sort_array(transactions.transaction_date), 1)")
+    ```
+
+=== "YAML"
+
+    ```yaml
+    fields:
+      - name: "current_status"
+        options:
+          sql: "element_at(sort_array(update_history.status, false), 1)"
+      - name: "year" 
+        type: "integer"
+        options:
+          sql: "YEAR(date)"
+      - name: "first_transaction_date"
+        type: "date"
+        options:
+          sql: "element_at(sort_array(transactions.transaction_date), 1)"
+    ```
+
+### Nested Field References and Calculations
+
+Access nested fields and perform complex calculations across multiple data levels.
+
+=== "Java"
+
+    ```java
+    // Reference nested field value
+    field().name("customer_name")
+        .sql("customer_details.name"),
+        
+    // Calculate balance with interest based on account type
+    field().name("balance_with_interest").type(DoubleType.instance())
+        .sql("CASE WHEN account_details.account_type = 'premium' THEN balance * 1.05 ELSE balance * 1.02 END"),
+        
+    // Aggregate transaction amounts
+    field().name("total_transaction_amount").type(DoubleType.instance()) 
+        .sql("aggregate(transactions.amount, 0.0, (acc, x) -> acc + x)")
+    ```
+
+=== "Scala"
+
+    ```scala
+    // Reference nested field value
+    field.name("customer_name")
+      .sql("customer_details.name"),
+      
+    // Calculate balance with interest based on account type  
+    field.name("balance_with_interest").`type`(DoubleType)
+      .sql("CASE WHEN account_details.account_type = 'premium' THEN balance * 1.05 ELSE balance * 1.02 END"),
+      
+    // Aggregate transaction amounts
+    field.name("total_transaction_amount").`type`(DoubleType)
+      .sql("aggregate(transactions.amount, 0.0, (acc, x) -> acc + x)")
+    ```
+
+=== "YAML"
+
+    ```yaml
+    fields:
+      - name: "customer_name"
+        options:
+          sql: "customer_details.name"
+      - name: "balance_with_interest"
+        type: "double"
+        options:
+          sql: "CASE WHEN account_details.account_type = 'premium' THEN balance * 1.05 ELSE balance * 1.02 END"
+      - name: "total_transaction_amount"
+        type: "double" 
+        options:
+          sql: "aggregate(transactions.amount, 0.0, (acc, x) -> acc + x)"
+    ```
+
+### String Operations and Pattern Matching
+
+Manipulate strings, extract patterns, and create formatted outputs.
+
+=== "Java"
+
+    ```java
+    // Concatenate multiple fields with formatting
+    field().name("account_display_name")
+        .sql("CONCAT(customer_details.name, ' - ', account_type, ' (', account_id, ')')"),
+        
+    // Extract domain from email addresses
+    field().name("email_domain")
+        .sql("SUBSTRING_INDEX(customer_details.email, '@', -1)"),
+        
+    // Generate formatted account number
+    field().name("formatted_account_number") 
+        .sql("CONCAT('ACC-', LPAD(account_number, 8, '0'))")
+    ```
+
+=== "Scala"
+
+    ```scala
+    // Concatenate multiple fields with formatting  
+    field.name("account_display_name")
+      .sql("CONCAT(customer_details.name, ' - ', account_type, ' (', account_id, ')')"),
+      
+    // Extract domain from email addresses
+    field.name("email_domain")
+      .sql("SUBSTRING_INDEX(customer_details.email, '@', -1)"),
+      
+    // Generate formatted account number
+    field.name("formatted_account_number")
+      .sql("CONCAT('ACC-', LPAD(account_number, 8, '0'))")
+    ```
+
+=== "YAML"
+
+    ```yaml
+    fields:
+      - name: "account_display_name"
+        options:
+          sql: "CONCAT(customer_details.name, ' - ', account_type, ' (', account_id, ')')"
+      - name: "email_domain"
+        options:
+          sql: "SUBSTRING_INDEX(customer_details.email, '@', -1)"
+      - name: "formatted_account_number"
+        options:
+          sql: "CONCAT('ACC-', LPAD(account_number, 8, '0'))"
+    ```
+
+### Date and Time Operations
+
+Perform complex date calculations, extract date parts, and handle time zones.
+
+=== "Java"
+
+    ```java
+    // Calculate age from birth date
+    field().name("age").type(IntegerType.instance())
+        .sql("DATEDIFF(CURRENT_DATE(), birth_date) / 365"),
+        
+    // Extract quarter from date
+    field().name("quarter").type(IntegerType.instance())
+        .sql("QUARTER(transaction_date)"),
+        
+    // Calculate business days between dates
+    field().name("business_days_since_opening").type(IntegerType.instance())
+        .sql("CASE WHEN DAYOFWEEK(open_date) IN (1, 7) THEN 0 ELSE DATEDIFF(CURRENT_DATE(), open_date) - (DATEDIFF(CURRENT_DATE(), open_date) / 7 * 2) END")
+    ```
+
+=== "Scala"
+
+    ```scala
+    // Calculate age from birth date
+    field.name("age").`type`(IntegerType)
+      .sql("DATEDIFF(CURRENT_DATE(), birth_date) / 365"),
+      
+    // Extract quarter from date
+    field.name("quarter").`type`(IntegerType) 
+      .sql("QUARTER(transaction_date)"),
+      
+    // Calculate business days between dates
+    field.name("business_days_since_opening").`type`(IntegerType)
+      .sql("CASE WHEN DAYOFWEEK(open_date) IN (1, 7) THEN 0 ELSE DATEDIFF(CURRENT_DATE(), open_date) - (DATEDIFF(CURRENT_DATE(), open_date) / 7 * 2) END")
+    ```
+
+=== "YAML"
+
+    ```yaml
+    fields:
+      - name: "age"
+        type: "integer"
+        options:
+          sql: "DATEDIFF(CURRENT_DATE(), birth_date) / 365"
+      - name: "quarter"
+        type: "integer"
+        options:
+          sql: "QUARTER(transaction_date)"
+      - name: "business_days_since_opening"
+        type: "integer"
+        options:
+          sql: "CASE WHEN DAYOFWEEK(open_date) IN (1, 7) THEN 0 ELSE DATEDIFF(CURRENT_DATE(), open_date) - (DATEDIFF(CURRENT_DATE(), open_date) / 7 * 2) END"
+    ```
+
+### Window Functions and Analytics
+
+Use window functions for ranking, running totals, and analytical calculations.
+
+=== "Java"
+
+    ```java
+    // Rank customers by balance within each region
+    field().name("balance_rank").type(IntegerType.instance())
+        .sql("ROW_NUMBER() OVER (PARTITION BY region ORDER BY balance DESC)"),
+        
+    // Calculate running total of transactions
+    field().name("running_total").type(DoubleType.instance())
+        .sql("SUM(transaction_amount) OVER (PARTITION BY account_id ORDER BY transaction_date ROWS UNBOUNDED PRECEDING)"),
+        
+    // Calculate percentage of total within group  
+    field().name("balance_percentage").type(DoubleType.instance())
+        .sql("(balance / SUM(balance) OVER (PARTITION BY account_type)) * 100")
+    ```
+
+=== "Scala"
+
+    ```scala  
+    // Rank customers by balance within each region
+    field.name("balance_rank").`type`(IntegerType)
+      .sql("ROW_NUMBER() OVER (PARTITION BY region ORDER BY balance DESC)"),
+      
+    // Calculate running total of transactions
+    field.name("running_total").`type`(DoubleType)
+      .sql("SUM(transaction_amount) OVER (PARTITION BY account_id ORDER BY transaction_date ROWS UNBOUNDED PRECEDING)"),
+      
+    // Calculate percentage of total within group
+    field.name("balance_percentage").`type`(DoubleType) 
+      .sql("(balance / SUM(balance) OVER (PARTITION BY account_type)) * 100")
+    ```
+
+=== "YAML"
+
+    ```yaml
+    fields:
+      - name: "balance_rank"
+        type: "integer"  
+        options:
+          sql: "ROW_NUMBER() OVER (PARTITION BY region ORDER BY balance DESC)"
+      - name: "running_total"
+        type: "double"
+        options:
+          sql: "SUM(transaction_amount) OVER (PARTITION BY account_id ORDER BY transaction_date ROWS UNBOUNDED PRECEDING)"
+      - name: "balance_percentage"
+        type: "double"
+        options:
+          sql: "(balance / SUM(balance) OVER (PARTITION BY account_type)) * 100"
     ```
 
 ### Date

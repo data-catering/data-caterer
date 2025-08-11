@@ -1,0 +1,86 @@
+name: "advanced_cassandra_task"
+description: "Comprehensive Cassandra data generation with key positions and clustering"
+steps:
+  - name: "customer_events"
+    type: "cassandra"
+    options:
+      keyspace: "customer"
+      table: "events"
+    count:
+      records: 5000
+    fields:
+      - name: "customer_id"
+        type: "string"
+        options:
+          regex: "CUST[0-9]{6}"
+          isPrimaryKey: true
+          primaryKeyPosition: 1
+      - name: "event_date"
+        type: "date"
+        options:
+          min: "2023-01-01"
+          max: "2023-12-31"
+          isPrimaryKey: true
+          primaryKeyPosition: 2
+      - name: "event_timestamp"
+        type: "timestamp"
+        options:
+          min: "2023-01-01 00:00:00"
+          max: "2023-12-31 23:59:59"
+          clusteringPosition: 1
+      - name: "event_id"
+        type: "string"
+        options:
+          regex: "EVT[0-9]{10}"
+          isUnique: true
+          clusteringPosition: 2
+      - name: "event_type"
+        type: "string"
+        options:
+          oneOf: ["login", "purchase", "logout", "profile_update", "password_change"]
+      - name: "event_details"
+        type: "map<string, string>"
+      - name: "amount"
+        type: "double"
+        options:
+          min: 0.0
+          max: 1000.0
+          enableNull: true
+          nullProb: 0.3
+      - name: "status"
+        type: "string"
+        options:
+          oneOf: ["success", "failed", "pending"]
+      - name: "created_by"
+        type: "string"
+        options:
+          sql: "CASE WHEN event_type IN ('login', 'logout') THEN 'system' ELSE 'user' END"
+      - name: "session_duration_minutes"
+        type: "integer"
+        options:
+          min: 1
+          max: 240
+          sql: "CASE WHEN event_type = 'logout' THEN RAND() * 240 ELSE NULL END"
+      - name: "ip_address"
+        type: "string"
+        options:
+          expression: "#{Internet.ipV4Address}"
+      - name: "user_agent"
+        type: "string"
+        options:
+          expression: "#{Internet.userAgentAny}"
+      - name: "processed_at"
+        type: "timestamp"
+        options:
+          sql: "event_timestamp + INTERVAL 1 MINUTE"
+    validations:
+      - field: "customer_id"
+        isNull: false
+      - field: "event_timestamp"
+        isNull: false
+      - expr: "event_date = DATE(event_timestamp)"
+        description: "Event date should match date part of timestamp"
+      - field: "amount"
+        greaterThanOrEqualTo: 0
+        errorThreshold: 10
+        description: "Amount should be non-negative when present"
