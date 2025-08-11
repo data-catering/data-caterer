@@ -1,0 +1,19 @@
+name: "http_query_params_task"
+steps:
+  - name: "query_pets"
+    type: "http"
+    options:
+      url: "http://host.docker.internal:80/anything/pets"
+      method: "GET"
+    rowsPerSecond: 1
+    fields:
+      - name: "tags"
+        type: "array<string>"
+        options:
+          isQueryParam: true
+          queryParamStyle: "form"
+          queryParamExplode: false
+      - name: "limit"
+        type: "integer"
+        options:
+          isQueryParam: true

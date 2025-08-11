@@ -79,7 +79,7 @@ Use data quality rules defined from OpenMetadata to execute over dataset.
 
     ```java
     var jsonTask = json("my_json", "/opt/app/data/json")
-        .validations(metadataSource().greatExpectations("great-expectations/taxi-expectations.json");
+        .validations(metadataSource().greatExpectations("great-expectations/taxi-expectations.json"));
 
     var conf = configuration().enableGenerateValidations(true);
     ```
@@ -88,7 +88,7 @@ Use data quality rules defined from OpenMetadata to execute over dataset.
 
     ```scala
     val jsonTask = json("my_json", "/opt/app/data/json")
-      .validations(metadataSource.greatExpectations("great-expectations/taxi-expectations.json")
+      .validations(metadataSource.greatExpectations("great-expectations/taxi-expectations.json"))
 
     val conf = configuration.enableGenerateValidations(true)
     ```

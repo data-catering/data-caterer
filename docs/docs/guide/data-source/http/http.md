@@ -8,6 +8,8 @@ image: "https://data.catering/diagrams/logo/data_catering_logo.svg"
 
 Creating a data generator based on an [OpenAPI/Swagger](https://spec.openapis.org/oas/latest.html) document.
 
+[:material-run-fast: Scala Example](https://github.com/data-catering/data-caterer-example/blob/main/src/main/scala/io/github/datacatering/plan/HttpPlanRun.scala) | [:material-coffee: Java Example](https://github.com/data-catering/data-caterer-example/blob/main/src/main/java/io/github/datacatering/plan/HttpJavaPlanRun.java) | [:material-file-yaml-outline: YAML Example](https://github.com/data-catering/data-caterer-example/blob/main/docker/data/custom/task/http)
+
 ![Generate HTTP requests](../../../../diagrams/data-source/http_generation_run.gif)
 
 ## Requirements
@@ -737,6 +739,70 @@ The following fields are made available to you to validate against:
     1. Click on `+` next to `Operator` and select `Equal`
     1. Enter `POST` in the `Equal` text box
     1. Continue adding validations for `response.statusCode`, `response.timeTakenMs`, `response.headers.Content-Length` and `response.headers.Content-Type`
+
+#### Query parameter styles
+
+You can generate query parameters with different serialization styles (per OpenAPI specification).
+
+[:material-run-fast: Example](https://github.com/data-catering/data-caterer-example/blob/main/src/main/scala/io/github/datacatering/plan/FastGenerationAndReferencePlanRun.scala)
+
+=== "Java"
+
+    ```java
+    var httpTask = http("my_http")
+        .fields(
+            field().httpUrl(
+                "http://host.docker.internal:80/anything/pets",
+                HttpMethodEnum.GET(),
+                List.of(),
+                List.of(
+                    field().httpQueryParam("tags", ArrayType.instance(), HttpQueryParameterStyleEnum.FORM(), false),
+                    field().httpQueryParam("limit")
+                )
+            )
+        );
+    ```
+
+=== "Scala"
+
+    ```scala
+    val httpTask = http("my_http")
+      .fields(
+        field.httpUrl(
+          "http://host.docker.internal:80/anything/pets",
+          HttpMethodEnum.GET,
+          List(),
+          List(
+            field.httpQueryParam("tags", ArrayType, HttpQueryParameterStyleEnum.FORM, explode = false),
+            field.httpQueryParam("limit")
+          )
+        ): _*
+      )
+    ```
+    
+=== "YAML"
+
+    ```yaml
+    name: "http_query_params_task"
+    steps:
+      - name: "query_pets"
+        type: "http"
+        options:
+          url: "http://host.docker.internal:80/anything/pets"
+          method: "GET"
+        fields:
+          - name: "tags"
+            type: "array<string>"
+            options:
+              isQueryParam: true
+              queryParamStyle: "form"
+              queryParamExplode: false
+          - name: "limit"
+            type: "integer"
+            options:
+              isQueryParam: true
+    ```
+
 
 If you want to validate data from an HTTP source,
 [follow the validation documentation found here to help guide you](../../../validation.md).

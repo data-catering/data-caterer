@@ -1,24 +1,23 @@
 name: "new_features_example_plan"
-description: "Example showcasing new features: enableFastGeneration, reference mode, and deeply nested fields with SQL"
+description: "Example showcasing new features: enableFastGeneration, reference mode, step options, and key positions"
 tasks:
-  - name: "reference_data_task"
-    dataSourceName: "csv"
+  - name: "fast_generation_reference_task"
+    dataSourceName: "fast_generation_reference"
     enabled: true
-  - name: "complex_financial_data_task"
-    dataSourceName: "json"
+  - name: "http_query_params_task"
+    dataSourceName: "http_query_params"
     enabled: true
 
 sinkOptions:
-  # enableFastGeneration flag for improved performance (commented out - may not be available in this version)
-  # enableFastGeneration: true
+  enableFastGeneration: true
   
   # Reference mode - using reference data in foreign key relationships
   foreignKeys:
     - source:
-        dataSource: "csv"
+        dataSource: "fast_generation_reference"
         step: "reference_data"
-        fields: ["country_code", "currency_code"]
+        fields: ["id"]
       generate:
-        - dataSource: "json"
-          step: "complex_financial_data"
-          fields: ["customer_info.address_info.country_code", "account_details.currency_code"]
+        - dataSource: "fast_generation_reference"
+          step: "json_array"
+          fields: ["items.id"]

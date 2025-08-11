@@ -8,6 +8,8 @@ image: "https://data.catering/diagrams/logo/data_catering_logo.svg"
 
 Creating a data generator for JSON. You will have the ability to generate and validate JSON files via Docker.
 
+[:material-run-fast: Scala Example](https://github.com/data-catering/data-caterer-example/blob/main/src/main/scala/io/github/datacatering/plan/JsonPlan.scala) | [:material-coffee: Java Example](https://github.com/data-catering/data-caterer-example/blob/main/src/main/java/io/github/datacatering/plan/JsonJavaPlan.java) | [:material-file-yaml-outline: Basic YAML](https://github.com/data-catering/data-caterer-example/blob/main/docker/data/custom/task/file/json) | [:material-file-yaml-outline: Advanced YAML](https://github.com/data-catering/data-caterer-example/blob/main/docker/data/custom/task/file/json/advanced-json-task.yaml)
+
 ## Requirements
 
 - 10 minutes
@@ -277,6 +279,70 @@ have unique values generated.
     1. Click on `Advanced Configuration` towards the bottom of the screen
     1. Click on `Flag` and click on `Unique Check`
     1. Click on `Folder` and enter `/tmp/data-caterer/report` for `Generated Reports Folder Path`
+
+#### JSON output options
+
+If your JSON sink should output a bare top-level array when there is a single top-level array field, enable unwrap.
+
+[:material-run-fast: Example](https://github.com/data-catering/data-caterer-example/blob/main/src/main/scala/io/github/datacatering/plan/FastGenerationAndReferencePlanRun.scala)
+
+=== "Java"
+
+    ```java
+    json("json_array", "/opt/app/data/json-array")
+      .fields(
+        field().name("items").type(ArrayType.instance()).unwrapTopLevelArray(true)
+          .fields(
+            field().name("id"),
+            field().name("score").type(DoubleType.instance()).min(0).max(100)
+          )
+      );
+    ```
+
+=== "Scala"
+
+    ```scala
+    json("json_array", "/opt/app/data/json-array")
+      .fields(
+        field.name("items").`type`(ArrayType).unwrapTopLevelArray(true)
+          .fields(
+            field.name("id"),
+            field.name("score").`type`(DoubleType).min(0).max(100)
+          )
+      )
+    ```
+
+=== "YAML"
+
+    ```yaml
+    name: "json_array_task"
+    steps:
+      - name: "json_array"
+        type: "json"
+        options:
+          path: "/opt/app/data/json-array"
+        fields:
+          - name: "items"
+            type: "array"
+            options:
+              unwrapTopLevelArray: true
+            fields:
+              - name: "id"
+              - name: "score"
+                type: "double"
+                options:
+                  min: 0
+                  max: 100
+    ```
+
+=== "UI"
+
+    1. Click on `+ Field`
+    1. Add name as `items`
+    1. Click on `Select data type` and select `array`
+    1. Click on `+ Field` and add name as `unwrapTopLevelArray`
+    1. Click on `Select data type` and select `boolean`
+    1. Set value to `true`
 
 ### Run
 

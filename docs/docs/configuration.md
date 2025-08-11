@@ -31,6 +31,7 @@ Flags are used to control which processes are executed when you run Data Caterer
 | `enableRecordTracking`         | false   | Enable/disable which data records have been generated for any data source                                                                                                                                                   |
 | `enableDeleteGeneratedRecords` | false   | Delete all generated records based off record tracking (if `enableRecordTracking` has been set to true)                                                                                                                     |
 | `enableGenerateValidations`    | false   | If enabled, it will generate validations based on the data sources defined.                                                                                                                                                 |
+| `enableFastGeneration`         | false   | Enable fast generation to maximize throughput. This automatically disables slower features and applies runtime optimizations for maximum performance |
 
 === "Java"
 
@@ -96,6 +97,40 @@ Flags are used to control which processes are executed when you run Data Caterer
       enableGenerateValidations = ${?ENABLE_GENERATE_VALIDATIONS}
       enableAlerts = false
       enableAlerts = ${?ENABLE_ALERTS}
+      # Fast generation disables slower features for maximum throughput
+      enableFastGeneration = false
+      enableFastGeneration = ${?ENABLE_FAST_GENERATION}
+    }
+    ```
+
+### Fast generation mode
+
+Enable fast generation to maximize throughput. This automatically disables slower features (record tracking, count,
+sink metadata, unique checks, save reports, validations, alerts) and applies runtime optimizations (e.g. lower shuffle
+partitions, enable AQE, Kryo serializer) and increases `numRecordsPerBatch`.
+
+[:material-run-fast: Scala Example](https://github.com/data-catering/data-caterer-example/blob/main/src/main/scala/io/github/datacatering/plan/FastGenerationAndReferencePlanRun.scala) | [:material-coffee: Java Example](https://github.com/data-catering/data-caterer-example/blob/main/src/main/java/io/github/datacatering/plan/FastGenerationAndReferenceJavaPlanRun.java)
+
+=== "Java"
+
+    ```java
+    configuration()
+      .enableFastGeneration(true);
+    ```
+
+=== "Scala"
+
+    ```scala
+    configuration
+      .enableFastGeneration(true)
+    ```
+    
+=== "application.conf"
+
+    ```
+    flags {
+      enableFastGeneration = true
+      enableFastGeneration = ${?ENABLE_FAST_GENERATION}
     }
     ```
 
@@ -216,6 +251,11 @@ when analysing the generated data if the number of records generated is large.
       oneOfDistinctCountVsCountThreshold = 0.2
       numGeneratedSamples = 10
     }
+
+    uniqueCheck {
+      uniqueBloomFilterNumItems = 100000
+      uniqueBloomFilterFalsePositiveProbability = 0.1
+    }
     ```
 
 ## Generation
@@ -286,6 +326,35 @@ Configurations to alter how validations are executed.
     validatoin {
       numSampleErrorRecords = 10
       enableDeleteRecordTrackingFiles = false
+    }
+    ```
+
+### Unique generation tuning
+
+If `enableUniqueCheck` is enabled, you can tune the underlying Bloom filter used for uniqueness checks to balance memory usage and false positive probability.
+
+=== "Java"
+
+    ```java
+    configuration()
+      .uniqueBloomFilterNumItems(100000L)
+      .uniqueBloomFilterFalsePositiveProbability(0.1);
+    ```
+
+=== "Scala"
+
+    ```scala
+    configuration
+      .uniqueBloomFilterNumItems(100000L)
+      .uniqueBloomFilterFalsePositiveProbability(0.1)
+    ```
+    
+=== "application.conf"
+
+    ```
+    uniqueCheck {
+      uniqueBloomFilterNumItems = 100000
+      uniqueBloomFilterFalsePositiveProbability = 0.1
     }
     ```
 

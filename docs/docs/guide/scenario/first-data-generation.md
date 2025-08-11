@@ -161,6 +161,16 @@ attributes that add guidelines that the data generator will understand when gene
     field.name("account_id").regex("ACC[0-9]{8}").unique(true),
     ```
 
+=== "YAML"
+
+    ```yaml
+    fields:
+      - name: "account_id"
+        options:
+          regex: "ACC[0-9]{8}"
+          isUnique: true
+    ```
+
 ##### balance
 
 - `balance` let's make the numbers not too large, so we can define a min and max for the generated numbers to be between
@@ -176,6 +186,17 @@ attributes that add guidelines that the data generator will understand when gene
 
     ```scala
     field.name("balance").`type`(DoubleType).min(1).max(1000),
+    ```
+
+=== "YAML"
+
+    ```yaml
+    fields:
+      - name: "balance"
+        type: "double"
+        options:
+          min: 1
+          max: 1000
     ```
 
 ##### name
@@ -197,6 +218,15 @@ attributes that add guidelines that the data generator will understand when gene
     field.name("name").expression("#{Name.name}"),
     ```
 
+=== "YAML"
+
+    ```yaml
+    fields:
+      - name: "name"
+        options:
+          expression: "#{Name.name}"
+    ```
+
 ##### open_time
 
 - `open_time` is a timestamp that we want to have a value greater than a specific date. We can define a min date by
@@ -215,6 +245,16 @@ attributes that add guidelines that the data generator will understand when gene
     field.name("open_time").`type`(TimestampType).min(java.sql.Date.valueOf("2022-01-01")),
     ```
 
+=== "YAML"
+
+    ```yaml
+    fields:
+      - name: "open_time"
+        type: "timestamp"
+        options:
+          min: "2022-01-01 00:00:00"
+    ```
+
 ##### status
 
 - `status` is a field that can only obtain one of four values, `open, closed, suspended or pending`.
@@ -229,6 +269,15 @@ attributes that add guidelines that the data generator will understand when gene
 
     ```scala
     field.name("status").oneOf("open", "closed", "suspended", "pending")
+    ```
+
+=== "YAML"
+
+    ```yaml
+    fields:
+      - name: "status"
+        options:
+          oneOf: ["open", "closed", "suspended", "pending"]
     ```
 
 ##### created_by
@@ -247,6 +296,15 @@ attributes that add guidelines that the data generator will understand when gene
 
     ```scala
     field.name("created_by").sql("CASE WHEN status IN ('open', 'closed') THEN 'eod' ELSE 'event' END"),
+    ```
+
+=== "YAML"
+
+    ```yaml
+    fields:
+      - name: "created_by"
+        options:
+          sql: "CASE WHEN status IN ('open', 'closed') THEN 'eod' ELSE 'event' END"
     ```
 
 Putting it all the fields together, our class should now look like this.
@@ -279,6 +337,41 @@ Putting it all the fields together, our class should now look like this.
       )
     ```
 
+=== "YAML"
+
+    ```yaml
+    name: "csv_account_task"
+    steps:
+      - name: "customer_accounts"
+        type: "csv"
+        options:
+          path: "/opt/app/data/customer/account"
+          header: "true"
+        fields:
+          - name: "account_id"
+            options:
+              regex: "ACC[0-9]{8}"
+              isUnique: true
+          - name: "balance"
+            type: "double"
+            options:
+              min: 1
+              max: 1000
+          - name: "created_by"
+            options:
+              sql: "CASE WHEN status IN ('open', 'closed') THEN 'eod' ELSE 'event' END"
+          - name: "name"
+            options:
+              expression: "#{Name.name}"
+          - name: "open_time"
+            type: "timestamp"
+            options:
+              min: "2022-01-01 00:00:00"
+          - name: "status"
+            options:
+              oneOf: ["open", "closed", "suspended", "pending"]
+    ```
+
 #### Record Count
 
 We only want to generate 100 records, so that we can see what the output looks like. This is controlled at the
@@ -304,6 +397,17 @@ We only want to generate 100 records, so that we can see what the output looks l
       .count(count.records(100))
     ```
 
+=== "YAML"
+
+    ```yaml
+    name: "csv_account_task"
+    steps:
+      - name: "customer_accounts"
+        type: "csv"
+        count:
+          records: 100
+    ```
+
 #### Additional Configurations
 
 At the end of data generation, a report gets generated that summarises the actions it performed. We can control the
@@ -324,6 +428,15 @@ have unique values generated.
     val config = configuration
       .generatedReportsFolderPath("/opt/app/data/report")
       .enableUniqueCheck(true)
+    ```
+
+=== "YAML"
+
+    ```yaml
+    flags:
+      enableUniqueCheck: true
+    folders:
+      generatedReportsFolderPath: "/opt/app/data/report"
     ```
 
 #### Execute
@@ -374,6 +487,54 @@ To tell Data Caterer that we want to run with the configurations along with the 
           .enableUniqueCheck(true)
         
         execute(config, accountTask)
+    }
+    ```
+
+=== "YAML"
+
+    Create file `docker/data/custom/task/csv-account-task.yaml`:
+    ```yaml
+    name: "csv_account_task"
+    steps:
+      - name: "customer_accounts"
+        type: "csv"
+        options:
+          path: "/opt/app/data/customer/account"
+          header: "true"
+        count:
+          records: 100
+        fields:
+          - name: "account_id"
+            options:
+              regex: "ACC[0-9]{8}"
+              isUnique: true
+          - name: "balance"
+            type: "double"
+            options:
+              min: 1
+              max: 1000
+          - name: "created_by"
+            options:
+              sql: "CASE WHEN status IN ('open', 'closed') THEN 'eod' ELSE 'event' END"
+          - name: "name"
+            options:
+              expression: "#{Name.name}"
+          - name: "open_time"
+            type: "timestamp"
+            options:
+              min: "2022-01-01 00:00:00"
+          - name: "status"
+            options:
+              oneOf: ["open", "closed", "suspended", "pending"]
+    ```
+
+    Create file `docker/data/custom/application.conf`:
+    ```yaml
+    flags {
+      enableUniqueCheck = true
+    }
+    folders {
+      generatedReportsFolderPath = "/opt/app/data/report"
     }
     ```
 
@@ -602,6 +763,101 @@ Now, stitching it all together for the `execute` function, our final plan should
     }
     ```
 
+=== "YAML"
+
+    Create file `docker/data/custom/task/csv-complete-task.yaml`:
+    ```yaml
+    name: "csv_complete_task"
+    steps:
+      - name: "customer_accounts"
+        type: "csv"
+        options:
+          path: "/opt/app/data/customer/account"
+          header: "true"
+        count:
+          records: 100
+        fields:
+          - name: "account_id"
+            options:
+              regex: "ACC[0-9]{8}"
+              isUnique: true
+          - name: "balance"
+            type: "double"
+            options:
+              min: 1
+              max: 1000
+          - name: "created_by"
+            options:
+              sql: "CASE WHEN status IN ('open', 'closed') THEN 'eod' ELSE 'event' END"
+          - name: "name"
+            options:
+              expression: "#{Name.name}"
+          - name: "open_time"
+            type: "timestamp"
+            options:
+              min: "2022-01-01 00:00:00"
+          - name: "status"
+            options:
+              oneOf: ["open", "closed", "suspended", "pending"]
+      - name: "customer_transactions"
+        type: "csv"
+        options:
+          path: "/opt/app/data/customer/transaction"
+          header: "true"
+        count:
+          perField:
+            fieldNames: ["account_id", "full_name"]
+            options:
+              min: 0
+              max: 5
+        fields:
+          - name: "account_id"
+          - name: "name"
+          - name: "amount"
+            type: "double"
+            options:
+              min: 1
+              max: 100
+          - name: "time"
+            type: "timestamp"
+            options:
+              min: "2022-01-01 00:00:00"
+          - name: "date"
+            type: "date"
+            options:
+              sql: "DATE(time)"
+    ```
+
+    Create file `docker/data/custom/plan/my-csv-plan.yaml`:
+    ```yaml
+    name: "my_csv_plan"
+    description: "Generate CSV files with foreign key relationships"
+    tasks:
+      - name: "csv_complete_task"
+        dataSourceName: "my_csv"
+
+    sinkOptions:
+      foreignKeys:
+        - source:
+            dataSource: "my_csv"
+            step: "customer_accounts"
+            fields: ["account_id", "name"]
+          generate:
+            - dataSource: "my_csv"
+              step: "customer_transactions"
+              fields: ["account_id", "full_name"]
+    ```
+
+    Create file `docker/data/custom/application.conf`:
+    ```yaml
+    flags {
+      enableUniqueCheck = true
+    }
+    folders {
+      generatedReportsFolderPath = "/opt/app/data/report"
+    }
+    ```
+
 Let's try run again.
 
 ```shell
@@ -696,6 +952,36 @@ Below, we have an example that should give you a good understanding of what vali
         validation.unique("account_id", "name"),
         validation.groupBy("account_id", "name").max("login_retry").lessThan(10)
       )
+    ```
+
+=== "YAML"
+
+    ```yaml
+    ---
+    name: "postgres_validation"
+    dataSources:
+      postgres:
+        - options:
+            url: "jdbc:postgresql://host.docker.internal:5432/customer"
+            user: "postgres"
+            password: "password"
+            dbtable: "account.transactions"
+          validations:
+            - expr: "account_id IS NULL"
+            - field: "name"
+              options:
+                matches: "[A-Z][a-z]+ [A-Z][a-z]+"
+                errorThreshold: 0.2
+                description: "Some names have different formats"
+            - field: "balance"
+              options:
+                greaterThanOrEqual: 0
+                errorThreshold: 10
+                description: "Account can have negative balance if overdraft"
+            - expr: "CASE WHEN status = 'closed' THEN close_date IS NOT NULL ELSE close_date IS NULL END"
+            - unique: ["account_id", "name"]
+            - groupByCols: ["account_id", "name"]
+              aggExpr: "max(login_retry) < 10"
     ```
 
 ##### name

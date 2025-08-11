@@ -216,7 +216,7 @@ data source contains `account_id` which is a concatenation of `ACC` with `accoun
     var jsonTask = json("my_json", "/tmp/json")
       .fields(
         field().name("account_id").sql("CONCAT('ACC', account_number)"),
-        field().name("account_number").omit(true),  #using this field for intermediate calculation, not included in final result with omit=true
+        field().name("account_number").omit(true)  //using this field for intermediate calculation, not included in final result with omit=true
         ...
       );
     
@@ -239,7 +239,7 @@ data source contains `account_id` which is a concatenation of `ACC` with `accoun
     var jsonTask = json("my_json", "/tmp/json")
       .fields(
         field.name("account_id").sql("CONCAT('ACC', account_number)"),
-        field.name("account_number").omit(true),  #using this field for intermediate calculation, not included in final result with omit=true
+        field.name("account_number").omit(true)  //using this field for intermediate calculation, not included in final result with omit=true
         ...
       )
 
@@ -325,10 +325,10 @@ key definition.
         field().name("account_id"),
         field().name("customer_details")
           .fields(
-            field().name("name").sql("_txn_name"), #nested field will get value from '_txn_name'
+            field().name("name").sql("_txn_name") //nested field will get value from '_txn_name'
             ...
           ),
-        field().name("_txn_name").omit(true)       #value will not be included in output
+        field().name("_txn_name").omit(true)       //value will not be included in output
       );
     
     plan().addForeignKeyRelationship(
@@ -352,10 +352,10 @@ key definition.
         field.name("account_id"),
         field.name("customer_details")
           .fields(
-            field.name("name").sql("_txn_name"), #nested field will get value from '_txn_name'
+            field.name("name").sql("_txn_name") //nested field will get value from '_txn_name'
             ...
           ), 
-        field.name("_txn_name").omit(true)       #value will not be included in output
+        field.name("_txn_name").omit(true)       //value will not be included in output
       )
 
     plan.addForeignKeyRelationship(

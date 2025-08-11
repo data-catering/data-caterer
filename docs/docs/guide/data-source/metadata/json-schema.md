@@ -10,6 +10,8 @@ image: "https://data.catering/diagrams/logo/data_catering_logo.svg"
 
 Creating a data generator for JSON files based on metadata stored in [JSON Schema](https://json-schema.org/) format. JSON Schema provides a powerful way to describe and validate the structure of JSON data, making it an excellent metadata source for generating realistic test data.
 
+[:material-run-fast: Scala Example](https://github.com/data-catering/data-caterer-example/blob/main/src/main/scala/io/github/datacatering/plan/JsonSchemaValidationPlanRun.scala)
+
 ## Requirements
 
 - 10 minutes

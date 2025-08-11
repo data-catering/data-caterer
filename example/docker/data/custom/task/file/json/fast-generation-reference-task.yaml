@@ -1,0 +1,58 @@
+name: "fast_generation_reference_task"
+steps:
+  - name: "reference_data"
+    type: "json"
+    options:
+      path: "/opt/app/data/reference/json"
+    enableReferenceMode: true
+    enableDataGeneration: false
+  - name: "json_array"
+    type: "json"
+    options:
+      path: "/opt/app/data/json-array"
+    count:
+      records: 5
+    fields:
+      - name: "items"
+        type: "array"
+        options:
+          unwrapTopLevelArray: true
+        fields:
+          - name: "id"
+          - name: "score"
+            type: "double"
+            options:
+              min: 0
+              max: 100
+  - name: "csv_accounts"
+    type: "csv"
+    options:
+      path: "/opt/app/data/csv/accounts"
+      header: "true"
+      partitionBy: "year,account_id"
+      partitions: 4
+    count:
+      records: 20
+    fields:
+      - name: "account_id"
+      - name: "year"
+        type: "integer"
+        options:
+          min: 2020
+          max: 2025
+  - name: "accounts"
+    type: "cassandra"
+    options:
+      keyspace: "account"
+      table: "accounts"
+    count:
+      records: 10
+    fields:
+      - name: "account_id"
+        options:
+          isPrimaryKey: true
+          primaryKeyPosition: 1
+      - name: "open_time"
+        type: "timestamp"
+        options:
+          clusteringPosition: 1

@@ -11,6 +11,8 @@ image: "https://data.catering/diagrams/logo/data_catering_logo.svg"
 Creating a data generator for a CSV file based on metadata stored
 in [Open Data Contract Standard (ODCS)](https://github.com/bitol-io/open-data-contract-standard).
 
+[:material-run-fast: Scala Example](https://github.com/data-catering/data-caterer-example/blob/main/src/main/scala/io/github/datacatering/plan/ODCSPlanRun.scala)
+
 ## Requirements
 
 - 10 minutes

@@ -88,6 +88,19 @@ Make sure your class extends `PlanRun`.
     }
     ```
 
+=== "YAML"
+
+    Create file `docker/data/custom/plan/batch-event-plan.yaml`:
+    ```yaml
+    name: "batch_event_plan"
+    description: "Generate batch and event data"
+    tasks:
+      - name: "kafka_task"
+        dataSourceName: "my_kafka"
+      - name: "csv_task"
+        dataSourceName: "my_csv"
+    ```
+
 We will borrow the Kafka task that is already defined under the class `KafkaPlanRun`
 or `KafkaJavaPlanRun`. You can go through the Kafka guide [**here**](../data-source/messaging/kafka.md) for more details.
 
@@ -122,6 +135,23 @@ Kafka messages.
         field.name("name"),
         field.name("payload")
     )
+    ```
+
+=== "YAML"
+
+    Create file `docker/data/custom/task/csv-task.yaml`:
+    ```yaml
+    name: "csv_task"
+    steps:
+      - name: "csv_accounts"
+        type: "csv"
+        options:
+          path: "/opt/app/data/csv/account"
+        fields:
+          - name: "account_number"
+          - name: "year"
+          - name: "name"
+          - name: "payload"
     ```
 
 This is a simple schema where we want to use the values and metadata that is already defined in the `kafkaTask` to
@@ -171,6 +201,37 @@ to match with the corresponding field in the other data source.
     val conf = configuration.generatedReportsFolderPath("/opt/app/data/report")
 
     execute(myPlan, conf, kafkaTask, csvTask)
+    ```
+
+=== "YAML"
+
+    Update `docker/data/custom/plan/batch-event-plan.yaml`:
+    ```yaml
+    name: "batch_event_plan"
+    description: "Generate batch and event data"
+    tasks:
+      - name: "kafka_task"
+        dataSourceName: "my_kafka"
+      - name: "csv_task"
+        dataSourceName: "my_csv"
+
+    sinkOptions:
+      foreignKeys:
+        - source:
+            dataSource: "my_kafka"
+            step: "account_topic"
+            fields: ["key", "tmp_year", "tmp_name", "value"]
+          generate:
+            - dataSource: "my_csv"
+              step: "csv_accounts"
+              fields: ["account_number", "year", "name", "payload"]
+    ```
+
+    Create file `docker/data/custom/application.conf`:
+    ```yaml
+    folders {
+      generatedReportsFolderPath = "/opt/app/data/report"
+    }
     ```
 
 ### Run

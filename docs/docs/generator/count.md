@@ -413,7 +413,7 @@ It can generate a dataset like below where all combinations of `debit_credit` an
     csv("transactions", "app/src/test/resources/sample/csv/transactions")
       .fields(
         field().name("account_id"),
-        field().name("debit_creidt").oneOf("D", "C"),
+        field().name("debit_credit").oneOf("D", "C"),
         field().name("status").oneOf("open", "closed", "suspended")
       )
       .allCombinations(true);
@@ -425,7 +425,7 @@ It can generate a dataset like below where all combinations of `debit_credit` an
     csv("transactions", "app/src/test/resources/sample/csv/transactions")
       schema(
         field.name("account_id"),
-        field.name("debit_creidt").oneOf("D", "C"),
+        field.name("debit_credit").oneOf("D", "C"),
         field.name("status").oneOf("open", "closed", "suspended")
       )
       .allCombinations(true)
