@@ -54,21 +54,27 @@ object PlanParser {
                         validationFolderPath: String,
                         connectionConfigsByName: Map[String, Map[String, String]]
                       )(implicit sparkSession: SparkSession): List[ValidationConfiguration] = {
-    val yamlConfig = YamlFileParser.parseFiles[YamlValidationConfiguration](validationFolderPath).toList
-    yamlConfig.map(y => {
-      val dataSourceValidations = y.dataSources.map(d => {
-        val mappedValidations = d._2.map(dataSourceValidations => {
-          val parsedValidations = dataSourceValidations.validations.map {
-            case yamlUpstream: YamlUpstreamDataSourceValidation =>
-              getYamlUpstreamValidationAsValidationWithConnection(connectionConfigsByName, yamlUpstream)
-            case v => ValidationBuilder(v)
-          }
-          DataSourceValidation(dataSourceValidations.options, dataSourceValidations.waitCondition, parsedValidations)
+    try {
+      val yamlConfig = YamlFileParser.parseFiles[YamlValidationConfiguration](validationFolderPath).toList
+      yamlConfig.map(y => {
+        val dataSourceValidations = y.dataSources.map(d => {
+          val mappedValidations = d._2.map(dataSourceValidations => {
+            val parsedValidations = dataSourceValidations.validations.map {
+              case yamlUpstream: YamlUpstreamDataSourceValidation =>
+                getYamlUpstreamValidationAsValidationWithConnection(connectionConfigsByName, yamlUpstream)
+              case v => ValidationBuilder(v)
+            }
+            DataSourceValidation(dataSourceValidations.options, dataSourceValidations.waitCondition, parsedValidations)
+          })
+          d._1 -> mappedValidations
         })
-        d._1 -> mappedValidations
+        ValidationConfiguration(y.name, y.description, dataSourceValidations)
       })
-      ValidationConfiguration(y.name, y.description, dataSourceValidations)
-    })
+    } catch {
+      case e: Exception =>
+        LOGGER.error(s"Error parsing validations from $validationFolderPath, continuing with empty validations", e)
+        List()
+    }
   }
 
   def getYamlUpstreamValidationAsValidationWithConnection(

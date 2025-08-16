@@ -9,7 +9,7 @@ image: "https://data.catering/diagrams/logo/data_catering_logo.svg"
 Creating a data generator for Kafka. You will build a Docker image that will be able to populate data in kafka
 for the topics you configure.
 
-[:material-run-fast: Scala Example](https://github.com/data-catering/data-caterer/blob/main/example/src/main/scala/io/github/datacatering/plan/KafkaPlanRun.scala) | [:material-coffee: Java Example](https://github.com/data-catering/data-caterer/blob/main/example/src/main/java/io/github/datacatering/plan/KafkaJavaPlanRun.java) | [:material-file-yaml-outline: Basic YAML](https://github.com/data-catering/data-caterer/blob/main/example/docker/data/custom/task/kafka) | [:material-file-yaml-outline: Advanced YAML](https://github.com/data-catering/data-caterer/blob/main/example/docker/data/custom/task/kafka/advanced-kafka-task.yaml)
+[:material-run-fast: Scala Example](https://github.com/data-catering/data-caterer/blob/main/example/src/main/scala/io/github/datacatering/plan/KafkaPlanRun.scala) | [:material-coffee: Java Example](https://github.com/data-catering/data-caterer/blob/main/example/src/main/java/io/github/datacatering/plan/KafkaJavaPlanRun.java) | [:simple-yaml: Basic YAML](https://github.com/data-catering/data-caterer/blob/main/example/docker/data/custom/task/kafka) | [:simple-yaml: Advanced YAML](https://github.com/data-catering/data-caterer/blob/main/example/docker/data/custom/task/kafka/advanced-kafka-task.yaml)
 
 ## Requirements
 

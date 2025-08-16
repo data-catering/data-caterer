@@ -1,5 +1,4 @@
 name: "advanced_kafka_task"
-description: "Comprehensive Kafka data generation with headers, partitioning, and nested structures"
 steps:
   - name: "customer_events_stream"
     type: "kafka"
@@ -156,12 +155,3 @@ steps:
                 type: "integer"
                 options:
                   sql: "HOUR(event_timestamp)"
-    validations:
-      - field: "body.customer_id"
-        isNull: false
-      - field: "body.event_id"
-        isNull: false
-      - expr: "SIZE(body.order_details.items) > 0 OR body.order_details IS NULL"
-        description: "Order should have items when order details exist"
-      - expr: "ABS(body.order_details.calculated_total - body.order_details.total_amount) < 0.01 OR body.order_details IS NULL"
-        description: "Calculated total should match order total amount"

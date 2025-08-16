@@ -4,12 +4,9 @@ import org.jetbrains.gradle.ext.settings
 
 plugins {
     idea
-    id("org.jetbrains.gradle.plugin.idea-ext") version "1.1.8"
-    id("io.github.gradle-nexus.publish-plugin") version "2.0.0"
+    alias(libs.plugins.idea.ext)
+    alias(libs.plugins.nexus.publish)
 }
-
-group = project.properties["groupId"].toString()
-version = project.properties["version"].toString()
 
 idea.project.settings {
     runConfigurations {

@@ -5,7 +5,7 @@ steps:
     count:
       records: 1
     options:
-      path: "/tmp/json/unwrap-yaml"
+      path: "/opt/app/custom/json/unwrap-yaml"
       saveMode: "overwrite"
       numPartitions: 1
     fields:

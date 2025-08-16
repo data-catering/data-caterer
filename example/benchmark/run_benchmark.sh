@@ -18,7 +18,7 @@ enable_query_engine_run=${ENABLE_QUERY_ENGINE_RUN:-true}
 enable_data_size_run=${ENABLE_DATA_SIZE_RUN:-true}
 enable_data_sink_run=${ENABLE_DATA_SINK_RUN:-true}
 
-data_caterer_version=$(grep -E "^dataCatererVersion=" "$PROP_FILE" | cut -d= -f2)
+data_caterer_version=$(grep -E "^version=" "$PROP_FILE" | cut -d= -f2)
 default_job="io.github.datacatering.plan.benchmark.BenchmarkParquetPlanRun"
 #default_job="io.github.datacatering.plan.benchmark.BenchmarkValidationPlanRun"
 default_record_count="100000"

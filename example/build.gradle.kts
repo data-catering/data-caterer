@@ -1,6 +1,5 @@
 val scalaVersion: String by project
 val scalaSpecificVersion: String by project
-val dataCatererVersion: String by project
 
 plugins {
     scala
@@ -13,7 +12,7 @@ repositories {
 dependencies {
     compileOnly("org.scala-lang:scala-library:$scalaSpecificVersion")
 
-    compileOnly("io.github.data-catering:data-caterer-api:$dataCatererVersion")
+    compileOnly(project(":api"))
 }
 
 tasks.register<ValidateYamlAgainstSchema>("validateYaml") {

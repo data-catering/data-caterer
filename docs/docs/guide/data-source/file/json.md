@@ -8,7 +8,7 @@ image: "https://data.catering/diagrams/logo/data_catering_logo.svg"
 
 Creating a data generator for JSON. You will have the ability to generate and validate JSON files via Docker.
 
-[:material-run-fast: Scala Example](https://github.com/data-catering/data-caterer/blob/main/example/src/main/scala/io/github/datacatering/plan/JsonPlan.scala) | [:material-coffee: Java Example](https://github.com/data-catering/data-caterer/blob/main/example/src/main/java/io/github/datacatering/plan/JsonJavaPlan.java) | [:material-file-yaml-outline: Basic YAML](https://github.com/data-catering/data-caterer/blob/main/example/docker/data/custom/task/file/json) | [:material-file-yaml-outline: Advanced YAML](https://github.com/data-catering/data-caterer/blob/main/example/docker/data/custom/task/file/json/advanced-json-task.yaml)
+[:material-run-fast: Scala Example](https://github.com/data-catering/data-caterer/blob/main/example/src/main/scala/io/github/datacatering/plan/JsonPlan.scala) | [:material-coffee: Java Example](https://github.com/data-catering/data-caterer/blob/main/example/src/main/java/io/github/datacatering/plan/JsonJavaPlan.java) | [:simple-yaml: Basic YAML](https://github.com/data-catering/data-caterer/blob/main/example/docker/data/custom/task/file/json) | [:simple-yaml: Advanced YAML](https://github.com/data-catering/data-caterer/blob/main/example/docker/data/custom/task/file/json/advanced-json-task.yaml)
 
 ## Requirements
 

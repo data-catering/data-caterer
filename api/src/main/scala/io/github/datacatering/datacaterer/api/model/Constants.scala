@@ -61,9 +61,7 @@ object Constants {
   lazy val DATA_CONTRACT_FILE = "dataContractFile"
   lazy val DATA_CONTRACT_SCHEMA = "dataContractSchema"
   lazy val ROWS_PER_SECOND = "rowsPerSecond"
-  // When applied on a top-level array field in a JSON task, instructs the sink to output a bare JSON array
-  // instead of an object { fieldName: [...] }.
-  lazy val UNWRAP_TOP_LEVEL = "unwrapTopLevel"
+  lazy val UNWRAP_TOP_LEVEL_ARRAY = "unwrapTopLevelArray"
   lazy val HUDI_TABLE_NAME = "hoodie.table.name"
   lazy val ICEBERG_CATALOG_TYPE = "catalogType"
   lazy val ICEBERG_CATALOG_URI = "catalogUri"

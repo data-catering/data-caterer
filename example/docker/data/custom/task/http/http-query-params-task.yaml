@@ -5,7 +5,7 @@ steps:
     options:
       url: "http://host.docker.internal:80/anything/pets"
       method: "GET"
-    rowsPerSecond: 1
+      rowsPerSecond: 1
     fields:
       - name: "tags"
         type: "array<string>"

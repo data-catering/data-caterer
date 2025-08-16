@@ -106,6 +106,16 @@ trait ConnectionTaskBuilder[T] {
   }
 
   /**
+   * Set the number of records to generate per second. Only used for real time data sources such as JMS, Kafka and HTTP
+   * @param rowsPerSecond The number of records per second to generate
+   * @return The connection task builder
+   */
+  def rowsPerSecond(rowsPerSecond: Int): ConnectionTaskBuilder[T] = {
+    this.step = Some(getStep.rowsPerSecond(rowsPerSecond))
+    this
+  }
+
+  /**
    * Generate all possible combinations of the fields. Fields with `oneOf` will be used to generate all possible combinations.
    *
    * @param enable Whether to enable all combinations.

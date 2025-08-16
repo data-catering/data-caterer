@@ -8,7 +8,7 @@ image: "https://data.catering/diagrams/logo/data_catering_logo.svg"
 
 Creating a data generator for CSV. You will have the ability to generate and validate CSV files via Docker.
 
-[:material-run-fast: Scala Example](https://github.com/data-catering/data-caterer/blob/main/example/src/main/scala/io/github/datacatering/plan/CsvPlan.scala) | [:material-coffee: Java Example](https://github.com/data-catering/data-caterer/blob/main/example/src/main/java/io/github/datacatering/plan/CsvJavaPlan.java) | [:material-file-yaml-outline: YAML Example](https://github.com/data-catering/data-caterer/blob/main/example/docker/data/custom/task/file/csv)
+[:material-run-fast: Scala Example](https://github.com/data-catering/data-caterer/blob/main/example/src/main/scala/io/github/datacatering/plan/CsvPlan.scala) | [:material-coffee: Java Example](https://github.com/data-catering/data-caterer/blob/main/example/src/main/java/io/github/datacatering/plan/CsvJavaPlan.java) | [:simple-yaml: YAML Example](https://github.com/data-catering/data-caterer/blob/main/example/docker/data/custom/task/file/csv)
 
 ## Requirements
 
