@@ -1,7 +1,7 @@
 package io.github.datacatering.datacaterer.core.sink
 
 import com.google.common.util.concurrent.RateLimiter
-import io.github.datacatering.datacaterer.api.model.Constants.{DELTA, DELTA_LAKE_SPARK_CONF, DRIVER, FORMAT, ICEBERG, ICEBERG_SPARK_CONF, JDBC, JSON, OMIT, PARTITIONS, PARTITION_BY, PATH, POSTGRES_DRIVER, RATE, ROWS_PER_SECOND, SAVE_MODE, TABLE, UNWRAP_TOP_LEVEL}
+import io.github.datacatering.datacaterer.api.model.Constants.{DELTA, DELTA_LAKE_SPARK_CONF, DRIVER, FORMAT, ICEBERG, ICEBERG_SPARK_CONF, JDBC, JSON, OMIT, PARTITIONS, PARTITION_BY, PATH, POSTGRES_DRIVER, RATE, ROWS_PER_SECOND, SAVE_MODE, TABLE, UNWRAP_TOP_LEVEL_ARRAY}
 import io.github.datacatering.datacaterer.api.model.{FlagsConfig, FoldersConfig, MetadataConfig, SinkResult, Step}
 import io.github.datacatering.datacaterer.api.util.ConfigUtil
 import io.github.datacatering.datacaterer.core.exception.{FailedSaveDataDataFrameV2Exception, FailedSaveDataException}
@@ -89,10 +89,12 @@ class SinkFactory(
     // if format is iceberg, need to use dataframev2 api for partition and writing
     connectionConfig.filter(_._1.startsWith("spark.sql"))
       .foreach(conf => df.sqlContext.setConf(conf._1, conf._2))
+    LOGGER.info(s"[DEBUG unwrap] Format is: '$format', JSON constant is: '$JSON'")
     val trySaveData = if (format == ICEBERG) {
       Try(tryPartitionAndSaveDfV2(df, saveMode, connectionConfig))
     } else if (format == JSON) {
       // Special-case: allow unwrapping top-level array to emit a bare JSON array file
+      LOGGER.info(s"[DEBUG unwrap] Format is JSON, calling trySaveJsonPossiblyUnwrapped")
       val tryMaybeUnwrap = Try(trySaveJsonPossiblyUnwrapped(df, saveMode, connectionConfig))
       tryMaybeUnwrap
     } else {
@@ -117,6 +119,7 @@ class SinkFactory(
   }
 
   private def trySaveJsonPossiblyUnwrapped(df: DataFrame, saveMode: SaveMode, connectionConfig: Map[String, String]): Unit = {
+    LOGGER.info("[DEBUG unwrap] trySaveJsonPossiblyUnwrapped called")
     val shouldUnwrap = detectTopLevelArrayToUnwrap(df)
     shouldUnwrap match {
       case Some(arrayFieldName) =>
@@ -140,10 +143,19 @@ class SinkFactory(
     val fields = df.schema.fields
     if (fields.length == 1) {
       val f = fields.head
-      val hasFlag = f.metadata.contains(UNWRAP_TOP_LEVEL) && f.metadata.getString(UNWRAP_TOP_LEVEL).equalsIgnoreCase("true")
+      val hasFlag = f.metadata.contains(UNWRAP_TOP_LEVEL_ARRAY) && f.metadata.getString(UNWRAP_TOP_LEVEL_ARRAY).equalsIgnoreCase("true")
       val isArray = f.dataType.typeName == "array"
-      if (hasFlag && isArray) Some(f.name) else None
-    } else None
+      if (hasFlag && isArray) {
+        LOGGER.debug(s"Field ${f.name} is an array and unwrapTopLevelArray is true")
+        Some(f.name)
+      } else {
+        LOGGER.debug(s"Field ${f.name} is not an array or unwrapTopLevelArray is not true")
+        None
+      }
+    } else {
+      LOGGER.debug(s"Multiple fields found for JSON, not unwrapping top level array if set")
+      None
+    }
   }
 
   private def partitionDf(df: DataFrame, stepOptions: Map[String, String]): DataFrameWriter[Row] = {

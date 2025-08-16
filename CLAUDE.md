@@ -20,6 +20,9 @@ The project uses Gradle with Kotlin DSL and follows a multi-module structure:
 # Build the entire project
 ./gradlew build
 
+# Build project without fat JAR tasks
+./gradlew clean :app:build -x :app:shadowJar -x :app:distTar -x :app:distZip
+
 # Build individual modules
 ./gradlew :app:build
 ./gradlew :api:build

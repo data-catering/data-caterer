@@ -1,8 +1,7 @@
 package io.github.datacatering.plan
 
-import io.github.datacatering.datacaterer.api.PlanRun
+import io.github.datacatering.datacaterer.api.{HttpMethodEnum, HttpQueryParameterStyleEnum, PlanRun}
 import io.github.datacatering.datacaterer.api.model.{ArrayType, DoubleType, IntegerType}
-import io.github.datacatering.datacaterer.api.HttpMethodEnum
 
 class FastGenerationAndReferencePlanRun extends PlanRun {
 
@@ -31,7 +30,7 @@ class FastGenerationAndReferencePlanRun extends PlanRun {
         HttpMethodEnum.GET,
         List(),
         List(
-          field.httpQueryParam("tags", ArrayType, api.HttpQueryParameterStyleEnum.FORM, explode = false),
+          field.httpQueryParam("tags", ArrayType, HttpQueryParameterStyleEnum.FORM, explode = false),
           field.httpQueryParam("limit", IntegerType)
         )
       ): _*

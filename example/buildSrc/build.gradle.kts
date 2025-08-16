@@ -1,5 +1,5 @@
 plugins {
-    kotlin("jvm") version "1.9.0" // Ensure Kotlin is applied
+    kotlin("jvm") version "2.1.0" // Ensure Kotlin is applied
 }
 
 repositories {

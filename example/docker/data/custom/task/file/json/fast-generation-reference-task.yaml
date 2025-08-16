@@ -4,8 +4,8 @@ steps:
     type: "json"
     options:
       path: "/opt/app/data/reference/json"
-    enableReferenceMode: true
-    enableDataGeneration: false
+      enableReferenceMode: true
+      enableDataGeneration: false
   - name: "json_array"
     type: "json"
     options:

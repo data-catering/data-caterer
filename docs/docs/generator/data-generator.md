@@ -688,7 +688,7 @@ Disable data generation for specific steps when you want to use them only for re
 
 Control data partitioning and parallelism for improved performance with large datasets.
 
-[:material-run-fast: Example](https://github.com/data-catering/data-caterer/blob/main/example/src/main/scala/io/github/datacatering/plan/FastGenerationAndReferencePlanRun.scala)
+[:material-run-fast: Scala Example](https://github.com/data-catering/data-caterer/blob/main/example/src/main/scala/io/github/datacatering/plan/FastGenerationAndReferencePlanRun.scala)
 
 === "Java"
 
@@ -727,7 +727,7 @@ Control data partitioning and parallelism for improved performance with large da
 
 Use existing data as reference instead of generating new data for a step. This is useful when you want to reference real data in foreign key relationships.
 
-[:material-run-fast: Example](https://github.com/data-catering/data-caterer/blob/main/example/src/main/scala/io/github/datacatering/plan/FastGenerationAndReferencePlanRun.scala)
+[:material-run-fast: Scala Example](https://github.com/data-catering/data-caterer/blob/main/example/src/main/scala/io/github/datacatering/plan/FastGenerationAndReferencePlanRun.scala) | [:material-coffee: Java Example](https://github.com/data-catering/data-caterer/blob/main/example/src/main/java/io/github/datacatering/plan/FastGenerationAndReferenceJavaPlanRun.java) | [:simple-yaml: YAML Example](https://github.com/data-catering/data-caterer/blob/main/example/docker/data/custom/task/file/json/reference-data-task.yaml)
 
 === "Java"
 
@@ -752,8 +752,8 @@ Use existing data as reference instead of generating new data for a step. This i
         type: "json"
         options:
           path: "/opt/app/data/reference/json"
-        enableReferenceMode: true
-        enableDataGeneration: false
+          enableReferenceMode: true
+          enableDataGeneration: false
     ```
 
 ## Key positions and clustering

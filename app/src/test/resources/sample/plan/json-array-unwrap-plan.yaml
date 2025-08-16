@@ -1,0 +1,6 @@
+name: "json_array_unwrap_plan"
+description: "Test JSON array unwrapping from YAML interface"
+tasks:
+  - name: "json_array_unwrap_example"
+    dataSourceName: "account_json"
+    enabled: true

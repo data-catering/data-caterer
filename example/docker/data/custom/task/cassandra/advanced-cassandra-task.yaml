@@ -1,5 +1,4 @@
 name: "advanced_cassandra_task"
-description: "Comprehensive Cassandra data generation with key positions and clustering"
 steps:
   - name: "customer_events"
     type: "cassandra"
@@ -73,14 +72,3 @@ steps:
         type: "timestamp"
         options:
           sql: "event_timestamp + INTERVAL 1 MINUTE"
-    validations:
-      - field: "customer_id"
-        isNull: false
-      - field: "event_timestamp"
-        isNull: false
-      - expr: "event_date = DATE(event_timestamp)"
-        description: "Event date should match date part of timestamp"
-      - field: "amount"
-        greaterThanOrEqualTo: 0
-        errorThreshold: 10
-        description: "Amount should be non-negative when present"

@@ -8,7 +8,7 @@ image: "https://data.catering/diagrams/logo/data_catering_logo.svg"
 
 Creating a data generator based on an [OpenAPI/Swagger](https://spec.openapis.org/oas/latest.html) document.
 
-[:material-run-fast: Scala Example](https://github.com/data-catering/data-caterer/blob/main/example/src/main/scala/io/github/datacatering/plan/HttpPlanRun.scala) | [:material-coffee: Java Example](https://github.com/data-catering/data-caterer/blob/main/example/src/main/java/io/github/datacatering/plan/HttpJavaPlanRun.java) | [:material-file-yaml-outline: YAML Example](https://github.com/data-catering/data-caterer/blob/main/example/docker/data/custom/task/http)
+[:material-run-fast: Scala Example](https://github.com/data-catering/data-caterer/blob/main/example/src/main/scala/io/github/datacatering/plan/HttpPlanRun.scala) | [:material-coffee: Java Example](https://github.com/data-catering/data-caterer/blob/main/example/src/main/java/io/github/datacatering/plan/HttpJavaPlanRun.java) | [:simple-yaml: YAML Example](https://github.com/data-catering/data-caterer/blob/main/example/docker/data/custom/task/http)
 
 ![Generate HTTP requests](../../../../diagrams/data-source/http_generation_run.gif)
 

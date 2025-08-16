@@ -1,5 +1,4 @@
 name: "advanced_json_task"
-description: "Comprehensive JSON data generation showcasing advanced features"
 steps:
   - name: "customer_accounts" 
     type: "json"
@@ -96,14 +95,3 @@ steps:
         type: "string"
         options:
           sql: "CONCAT(customer_details.name, ' - ', status, ' (', account_id, ')')"
-    validations:
-      - field: "account_id"
-        isNull: false
-        description: "Account ID should never be null"
-      - field: "balance" 
-        greaterThan: 0
-        description: "Balance should be positive"
-      - expr: "year >= 2022"
-        description: "Year should be 2022 or later"
-      - unique: ["account_id"]
-        description: "Account ID should be unique"

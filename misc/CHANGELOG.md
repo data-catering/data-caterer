@@ -1,9 +1,17 @@
 # Changelog
 
+## 0.16.6
+
+- Fix bug when using `unwrapTopLevelArray` with YAML
+- Don't throw exception when validation folder does not exist
+- Upgrade to Gradle 9.0.0
+  - Add in Gradle configurations to speed up build and tests
+  - Use `libs.versions.toml` to manage Gradle versions
+
 ## 0.16.5
 
 - Allow for deeply nested SQL references in arrays or objects
-- Ability to use `unwrapTopLevel` to allow for top-level JSON arrays
+- Ability to use `unwrapTopLevelArray` to allow for top-level JSON arrays
 
 ## 0.16.4
 

@@ -38,7 +38,7 @@ public class FastGenerationAndReferenceJavaPlanRun extends PlanRun {
                                 List.of(),
                                 List.of(
                                         field().httpQueryParam("tags", ArrayType.instance(), HttpQueryParameterStyleEnum.FORM(), false),
-                                        field().httpQueryParam("limit", IntegerType.instance())
+                                        field().httpQueryParam("limit", IntegerType.instance(), HttpQueryParameterStyleEnum.FORM(), false)
                                 )
                         )
                 )

@@ -972,7 +972,7 @@ case class FieldBuilder(field: Field = Field()) {
     * Has no effect for non-JSON sinks or non-top-level contexts.
     */
   def unwrapTopLevelArray(enable: Boolean): FieldBuilder =
-    this.modify(_.field.options).setTo(getGenBuilder.unwrapTopLevel(enable).options)
+    this.modify(_.field.options).setTo(getGenBuilder.unwrapTopLevelArray(enable).options)
 
   /**
    * Sets the primary key flag for the current field.
@@ -1547,8 +1547,8 @@ case class GeneratorBuilder(options: Map[String, Any] = Map()) {
   /**
     * Instruct JSON sink to unwrap the top-level field if it is a single array field.
     */
-  def unwrapTopLevel(enable: Boolean): GeneratorBuilder =
-    this.modify(_.options)(_ ++ Map(UNWRAP_TOP_LEVEL -> enable.toString))
+  def unwrapTopLevelArray(enable: Boolean): GeneratorBuilder =
+    this.modify(_.options)(_ ++ Map(UNWRAP_TOP_LEVEL_ARRAY -> enable.toString))
 
   /**
    * Field is a primary key of the data source.

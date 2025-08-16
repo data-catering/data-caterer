@@ -9,7 +9,7 @@ image: "https://data.catering/diagrams/logo/data_catering_logo.svg"
 Creating a data generator for MySQL. You will build a Docker image that will be able to populate data in MySQL
 for the tables you configure.
 
-[:material-run-fast: Scala Example](https://github.com/data-catering/data-caterer/blob/main/example/src/main/scala/io/github/datacatering/plan/MySqlPlanRun.scala) | [:material-coffee: Java Example](https://github.com/data-catering/data-caterer/blob/main/example/src/main/java/io/github/datacatering/plan/MySqlJavaPlanRun.java) | [:material-file-yaml-outline: YAML Example](https://github.com/data-catering/data-caterer/blob/main/example/docker/data/custom/task/jdbc/mysql)
+[:material-run-fast: Scala Example](https://github.com/data-catering/data-caterer/blob/main/example/src/main/scala/io/github/datacatering/plan/MySqlPlanRun.scala) | [:material-coffee: Java Example](https://github.com/data-catering/data-caterer/blob/main/example/src/main/java/io/github/datacatering/plan/MySqlJavaPlanRun.java) | [:simple-yaml: YAML Example](https://github.com/data-catering/data-caterer/blob/main/example/docker/data/custom/task/jdbc/mysql)
 
 ## Requirements
 

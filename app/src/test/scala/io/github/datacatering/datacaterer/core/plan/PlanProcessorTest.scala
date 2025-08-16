@@ -332,6 +332,34 @@ class PlanProcessorTest extends SparkSuite {
     println(s"Successfully validated YAML pain-008 JSON generation with structure patterns using ${generatedData.length} records")
   }
 
+  test("Can generate JSON with array unwrapping from YAML files using direct method") {
+    val baseDir = System.getProperty("user.dir", ".")
+    val taskFolderPath = s"$baseDir/src/test/resources/sample/task/file"
+    val planFilePath = s"$baseDir/src/test/resources/sample/plan/json-array-unwrap-plan.yaml"
+
+    PlanProcessor.executeFromYamlFiles(planFilePath, taskFolderPath)
+    println("Successfully validated that YAML interface correctly processes array unwrapping configuration")
+    // Read the generated JSON data to validate array unwrapping worked correctly
+    val outputPath = "/tmp/json/unwrap-yaml"
+    val generatedData = sparkSession.read.json(outputPath).collect()
+    
+    // Verify exactly 3 records were generated (array unwrapping should create 3 separate records)
+    assert(generatedData.length == 3, s"Should generate exactly 3 records from array unwrapping, but got ${generatedData.length}")
+    
+    // Verify each record contains the expected fields with proper patterns
+    generatedData.foreach(row => {
+      val id = row.getAs[String]("id")
+      val name = row.getAs[String]("name")
+      
+      // Validate ID matches pattern ID[0-9]{3}
+      assert(id.matches("ID[0-9]{3}"), s"ID should match pattern ID[0-9]{3}: $id")
+      
+      // Validate name is not null/empty (expression should generate a first name)
+      assert(name != null && name.nonEmpty, s"Name should not be null or empty: $name")
+    })
+    println(s"Successfully validated JSON array unwrapping with ${generatedData.length} records")
+  }
+
   private def verifyGeneratedData(folder: String) = {
     val jsonData = sparkSession.read.json(s"$folder/json").selectExpr("*", "customer_details.name AS name").collect()
     val csvData = sparkSession.read.option("header", "true").csv(s"$folder/csv").collect()
@@ -500,6 +528,7 @@ class PlanProcessorTest extends SparkSuite {
     val httpTask = http("my_http")
       .fields(urlField: _*)
       .fields(field.httpHeader("Content-Type").static("json"))
+      .rowsPerSecond(1)
       .count(count.records(5))
 
     val conf = configuration.generatedReportsFolderPath("/tmp/report")
@@ -1552,5 +1581,6 @@ class PlanProcessorTest extends SparkSuite {
 
     execute(conf, jsonTask)
   }
+
 
 }

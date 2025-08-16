@@ -9,7 +9,7 @@ image: "https://data.catering/diagrams/logo/data_catering_logo.svg"
 Creating a data generator for Cassandra. You will build a Docker image that will be able to populate data in Cassandra
 for the tables you configure.
 
-[:material-run-fast: Scala Example](https://github.com/data-catering/data-caterer/blob/main/example/src/main/scala/io/github/datacatering/plan/CassandraPlanRun.scala) | [:material-coffee: Java Example](https://github.com/data-catering/data-caterer/blob/main/example/src/main/java/io/github/datacatering/plan/CassandraJavaPlanRun.java) | [:material-file-yaml-outline: Basic YAML](https://github.com/data-catering/data-caterer/blob/main/example/docker/data/custom/task/cassandra) | [:material-file-yaml-outline: Advanced YAML](https://github.com/data-catering/data-caterer/blob/main/example/docker/data/custom/task/cassandra/advanced-cassandra-task.yaml)
+[:material-run-fast: Scala Example](https://github.com/data-catering/data-caterer/blob/main/example/src/main/scala/io/github/datacatering/plan/CassandraPlanRun.scala) | [:material-coffee: Java Example](https://github.com/data-catering/data-caterer/blob/main/example/src/main/java/io/github/datacatering/plan/CassandraJavaPlanRun.java) | [:simple-yaml: Basic YAML](https://github.com/data-catering/data-caterer/blob/main/example/docker/data/custom/task/cassandra) | [:simple-yaml: Advanced YAML](https://github.com/data-catering/data-caterer/blob/main/example/docker/data/custom/task/cassandra/advanced-cassandra-task.yaml)
 
 ## Requirements
 

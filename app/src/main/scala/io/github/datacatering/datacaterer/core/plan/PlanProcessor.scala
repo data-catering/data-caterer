@@ -44,6 +44,16 @@ object PlanProcessor {
   def determineAndExecutePlanJava(planRun: io.github.datacatering.datacaterer.javaapi.api.PlanRun): PlanRunResults =
     determineAndExecutePlan(Some(planRun.getPlan))
 
+  def executeFromYamlFiles(planFilePath: String, taskFolderPath: String): PlanRunResults = {
+    val dataCatererConfiguration = ConfigParser.toDataCatererConfiguration.copy(
+      foldersConfig = ConfigParser.toDataCatererConfiguration.foldersConfig.copy(
+        planFilePath = planFilePath,
+        taskFolderPath = taskFolderPath
+      )
+    )
+    executePlanWithConfig(dataCatererConfiguration, None, DATA_CATERER_INTERFACE_YAML)
+  }
+
   private def executePlan(planRun: PlanRun, interface: String): PlanRunResults = {
     val dataCatererConfiguration = planRun._configuration
     executePlanWithConfig(dataCatererConfiguration, Some(planRun), interface)

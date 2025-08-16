@@ -1,0 +1,247 @@
+[versions]
+# Project versions
+scala = "2.12"
+scala-specific = "2.12.19"
+spark = "3.5.6"
+spark-major = "3.5"
+
+# Build plugins
+kotlin = "2.1.0"
+shadow = "8.3.7"
+scoverage = "8.0.3"
+idea-ext = "1.1.9"
+nexus-publish = "2.0.0"
+
+# Core dependencies
+jackson = "2.17.1"
+jackson-strict = "2.15.3"
+quicklens = "1.9.7"
+guava = "33.2.1-jre"
+
+# Test dependencies
+scalatest = "3.2.19"
+scalatestplus-junit = "3.2.19.0"
+scalamock = "5.2.0"
+mockito-scala = "1.17.37"
+testcontainers-scala = "0.41.3"
+junit-platform = "1.11.3"
+scala-xml = "1.3.1"
+scala-xml-test = "1.3.1"
+
+# Security updates
+netty = "4.1.118.Final"
+netty-tcnative = "2.0.65.Final"
+woodstox = "5.4.0"
+nimbus-jose-jwt = "9.37.2"
+
+# Database connectors
+postgresql = "42.7.5"
+mysql = "9.0.0"
+cassandra-connector = "3.5.0"
+bigquery-connector = "0.42.0"
+
+# File formats
+iceberg = "1.5.2"
+delta = "3.2.0"
+avro = "1.11.4"
+parquet-jackson = "1.13.1"
+
+# HTTP and messaging
+async-http-client = "3.0.1"
+swagger-parser = "2.1.16"
+jms-api-jakarta = "3.1.0"
+jms-api-javax = "2.0.1"
+solace-jms = "10.25.2"
+rabbitmq-jms = "3.4.0"
+
+# Apache Commons
+commons-io = "2.17.0"
+commons-net = "3.9.0"
+commons-compress = "1.26.0"
+commons-configuration2 = "2.10.1"
+
+# Jetty
+jetty = "9.4.54.v20240208"
+
+# Other Apache projects
+kerby = "2.0.3"
+zookeeper = "3.9.3"
+ivy = "2.5.2"
+
+# Misc libraries
+aircompressor = "0.27"
+wildfly-openssl = "1.1.3.Final"
+xnio = "3.8.15.Final"
+amazon-ion = "1.11.10"
+snappy = "1.1.10.7"
+jettison = "1.5.4"
+json-smart = "2.5.2"
+protostuff = "3.1.40"
+datafaker = "2.4.2"
+reflections = "0.10.2"
+slack-api = "1.39.3"
+openmetadata = "1.6.3"
+hadoop-bare-naked = "0.1.0"
+json-schema-validator = "1.5.7"
+joda-time = "2.12.7"
+pureconfig = "0.17.6"
+scala-xml-full = "2.2.0"
+
+# Pekko (Akka fork)
+pekko-http = "1.0.0"
+pekko-stream = "1.0.1"
+pekko-actor = "1.0.1"
+pekko-http-jackson = "2.2.0"
+
+[libraries]
+# Scala
+scala-library = { module = "org.scala-lang:scala-library", version.ref = "scala-specific" }
+
+# Core Spark
+spark-sql = { module = "org.apache.spark:spark-sql_2.12", version.ref = "spark" }
+spark-avro = { module = "org.apache.spark:spark-avro_2.12", version.ref = "spark" }
+spark-protobuf = { module = "org.apache.spark:spark-protobuf_2.12", version.ref = "spark" }
+spark-mllib = { module = "org.apache.spark:spark-mllib_2.12", version.ref = "spark" }
+spark-sql-kafka = { module = "org.apache.spark:spark-sql-kafka-0-10_2.12", version.ref = "spark" }
+spark-hadoop-cloud = { module = "org.apache.spark:spark-hadoop-cloud_2.12", version.ref = "spark" }
+
+# Jackson
+jackson-dataformat-yaml = { module = "com.fasterxml.jackson.dataformat:jackson-dataformat-yaml", version.ref = "jackson" }
+jackson-module-scala = { module = "com.fasterxml.jackson.module:jackson-module-scala_2.12", version.ref = "jackson" }
+jackson-databind = { module = "com.fasterxml.jackson.core:jackson-databind", version.ref = "jackson-strict" }
+jackson-dataformat-yaml-strict = { module = "com.fasterxml.jackson.dataformat:jackson-dataformat-yaml", version.ref = "jackson-strict" }
+jackson-module-scala-strict = { module = "com.fasterxml.jackson.module:jackson-module-scala_2.12", version.ref = "jackson-strict" }
+jackson-datatype-jsr310 = { module = "com.fasterxml.jackson.datatype:jackson-datatype-jsr310", version.ref = "jackson-strict" }
+jackson-datatype-joda = { module = "com.fasterxml.jackson.datatype:jackson-datatype-joda", version.ref = "jackson-strict" }
+
+# Core libraries
+quicklens = { module = "com.softwaremill.quicklens:quicklens_2.12", version.ref = "quicklens" }
+guava = { module = "com.google.guava:guava", version.ref = "guava" }
+
+# Database connectors
+postgresql = { module = "org.postgresql:postgresql", version.ref = "postgresql" }
+mysql = { module = "com.mysql:mysql-connector-j", version.ref = "mysql" }
+cassandra-connector = { module = "com.datastax.spark:spark-cassandra-connector_2.12", version.ref = "cassandra-connector" }
+bigquery-connector = { module = "com.google.cloud.spark:spark-3.5-bigquery", version.ref = "bigquery-connector" }
+
+# File formats
+iceberg-spark = { module = "org.apache.iceberg:iceberg-spark-runtime-3.5_2.12", version.ref = "iceberg" }
+delta-spark = { module = "io.delta:delta-spark_2.12", version.ref = "delta" }
+avro = { module = "org.apache.avro:avro", version.ref = "avro" }
+parquet-jackson = { module = "org.apache.parquet:parquet-jackson", version.ref = "parquet-jackson" }
+
+# HTTP and messaging
+async-http-client = { module = "org.asynchttpclient:async-http-client", version.ref = "async-http-client" }
+swagger-parser = { module = "io.swagger.parser.v3:swagger-parser-v3", version.ref = "swagger-parser" }
+jms-api-jakarta = { module = "jakarta.jms:jakarta.jms-api", version.ref = "jms-api-jakarta" }
+jms-api-javax = { module = "javax.jms:javax.jms-api", version.ref = "jms-api-javax" }
+solace-jms = { module = "com.solacesystems:sol-jms-jakarta", version.ref = "solace-jms" }
+rabbitmq-jms = { module = "com.rabbitmq.jms:rabbitmq-jms", version.ref = "rabbitmq-jms" }
+
+# Apache Commons
+commons-io = { module = "commons-io:commons-io", version.ref = "commons-io" }
+commons-net = { module = "commons-net:commons-net", version.ref = "commons-net" }
+commons-compress = { module = "org.apache.commons:commons-compress", version.ref = "commons-compress" }
+commons-configuration2 = { module = "org.apache.commons:commons-configuration2", version.ref = "commons-configuration2" }
+
+# Jetty
+jetty-client = { module = "org.eclipse.jetty:jetty-client", version.ref = "jetty" }
+jetty-http = { module = "org.eclipse.jetty:jetty-http", version.ref = "jetty" }
+jetty-io = { module = "org.eclipse.jetty:jetty-io", version.ref = "jetty" }
+jetty-util = { module = "org.eclipse.jetty:jetty-util", version.ref = "jetty" }
+jetty-webapp = { module = "org.eclipse.jetty:jetty-webapp", version.ref = "jetty" }
+jetty-xml = { module = "org.eclipse.jetty:jetty-xml", version.ref = "jetty" }
+
+# Security updates
+netty-codec-http = { module = "io.netty:netty-codec-http", version.ref = "netty" }
+netty-codec-http2 = { module = "io.netty:netty-codec-http2", version.ref = "netty" }
+netty-handler = { module = "io.netty:netty-handler", version.ref = "netty" }
+woodstox-core = { module = "com.fasterxml.woodstox:woodstox-core", version.ref = "woodstox" }
+nimbus-jose-jwt = { module = "com.nimbusds:nimbus-jose-jwt", version.ref = "nimbus-jose-jwt" }
+
+# Other Apache projects
+kerby-admin = { module = "org.apache.kerby:kerb-admin", version.ref = "kerby" }
+zookeeper = { module = "org.apache.zookeeper:zookeeper", version.ref = "zookeeper" }
+ivy = { module = "org.apache.ivy:ivy", version.ref = "ivy" }
+
+# Misc libraries
+aircompressor = { module = "io.airlift:aircompressor", version.ref = "aircompressor" }
+wildfly-openssl = { module = "org.wildfly.openssl:wildfly-openssl", version.ref = "wildfly-openssl" }
+wildfly-openssl-java = { module = "org.wildfly.openssl:wildfly-openssl-java", version.ref = "wildfly-openssl" }
+xnio-api = { module = "org.jboss.xnio:xnio-api", version.ref = "xnio" }
+amazon-ion = { module = "com.amazon.ion:ion-java", version.ref = "amazon-ion" }
+snappy = { module = "org.xerial.snappy:snappy-java", version.ref = "snappy" }
+jettison = { module = "org.codehaus.jettison:jettison", version.ref = "jettison" }
+json-smart = { module = "net.minidev:json-smart", version.ref = "json-smart" }
+protostuff-parser = { module = "io.protostuff:protostuff-parser", version.ref = "protostuff" }
+datafaker = { module = "net.datafaker:datafaker", version.ref = "datafaker" }
+reflections = { module = "org.reflections:reflections", version.ref = "reflections" }
+slack-api-client = { module = "com.slack.api:slack-api-client", version.ref = "slack-api" }
+openmetadata-client = { module = "org.open-metadata:openmetadata-java-client", version.ref = "openmetadata" }
+hadoop-bare-naked = { module = "com.globalmentor:hadoop-bare-naked-local-fs", version.ref = "hadoop-bare-naked" }
+json-schema-validator = { module = "com.networknt:json-schema-validator", version.ref = "json-schema-validator" }
+joda-time = { module = "joda-time:joda-time", version.ref = "joda-time" }
+pureconfig = { module = "com.github.pureconfig:pureconfig_2.12", version.ref = "pureconfig" }
+scala-xml-full = { module = "org.scala-lang.modules:scala-xml_2.12", version.ref = "scala-xml-full" }
+
+# Pekko (Akka fork)
+pekko-http = { module = "org.apache.pekko:pekko-http_2.12", version.ref = "pekko-http" }
+pekko-stream = { module = "org.apache.pekko:pekko-stream_2.12", version.ref = "pekko-stream" }
+pekko-actor-typed = { module = "org.apache.pekko:pekko-actor-typed_2.12", version.ref = "pekko-actor" }
+pekko-http-jackson = { module = "com.github.pjfanning:pekko-http-jackson_2.12", version.ref = "pekko-http-jackson" }
+
+# Test libraries
+scalatest = { module = "org.scalatest:scalatest_2.12", version.ref = "scalatest" }
+scalatestplus-junit = { module = "org.scalatestplus:junit-5-11_2.12", version.ref = "scalatestplus-junit" }
+scalamock = { module = "org.scalamock:scalamock_2.12", version.ref = "scalamock" }
+mockito-scala = { module = "org.mockito:mockito-scala_2.12", version.ref = "mockito-scala" }
+testcontainers-scala = { module = "com.dimafeng:testcontainers-scala_2.12", version.ref = "testcontainers-scala" }
+pekko-actor-testkit = { module = "org.apache.pekko:pekko-actor-testkit-typed_2.12", version.ref = "pekko-actor" }
+scala-xml = { module = "org.scala-lang.modules:scala-xml_2.12", version.ref = "scala-xml" }
+scala-xml-test = { module = "org.scala-lang.modules:scala-xml_2.12", version.ref = "scala-xml-test" }
+junit-platform-engine = { module = "org.junit.platform:junit-platform-engine", version.ref = "junit-platform" }
+junit-platform-launcher = { module = "org.junit.platform:junit-platform-launcher", version.ref = "junit-platform" }
+
+[bundles]
+# Test bundles
+test = ["scalatest", "scalatestplus-junit", "scalamock"]
+test-runtime = ["scala-xml-test", "junit-platform-engine", "junit-platform-launcher"]
+
+# Jackson bundles
+jackson-core = ["jackson-dataformat-yaml", "jackson-module-scala"]
+jackson-strict = ["jackson-databind", "jackson-dataformat-yaml-strict", "jackson-module-scala-strict", "jackson-datatype-jsr310", "jackson-datatype-joda"]
+
+# Spark bundles
+spark-core = ["spark-sql", "spark-avro", "spark-protobuf"]
+spark-connectors = ["spark-sql-kafka", "spark-hadoop-cloud"]
+
+# Database bundles
+databases = ["postgresql", "mysql", "cassandra-connector"]
+
+# File format bundles
+file-formats = ["iceberg-spark", "delta-spark", "avro", "parquet-jackson"]
+
+# Apache Commons bundle
+commons = ["commons-io", "commons-net", "commons-compress", "commons-configuration2"]
+
+# Jetty bundle
+jetty = ["jetty-client", "jetty-http", "jetty-io", "jetty-util", "jetty-webapp", "jetty-xml"]
+
+# JMS bundle
+jms = ["jms-api-jakarta", "jms-api-javax", "solace-jms", "rabbitmq-jms"]
+
+# Pekko bundle
+pekko = ["pekko-http", "pekko-stream", "pekko-actor-typed", "pekko-http-jackson"]
+
+# Security updates bundle
+security-updates = ["netty-codec-http", "netty-codec-http2", "netty-handler", "woodstox-core", "nimbus-jose-jwt"]
+
+# Misc utilities bundle
+utilities = ["datafaker", "reflections", "guava", "joda-time"]
+
+[plugins]
+kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
+shadow = { id = "com.gradleup.shadow", version.ref = "shadow" }
+scoverage = { id = "org.scoverage", version.ref = "scoverage" }
+idea-ext = { id = "org.jetbrains.gradle.plugin.idea-ext", version.ref = "idea-ext" }
+nexus-publish = { id = "io.github.gradle-nexus.publish-plugin", version.ref = "nexus-publish" }
