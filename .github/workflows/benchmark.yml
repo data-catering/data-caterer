@@ -1,13 +1,23 @@
 name: Run performance benchmark tests
 
 on:
-  push:
-    branches:
-      - main
+  workflow_run:
+    workflows: ["Build docker images"]
+    types:
+      - completed
+  # Allow manual triggering for testing
+  workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    # Only run if:
+    # 1. Manual trigger, OR
+    # 2. Build workflow completed successfully after a tag push
+    if: |
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' && 
+       github.event.workflow_run.event == 'push')
     defaults:
       run:
         working-directory: example
@@ -15,6 +25,8 @@ jobs:
       - name: Checkout monorepo
         uses: actions/checkout@v4
         with:
+          # For workflow_run, we need to checkout the specific commit that triggered the build
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
           fetch-depth: 2
       - name: Check if benchmark has already run
         run: |
@@ -24,6 +36,27 @@ jobs:
           else
               echo "Benchmarks already run!"
               exit 1
+          fi
+      - name: Wait for Docker image to be available
+        run: |
+          version=$(grep -E "^version=" ../gradle.properties | cut -d= -f2)
+          echo "Waiting for Docker image datacatering/data-caterer:${version} to be available..."
+          max_attempts=10
+          attempt=1
+          while [ $attempt -le $max_attempts ]; do
+            if docker pull datacatering/data-caterer:${version} 2>/dev/null; then
+              echo "Docker image is available!"
+              break
+            else
+              echo "Attempt $attempt/$max_attempts: Image not yet available, waiting 30 seconds..."
+              sleep 30
+              ((attempt++))
+            fi
+          done
+          
+          if [ $attempt -gt $max_attempts ]; then
+            echo "ERROR: Docker image not available after $max_attempts attempts"
+            exit 1
           fi
       - name: Checkout datafusion-comet repo
         uses: actions/checkout@v4
