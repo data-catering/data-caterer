@@ -76,7 +76,7 @@ else
     echo "Failed to build!"
     exit 1
   fi
-  jar_path="$(pwd)/build/libs/data-caterer-example-0.1.0.jar"
+  jar_path="$(pwd)/build/libs/example-${data_caterer_version}.jar"
 fi
 
 docker network create --driver bridge docker_default || true

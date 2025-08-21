@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.16.7
+
+- Fix bug when there are multiple tasks and the number of records generated is not correct
+
 ## 0.16.6
 
 - Fix bug when using `unwrapTopLevelArray` with YAML

@@ -219,4 +219,58 @@ class RecordCountUtilTest extends AnyFunSuite {
     countPerStep should contain ("task1_step1" -> 10)
     countPerStep should contain ("task2_step1" -> 50)
   }
+
+  test("Should avoid record loss due to integer division when calculating records per batch") {
+    val task = (taskSummary, Task("my_task", List(Step("my_step", count = Count(Some(1000))))))
+    val result = RecordCountUtil.calculateNumBatches(List(), List(task), GenerationConfig(numRecordsPerBatch = 1))
+
+    // With 1000 records and 1 record per batch, we should get exactly 1000 batches
+    assertResult(1000)(result._1)
+    assertResult(1)(result._2.head._2.numRecordsPerBatch) // 1000 / 1000 = 1
+    assertResult(1000)(result._2.head._2.numTotalRecords)
+  }
+
+  test("Should round up records per batch to avoid losing records with uneven division") {
+    val task = (taskSummary, Task("my_task", List(Step("my_step", count = Count(Some(1000))))))
+    val result = RecordCountUtil.calculateNumBatches(List(), List(task), GenerationConfig(numRecordsPerBatch = 7))
+
+    // With 1000 records and 7 records per batch:
+    // Total batches = ceil(1000 / 7) = 143
+    // Records per batch = ceil(1000 / 143) = 7
+    val expectedBatches = Math.ceil(1000.0 / 7).toInt
+    val expectedRecordsPerBatch = Math.ceil(1000.0 / expectedBatches).toLong
+    assertResult(expectedBatches)(result._1)
+    assertResult(expectedRecordsPerBatch)(result._2.head._2.numRecordsPerBatch)
+    assertResult(1000)(result._2.head._2.numTotalRecords)
+
+    // Verify that records_per_batch * num_batches >= total_records to avoid loss
+    val totalGenerated = result._2.head._2.numRecordsPerBatch * result._1
+    assert(totalGenerated >= 1000, s"Generated $totalGenerated records but expected at least 1000")
+  }
+
+  test("Should handle multiple tasks with uneven record distribution across batches") {
+    val task1 = (taskSummary, Task("task1", List(Step("step1", count = Count(Some(100))))))
+    val task2 = (taskSummary, Task("task2", List(Step("step2", count = Count(Some(200))))))
+    val task3 = (taskSummary, Task("task3", List(Step("step3", count = Count(Some(300))))))
+    val tasks = List(task1, task2, task3)
+
+    // Use small batch size to create many batches and test uneven division
+    val result = RecordCountUtil.calculateNumBatches(List(), tasks, GenerationConfig(numRecordsPerBatch = 17))
+
+    // Total records = 100 + 200 + 300 = 600
+    // With 17 records per batch: ceil(600/17) = 36 batches
+    val expectedBatches = Math.ceil(600.0 / 17).toInt
+    assertResult(expectedBatches)(result._1)
+
+    // Verify all steps have correct records per batch (rounded up)
+    result._2.foreach { case (stepName, stepRecord) =>
+      val expectedRecordsPerBatch = Math.ceil(stepRecord.numTotalRecords.toDouble / expectedBatches).toLong
+      assertResult(expectedRecordsPerBatch)(stepRecord.numRecordsPerBatch)
+
+      // Verify no record loss
+      val totalGenerated = stepRecord.numRecordsPerBatch * expectedBatches
+      assert(totalGenerated >= stepRecord.numTotalRecords,
+        s"Step $stepName: Generated $totalGenerated but expected ${stepRecord.numTotalRecords}")
+    }
+  }
 }

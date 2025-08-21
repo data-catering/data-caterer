@@ -32,9 +32,22 @@ object RecordCountUtil {
             step.count.copy(records = Some(numRecordsPerStep)).numRecords
           } else step.count.numRecords
           val averagePerCol = step.count.perField.map(_.averageCountPerField).getOrElse(1L)
+          val adjustedStepRecords = stepRecords / averagePerCol
+          
+          // Calculate base records per batch and remainder for proper distribution
+          val baseRecordsPerBatch = adjustedStepRecords / numBatches
+          val remainder = adjustedStepRecords % numBatches
+          
+          // For now, use base + 1 for early batches to handle remainder
+          // The actual distribution will be handled in BatchDataProcessor
+          val recordsPerBatch = if (remainder > 0) baseRecordsPerBatch + 1 else baseRecordsPerBatch
+          
+          LOGGER.debug(s"Step record distribution: step=${step.name}, total-records=$adjustedStepRecords, " +
+            s"base-per-batch=$baseRecordsPerBatch, remainder=$remainder, records-per-batch=$recordsPerBatch")
+          
           (
             s"${task.name}_${step.name}",
-            StepRecordCount(0L, (stepRecords / averagePerCol) / numBatches, stepRecords)
+            StepRecordCount(0L, recordsPerBatch, stepRecords, baseRecordsPerBatch, remainder, averagePerCol)
           )
         })).toMap
   }
@@ -79,4 +92,11 @@ object RecordCountUtil {
   }
 }
 
-case class StepRecordCount(currentNumRecords: Long, numRecordsPerBatch: Long, numTotalRecords: Long)
+case class StepRecordCount(
+  currentNumRecords: Long, 
+  numRecordsPerBatch: Long, 
+  numTotalRecords: Long,
+  baseRecordsPerBatch: Long = 0L,
+  remainder: Long = 0L,
+  averagePerCol: Long = 1L
+)
