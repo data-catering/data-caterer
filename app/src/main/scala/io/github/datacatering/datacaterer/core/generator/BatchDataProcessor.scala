@@ -87,31 +87,71 @@ class BatchDataProcessor(connectionConfigsByName: Map[String, Map[String, String
         val recordStepName = s"${task._2.name}_${s.name}"
         val stepRecords = trackRecordsPerStep(recordStepName)
         val startIndex = stepRecords.currentNumRecords
-        val endIndex = stepRecords.currentNumRecords + stepRecords.numRecordsPerBatch
+
+        // Calculate precise number of records for this batch to ensure exact total
+        val adjustedTotalRecords = stepRecords.numTotalRecords / stepRecords.averagePerCol
+        val remainingAdjustedRecords = adjustedTotalRecords - (stepRecords.currentNumRecords / stepRecords.averagePerCol)
+        
+        val recordsToGenerate = if (remainingAdjustedRecords <= 0) {
+          0L
+        } else if (stepRecords.remainder > 0 && batch <= stepRecords.remainder) {
+          // First 'remainder' batches get base + 1 records
+          Math.min(stepRecords.baseRecordsPerBatch + 1, remainingAdjustedRecords)
+        } else {
+          // Remaining batches get base records
+          Math.min(stepRecords.baseRecordsPerBatch, remainingAdjustedRecords)
+        }
+        
+        // Convert back to actual records (multiply by averagePerCol)
+        val actualRecordsToGenerate = recordsToGenerate * stepRecords.averagePerCol
+        val endIndex = startIndex + actualRecordsToGenerate
+
+        LOGGER.debug(s"Batch $batch: startIndex=$startIndex, endIndex=$endIndex, recordsToGenerate=$recordsToGenerate, " +
+          s"actualRecordsToGenerate=$actualRecordsToGenerate, remainingAdjustedRecords=$remainingAdjustedRecords")
 
         val genDf = dataGeneratorFactory.generateDataForStep(s, task._1.dataSourceName, startIndex, endIndex)
         val initialDf = getUniqueGeneratedRecords(uniqueFieldUtil, dataSourceStepName, genDf, s)
         if (!initialDf.storageLevel.useMemory) initialDf.cache()
         genDf.unpersist()
 
-        val initialRecordCount = if (flagsConfig.enableCount) initialDf.count() else stepRecords.numRecordsPerBatch
-        val targetNumRecords = stepRecords.numRecordsPerBatch * s.count.perField.map(_.averageCountPerField).getOrElse(1L)
+        val initialRecordCount = if (flagsConfig.enableCount) initialDf.count() else actualRecordsToGenerate
+        val targetNumRecords = actualRecordsToGenerate
 
         LOGGER.debug(s"Step record count for batch, batch=$batch, step-name=${s.name}, " +
-          s"target-num-records=$targetNumRecords, actual-num-records=$initialRecordCount")
+          s"target-num-records=$targetNumRecords, actual-num-records=$initialRecordCount, records-to-generate=$recordsToGenerate")
 
         // if record count doesn't match expected record count, generate more data
         def generateAdditionalRecords(currentDf: DataFrame, currentRecordCount: Long): (DataFrame, Long) = {
+          LOGGER.debug(s"Generating additional records for batch, batch=$batch, step-name=${s.name}, " +
+            s"current-record-count=$currentRecordCount, target-num-records=$targetNumRecords")
+
+          if (currentRecordCount >= targetNumRecords) {
+            LOGGER.debug(s"No additional records needed, current count meets or exceeds target")
+            return (currentDf, currentRecordCount)
+          }
+
           val additionalGenDf = dataGeneratorFactory
             .generateDataForStep(s, task._1.dataSourceName, stepRecords.currentNumRecords + currentRecordCount, endIndex)
           val additionalDf = getUniqueGeneratedRecords(uniqueFieldUtil, dataSourceStepName, additionalGenDf, s)
           if (!additionalDf.storageLevel.useMemory) additionalDf.cache()
           additionalGenDf.unpersist()
-          val newDf = currentDf.unionByName(additionalDf, true)
-          val newRecordCount = newDf.count()
+          val additionalRecordCount = if (flagsConfig.enableCount) additionalDf.count() else 0
+          LOGGER.debug(s"Additional records generated, additional-record-count=$additionalRecordCount")
+
+          // Only union if we actually generated additional records
+          val (newDf, newRecordCount) = if (additionalRecordCount > 0) {
+            val unionDf = currentDf.union(additionalDf)
+            val finalCount = unionDf.count()
+            additionalDf.unpersist()
+            (unionDf, finalCount)
+          } else {
+            // No additional records were generated, return current DataFrame as-is
+            additionalDf.unpersist()
+            (currentDf, currentRecordCount)
+          }
+
           LOGGER.debug(s"Generated more records for step, batch=$batch, step-name=${s.name}, " +
-            s"new-num-records=${additionalDf.count()}, actual-num-records=$newRecordCount")
-          additionalDf.unpersist()
+            s"new-num-records=$additionalRecordCount, actual-num-records=$newRecordCount, current-df-count=${currentDf.count()}")
           (newDf, newRecordCount)
         }
 
@@ -142,7 +182,7 @@ class BatchDataProcessor(connectionConfigsByName: Map[String, Map[String, String
             s"target-num-records=$targetNumRecords, actual-num-records=$finalRecordCount")
         }
 
-        trackRecordsPerStep = trackRecordsPerStep ++ Map(recordStepName -> stepRecords.copy(currentNumRecords = finalRecordCount + stepRecords.currentNumRecords))
+        trackRecordsPerStep = trackRecordsPerStep ++ Map(recordStepName -> stepRecords.copy(currentNumRecords = stepRecords.currentNumRecords + finalRecordCount))
         (dataSourceStepName, finalDf)
       } else {
         LOGGER.debug(s"Step has both data generation and reference mode disabled, data-source=${task._1.dataSourceName}, step-name=${s.name}")
