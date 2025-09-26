@@ -35,6 +35,7 @@ app/src/test/resources/sample/plan-gen
 
 api/out
 api/src/test/resources/sample/documentation
+api_validation_report.txt
 
 # UI
 ui/node_modules

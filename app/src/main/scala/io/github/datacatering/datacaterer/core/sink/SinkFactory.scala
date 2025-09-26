@@ -37,7 +37,7 @@ class SinkFactory(
   def pushToSink(df: DataFrame, dataSourceName: String, step: Step, startTime: LocalDateTime): SinkResult = {
     val dfWithoutOmitFields = removeOmitFields(df)
     val saveMode = step.options.get(SAVE_MODE).map(_.toLowerCase.capitalize).map(SaveMode.valueOf).getOrElse(SaveMode.Append)
-    val format = step.options(FORMAT)
+    val format = step.options.getOrElse(FORMAT, throw new IllegalArgumentException(s"No format specified for data source: $dataSourceName, step: ${step.name}. Available options: ${step.options.keys.mkString(", ")}"))
     val enrichedConnectionConfig = additionalConnectionConfig(format, step.options)
 
     val count = if (flagsConfig.enableCount) {
@@ -89,12 +89,10 @@ class SinkFactory(
     // if format is iceberg, need to use dataframev2 api for partition and writing
     connectionConfig.filter(_._1.startsWith("spark.sql"))
       .foreach(conf => df.sqlContext.setConf(conf._1, conf._2))
-    LOGGER.info(s"[DEBUG unwrap] Format is: '$format', JSON constant is: '$JSON'")
     val trySaveData = if (format == ICEBERG) {
       Try(tryPartitionAndSaveDfV2(df, saveMode, connectionConfig))
     } else if (format == JSON) {
       // Special-case: allow unwrapping top-level array to emit a bare JSON array file
-      LOGGER.info(s"[DEBUG unwrap] Format is JSON, calling trySaveJsonPossiblyUnwrapped")
       val tryMaybeUnwrap = Try(trySaveJsonPossiblyUnwrapped(df, saveMode, connectionConfig))
       tryMaybeUnwrap
     } else {
@@ -119,7 +117,6 @@ class SinkFactory(
   }
 
   private def trySaveJsonPossiblyUnwrapped(df: DataFrame, saveMode: SaveMode, connectionConfig: Map[String, String]): Unit = {
-    LOGGER.info("[DEBUG unwrap] trySaveJsonPossiblyUnwrapped called")
     val shouldUnwrap = detectTopLevelArrayToUnwrap(df)
     shouldUnwrap match {
       case Some(arrayFieldName) =>

@@ -10,7 +10,9 @@ import io.github.datacatering.datacaterer.core.parser.PlanParser
 import io.github.datacatering.datacaterer.core.plan.{PlanProcessor, YamlPlanRun}
 import io.github.datacatering.datacaterer.core.ui.config.UiConfiguration.INSTALL_DIRECTORY
 import io.github.datacatering.datacaterer.core.ui.mapper.ConfigurationMapper.configurationMapping
-import io.github.datacatering.datacaterer.core.ui.model.{Connection, PlanRunExecution, PlanRunRequest, PlanRunRequests}
+import io.github.datacatering.datacaterer.core.ui.model.{Connection, PlanRunExecution, PlanRunRequest, PlanRunRequests, SchemaSampleRequest, TaskFileSampleRequest, TaskYamlSampleRequest, SampleResponse}
+import io.github.datacatering.datacaterer.core.ui.sample.FastSampleGenerator
+import io.github.datacatering.datacaterer.api.model.Field
 import io.github.datacatering.datacaterer.core.ui.plan.PlanResponseHandler.{KO, OK, Response}
 import io.github.datacatering.datacaterer.core.util.{ObjectMapperUtil, SparkProvider}
 import org.apache.log4j.Logger
@@ -67,6 +69,12 @@ object PlanRepository {
 
   final case class StartupSpark() extends PlanCommand
 
+  final case class GenerateFromTaskFile(request: TaskFileSampleRequest, replyTo: ActorRef[SampleResponse]) extends PlanCommand
+
+  final case class GenerateFromTaskYaml(request: TaskYamlSampleRequest, replyTo: ActorRef[SampleResponse]) extends PlanCommand
+
+  final case class GenerateFromSchema(request: SchemaSampleRequest, replyTo: ActorRef[SampleResponse]) extends PlanCommand
+
   private val executionSaveFolder = s"$INSTALL_DIRECTORY/execution"
   private val planSaveFolder = s"$INSTALL_DIRECTORY/plan"
   implicit val ec: ExecutionContextExecutor = ExecutionContext.global
@@ -103,6 +111,15 @@ object PlanRepository {
           Behaviors.same
         case StartupSpark() =>
           startupSpark()
+          Behaviors.same
+        case GenerateFromTaskFile(request, replyTo) =>
+          replyTo ! generateFromTaskFile(request)
+          Behaviors.same
+        case GenerateFromTaskYaml(request, replyTo) =>
+          replyTo ! generateFromTaskYaml(request)
+          Behaviors.same
+        case GenerateFromSchema(request, replyTo) =>
+          replyTo ! generateFromSchema(request)
           Behaviors.same
       }
     }.onFailure(SupervisorStrategy.restart)
@@ -393,6 +410,51 @@ object PlanRepository {
     }
   }
 
+  private def generateFromTaskFile(request: TaskFileSampleRequest): SampleResponse = {
+    LOGGER.debug(s"Generating sample from task file: ${request.taskYamlPath}, step: ${request.stepName}")
+    try {
+      FastSampleGenerator.generateFromTaskFile(request)
+    } catch {
+      case ex: Throwable =>
+        LOGGER.error(s"Error generating sample from task file", ex)
+        SampleResponse(
+          success = false,
+          executionId = java.util.UUID.randomUUID().toString.split("-").head,
+          error = Some(io.github.datacatering.datacaterer.core.ui.model.SampleError("INTERNAL_ERROR", ex.getMessage))
+        )
+    }
+  }
+
+  private def generateFromTaskYaml(request: TaskYamlSampleRequest): SampleResponse = {
+    LOGGER.debug(s"Generating sample from task YAML content, step: ${request.stepName}")
+    try {
+      FastSampleGenerator.generateFromTaskYaml(request)
+    } catch {
+      case ex: Throwable =>
+        LOGGER.error(s"Error generating sample from task YAML", ex)
+        SampleResponse(
+          success = false,
+          executionId = java.util.UUID.randomUUID().toString.split("-").head,
+          error = Some(io.github.datacatering.datacaterer.core.ui.model.SampleError("INTERNAL_ERROR", ex.getMessage))
+        )
+    }
+  }
+
+  private def generateFromSchema(request: SchemaSampleRequest): SampleResponse = {
+    LOGGER.debug(s"Generating sample from inline fields: ${request.fields.size} fields")
+    try {
+      FastSampleGenerator.generateFromSchema(request)
+    } catch {
+      case ex: Throwable =>
+        LOGGER.error(s"Error generating sample from schema", ex)
+        SampleResponse(
+          success = false,
+          executionId = java.util.UUID.randomUUID().toString.split("-").head,
+          error = Some(io.github.datacatering.datacaterer.core.ui.model.SampleError("INTERNAL_ERROR", ex.getMessage))
+        )
+    }
+  }
+
   private def startupSpark(): Response = {
     LOGGER.debug("Starting up Spark")
     setUiRunning
@@ -400,6 +462,27 @@ object PlanRepository {
       implicit val sparkSession: SparkSession = new SparkProvider(DEFAULT_MASTER, DEFAULT_RUNTIME_CONFIG).getSparkSession
       //run some dummy query
       sparkSession.sql("SELECT 1").collect()
+      
+      //warm up data generation pipeline with a simple sample request
+      LOGGER.debug("Warming up data generation pipeline")
+      val warmupRequest = SchemaSampleRequest(
+        fields = List(
+          Field(
+            name = "warmup_id",
+            `type` = Some("long"),
+            options = Map("min" -> 1L, "max" -> 10L)
+          )
+        ),
+        sampleSize = 1,
+        fastMode = true
+      )
+      val warmupResult = FastSampleGenerator.generateFromSchema(warmupRequest)
+      if (warmupResult.success) {
+        LOGGER.debug("Data generation pipeline warmed up successfully")
+      } else {
+        LOGGER.warn(s"Warmup failed: ${warmupResult.error}")
+      }
+      
       OK
     } catch {
       case ex: Throwable => KO("Failed to start up Spark", ex)

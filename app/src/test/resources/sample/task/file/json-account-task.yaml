@@ -1,12 +1,11 @@
 name: "json_account_file"
 steps:
-  - name: "file_account"
+  - name: "products"
     type: "json"
     count:
       records: 1000
     options:
-      path: "app/src/test/resources/sample/json/account-gen"
-      saveMode: "overwrite"
+      path: "/tmp/custom/app/src/test/resources/sample/json/account-gen"
     fields:
       - name: "account_id"
         type: "string"

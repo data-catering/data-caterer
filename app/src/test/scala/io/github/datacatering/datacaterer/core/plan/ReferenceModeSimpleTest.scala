@@ -2,7 +2,6 @@ package io.github.datacatering.datacaterer.core.plan
 
 import io.github.datacatering.datacaterer.api.PlanRun
 import io.github.datacatering.datacaterer.api.model.Constants._
-import io.github.datacatering.datacaterer.core.plan.PlanProcessor
 import io.github.datacatering.datacaterer.core.util.SparkSuite
 import org.scalatest.BeforeAndAfterEach
 
