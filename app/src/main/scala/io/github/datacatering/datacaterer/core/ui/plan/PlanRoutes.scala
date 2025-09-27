@@ -2,7 +2,7 @@ package io.github.datacatering.datacaterer.core.ui.plan
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.github.pjfanning.pekkohttpjackson.JacksonSupport
-import io.github.datacatering.datacaterer.core.ui.model.{CredentialsRequest, PlanRunRequest, SaveConnectionsRequest}
+import io.github.datacatering.datacaterer.core.ui.model.{CredentialsRequest, PlanRunRequest, SaveConnectionsRequest, SchemaSampleRequest, TaskFileSampleRequest, TaskYamlSampleRequest}
 import io.github.datacatering.datacaterer.core.util.ObjectMapperUtil
 import org.apache.log4j.Logger
 import org.apache.pekko.actor.typed.scaladsl.AskPattern.{Askable, schedulerFromActorSystem}
@@ -176,6 +176,49 @@ class PlanRoutes(
           complete("Cannot get resource")
         }
       }
+    },
+    pathPrefix("sample") {
+      concat(
+        path("task-file") {
+          post {
+            entity(as[TaskFileSampleRequest]) { request =>
+              val result = planRepository.ask(PlanRepository.GenerateFromTaskFile(request, _))
+              rejectEmptyResponse {
+                complete(result)
+              }
+            }
+          }
+        },
+        path("task-yaml") {
+          import io.github.datacatering.datacaterer.core.ui.model.TaskYamlUnmarshaller._
+          post {
+            parameters("stepName".optional, "sampleSize".as[Int].optional, "fastMode".as[Boolean].optional) { (stepName, sampleSize, fastMode) =>
+              entity(as[TaskYamlSampleRequest]) { baseRequest =>
+                // Override with query parameters for raw YAML requests
+                val request = baseRequest.copy(
+                  stepName = stepName.orElse(baseRequest.stepName),
+                  sampleSize = sampleSize.getOrElse(baseRequest.sampleSize),
+                  fastMode = fastMode.getOrElse(baseRequest.fastMode)
+                )
+                val result = planRepository.ask(PlanRepository.GenerateFromTaskYaml(request, _))
+                rejectEmptyResponse {
+                  complete(result)
+                }
+              }
+            }
+          }
+        },
+        path("schema") {
+          post {
+            entity(as[SchemaSampleRequest]) { request =>
+              val result = planRepository.ask(PlanRepository.GenerateFromSchema(request, _))
+              rejectEmptyResponse {
+                complete(result)
+              }
+            }
+          }
+        }
+      )
     },
     path("shutdown") {
       system.terminate()

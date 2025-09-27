@@ -193,9 +193,18 @@ class BatchDataProcessor(connectionConfigsByName: Map[String, Map[String, String
     val dataSourceResults = (1 to numBatches).flatMap(batch => {
       val startTime = LocalDateTime.now()
       LOGGER.info(s"Starting batch, batch=$batch, num-batches=$numBatches")
-      val generatedDataForeachTask = executableTasks.flatMap(task =>
-        task._2.steps.filter(_.enabled).map(s => generateDataForStep(batch, task, s))
-      )
+      val generatedDataForeachTask = executableTasks.flatMap(task => {
+        task._2.steps.filter(_.enabled).map(s => {
+          LOGGER.debug(s"Generating data for step, task-name=${task._1.name}, step-name=${s.name}, data-source-name=${task._1.dataSourceName}")
+          try {
+            generateDataForStep(batch, task, s)
+          } catch {
+            case ex: Exception =>
+              LOGGER.error(s"Failed to generate data for step, task-name=${task._1.name}, step-name=${s.name}, data-source-name=${task._1.dataSourceName}")
+              throw ex
+          }
+        })
+      })
 
       val sinkDf = plan.sinkOptions
         .map(_ => ForeignKeyUtil.getDataFramesWithForeignKeys(plan, generatedDataForeachTask))

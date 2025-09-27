@@ -9,12 +9,12 @@ tasks:
     enabled: false
   - name: "json_account_file"
     dataSourceName: "json"
-    enabled: false
+    enabled: true
   - name: "csv_transaction_file"
     dataSourceName: "csv"
     enabled: false
   - name: "csv_customer_files"
-    dataSourceName: "csv"
+    dataSourceName: "json"
     enabled: true
   - name: "json_account_http"
     dataSourceName: "httpbin"

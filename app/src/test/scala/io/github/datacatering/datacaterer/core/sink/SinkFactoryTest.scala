@@ -43,6 +43,19 @@ class SinkFactoryTest extends SparkSuite {
     assert(res.exception.isEmpty)
   }
 
+  test("Should provide helpful error message when format is missing from step options") {
+    val sinkFactory = new SinkFactory(FlagsConfig(), MetadataConfig(), FoldersConfig())
+    val stepWithoutFormat = Step(options = Map(PATH -> "/tmp/test-path", SAVE_MODE -> "overwrite"))
+    
+    val exception = intercept[IllegalArgumentException] {
+      sinkFactory.pushToSink(df, "test-data-source", stepWithoutFormat, LocalDateTime.now())
+    }
+    
+    assert(exception.getMessage.contains("No format specified for data source: test-data-source"))
+    assert(exception.getMessage.contains("step: "))
+    assert(exception.getMessage.contains("Available options: path, saveMode"))
+  }
+
   ignore("Can overwrite existing Iceberg data") {
     sparkSession.sql("DELETE FROM local.account.transactions_overwrite").count()
     val sinkFactory = new SinkFactory(FlagsConfig(), MetadataConfig(), FoldersConfig())
