@@ -1,5 +1,26 @@
 # Changelog
 
+## 0.16.8
+
+Introduce sample-data generation APIs with docs, new Gradle run tasks, improved logging, and stricter sink format validation with accompanying tests.
+
+- API/UI:
+  - New endpoints: POST /sample/task-file, POST /sample/task-yaml (supports raw YAML and JSON), POST /sample/schema in PlanRoutes.
+  - Request models & unmarshaller: Add SampleModels and custom TaskYamlUnmarshaller.
+  - Repository wiring: PlanRepository adds GenerateFromTaskFile/TaskYaml/Schema commands using FastSampleGenerator; Spark warm-up on startup.
+- Core/Generation:
+  - Add FastSampleGenerator for lightweight sample data from schema/task YAML/file.
+  - Enhance BatchDataProcessor with debug logging and per-step try/catch.
+- Sink:
+  - SinkFactory: require FORMAT option (throws helpful error); cleanup noisy logs; JSON array unwrap preserved.
+- Build/Run:
+  - Gradle: add runUI and runSpark tasks with JVM args.
+- Docs/Tooling:
+  - Add comprehensive API doc docs/docs/api.md.
+  - Add misc/api/validate_api_docs.py and ignore api_validation_report.txt.
+- Tests:
+  - New tests for sample generation and YAML unmarshal; add sink format error test; update sample YAMLs.
+
 ## 0.16.7
 
 - Fix bug when there are multiple tasks and the number of records generated is not correct

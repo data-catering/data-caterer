@@ -7,8 +7,6 @@
  * This project uses @Incubating APIs which are subject to change.
  */
 val apiArtifactId: String by project
-val scalaVersion: String by project
-val scalaSpecificVersion: String by project
 
 project.base.archivesName.set(apiArtifactId)
 
