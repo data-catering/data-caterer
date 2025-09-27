@@ -17,9 +17,8 @@ object FastSampleGenerator {
 
   private val LOGGER = Logger.getLogger(getClass.getName)
   private val MAX_SAMPLE_SIZE = 100
-  private implicit val sparkSession: SparkSession = new SparkProvider(DEFAULT_MASTER, DEFAULT_RUNTIME_CONFIG).getSparkSession
   
-  def generateFromTaskFile(request: TaskFileSampleRequest): SampleResponse = {
+  def generateFromTaskFile(request: TaskFileSampleRequest)(implicit sparkSession: SparkSession): SampleResponse = {
     LOGGER.info(s"Generating sample from task file: ${request.taskYamlPath}, step: ${request.stepName}")
     
     Try {
@@ -47,7 +46,7 @@ object FastSampleGenerator {
     }
   }
   
-  def generateFromSchema(request: SchemaSampleRequest): SampleResponse = {
+  def generateFromSchema(request: SchemaSampleRequest)(implicit sparkSession: SparkSession): SampleResponse = {
     LOGGER.info(s"Generating sample from inline fields: ${request.fields.size} fields")
     
     Try {
@@ -60,7 +59,7 @@ object FastSampleGenerator {
     }
   }
   
-  def generateFromTaskYaml(request: TaskYamlSampleRequest): SampleResponse = {
+  def generateFromTaskYaml(request: TaskYamlSampleRequest)(implicit sparkSession: SparkSession): SampleResponse = {
     LOGGER.info(s"Generating sample from task YAML content, step: ${request.stepName}")
     
     Try {
@@ -89,7 +88,7 @@ object FastSampleGenerator {
   }
   
   
-  private def generateSample(fields: List[Field], sampleSize: Int, fastMode: Boolean): SampleResponse = {
+  private def generateSample(fields: List[Field], sampleSize: Int, fastMode: Boolean)(implicit sparkSession: SparkSession): SampleResponse = {
     val startTime = System.currentTimeMillis()
     val executionId = generateId()
     

@@ -14,7 +14,7 @@ steps:
       - name: "product_name"
         options:
           regex: "product_[0-9]{8}"
-  - name: "products"
+  - name: "customers"
     type: "csv"
     options:
       path: "/tmp/custom/csv/multi-relationship/customers"
@@ -31,7 +31,7 @@ steps:
       - name: "last_name"
         options:
           expression: "#{Name.lastName}"
-  - name: "products"
+  - name: "accounts"
     type: "csv"
     options:
       path: "/tmp/custom/csv/multi-relationship/accounts"
@@ -61,7 +61,7 @@ steps:
       - name: "country_code"
         options:
           expression: "#{Address.countryCode}"
-  - name: "products"
+  - name: "customer_access"
     type: "csv"
     options:
       path: "/tmp/custom/csv/multi-relationship/customer-access"

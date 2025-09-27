@@ -410,9 +410,14 @@ object PlanRepository {
     }
   }
 
+  private def createSparkSession(): SparkSession = {
+    new SparkProvider(DEFAULT_MASTER, DEFAULT_RUNTIME_CONFIG).getSparkSession
+  }
+
   private def generateFromTaskFile(request: TaskFileSampleRequest): SampleResponse = {
     LOGGER.debug(s"Generating sample from task file: ${request.taskYamlPath}, step: ${request.stepName}")
     try {
+      implicit val sparkSession: SparkSession = createSparkSession()
       FastSampleGenerator.generateFromTaskFile(request)
     } catch {
       case ex: Throwable =>
@@ -428,6 +433,7 @@ object PlanRepository {
   private def generateFromTaskYaml(request: TaskYamlSampleRequest): SampleResponse = {
     LOGGER.debug(s"Generating sample from task YAML content, step: ${request.stepName}")
     try {
+      implicit val sparkSession: SparkSession = createSparkSession()
       FastSampleGenerator.generateFromTaskYaml(request)
     } catch {
       case ex: Throwable =>
@@ -443,6 +449,7 @@ object PlanRepository {
   private def generateFromSchema(request: SchemaSampleRequest): SampleResponse = {
     LOGGER.debug(s"Generating sample from inline fields: ${request.fields.size} fields")
     try {
+      implicit val sparkSession: SparkSession = createSparkSession()
       FastSampleGenerator.generateFromSchema(request)
     } catch {
       case ex: Throwable =>
@@ -459,7 +466,7 @@ object PlanRepository {
     LOGGER.debug("Starting up Spark")
     setUiRunning
     try {
-      implicit val sparkSession: SparkSession = new SparkProvider(DEFAULT_MASTER, DEFAULT_RUNTIME_CONFIG).getSparkSession
+      implicit val sparkSession: SparkSession = createSparkSession()
       //run some dummy query
       sparkSession.sql("SELECT 1").collect()
       
