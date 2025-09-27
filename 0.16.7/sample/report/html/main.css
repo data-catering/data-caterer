@@ -1,0 +1,173 @@
+.box-iframe {
+    float: left;
+    margin-right: 10px;
+}
+
+body {
+    margin: 0;
+}
+
+.top-banner {
+    height: fit-content;
+    background-color: #ff6e42;
+    padding: 0 .2rem;
+    display: flex;
+}
+
+.top-banner span {
+    color: #f2f2f2;
+    font-size: 17px;
+    padding: 5px 6px;
+    display: flex;
+    align-items: center;
+}
+
+.logo {
+    padding: 5px;
+    height: 45px;
+    width: auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.logo:hover {
+    background-color: #ff9100;
+    color: black;
+}
+
+.top-banner img {
+    height: 35px;
+    width: auto;
+    display: flex;
+    justify-content: center;
+    vertical-align: middle;
+}
+
+.topnav {
+    overflow: hidden;
+    background-color: #ff6e42;
+}
+
+.topnav a {
+    float: left;
+    color: #f2f2f2;
+    text-align: center;
+    padding: 8px 10px;
+    text-decoration: none;
+    font-size: 17px;
+}
+
+.topnav a:hover {
+    background-color: #ff9100;
+    color: black;
+}
+
+.topnav a.active {
+    color: black;
+}
+
+table {
+    overflow: hidden;
+    transition: max-height 0.2s ease-out;
+}
+
+table.codegrid {
+    font-family: monospace;
+    font-size: 12px;
+    width: auto !important;
+}
+
+table.statementlist {
+    width: auto !important;
+    font-size: 13px;
+}
+
+table.codegrid td {
+    padding: 0 !important;
+    border: 0 !important
+}
+
+table td.linenumber {
+    width: 40px !important;
+}
+
+td {
+    white-space: normal
+}
+
+.table thead th {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+}
+
+table, tr, td, th {
+    border-collapse: collapse;
+}
+
+.table-collapsible {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.2s ease-out;
+}
+
+.collapsible {
+    background-color: lightgray;
+    color: black;
+    cursor: pointer;
+    width: 100%;
+    border: none;
+    text-align: left;
+    outline: none;
+}
+
+.collapsible:after {
+    content: "\02795"; /* Unicode character for "plus" sign (+) */
+    color: white;
+    float: right;
+}
+
+.active:after {
+    content: "\2796"; /* Unicode character for "minus" sign (-) */
+}
+
+.outer-container {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+}
+
+.top-container {
+    height: 50%;
+    overflow: auto;
+    resize: vertical;
+}
+
+.bottom-container {
+    flex: 1;
+    min-height: 0;
+    height: 50%;
+    overflow: auto;
+    resize: vertical;
+}
+
+.slider {
+    text-align: center;
+    background-color: #dee2e6;
+    cursor: row-resize;
+    user-select: none;
+}
+
+.selected-row {
+    background-color: #ff6e42 !important;
+}
+
+.progress {
+    white-space: normal;
+    background-color: #d9534f;
+}
+
+.progress-bar {
+    color: black;
+}

@@ -1,0 +1,410 @@
+<html>
+      <head>
+        <title>
+          Validations - Data Caterer
+        </title><script src="https://ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js"></script><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jquery.tablesorter/2.31.3/css/theme.default.min.css" type="text/css"/><script src="https://cdnjs.cloudflare.com/ajax/libs/jquery.tablesorter/2.31.3/js/jquery.tablesorter.min.js"></script><link rel="stylesheet" href="https://netdna.bootstrapcdn.com/bootstrap/3.0.3/css/bootstrap.min.css" type="text/css"/><script src="https://netdna.bootstrapcdn.com/bootstrap/3.0.3/js/bootstrap.min.js"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/Chart.js"></script><link rel="stylesheet" href="main.css" type="text/css"/><link rel="icon" href="data_catering_transparent.svg"/>
+      </head>
+      <body>
+        <div class="top-banner">
+      <a class="logo" href="index.html">
+        <img src="data_catering_transparent.svg" alt="logo"/>
+      </a>
+      <span>
+        <b>Data Caterer</b>
+      </span>
+    </div><nav class="topnav">
+        <a href="index.html">Overview</a>
+        <a href="data-sources.html">Data Source</a>
+        <a href="steps.html">Field</a>
+        <a href="validations.html">Validation</a>
+      </nav><h1>Validations</h1><table class="tablesorter table table-striped" style="font-size: 13px">
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Data Sources</th>
+          <th>Description</th>
+          <th>Success</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>
+            <a href="validations.html#default_validation">
+              default_validation
+            </a>
+          </td>
+          <td>
+            <a href="data-sources.html#my_json">
+          my_json
+        </a>
+          </td>
+          <td>
+            Validation of data sources after generating data
+          </td>
+          <td>
+            <div class="progress">
+      <div class="progress-bar progress-bar-success" role="progressbar" aria-valuenow="50.00" aria-valuemin="0" aria-valuemax="100" style="width:50.00%"></div>
+    </div><div>
+        1/2 (50.00%)
+      </div>
+          </td>
+        </tr><tr>
+          <td>
+            <a href="validations.html#default_validation">
+              default_validation
+            </a>
+          </td>
+          <td>
+            <a href="data-sources.html#my_csv">
+          my_csv
+        </a>
+          </td>
+          <td>
+            Validation of data sources after generating data
+          </td>
+          <td>
+            <div class="progress">
+      <div class="progress-bar progress-bar-success" role="progressbar" aria-valuenow="100.00" aria-valuemin="0" aria-valuemax="100" style="width:100.00%"></div>
+    </div><div>
+        2/2 (100.00%)
+      </div>
+          </td>
+        </tr>
+      </tbody>
+    </table><h2>Details</h2>
+        <table class="tablesorter table table-striped" style="font-size: 13px">
+          <thead>
+            <tr>
+              <th>Description</th>
+              <th>Data Source</th>
+              <th>Options</th>
+              <th>Success</th>
+              <th>Within Error Threshold</th>
+              <th>Validation</th>
+              <th>Error Sample</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+                  <td>
+                    Validate
+                  </td>
+                  <td>
+                    <a href="data-sources.html#my_json">
+                      my_json
+                    </a>
+                  </td>
+                  <td>
+                    
+                  </td>
+                  <td>
+                    <div class="progress">
+      <div class="progress-bar progress-bar-success" role="progressbar" aria-valuenow="100.00" aria-valuemin="0" aria-valuemax="100" style="width:100.00%"></div>
+    </div><div>
+        2000/2000 (100.00%)
+      </div>
+                  </td>
+                  <td>
+                    &#9989;
+                  </td>
+                  <td>
+                    <table class="table table-striped" style="font-size: 13px">
+        <tbody>
+        <tr>
+            <td>
+              <b>
+                expr
+              </b>
+            </td><td>
+              max(amount) &lt; 100
+            </td>
+          </tr><tr>
+            <td>
+              <b>
+                groupByColumns
+              </b>
+            </td><td>
+              account_id,name
+            </td>
+          </tr><tr>
+            <td>
+              <b>
+                aggregationColumn
+              </b>
+            </td><td>
+              amount
+            </td>
+          </tr><tr>
+            <td>
+              <b>
+                aggregationType
+              </b>
+            </td><td>
+              max
+            </td>
+          </tr><tr>
+            <td>
+              <b>
+                errorThreshold
+              </b>
+            </td><td>
+              0.0
+            </td>
+          </tr>
+      </tbody>
+      </table>
+                  </td>
+                  <td>
+                    
+                  </td>
+                </tr><tr>
+                  <td>
+                    Validate
+                  </td>
+                  <td>
+                    <a href="data-sources.html#my_json">
+                      my_json
+                    </a>
+                  </td>
+                  <td>
+                    
+                  </td>
+                  <td>
+                    <div class="progress">
+      <div class="progress-bar progress-bar-success" role="progressbar" aria-valuenow="50.00" aria-valuemin="0" aria-valuemax="100" style="width:50.00%"></div>
+    </div><div>
+        1000/2000 (50.00%)
+      </div>
+                  </td>
+                  <td>
+                    &#10060;
+                  </td>
+                  <td>
+                    <table class="table table-striped" style="font-size: 13px">
+        <tbody>
+        <tr>
+            <td>
+              <b>
+                expr
+              </b>
+            </td><td>
+              count == 1
+            </td>
+          </tr><tr>
+            <td>
+              <b>
+                groupByColumns
+              </b>
+            </td><td>
+              account_id,name
+            </td>
+          </tr><tr>
+            <td>
+              <b>
+                aggregationColumn
+              </b>
+            </td><td>
+              unique
+            </td>
+          </tr><tr>
+            <td>
+              <b>
+                aggregationType
+              </b>
+            </td><td>
+              count
+            </td>
+          </tr><tr>
+            <td>
+              <b>
+                errorThreshold
+              </b>
+            </td><td>
+              0.0
+            </td>
+          </tr>
+      </tbody>
+      </table>
+                  </td>
+                  <td>
+                    <table class="table table-striped" style="font-size: 13px">
+        <tbody>
+        <tr>
+            <td>
+              {&quot;account_id&quot;:&quot;ACC67262091&quot;,&quot;name&quot;:&quot;Emiko Abernathy III&quot;,&quot;count&quot;:2}
+            </td>
+          </tr><tr>
+            <td>
+              {&quot;account_id&quot;:&quot;ACC98264190&quot;,&quot;name&quot;:&quot;Shirleen Weimann&quot;,&quot;count&quot;:2}
+            </td>
+          </tr><tr>
+            <td>
+              {&quot;account_id&quot;:&quot;ACC70737722&quot;,&quot;name&quot;:&quot;Shanelle Keebler&quot;,&quot;count&quot;:2}
+            </td>
+          </tr><tr>
+            <td>
+              {&quot;account_id&quot;:&quot;ACC28941814&quot;,&quot;name&quot;:&quot;Dr. Violette Green&quot;,&quot;count&quot;:2}
+            </td>
+          </tr><tr>
+            <td>
+              {&quot;account_id&quot;:&quot;ACC42462487&quot;,&quot;name&quot;:&quot;Marquetta Hayes&quot;,&quot;count&quot;:2}
+            </td>
+          </tr>
+      </tbody>
+      </table>
+                  </td>
+                </tr><tr>
+                  <td>
+                    account_number is a primary key
+                  </td>
+                  <td>
+                    <a href="data-sources.html#my_csv">
+                      my_csv
+                    </a>
+                  </td>
+                  <td>
+                    
+                  </td>
+                  <td>
+                    <div class="progress">
+      <div class="progress-bar progress-bar-success" role="progressbar" aria-valuenow="100.00" aria-valuemin="0" aria-valuemax="100" style="width:100.00%"></div>
+    </div><div>
+        1000/1000 (100.00%)
+      </div>
+                  </td>
+                  <td>
+                    &#9989;
+                  </td>
+                  <td>
+                    <table class="table table-striped" style="font-size: 13px">
+        <tbody>
+        <tr>
+            <td>
+              <b>
+                expr
+              </b>
+            </td><td>
+              ISNOTNULL(account_number)
+            </td>
+          </tr><tr>
+            <td>
+              <b>
+                errorThreshold
+              </b>
+            </td><td>
+              0.0
+            </td>
+          </tr>
+      </tbody>
+      </table>
+                  </td>
+                  <td>
+                    
+                  </td>
+                </tr><tr>
+                  <td>
+                    Some names follow a different pattern
+                  </td>
+                  <td>
+                    <a href="data-sources.html#my_csv">
+                      my_csv
+                    </a>
+                  </td>
+                  <td>
+                    
+                  </td>
+                  <td>
+                    <div class="progress">
+      <div class="progress-bar progress-bar-success" role="progressbar" aria-valuenow="98.50" aria-valuemin="0" aria-valuemax="100" style="width:98.50%"></div>
+    </div><div>
+        985/1000 (98.50%)
+      </div>
+                  </td>
+                  <td>
+                    &#9989;
+                  </td>
+                  <td>
+                    <table class="table table-striped" style="font-size: 13px">
+        <tbody>
+        <tr>
+            <td>
+              <b>
+                expr
+              </b>
+            </td><td>
+              REGEXP(name, '[A-Z][a-z]+ [A-Z][a-z]+')
+            </td>
+          </tr><tr>
+            <td>
+              <b>
+                errorThreshold
+              </b>
+            </td><td>
+              0.3
+            </td>
+          </tr>
+      </tbody>
+      </table>
+                  </td>
+                  <td>
+                    
+                  </td>
+                </tr>
+          </tbody>
+        </table>
+      </body><script type="text/javascript">
+      
+function showFieldMetadata(step, e) {
+  var newFieldMetadata = document.getElementById('field-metadata-' + step).cloneNode(true);
+  var currentFieldMetadata = document.getElementById('current-field-metadata');
+  collapseOnClick(newFieldMetadata);
+  console.log(newFieldMetadata);
+  console.log(currentFieldMetadata);
+  currentFieldMetadata.replaceChild(newFieldMetadata, currentFieldMetadata.children[0])
+
+  var closestCell = e.parentElement,
+      activeCell = document.getElementsByClassName('selected-row');
+
+  if (activeCell !== null && activeCell.length !== 0) {
+    activeCell[0].classList.remove('selected-row');
+  }
+  closestCell.classList.add('selected-row');
+}
+
+let block = document.querySelector(".top-container"),
+  slider = document.querySelector(".slider");
+
+slider.onmousedown = function dragMouseDown(e) {
+  let dragX = e.clientY;
+  document.onmousemove = function onMouseMove(e) {
+    block.style.height = block.offsetHeight + e.clientY - dragX + "px";
+    dragX = e.clientY;
+  }
+  document.onmouseup = () => document.onmousemove = document.onmouseup = null;
+}
+
+    </script><script type="text/javascript">
+        
+$(document).ready(function() {$(".tablesorter").tablesorter();});
+
+function collapseOnClick(element) {
+  var coll = element.getElementsByClassName("collapsible");
+  var i;
+
+  for (i = 0; i < coll.length; i++) {
+    coll[i].addEventListener("click", function() {
+      this.classList.toggle("active");
+       var content = this.nextElementSibling;
+       if (content.style.maxHeight){
+         content.style.maxHeight = null;
+       } else {
+         content.style.maxHeight = content.scrollHeight + "px";
+       }
+    });
+  }
+};
+
+collapseOnClick(document);
+
+      </script>
+    </html>
