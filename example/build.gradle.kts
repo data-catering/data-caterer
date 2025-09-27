@@ -1,6 +1,3 @@
-val scalaVersion: String by project
-val scalaSpecificVersion: String by project
-
 plugins {
     scala
 }
@@ -10,7 +7,7 @@ repositories {
 }
 
 dependencies {
-    compileOnly("org.scala-lang:scala-library:$scalaSpecificVersion")
+    compileOnly(libs.scala.library)
 
     compileOnly(project(":api"))
 }

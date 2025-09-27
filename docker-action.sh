@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 
 version=$(grep version gradle.properties | cut -d= -f2)
-sparkVersion=$(grep sparkVersion gradle.properties | cut -d= -f2)
 platforms="linux/amd64,linux/arm64"
 
 echo "Creating API jars and publishing, version=$version"

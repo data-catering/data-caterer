@@ -6,11 +6,6 @@
  * User Manual available at https://docs.gradle.org/7.5.1/userguide/building_java_projects.html
  * This project uses @Incubating APIs which are subject to change.
  */
-val scalaVersion: String by project
-val scalaSpecificVersion: String by project
-val sparkVersion: String by project
-val sparkMajorVersion: String by project
-
 plugins {
     scala
     application
