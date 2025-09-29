@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.16.9
+
+Add pre and post processor script support for Docker deployments with configurable execution conditions.
+
+- Docker:
+  - Add pre and post processor script support in run-data-caterer.sh
+  - Environment variables: PRE_PROCESSOR_SCRIPT, POST_PROCESSOR_SCRIPT, POST_PROCESSOR_CONDITION
+  - POST_PROCESSOR_CONDITION supports 'success', 'failure', 'always' modes
+  - Scripts run with proper error handling and logging
+  - Pre-processor failure stops execution; post-processor failure preserves original exit code
+
 ## 0.16.8
 
 Introduce sample-data generation APIs with docs, new Gradle run tasks, improved logging, and stricter sink format validation with accompanying tests.
