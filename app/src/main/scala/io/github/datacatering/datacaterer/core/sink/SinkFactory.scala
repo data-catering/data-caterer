@@ -530,22 +530,36 @@ class SinkFactory(
   private def consolidateCsvWithHeaders(partFiles: Array[java.nio.file.Path], targetPath: java.nio.file.Path): Unit = {
     LOGGER.debug(s"Consolidating CSV files with header handling")
     val targetFile = Files.newOutputStream(targetPath)
+    val lineSeparator = System.lineSeparator().getBytes("UTF-8")
+    
     try {
-      partFiles.zipWithIndex.foreach { case (partFile, index) =>
+      var headerWritten = false
+      
+      partFiles.foreach { partFile =>
         val lines = Files.readAllLines(partFile)
-        if (index == 0) {
-          // First file: write all lines including header
-          lines.forEach(line => {
-            targetFile.write(line.getBytes("UTF-8"))
-            targetFile.write('\n')
-          })
+        
+        if (lines.isEmpty) {
+          LOGGER.debug(s"Skipping empty part file: ${partFile.getFileName}")
+        } else if (!headerWritten) {
+          // First non-empty file: write all lines including header
+          for (i <- 0 until lines.size()) {
+            targetFile.write(lines.get(i).getBytes("UTF-8"))
+            if (i < lines.size() - 1 || partFiles.length > 1) {
+              // Write line separator except for the last line of the last file
+              targetFile.write(lineSeparator)
+            }
+          }
+          headerWritten = true
         } else {
           // Subsequent files: skip first line (header) and write the rest
           if (lines.size() > 1) {
-            lines.subList(1, lines.size()).forEach(line => {
-              targetFile.write(line.getBytes("UTF-8"))
-              targetFile.write('\n')
-            })
+            for (i <- 1 until lines.size()) {
+              targetFile.write(lines.get(i).getBytes("UTF-8"))
+              if (i < lines.size() - 1 || partFiles.indexOf(partFile) < partFiles.length - 1) {
+                // Write line separator except for the last line of the last file
+                targetFile.write(lineSeparator)
+              }
+            }
           }
         }
       }

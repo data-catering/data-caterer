@@ -37,7 +37,8 @@ class OpenDataContractStandardDataSourceMetadataTest extends SparkSuite {
     assertResult(true)(resultCols.exists(_.field == "txn_ref_dt"))
     val txnDateCol = resultCols.filter(_.field == "txn_ref_dt").head
     val txnCluster = if (isVersion2) Map(CLUSTERING_POSITION -> "-1") else Map()
-    // v2 uses isNullable directly; v3 inverts required field
+    // v2: isNullable=false in test data → IS_NULLABLE="false"
+    // v3: required=false in test data → IS_NULLABLE="true" (mapper inverts: !false = true)
     val isNullableValue = if (isVersion2) "false" else "true"
     val expectedTxnDateMetadata = Map(
       IS_PRIMARY_KEY -> "false",
@@ -59,7 +60,8 @@ class OpenDataContractStandardDataSourceMetadataTest extends SparkSuite {
     assertResult(true)(resultCols.exists(_.field == "rcvr_id"))
     val rcvrIdCol = resultCols.filter(_.field == "rcvr_id").head
     val rcvrIdCluster = if (isVersion2) Map(CLUSTERING_POSITION -> "1") else Map()
-    // v2 uses isNullable directly; v3 inverts required field
+    // v2: isNullable=false in test data → IS_NULLABLE="false"
+    // v3: required=false in test data → IS_NULLABLE="true" (mapper inverts: !false = true)
     val expectedRcvrIdMetadata = Map(
       IS_PRIMARY_KEY -> "true",
       IS_NULLABLE -> isNullableValue,
@@ -77,7 +79,8 @@ class OpenDataContractStandardDataSourceMetadataTest extends SparkSuite {
     assertResult(true)(resultCols.exists(_.field == "rcvr_cntry_code"))
     val countryCodeCol = resultCols.filter(_.field == "rcvr_cntry_code").head
     val countryCodeCluster = if (isVersion2) Map(CLUSTERING_POSITION -> "-1") else Map()
-    // v2 uses isNullable directly; v3 inverts required field
+    // v2: isNullable=false in test data → IS_NULLABLE="false"
+    // v3: required=false in test data → IS_NULLABLE="true" (mapper inverts: !false = true)
     val expectedCountryCodeMetadata = Map(
       IS_PRIMARY_KEY -> "false",
       IS_NULLABLE -> isNullableValue,
