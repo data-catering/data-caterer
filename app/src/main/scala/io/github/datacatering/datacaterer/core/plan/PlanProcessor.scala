@@ -12,9 +12,10 @@ import io.github.datacatering.datacaterer.core.model.Constants.METADATA_CONNECTI
 import io.github.datacatering.datacaterer.core.model.PlanRunResults
 import io.github.datacatering.datacaterer.core.parser.PlanParser
 import io.github.datacatering.datacaterer.core.util.SparkProvider
+import org.apache.log4j.Logger
 import org.apache.spark.sql.SparkSession
 
-import scala.util.{Success, Try}
+import scala.util.{Failure, Success, Try}
 
 object PlanProcessor {
 
@@ -147,6 +148,8 @@ object PlanProcessor {
   private def findYamlPlanFile(configuredPlanPath: String, planName: String)(implicit sparkSession: SparkSession): Option[String] = {
     import java.io.File
     
+    val logger = Logger.getLogger(getClass.getName)
+    
     // Get the parent directory from the configured plan file path
     val planFile = new File(configuredPlanPath)
     val planDir = if (planFile.isDirectory) planFile else new File(planFile.getParent)
@@ -160,7 +163,12 @@ object PlanProcessor {
           Try {
             val parsed = PlanParser.parsePlan(f.getAbsolutePath)
             parsed.name.equalsIgnoreCase(planName)
-          }.getOrElse(false)
+          } match {
+            case Success(matches) => matches
+            case Failure(ex) =>
+              logger.warn(s"Failed to parse YAML plan file: ${f.getAbsolutePath}", ex)
+              false
+          }
         })
       
       matchingFiles.headOption.map(_.getAbsolutePath)
