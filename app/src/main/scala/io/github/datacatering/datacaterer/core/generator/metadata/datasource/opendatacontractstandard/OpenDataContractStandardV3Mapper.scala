@@ -53,10 +53,12 @@ object OpenDataContractStandardV3Mapper {
   }
 
   private def getBasePropertyMetadata(property: OpenDataContractStandardElementV3, dataType: DataType): Map[String, String] = {
+    // required=true means NOT nullable; required=false means nullable
+    val isNullable = !property.required.getOrElse(false)
     val baseMetadata = Map(
       FIELD_DATA_TYPE -> dataType.toString(),
-      IS_NULLABLE -> property.required.getOrElse(false).toString,
-      ENABLED_NULL -> property.required.getOrElse(false).toString,
+      IS_NULLABLE -> isNullable.toString,
+      ENABLED_NULL -> isNullable.toString,
       IS_PRIMARY_KEY -> property.primaryKey.getOrElse(false).toString,
       PRIMARY_KEY_POSITION -> property.primaryKeyPosition.getOrElse("-1").toString,
       IS_UNIQUE -> property.unique.getOrElse(false).toString,

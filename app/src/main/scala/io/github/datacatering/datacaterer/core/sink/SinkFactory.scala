@@ -127,28 +127,41 @@ class SinkFactory(
     }
 
     // If save was successful and consolidation is needed, consolidate the files
-    if (trySaveData.isSuccess && shouldConsolidate && targetFilePath.isDefined) {
+    val tryConsolidation = if (trySaveData.isSuccess && shouldConsolidate && targetFilePath.isDefined) {
       val tempPath = actualConnectionConfig(PATH)
-      Try(consolidatePartFiles(tempPath, targetFilePath.get, format, connectionConfig)) match {
+      val consolidationResult = Try(consolidatePartFiles(tempPath, targetFilePath.get, format, connectionConfig))
+      consolidationResult match {
         case Failure(exception) =>
           LOGGER.error(s"Failed to consolidate part files from $tempPath to ${targetFilePath.get}", exception)
           // Clean up temp directory even if consolidation failed
           Try(cleanupDirectory(Paths.get(tempPath)))
         case Success(_) =>
           LOGGER.info(s"Successfully consolidated files to ${targetFilePath.get}")
+          // Clean up temp directory after successful consolidation
+          Try(cleanupDirectory(Paths.get(tempPath))) match {
+            case Failure(cleanupException) =>
+              LOGGER.warn(s"Failed to clean up temporary directory: $tempPath", cleanupException)
+            case Success(_) =>
+              LOGGER.debug(s"Cleaned up temporary directory: $tempPath")
+          }
       }
+      consolidationResult
+    } else {
+      Success(())
     }
 
-    val optException = trySaveData match {
-      case Failure(exception) => Some(exception)
-      case Success(_) => None
+    val optException = (trySaveData, tryConsolidation) match {
+      case (Failure(exception), _) => Some(exception)
+      case (_, Failure(exception)) => Some(exception)
+      case _ => None
     }
     if (trySaveData.isFailure && retry < 3) {
       LOGGER.info(s"Retrying save to data source, data-source-name=$dataSourceName, retry=$retry")
       val connectionConfigWithBatchSize = connectionConfig ++ Map("batchsize" -> "1")
       saveBatchData(dataSourceName, df, saveMode, connectionConfigWithBatchSize, count, startTime, retry + 1)
     }
-    mapToSinkResult(dataSourceName, df, saveMode, connectionConfig, count, format, trySaveData.isSuccess, startTime, optException)
+    val isSuccess = trySaveData.isSuccess && tryConsolidation.isSuccess
+    mapToSinkResult(dataSourceName, df, saveMode, connectionConfig, count, format, isSuccess, startTime, optException)
   }
 
   private def trySaveJsonPossiblyUnwrapped(df: DataFrame, saveMode: SaveMode, connectionConfig: Map[String, String]): Unit = {

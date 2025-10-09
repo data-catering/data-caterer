@@ -37,10 +37,12 @@ class OpenDataContractStandardDataSourceMetadataTest extends SparkSuite {
     assertResult(true)(resultCols.exists(_.field == "txn_ref_dt"))
     val txnDateCol = resultCols.filter(_.field == "txn_ref_dt").head
     val txnCluster = if (isVersion2) Map(CLUSTERING_POSITION -> "-1") else Map()
+    // v2 uses isNullable directly; v3 inverts required field
+    val isNullableValue = if (isVersion2) "false" else "true"
     val expectedTxnDateMetadata = Map(
       IS_PRIMARY_KEY -> "false",
-      IS_NULLABLE -> "false",
-      ENABLED_NULL -> "false",
+      IS_NULLABLE -> isNullableValue,
+      ENABLED_NULL -> isNullableValue,
       IS_UNIQUE -> "false",
       PRIMARY_KEY_POSITION -> "-1",
       FIELD_DATA_TYPE -> "date"
@@ -57,10 +59,11 @@ class OpenDataContractStandardDataSourceMetadataTest extends SparkSuite {
     assertResult(true)(resultCols.exists(_.field == "rcvr_id"))
     val rcvrIdCol = resultCols.filter(_.field == "rcvr_id").head
     val rcvrIdCluster = if (isVersion2) Map(CLUSTERING_POSITION -> "1") else Map()
+    // v2 uses isNullable directly; v3 inverts required field
     val expectedRcvrIdMetadata = Map(
       IS_PRIMARY_KEY -> "true",
-      IS_NULLABLE -> "false",
-      ENABLED_NULL -> "false",
+      IS_NULLABLE -> isNullableValue,
+      ENABLED_NULL -> isNullableValue,
       IS_UNIQUE -> "false",
       PRIMARY_KEY_POSITION -> "1",
       FIELD_DATA_TYPE -> "string"
@@ -74,10 +77,11 @@ class OpenDataContractStandardDataSourceMetadataTest extends SparkSuite {
     assertResult(true)(resultCols.exists(_.field == "rcvr_cntry_code"))
     val countryCodeCol = resultCols.filter(_.field == "rcvr_cntry_code").head
     val countryCodeCluster = if (isVersion2) Map(CLUSTERING_POSITION -> "-1") else Map()
+    // v2 uses isNullable directly; v3 inverts required field
     val expectedCountryCodeMetadata = Map(
       IS_PRIMARY_KEY -> "false",
-      IS_NULLABLE -> "false",
-      ENABLED_NULL -> "false",
+      IS_NULLABLE -> isNullableValue,
+      ENABLED_NULL -> isNullableValue,
       IS_UNIQUE -> "false",
       PRIMARY_KEY_POSITION -> "-1",
       FIELD_DATA_TYPE -> "string"
@@ -87,5 +91,26 @@ class OpenDataContractStandardDataSourceMetadataTest extends SparkSuite {
       Map("odcsClassification" -> "public")
     } else Map()
     assertResult(expectedCountryCodeMetadata ++ v3CountryCodeMetadata)(countryCodeCol.metadata)
+  }
+
+  test("Can correctly map required field to nullable metadata") {
+    // Test that required=true means NOT nullable, and required=false means nullable
+    val connectionConfig = Map(DATA_CONTRACT_FILE -> "src/test/resources/sample/metadata/odcs/nullable-test-v3.odcs.yaml")
+    val odcsMetadata = OpenDataContractStandardDataSourceMetadata("odcs", "parquet", connectionConfig)
+    val result = odcsMetadata.getSubDataSourcesMetadata
+
+    assertResult(1)(result.length)
+    val resultCols = result.head.optFieldMetadata.get.collect()
+    assertResult(2)(resultCols.length)
+
+    // Field with required=true should have IS_NULLABLE=false
+    val requiredField = resultCols.filter(_.field == "required_field").head
+    assertResult("false")(requiredField.metadata(IS_NULLABLE))
+    assertResult("false")(requiredField.metadata(ENABLED_NULL))
+
+    // Field with required=false should have IS_NULLABLE=true
+    val optionalField = resultCols.filter(_.field == "optional_field").head
+    assertResult("true")(optionalField.metadata(IS_NULLABLE))
+    assertResult("true")(optionalField.metadata(ENABLED_NULL))
   }
 }
