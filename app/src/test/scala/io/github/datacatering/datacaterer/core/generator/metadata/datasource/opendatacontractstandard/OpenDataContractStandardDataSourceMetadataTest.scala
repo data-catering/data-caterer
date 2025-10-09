@@ -45,7 +45,14 @@ class OpenDataContractStandardDataSourceMetadataTest extends SparkSuite {
       PRIMARY_KEY_POSITION -> "-1",
       FIELD_DATA_TYPE -> "date"
     ) ++ txnCluster
-    assertResult(expectedTxnDateMetadata)(txnDateCol.metadata)
+    // In v3, examples and classification are extracted
+    val v3AdditionalMetadata = if (!isVersion2) {
+      Map(
+        "odcsExamples" -> "2022-10-03,2020-01-28",
+        "odcsClassification" -> "public"
+      )
+    } else Map()
+    assertResult(expectedTxnDateMetadata ++ v3AdditionalMetadata)(txnDateCol.metadata)
 
     assertResult(true)(resultCols.exists(_.field == "rcvr_id"))
     val rcvrIdCol = resultCols.filter(_.field == "rcvr_id").head
@@ -58,7 +65,11 @@ class OpenDataContractStandardDataSourceMetadataTest extends SparkSuite {
       PRIMARY_KEY_POSITION -> "1",
       FIELD_DATA_TYPE -> "string"
     ) ++ rcvrIdCluster
-    assertResult(expectedRcvrIdMetadata)(rcvrIdCol.metadata)
+    // In v3, classification is extracted for rcvr_id
+    val v3RcvrIdMetadata = if (!isVersion2) {
+      Map("odcsClassification" -> "restricted")
+    } else Map()
+    assertResult(expectedRcvrIdMetadata ++ v3RcvrIdMetadata)(rcvrIdCol.metadata)
 
     assertResult(true)(resultCols.exists(_.field == "rcvr_cntry_code"))
     val countryCodeCol = resultCols.filter(_.field == "rcvr_cntry_code").head
@@ -71,6 +82,10 @@ class OpenDataContractStandardDataSourceMetadataTest extends SparkSuite {
       PRIMARY_KEY_POSITION -> "-1",
       FIELD_DATA_TYPE -> "string"
     ) ++ countryCodeCluster
-    assertResult(expectedCountryCodeMetadata)(countryCodeCol.metadata)
+    // In v3, classification is extracted for rcvr_cntry_code
+    val v3CountryCodeMetadata = if (!isVersion2) {
+      Map("odcsClassification" -> "public")
+    } else Map()
+    assertResult(expectedCountryCodeMetadata ++ v3CountryCodeMetadata)(countryCodeCol.metadata)
   }
 }

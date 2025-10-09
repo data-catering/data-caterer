@@ -723,6 +723,260 @@ Control data partitioning and parallelism for improved performance with large da
             type: "integer"
     ```
 
+### Single file output for file formats
+
+When generating file-based data (CSV, JSON, Parquet, etc.), you can generate a single consolidated file instead of Spark's default partitioned output by specifying a file extension in the path.
+
+By default, Spark writes data to a directory containing multiple part files (e.g., `part-00000-xxx.csv`, `part-00001-xxx.csv`). When you include a file extension in the path (e.g., `/path/to/output.csv`), Data Caterer will automatically:
+
+1. Generate data using Spark to a temporary directory
+2. Consolidate all part files into a single file with your specified name
+3. Clean up the temporary directory
+
+**Special handling for CSV with headers**: When using `header: "true"` with CSV format, the consolidation process ensures the header row appears only once at the top of the file, even when multiple partitions are generated.
+
+=== "Java"
+
+    ```java
+    // Single CSV file with header
+    csv("transactions", "/opt/app/data/transactions.csv")
+      .option("header", "true")
+      .fields(
+        field().name("account_id"),
+        field().name("amount").type(DoubleType.instance())
+      );
+
+    // Single JSON file
+    json("events", "/opt/app/data/events.json")
+      .fields(field().name("event_type"));
+
+    // Single Parquet file
+    parquet("data", "/opt/app/data/records.parquet")
+      .fields(field().name("id"));
+
+    // Directory with multiple part files (default Spark behavior)
+    csv("bulk_data", "/opt/app/data/bulk_output")
+      .fields(field().name("data"));
+    ```
+
+=== "Scala"
+
+    ```scala
+    // Single CSV file with header
+    csv("transactions", "/opt/app/data/transactions.csv")
+      .option("header", "true")
+      .fields(
+        field.name("account_id"),
+        field.name("amount").`type`(DoubleType)
+      )
+
+    // Single JSON file
+    json("events", "/opt/app/data/events.json")
+      .fields(field.name("event_type"))
+
+    // Single Parquet file
+    parquet("data", "/opt/app/data/records.parquet")
+      .fields(field.name("id"))
+
+    // Directory with multiple part files (default Spark behavior)
+    csv("bulk_data", "/opt/app/data/bulk_output")
+      .fields(field.name("data"))
+    ```
+
+=== "YAML"
+
+    ```yaml
+    # Single CSV file with header
+    name: "csv_single_file"
+    steps:
+      - name: "transactions"
+        type: "csv"
+        options:
+          path: "/opt/app/data/transactions.csv"
+          header: "true"
+        fields:
+          - name: "account_id"
+          - name: "amount"
+            type: "double"
+
+    # Single JSON file
+    ---
+    name: "json_single_file"
+    steps:
+      - name: "events"
+        type: "json"
+        options:
+          path: "/opt/app/data/events.json"
+        fields:
+          - name: "event_type"
+
+    # Directory with multiple part files (default)
+    ---
+    name: "bulk_output"
+    steps:
+      - name: "bulk_data"
+        type: "csv"
+        options:
+          path: "/opt/app/data/bulk_output"
+        fields:
+          - name: "data"
+    ```
+
+**Supported file formats**: `.csv`, `.json`, `.parquet`, `.orc`, `.xml`, `.txt`
+
+**Performance note**: For large datasets, using directory output (without file extension) will be faster as it leverages Spark's parallel writing capabilities.
+
+### Data source specific options
+
+Data Caterer uses Apache Spark as its underlying data generation engine. This means you can use any Spark data source options in your step configuration to control how data is written.
+
+!!! info "Spark Data Source Options"
+    Step options can include any options supported by the corresponding Spark data source. These options are passed directly to Spark's DataFrameWriter.
+
+    **Common data source option references:**
+
+    - **CSV**: [Spark CSV Options](https://spark.apache.org/docs/latest/sql-data-sources-csv.html#data-source-option)
+    - **JSON**: [Spark JSON Options](https://spark.apache.org/docs/latest/sql-data-sources-json.html#data-source-option)
+    - **Parquet**: [Spark Parquet Options](https://spark.apache.org/docs/latest/sql-data-sources-parquet.html#data-source-option)
+    - **ORC**: [Spark ORC Options](https://spark.apache.org/docs/latest/sql-data-sources-orc.html#configuration)
+    - **JDBC**: [Spark JDBC Options](https://spark.apache.org/docs/latest/sql-data-sources-jdbc.html#data-source-option)
+    - **Kafka**: [Spark Kafka Options](https://spark.apache.org/docs/latest/structured-streaming-kafka-integration.html#writing-data-to-kafka)
+    - **Delta Lake**: [Delta Lake Options](https://docs.delta.io/latest/delta-batch.html#write-to-a-table)
+    - **Iceberg**: [Iceberg Spark Options](https://iceberg.apache.org/docs/latest/spark-writes/)
+
+Examples of commonly used Spark options:
+
+=== "Java"
+
+    ```java
+    // CSV with custom delimiter and compression
+    csv("data", "/opt/app/data/output.csv")
+      .option("header", "true")
+      .option("delimiter", "|")
+      .option("compression", "gzip")
+      .option("quote", "\"")
+      .option("escape", "\\")
+      .fields(field().name("col1"), field().name("col2"));
+
+    // JSON with date format and pretty printing
+    json("data", "/opt/app/data/output")
+      .option("dateFormat", "yyyy-MM-dd")
+      .option("timestampFormat", "yyyy-MM-dd'T'HH:mm:ss")
+      .option("compression", "gzip")
+      .fields(field().name("date").type(DateType.instance()));
+
+    // Parquet with compression
+    parquet("data", "/opt/app/data/output")
+      .option("compression", "snappy")
+      .option("parquet.block.size", "268435456")
+      .fields(field().name("data"));
+
+    // JDBC with batch size and isolation level
+    postgres("transactions", "jdbc:postgresql://localhost:5432/db")
+      .table("schema", "transactions")
+      .option("batchsize", "10000")
+      .option("isolationLevel", "READ_COMMITTED")
+      .option("truncate", "true")
+      .fields(field().name("id"));
+    ```
+
+=== "Scala"
+
+    ```scala
+    // CSV with custom delimiter and compression
+    csv("data", "/opt/app/data/output.csv")
+      .option("header", "true")
+      .option("delimiter", "|")
+      .option("compression", "gzip")
+      .option("quote", "\"")
+      .option("escape", "\\")
+      .fields(field.name("col1"), field.name("col2"))
+
+    // JSON with date format and pretty printing
+    json("data", "/opt/app/data/output")
+      .option("dateFormat", "yyyy-MM-dd")
+      .option("timestampFormat", "yyyy-MM-dd'T'HH:mm:ss")
+      .option("compression", "gzip")
+      .fields(field.name("date").`type`(DateType))
+
+    // Parquet with compression
+    parquet("data", "/opt/app/data/output")
+      .option("compression", "snappy")
+      .option("parquet.block.size", "268435456")
+      .fields(field.name("data"))
+
+    // JDBC with batch size and isolation level
+    postgres("transactions", "jdbc:postgresql://localhost:5432/db")
+      .table("schema", "transactions")
+      .option("batchsize", "10000")
+      .option("isolationLevel", "READ_COMMITTED")
+      .option("truncate", "true")
+      .fields(field.name("id"))
+    ```
+
+=== "YAML"
+
+    ```yaml
+    # CSV with custom options
+    name: "csv_custom"
+    steps:
+      - name: "data"
+        type: "csv"
+        options:
+          path: "/opt/app/data/output.csv"
+          header: "true"
+          delimiter: "|"
+          compression: "gzip"
+          quote: "\""
+          escape: "\\"
+        fields:
+          - name: "col1"
+          - name: "col2"
+
+    # JSON with date formatting
+    ---
+    name: "json_formatted"
+    steps:
+      - name: "data"
+        type: "json"
+        options:
+          path: "/opt/app/data/output"
+          dateFormat: "yyyy-MM-dd"
+          timestampFormat: "yyyy-MM-dd'T'HH:mm:ss"
+          compression: "gzip"
+        fields:
+          - name: "date"
+            type: "date"
+
+    # Parquet with compression
+    ---
+    name: "parquet_compressed"
+    steps:
+      - name: "data"
+        type: "parquet"
+        options:
+          path: "/opt/app/data/output"
+          compression: "snappy"
+          parquet.block.size: "268435456"
+        fields:
+          - name: "data"
+
+    # JDBC with custom options
+    ---
+    name: "jdbc_custom"
+    steps:
+      - name: "transactions"
+        type: "postgres"
+        options:
+          url: "jdbc:postgresql://localhost:5432/db"
+          dbtable: "schema.transactions"
+          batchsize: "10000"
+          isolationLevel: "READ_COMMITTED"
+          truncate: "true"
+        fields:
+          - name: "id"
+    ```
+
 ## Reference mode
 
 Use existing data as reference instead of generating new data for a step. This is useful when you want to reference real data in foreign key relationships.

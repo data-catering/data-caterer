@@ -1,7 +1,7 @@
 package io.github.datacatering.datacaterer.core.sink
 
 import com.google.common.util.concurrent.RateLimiter
-import io.github.datacatering.datacaterer.api.model.Constants.{DELTA, DELTA_LAKE_SPARK_CONF, DRIVER, FORMAT, ICEBERG, ICEBERG_SPARK_CONF, JDBC, JSON, OMIT, PARTITIONS, PARTITION_BY, PATH, POSTGRES_DRIVER, RATE, ROWS_PER_SECOND, SAVE_MODE, TABLE, UNWRAP_TOP_LEVEL_ARRAY}
+import io.github.datacatering.datacaterer.api.model.Constants.{CSV, DELTA, DELTA_LAKE_SPARK_CONF, DRIVER, FORMAT, ICEBERG, ICEBERG_SPARK_CONF, JDBC, JSON, OMIT, PARTITIONS, PARTITION_BY, PATH, POSTGRES_DRIVER, RATE, ROWS_PER_SECOND, SAVE_MODE, TABLE, UNWRAP_TOP_LEVEL_ARRAY}
 import io.github.datacatering.datacaterer.api.model.{FlagsConfig, FoldersConfig, MetadataConfig, SinkResult, Step}
 import io.github.datacatering.datacaterer.api.util.ConfigUtil
 import io.github.datacatering.datacaterer.core.exception.{FailedSaveDataDataFrameV2Exception, FailedSaveDataException}
@@ -18,6 +18,7 @@ import org.apache.spark.sql.catalyst.analysis.TableAlreadyExistsException
 import org.apache.spark.sql.functions.col
 import org.apache.spark.sql.{CreateTableWriter, DataFrame, DataFrameWriter, DataFrameWriterV2, Dataset, Encoder, Encoders, Row, SaveMode, SparkSession}
 
+import java.nio.file.{Files, Paths, StandardCopyOption}
 import java.time.LocalDateTime
 import scala.collection.mutable
 import scala.concurrent.Await
@@ -86,22 +87,56 @@ class SinkFactory(
                             count: String, startTime: LocalDateTime, retry: Int = 0): SinkResult = {
     val format = connectionConfig(FORMAT)
 
+    // Check if we need to consolidate files (path has file suffix)
+    val pathOpt = connectionConfig.get(PATH)
+    val shouldConsolidate = pathOpt.flatMap(detectFileSuffix).isDefined
+
+    // If consolidation is needed, use a temporary directory for Spark output
+    val (actualConnectionConfig, targetFilePath) = if (shouldConsolidate && pathOpt.isDefined) {
+      val originalPath = pathOpt.get
+      val tempPath = s"${originalPath}_spark_temp_${System.currentTimeMillis()}"
+      LOGGER.info(s"Detected file suffix in path: $originalPath. Will consolidate part files after Spark write.")
+      (connectionConfig ++ Map(PATH -> tempPath), Some(originalPath))
+    } else {
+      (connectionConfig, None)
+    }
+
     // if format is iceberg, need to use dataframev2 api for partition and writing
-    connectionConfig.filter(_._1.startsWith("spark.sql"))
+    actualConnectionConfig.filter(_._1.startsWith("spark.sql"))
       .foreach(conf => df.sqlContext.setConf(conf._1, conf._2))
     val trySaveData = if (format == ICEBERG) {
-      Try(tryPartitionAndSaveDfV2(df, saveMode, connectionConfig))
+      Try(tryPartitionAndSaveDfV2(df, saveMode, actualConnectionConfig))
     } else if (format == JSON) {
       // Special-case: allow unwrapping top-level array to emit a bare JSON array file
-      val tryMaybeUnwrap = Try(trySaveJsonPossiblyUnwrapped(df, saveMode, connectionConfig))
+      val tryMaybeUnwrap = Try(trySaveJsonPossiblyUnwrapped(df, saveMode, actualConnectionConfig))
       tryMaybeUnwrap
     } else {
-      val partitionedDf = partitionDf(df, connectionConfig)
+      // If consolidation is needed, use coalesce(1) to generate a single part file
+      val dfToWrite = if (shouldConsolidate) {
+        LOGGER.debug(s"Using coalesce(1) for single file output")
+        df.coalesce(1)
+      } else {
+        df
+      }
+      val partitionedDf = partitionDf(dfToWrite, actualConnectionConfig)
       Try(partitionedDf
         .format(format)
         .mode(saveMode)
-        .options(connectionConfig)
+        .options(actualConnectionConfig)
         .save())
+    }
+
+    // If save was successful and consolidation is needed, consolidate the files
+    if (trySaveData.isSuccess && shouldConsolidate && targetFilePath.isDefined) {
+      val tempPath = actualConnectionConfig(PATH)
+      Try(consolidatePartFiles(tempPath, targetFilePath.get, format, connectionConfig)) match {
+        case Failure(exception) =>
+          LOGGER.error(s"Failed to consolidate part files from $tempPath to ${targetFilePath.get}", exception)
+          // Clean up temp directory even if consolidation failed
+          Try(cleanupDirectory(Paths.get(tempPath)))
+        case Success(_) =>
+          LOGGER.info(s"Successfully consolidated files to ${targetFilePath.get}")
+      }
     }
 
     val optException = trySaveData match {
@@ -118,6 +153,9 @@ class SinkFactory(
 
   private def trySaveJsonPossiblyUnwrapped(df: DataFrame, saveMode: SaveMode, connectionConfig: Map[String, String]): Unit = {
     val shouldUnwrap = detectTopLevelArrayToUnwrap(df)
+    val pathOpt = connectionConfig.get(PATH)
+    val shouldConsolidate = pathOpt.flatMap(detectFileSuffix).isDefined
+
     shouldUnwrap match {
       case Some(arrayFieldName) =>
         // Write a single file containing the JSON array string using Spark text writer
@@ -127,7 +165,13 @@ class SinkFactory(
         jsonArrayDf.write.mode(saveMode).text(path)
       case None =>
         // Default JSON behavior
-        val partitionedDf = partitionDf(df, connectionConfig)
+        val dfToWrite = if (shouldConsolidate) {
+          LOGGER.debug(s"Using coalesce(1) for single file JSON output")
+          df.coalesce(1)
+        } else {
+          df
+        }
+        val partitionedDf = partitionDf(dfToWrite, connectionConfig)
         partitionedDf
           .format(JSON)
           .mode(saveMode)
@@ -380,6 +424,132 @@ class SinkFactory(
         .json(filePath)
     } else {
       LOGGER.warn("Unable to save real-time responses with empty schema")
+    }
+  }
+
+  /**
+   * Detects if a path contains a file suffix (e.g., .json, .csv, .parquet, etc.)
+   * @param path The file path to check
+   * @return Some(extension) if a file suffix is detected, None otherwise
+   */
+  private def detectFileSuffix(path: String): Option[String] = {
+    val supportedExtensions = List(".json", ".csv", ".parquet", ".orc", ".xml", ".txt")
+    supportedExtensions.find(ext => path.toLowerCase.endsWith(ext))
+  }
+
+  /**
+   * Consolidates Spark-generated part files into a single file with the specified name.
+   * This is useful when users specify a path with a file extension (e.g., output.json)
+   * but Spark generates a directory with part files.
+   *
+   * @param sparkOutputPath The directory path where Spark wrote the part files
+   * @param targetFilePath The desired single file path
+   * @param format The file format (used for special handling like CSV headers)
+   * @param connectionConfig Connection configuration that may contain format-specific options
+   */
+  private def consolidatePartFiles(sparkOutputPath: String, targetFilePath: String, format: String, connectionConfig: Map[String, String] = Map()): Unit = {
+    val outputDir = Paths.get(sparkOutputPath)
+
+    if (Files.exists(outputDir) && Files.isDirectory(outputDir)) {
+      LOGGER.info(s"Consolidating part files from $sparkOutputPath to $targetFilePath")
+
+      val partFiles = Files.list(outputDir)
+        .filter(p => {
+          val fileName = p.getFileName.toString
+          fileName.startsWith("part-") && !fileName.endsWith(".crc") && fileName != "_SUCCESS"
+        })
+        .toArray()
+        .map(_.asInstanceOf[java.nio.file.Path])
+        .sortBy(_.getFileName.toString)
+
+      if (partFiles.isEmpty) {
+        LOGGER.warn(s"No part files found in $sparkOutputPath")
+        return
+      }
+
+      val targetPath = Paths.get(targetFilePath)
+      val targetDir = targetPath.getParent
+      if (targetDir != null && !Files.exists(targetDir)) {
+        Files.createDirectories(targetDir)
+      }
+
+      // If there's only one part file, just move/rename it
+      if (partFiles.length == 1) {
+        Files.move(partFiles.head, targetPath, StandardCopyOption.REPLACE_EXISTING)
+        LOGGER.info(s"Moved single part file to $targetFilePath")
+      } else {
+        // Multiple part files need to be concatenated
+        LOGGER.info(s"Concatenating ${partFiles.length} part files into $targetFilePath")
+
+        // Check if we need special handling for CSV with headers
+        val hasHeaders = format.equalsIgnoreCase(CSV) && connectionConfig.get("header").exists(_.equalsIgnoreCase("true"))
+
+        if (hasHeaders) {
+          consolidateCsvWithHeaders(partFiles, targetPath)
+        } else {
+          // Standard concatenation for other formats
+          val targetFile = Files.newOutputStream(targetPath)
+          try {
+            partFiles.foreach { partFile =>
+              Files.copy(partFile, targetFile)
+            }
+          } finally {
+            targetFile.close()
+          }
+        }
+      }
+
+      // Clean up the Spark-generated directory
+      cleanupDirectory(outputDir)
+      LOGGER.info(s"Cleaned up temporary directory: $sparkOutputPath")
+    } else {
+      LOGGER.warn(s"Spark output directory does not exist or is not a directory: $sparkOutputPath")
+    }
+  }
+
+  /**
+   * Consolidates CSV part files while handling headers correctly.
+   * The header from the first file is kept, and headers from subsequent files are skipped.
+   *
+   * @param partFiles Sorted array of part file paths
+   * @param targetPath The target file path
+   */
+  private def consolidateCsvWithHeaders(partFiles: Array[java.nio.file.Path], targetPath: java.nio.file.Path): Unit = {
+    LOGGER.debug(s"Consolidating CSV files with header handling")
+    val targetFile = Files.newOutputStream(targetPath)
+    try {
+      partFiles.zipWithIndex.foreach { case (partFile, index) =>
+        val lines = Files.readAllLines(partFile)
+        if (index == 0) {
+          // First file: write all lines including header
+          lines.forEach(line => {
+            targetFile.write(line.getBytes("UTF-8"))
+            targetFile.write('\n')
+          })
+        } else {
+          // Subsequent files: skip first line (header) and write the rest
+          if (lines.size() > 1) {
+            lines.subList(1, lines.size()).forEach(line => {
+              targetFile.write(line.getBytes("UTF-8"))
+              targetFile.write('\n')
+            })
+          }
+        }
+      }
+    } finally {
+      targetFile.close()
+    }
+  }
+
+  /**
+   * Recursively deletes a directory and all its contents
+   * @param directory The directory path to delete
+   */
+  private def cleanupDirectory(directory: java.nio.file.Path): Unit = {
+    if (Files.exists(directory)) {
+      Files.walk(directory)
+        .sorted(java.util.Comparator.reverseOrder())
+        .forEach(Files.delete)
     }
   }
 }

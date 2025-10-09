@@ -24,8 +24,24 @@ case class OpenDataContractStandardDataSourceMetadata(
   }
 
   override def getDataSourceValidations(dataSourceReadOptions: Map[String, String]): List[ValidationBuilder] = {
-    //TODO wait until v3 before using data quality since ODCS uses rules from closed source system
-    List()
+    val optDataContractFile = connectionConfig.get(DATA_CONTRACT_FILE)
+    optDataContractFile match {
+      case Some(dataContractPath) =>
+        val dataContractFile = new File(dataContractPath)
+        val tryParseYamlV3 = Try(ObjectMapperUtil.yamlObjectMapper.readValue(dataContractFile, classOf[OpenDataContractStandardV3]))
+        tryParseYamlV3 match {
+          case Success(contract) =>
+            // Extract validations from all schemas
+            val validations = contract.schema.map(_.flatMap(schema => {
+              OpenDataContractStandardDataValidations.getDataValidations(schema)
+            }).toList).getOrElse(List())
+            validations
+          case Failure(_) =>
+            // Not a v3 contract, skip validations (v2 doesn't have quality checks)
+            List()
+        }
+      case None => List()
+    }
   }
 
   override def getSubDataSourcesMetadata(implicit sparkSession: SparkSession): Array[SubDataSourceMetadata] = {

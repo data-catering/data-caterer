@@ -101,6 +101,7 @@ case class OpenDataContractStandardSchemaV3(
                                              properties: Option[Array[OpenDataContractStandardElementV3]] = None,
                                              priorTableName: Option[String] = None,
                                              quality: Option[Array[OpenDataContractStandardDataQualityV3]] = None,
+                                             relationships: Option[Array[OpenDataContractStandardRelationshipSchemaLevelV3]] = None,
                                              tags: Option[Array[String]] = None,
                                            )
 
@@ -124,6 +125,7 @@ case class OpenDataContractStandardElementV3(
                                               primaryKey: Option[Boolean] = None,
                                               primaryKeyPosition: Option[Int] = None,
                                               quality: Option[Array[OpenDataContractStandardDataQualityV3]] = None,
+                                              relationships: Option[Array[OpenDataContractStandardRelationshipV3]] = None,
                                               required: Option[Boolean] = None,
                                               tags: Option[Array[String]] = None,
                                               transformDescription: Option[String] = None,
@@ -217,3 +219,31 @@ case class OpenDataContractStandardTeam(
                                          replacedByUsername: Option[String] = None,
                                          role: Option[String] = None,
                                        )
+
+/**
+ * Relationship at property level (foreign key from this property to another)
+ * @param to The target property path (e.g., "schema.table.column")
+ * @param `type` Type of relationship (e.g., "foreignKey", "references")
+ * @param description Description of the relationship
+ */
+@JsonIgnoreProperties(ignoreUnknown = true)
+case class OpenDataContractStandardRelationshipV3(
+                                                   to: String,
+                                                   `type`: Option[String] = None,
+                                                   description: Option[String] = None
+                                                 )
+
+/**
+ * Relationship at schema level (foreign key between properties)
+ * @param from The source property path
+ * @param to The target property path
+ * @param `type` Type of relationship (e.g., "foreignKey", "references")
+ * @param description Description of the relationship
+ */
+@JsonIgnoreProperties(ignoreUnknown = true)
+case class OpenDataContractStandardRelationshipSchemaLevelV3(
+                                                              from: String,
+                                                              to: String,
+                                                              `type`: Option[String] = None,
+                                                              description: Option[String] = None
+                                                            )

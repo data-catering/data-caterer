@@ -8,8 +8,13 @@ image: "https://data.catering/diagrams/logo/data_catering_logo.svg"
 
 ![Data Caterer reading from ODCS file for schema metadata and data quality](../../../../diagrams/data-source/high_level_flow-run-config-basic-flow-odcs-support.svg)
 
-Creating a data generator for a CSV file based on metadata stored
-in [Open Data Contract Standard (ODCS)](https://github.com/bitol-io/open-data-contract-standard).
+Create data generators and validators using metadata from [Open Data Contract Standard (ODCS)](https://github.com/bitol-io/open-data-contract-standard) files.
+
+Data Caterer supports both ODCS v2.x and v3.x formats, automatically extracting:
+
+- **Schema information** - field names, data types, constraints
+- **Generation constraints** - min/max values, patterns, formats, examples
+- **Data quality rules** - validation checks defined in ODCS v3.x contracts
 
 [:material-run-fast: Scala Example](https://github.com/data-catering/data-caterer/blob/main/example/src/main/scala/io/github/datacatering/plan/ODCSPlanRun.scala)
 
@@ -70,7 +75,7 @@ Make sure your class extends `PlanRun`.
     ```java
     import io.github.datacatering.datacaterer.java.api.PlanRun;
     ...
-    
+
     public class MyAdvancedODCSJavaPlanRun extends PlanRun {
         {
             var conf = configuration().enableGeneratePlanAndTasks(true)
@@ -84,7 +89,7 @@ Make sure your class extends `PlanRun`.
     ```scala
     import io.github.datacatering.datacaterer.api.PlanRun
     ...
-    
+
     class MyAdvancedODCSPlanRun extends PlanRun {
       val conf = configuration.enableGeneratePlanAndTasks(true)
         .generatedReportsFolderPath("/opt/app/data/report")
@@ -325,14 +330,51 @@ txn_ref_dt,rcvr_id,rcvr_cntry_code
 Great! Now we have the ability to get schema information from an external source, add our own metadata and generate
 data.
 
-### Data validation
+## What Metadata is Extracted
 
-[To find out what data validation options are available, check this link.](../../../validation.md)
+Data Caterer extracts different metadata depending on the ODCS version:
 
-Another aspect of Open Data Contract Standard (ODCS) that can be leveraged is the definition of data quality rules.
-Once the latest version of ODCS is released (version 3.x), there should be a vendor neutral definition of data quality
-rules that Data Caterer can use. Once available, it will be as easy as enabling data validations
-via `enableGenerateValidations` in `configuration`.
+### All Versions (v2.x and v3.x)
+
+- **Field names and types** - Basic schema structure
+- **Primary keys** - Including composite keys with position
+- **Nullable/required fields** - Whether fields can be null
+- **Unique constraints** - Fields that must have unique values
+
+### ODCS v3.x Additional Features
+
+#### Generation Constraints
+
+From `logicalTypeOptions`:
+
+- **String constraints**:
+  - `minLength` / `maxLength` - String length bounds
+  - `pattern` - Regex patterns for string generation
+  - `format` - Format hints (email, uuid, uri, hostname, ipv4, ipv6)
+- **Numeric constraints**:
+  - `minimum` / `maximum` - Numeric value bounds
+- **Examples** - Sample values (stored for reference, not used for generation)
+- **Classification** - Data sensitivity levels (public, restricted, confidential)
+
+#### Data Quality Validations
+
+From the `quality` array, Data Caterer automatically converts ODCS quality checks to validations:
+
+- **Library rules** - Built-in checks:
+  - `nullCheck` - Ensures fields are not null
+  - `uniqueCheck` - Validates field uniqueness
+  - `countCheck` - Row count validations (with range support)
+  - `betweenCheck` - Value range validations
+  - `matchesPattern` - Regex pattern matching
+- **SQL rules** - Custom SQL expressions for complex validations
+- **Custom rules** - Vendor-specific quality implementations
+- **Severity levels** - Automatic error thresholds based on severity:
+  - `error` = strict validation (no failures allowed)
+  - `warning`/`info` = lenient (up to 5% failures allowed)
+
+### Data Validation
+
+To enable automatic validation from ODCS quality rules, set `enableGenerateValidations` in configuration:
 
 === "Java"
 
@@ -350,7 +392,7 @@ via `enableGenerateValidations` in `configuration`.
     val conf = configuration.enableGeneratePlanAndTasks(true)
       .enableGenerateValidations(true)
       .generatedReportsFolderPath("/opt/app/data/report")
-    
+
     execute(conf, accountTask)
     ```
 
@@ -368,4 +410,105 @@ via `enableGenerateValidations` in `configuration`.
     1. Click on `Advanced Configuration` towards the bottom of the screen
     2. Click on `Flag` and click on `Generate Validations`
 
-Check out the full example under `ODCSSourcePlanRun` in the example repo.
+[For more details on validation options, check this link.](../../../validation.md)
+
+## Example ODCS Contract
+
+Here's a minimal ODCS v3 contract showing the key features:
+
+```yaml
+apiVersion: v3.0.0
+kind: DataContract
+id: my-data-contract
+version: 1.0.0
+status: active
+
+schema:
+  - name: users
+    physicalName: users_table
+    properties:
+      - name: user_id
+        logicalType: integer
+        physicalType: bigint
+        primaryKey: true
+        required: true
+        unique: true
+        quality:
+          - type: library
+            rule: uniqueCheck
+            dimension: uniqueness
+            severity: error
+
+      - name: email
+        logicalType: string
+        physicalType: varchar(255)
+        required: true
+        classification: restricted
+        logicalTypeOptions:
+          pattern: "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$"
+          minLength: 5
+          maxLength: 255
+        examples:
+          - "user@example.com"
+          - "test@test.com"
+        quality:
+          - type: library
+            rule: nullCheck
+            dimension: completeness
+            severity: error
+
+      - name: age
+        logicalType: integer
+        physicalType: int
+        required: false
+        logicalTypeOptions:
+          minimum: 18
+          maximum: 120
+        quality:
+          - type: library
+            rule: betweenCheck
+            mustBeBetween: [18, 120]
+            dimension: accuracy
+            severity: warning
+
+    quality:
+      - type: library
+        rule: countCheck
+        mustBeGreaterThan: 0
+        dimension: completeness
+        severity: error
+```
+
+Check out the full example under `ODCSPlanRun` in the [example repo](https://github.com/data-catering/data-caterer/blob/main/example/src/main/scala/io/github/datacatering/plan/ODCSPlanRun.scala).
+
+## Supported vs Unsupported Features
+
+### ✅ Supported in Data Caterer
+
+**From ODCS Contract:**
+
+- Schema structure (names, types)
+- Primary keys (simple and composite)
+- Required/nullable fields
+- Unique constraints
+- String constraints (minLength, maxLength, pattern, format)
+- Numeric constraints (minimum, maximum)
+- Examples (stored as metadata)
+- Classification (stored as metadata)
+- Quality checks → Validations (nullCheck, uniqueCheck, countCheck, betweenCheck, matchesPattern)
+- SQL-based quality rules
+- Severity-based validation thresholds
+
+### ❌ Not Currently Supported
+
+- Object constraints (minProperties, maxProperties, required)
+- Relationships/foreign keys (architectural limitation)
+- Custom quality rules (vendor-specific implementations)
+
+## Tips for Best Results
+
+1. **Use ODCS v3.x** for full feature support including quality validations
+2. **Include logicalTypeOptions** for better data generation (patterns, min/max values)
+3. **Add quality checks** to automatically validate generated data
+4. **Combine with manual overrides** - ODCS provides the baseline, you can enhance specific fields
+5. **Use examples for documentation** - they help users understand expected values but don't constrain generation
