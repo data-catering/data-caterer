@@ -1,5 +1,7 @@
 package io.github.datacatering.datacaterer.core.ui.plan
 
+import io.github.datacatering.datacaterer.api.model.Constants.FORMAT
+import io.github.datacatering.datacaterer.core.config.ConfigParser
 import io.github.datacatering.datacaterer.core.ui.config.UiConfiguration.INSTALL_DIRECTORY
 import io.github.datacatering.datacaterer.core.ui.model.{Connection, GetConnectionsResponse, SaveConnectionsRequest}
 import org.apache.log4j.Logger
@@ -60,19 +62,58 @@ object ConnectionRepository {
 
   def getConnection(name: String, masking: Boolean = true): Connection = {
     LOGGER.debug(s"Getting connection details, connection-name=$name")
+    
+    // First try to get from saved connections file
     val connectionFile = Path.of(s"$connectionSaveFolder/$name.csv")
-    val tryConnection = Try(Connection.fromString(Files.readString(connectionFile), name, masking))
-    tryConnection match {
+    val tryConnectionFromFile = if (connectionFile.toFile.exists()) {
+      Try(Connection.fromString(Files.readString(connectionFile), name, masking))
+    } else {
+      Failure(new IllegalArgumentException(s"Connection file not found: $name"))
+    }
+    
+    tryConnectionFromFile match {
       case Success(connection) => connection.copy(options = connection.options)
-      case Failure(exception) => throw exception
+      case Failure(fileException) =>
+        // If not found in file, try to get from application.conf
+        LOGGER.debug(s"Connection not found in file, checking application.conf, connection-name=$name")
+        Try(getConnectionFromConfig(name, masking)) match {
+          case Success(conn) => conn
+          case Failure(configException) =>
+            // If not found in either location, throw the original exception
+            throw new IllegalArgumentException(s"Connection not found: $name", fileException)
+        }
+    }
+  }
+  
+  /**
+   * Get connection details from application.conf
+   */
+  private def getConnectionFromConfig(name: String, masking: Boolean = true): Connection = {
+    val connectionConfigs = ConfigParser.connectionConfigsByName
+    connectionConfigs.get(name) match {
+      case Some(config) =>
+        val format = config.getOrElse(FORMAT, "unknown")
+        val options = if (masking) {
+          config.map {
+            case (key, value) if key.contains("password") || key.contains("token") => (key, "***")
+            case (key, value) => (key, value)
+          }
+        } else {
+          config
+        }
+        Connection(name, format, Some("data-source"), options - FORMAT)
+      case None =>
+        throw new IllegalArgumentException(s"Connection not found in application.conf: $name")
     }
   }
 
   private def getAllConnections(optConnectionGroupType: Option[String], masking: Boolean = true): GetConnectionsResponse = {
     LOGGER.debug(s"Getting all connection details, connection-group=${optConnectionGroupType.getOrElse("")}")
+    
+    // Get connections from files
     val connectionPath = Path.of(connectionSaveFolder)
     if (!connectionPath.toFile.exists()) connectionPath.toFile.mkdirs()
-    val connections = Files.list(connectionPath)
+    val fileConnections = Files.list(connectionPath)
       .iterator()
       .asScala
       .map(file => {
@@ -85,9 +126,38 @@ object ConnectionRepository {
       .filter(_.isSuccess)
       .map(_.get)
       .toList
+    
+    // Get connections from application.conf
+    val configConnections = getConnectionsFromConfig(masking)
+    
+    // Merge connections, with file connections taking priority (deduplicating by name)
+    val allConnections = (fileConnections ++ configConnections)
+      .groupBy(_.name)
+      .map(_._2.head) // Take first occurrence (file connection if exists, otherwise config)
+      .toList
       .filter(conn => optConnectionGroupType.forall(conn.groupType.contains))
       .sortBy(_.name)
-    GetConnectionsResponse(connections)
+    
+    GetConnectionsResponse(allConnections)
+  }
+  
+  /**
+   * Get all connections from application.conf
+   */
+  private def getConnectionsFromConfig(masking: Boolean = true): List[Connection] = {
+    val connectionConfigs = ConfigParser.connectionConfigsByName
+    connectionConfigs.map { case (name, config) =>
+      val format = config.getOrElse(FORMAT, "unknown")
+      val options = if (masking) {
+        config.map {
+          case (key, value) if key.contains("password") || key.contains("token") => (key, "***")
+          case (key, value) => (key, value)
+        }
+      } else {
+        config
+      }
+      Connection(name, format, Some("data-source"), options - FORMAT)
+    }.toList
   }
 
   private def removeConnection(connectionName: String): Boolean = {

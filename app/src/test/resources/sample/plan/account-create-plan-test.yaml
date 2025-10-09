@@ -1,4 +1,4 @@
-name: "account_create_plan"
+name: "account_create_plan_multiple_data sources"
 description: "Create account data in JSON"
 tasks:
   - name: "json_account_jms"

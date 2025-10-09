@@ -103,7 +103,36 @@ object PlanProcessor {
   private def parsePlan(dataCatererConfiguration: DataCatererConfiguration, optPlan: Option[PlanRun], interface: String)(implicit sparkSession: SparkSession): (PlanRun, String) = {
     try {
       if (optPlan.isDefined) {
-        (optPlan.get, interface)
+        // Check if we need to load from YAML by looking at plan task summaries vs actual tasks
+        val existingTaskNames = optPlan.get._tasks.map(_.name).toSet
+        val planTaskNames = optPlan.get._plan.tasks.map(_.name).toSet
+        val missingTaskNames = planTaskNames.diff(existingTaskNames)
+        
+        if (missingTaskNames.nonEmpty) {
+          // Tasks are missing - this means the plan is from a YAML file, not the UI
+          // Load the entire plan and all tasks from the YAML file
+          val yamlConfig = ConfigParser.toDataCatererConfiguration
+          
+          // Find the correct YAML plan file by name in the configured plan directory
+          val requestedPlanName = optPlan.get._plan.name
+          val yamlPlanFilePath = findYamlPlanFile(yamlConfig.foldersConfig.planFilePath, requestedPlanName)
+          
+          // Load the plan from the specific YAML file if found, otherwise use default
+          val planConfigForParsing = yamlPlanFilePath.map { planPath =>
+            yamlConfig.copy(
+              foldersConfig = yamlConfig.foldersConfig.copy(planFilePath = planPath)
+            )
+          }.getOrElse(yamlConfig)
+          
+          // Load everything from YAML - use only YAML configuration, no UI data
+          val (parsedPlan, enabledTasks, validations) = PlanParser.getPlanTasksFromYaml(planConfigForParsing, false)
+          
+          val yamlPlanRun = new YamlPlanRun(parsedPlan, enabledTasks, validations, planConfigForParsing)
+          (yamlPlanRun, DATA_CATERER_INTERFACE_YAML)
+        } else {
+          // All tasks are provided by UI, this is a pure UI plan
+          (optPlan.get, interface)
+        }
       } else {
         val (parsedPlan, enabledTasks, validations) = PlanParser.getPlanTasksFromYaml(dataCatererConfiguration)
         (new YamlPlanRun(parsedPlan, enabledTasks, validations, dataCatererConfiguration), DATA_CATERER_INTERFACE_YAML)
@@ -112,6 +141,31 @@ object PlanProcessor {
       case parsePlanException: Exception =>
         handleException(parsePlanException, PLAN_STAGE_PARSE_PLAN)
         throw parsePlanException
+    }
+  }
+  
+  private def findYamlPlanFile(configuredPlanPath: String, planName: String)(implicit sparkSession: SparkSession): Option[String] = {
+    import java.io.File
+    
+    // Get the parent directory from the configured plan file path
+    val planFile = new File(configuredPlanPath)
+    val planDir = if (planFile.isDirectory) planFile else new File(planFile.getParent)
+    
+    if (planDir.exists() && planDir.isDirectory) {
+      // Look for a YAML file matching the plan name
+      val matchingFiles = planDir.listFiles()
+        .filter(f => f.isFile && f.getName.endsWith(".yaml"))
+        .filter(f => {
+          // Try to parse the plan and match by name
+          Try {
+            val parsed = PlanParser.parsePlan(f.getAbsolutePath)
+            parsed.name.equalsIgnoreCase(planName)
+          }.getOrElse(false)
+        })
+      
+      matchingFiles.headOption.map(_.getAbsolutePath)
+    } else {
+      None
     }
   }
 
@@ -158,8 +212,8 @@ class YamlPlanRun(
                    dataCatererConfiguration: DataCatererConfiguration
                  ) extends PlanRun {
   _plan = yamlPlan
-  _tasks = yamlTasks
   _validations = validations.getOrElse(List())
+
   //get any metadata configuration from tasks for data sources and add to configuration
   private val tasksWithMetadataOptions = yamlTasks.filter(t => t.steps.nonEmpty)
     .map(t => {
@@ -168,5 +222,20 @@ class YamlPlanRun(
     }).toMap
   private val updatedConnectionConfig = dataCatererConfiguration.connectionConfigByName
     .map(c => c._1 -> (tasksWithMetadataOptions.getOrElse(c._1, Map()) ++ c._2))
+
+  // Merge connection configuration into task step options
+  // This ensures that step.options contains all necessary connection details like 'format'
+  _tasks = yamlTasks.map(task => {
+    val dataSourceName = yamlPlan.tasks.find(ts => ts.name.equalsIgnoreCase(task.name)).get.dataSourceName
+    val connectionConfig = updatedConnectionConfig.getOrElse(dataSourceName, Map())
+
+    // Merge connection config into each step's options (connection config as base, step options override)
+    val stepsWithConnectionConfig = task.steps.map(step => {
+      step.copy(options = connectionConfig ++ step.options)
+    })
+
+    task.copy(steps = stepsWithConnectionConfig)
+  })
+
   _configuration = dataCatererConfiguration.copy(connectionConfigByName = updatedConnectionConfig)
 }

@@ -40,6 +40,7 @@ class ConnectionRepositoryTest extends AnyFunSuiteLike with BeforeAndAfterAll wi
     val connection = Connection("testConnection", "csv", Some(CONNECTION_GROUP_DATA_SOURCE), Map("key" -> "value"))
     connectionRepository ! ConnectionRepository.SaveConnections(SaveConnectionsRequest(List(connection)))
 
+    Thread.sleep(50) // Wait for async save to complete
     val retrievedConnection = ConnectionRepository.getConnection("testConnection")
     retrievedConnection shouldEqual connection
   }

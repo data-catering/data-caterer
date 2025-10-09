@@ -110,8 +110,9 @@ class PlanRepositoryTest extends SparkSuite with BeforeAndAfterAll with MockitoS
     val probe = testKit.createTestProbe[PlanRunRequests]()
     planRepository ! PlanRepository.GetPlans(probe.ref)
     val res = probe.receiveMessage().plans
-    res.size shouldBe 1
-    res.head shouldBe planRunRequest
+    // Should include at least the saved plan, may include YAML plans from test resources
+    res.size should be >= 1
+    res.find(_.plan.name == planRunRequest.plan.name) shouldBe Some(planRunRequest)
 
     val probe2 = testKit.createTestProbe[PlanRunRequest]()
     planRepository ! PlanRepository.GetPlan(planRunRequest.plan.name, probe2.ref)
@@ -167,13 +168,15 @@ class PlanRepositoryTest extends SparkSuite with BeforeAndAfterAll with MockitoS
 
     val probe = testKit.createTestProbe[PlanRunRequests]()
     planRepository ! PlanRepository.GetPlans(probe.ref)
-    probe.receiveMessage().plans.size shouldBe 1
+    val initialPlans = probe.receiveMessage().plans
+    initialPlans.find(_.plan.name == planRunRequest.plan.name) shouldBe defined
 
     planRepository ! PlanRepository.RemovePlan(planRunRequest.plan.name)
 
     val probe2 = testKit.createTestProbe[PlanRunRequests]()
     planRepository ! PlanRepository.GetPlans(probe2.ref)
-    probe2.receiveMessage().plans shouldBe empty
+    val plansAfterRemoval = probe2.receiveMessage().plans
+    plansAfterRemoval.find(_.plan.name == planRunRequest.plan.name) shouldBe None
   }
 
   test("removePlan should not remove plan if it does not exist") {
@@ -183,13 +186,17 @@ class PlanRepositoryTest extends SparkSuite with BeforeAndAfterAll with MockitoS
 
     val probe = testKit.createTestProbe[PlanRunRequests]()
     planRepository ! PlanRepository.GetPlans(probe.ref)
-    probe.receiveMessage().plans.size shouldBe 1
+    val initialPlans = probe.receiveMessage().plans
+    val initialCount = initialPlans.size
+    initialPlans.find(_.plan.name == planRunRequest.plan.name) shouldBe defined
 
     planRepository ! PlanRepository.RemovePlan("non-existent-plan")
 
     val probe2 = testKit.createTestProbe[PlanRunRequests]()
     planRepository ! PlanRepository.GetPlans(probe2.ref)
-    probe2.receiveMessage().plans.size shouldBe 1
+    val plansAfterRemoval = probe2.receiveMessage().plans
+    plansAfterRemoval.size shouldBe initialCount
+    plansAfterRemoval.find(_.plan.name == planRunRequest.plan.name) shouldBe defined
   }
 
   test("getPlanRuns should get non-empty plan runs") {

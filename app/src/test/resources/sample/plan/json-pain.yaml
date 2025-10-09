@@ -1,4 +1,4 @@
-name: "account_create_plan"
+name: "json_pain"
 description: "Create account data in JSON"
 tasks:
   - name: "pain_008_json_task"

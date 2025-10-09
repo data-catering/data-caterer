@@ -17,10 +17,10 @@ object PlanParser {
   private val LOGGER = Logger.getLogger(getClass.getName)
   private val OBJECT_MAPPER = ObjectMapperUtil.yamlObjectMapper
 
-  def getPlanTasksFromYaml(dataCatererConfiguration: DataCatererConfiguration)
+  def getPlanTasksFromYaml(dataCatererConfiguration: DataCatererConfiguration, enabledOnly: Boolean = true)
                           (implicit sparkSession: SparkSession): (Plan, List[Task], Option[List[ValidationConfiguration]]) = {
     val parsedPlan = PlanParser.parsePlan(dataCatererConfiguration.foldersConfig.planFilePath)
-    val enabledPlannedTasks = parsedPlan.tasks.filter(_.enabled)
+    val enabledPlannedTasks = if (enabledOnly) parsedPlan.tasks.filter(_.enabled) else parsedPlan.tasks
     val enabledTaskMap = enabledPlannedTasks.map(t => (t.name, t)).toMap
     val planWithEnabledTasks = parsedPlan.copy(tasks = enabledPlannedTasks)
 
@@ -40,7 +40,7 @@ object PlanParser {
       val planFile = FileUtil.getFile(planFilePath)
       OBJECT_MAPPER.readValue(planFile, classOf[Plan])
     }
-    LOGGER.info(s"Found plan file and parsed successfully, plan-file-path=$planFilePath, plan-name=${parsedPlan.name}, plan-description=${parsedPlan.description}")
+    LOGGER.debug(s"Found plan file and parsed successfully, plan-file-path=$planFilePath, plan-name=${parsedPlan.name}, plan-description=${parsedPlan.description}")
     parsedPlan
   }
 
