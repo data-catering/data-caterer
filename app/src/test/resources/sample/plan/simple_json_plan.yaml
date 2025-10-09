@@ -1,0 +1,8 @@
+---
+name: "simple_json_plan"
+description: "Create account data in JSON"
+tasks: []
+sinkOptions:
+  foreignKeys: []
+validations: []
+runId: "38f554eb-0036-4dd9-8e8d-6ca762af2067"

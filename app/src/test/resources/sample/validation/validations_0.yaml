@@ -1,0 +1,4 @@
+---
+- name: "default_validation"
+  description: "Validation of data sources after generating data"
+  dataSources: {}

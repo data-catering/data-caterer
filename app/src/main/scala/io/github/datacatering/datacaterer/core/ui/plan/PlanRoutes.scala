@@ -82,6 +82,18 @@ class PlanRoutes(
             }
           }
         },
+        path("yaml" / """[A-Za-z0-9-_]+""".r) { planName =>
+          post {
+            planRepository ! PlanRepository.RunPlanFromYaml(planName, planResponseHandler)
+            complete(s"YAML plan '$planName' started")
+          }
+        },
+        path("yaml" / """[A-Za-z0-9-_]+""".r / "delete-data") { planName =>
+          post {
+            planRepository ! PlanRepository.RunPlanFromYamlDeleteData(planName, planResponseHandler)
+            complete(s"YAML plan '$planName' delete data started")
+          }
+        },
         path("history") {
           get {
             val planRuns = planRepository.ask(PlanRepository.GetPlanRuns)

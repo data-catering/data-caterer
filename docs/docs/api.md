@@ -267,6 +267,63 @@ Content-Type: application/json
 
 ### Plan Management
 
+!!! tip "YAML Plans and Connection Configuration"
+
+    Data Caterer supports executing YAML-defined plans and tasks through the UI/API. When you execute a YAML plan via the API or UI:
+
+    **Connection Configuration Integration:**
+
+    - Connection details defined in `application.conf` are automatically loaded and merged with task configurations
+    - The connection format (e.g., `json`, `postgres`, `kafka`) is determined by the top-level key in your configuration:
+      ```
+      json {
+        my_json_connection {
+          path = "/data/output"
+          saveMode = "overwrite"
+        }
+      }
+      ```
+    - This configuration is automatically merged into task step options, so you don't need to duplicate connection details in your YAML task files
+
+    **Example Workflow:**
+
+    1. Define connections in `application.conf`:
+       ```
+       postgres {
+         customer_db {
+           url = "jdbc:postgresql://localhost:5432/customer"
+           user = "admin"
+           password = ${?DB_PASSWORD}
+           driver = "org.postgresql.Driver"
+         }
+       }
+       ```
+
+    2. Create YAML task file referencing the connection:
+       ```yaml
+       name: "customer_task"
+       steps:
+         - name: "customers_table"
+           type: "table"
+           options:
+             dbtable: "customers"
+           fields:
+             - name: "customer_id"
+               type: "string"
+       ```
+
+    3. Create YAML plan referencing the task:
+       ```yaml
+       name: "customer_data_plan"
+       description: "Generate customer data"
+       tasks:
+         - name: "customer_task"
+           dataSourceName: "customer_db"
+           enabled: true
+       ```
+
+    4. Execute via API - connection details are automatically merged from `application.conf`
+
 ??? info "Save Plan - `POST /plan`"
 
     Save a plan configuration for later use.

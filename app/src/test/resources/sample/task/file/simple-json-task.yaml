@@ -12,8 +12,8 @@ steps:
       - name: "year"
         type: "int"
         options:
-          minValue: 2021
-          maxValue: 2022
+          min: 2021
+          max: 2022
       - name: "is_early_customer"
         type: "boolean"
         options:
@@ -21,8 +21,8 @@ steps:
       - name: "amount"
         type: "double"
         options:
-          minValue: 10.0
-          maxValue: 100.0
+          min: 10.0
+          max: 100.0
       - name: "is_large_amount"
         type: "boolean"
         options:
@@ -47,8 +47,8 @@ steps:
           - name: "txn_date"
             type: "date"
             options:
-              minValue: "2021-01-01"
-              maxValue: "2021-12-31"
+              min: "2021-01-01"
+              max: "2021-12-31"
           - name: "updated_by"
             type: "struct"
             fields:

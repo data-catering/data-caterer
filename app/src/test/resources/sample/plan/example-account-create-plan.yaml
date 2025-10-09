@@ -1,4 +1,4 @@
-name: "account_create_plan"
+name: "postgres_and_parquet_account_create_plan"
 description: "Create accounts and transactions in Postgres and parquet"
 tasks:
   #  - name: "jdbc_customer_accounts_table_create"

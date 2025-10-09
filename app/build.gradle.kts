@@ -262,6 +262,15 @@ tasks.register<JavaExec>("runUI") {
     classpath = sourceSets.main.get().runtimeClasspath
     mainClass.set("io.github.datacatering.datacaterer.core.ui.DataCatererUI")
     
+    // Set environment variables for YAML plan and task paths (absolute paths)
+    val projectDir = project.projectDir.absolutePath
+    val rootProjectDir = project.rootProject.projectDir.absolutePath
+    environment("PLAN_FILE_PATH", "$rootProjectDir/app/src/test/resources/sample/plan/customer-create-plan.yaml")
+    environment("TASK_FOLDER_PATH", "$rootProjectDir/app/src/test/resources/sample/task")
+    
+    // Set working directory to project root to help with relative path resolution
+    workingDir(rootProjectDir)
+    
     // Add JVM arguments similar to docker script
     jvmArgs(
         "-Djava.security.manager=allow",

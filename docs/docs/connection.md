@@ -69,14 +69,67 @@ All connection details follow the same pattern.
 
     When defining a configuration value that can be defined by a system property or environment variable at runtime, you can
     define that via the following:
-    
+
     ```
     url = "localhost"
     url = ${?POSTGRES_URL}
     ```
-    
+
     The above defines that if there is a system property or environment variable named `POSTGRES_URL`, then that value will
     be used for the `url`, otherwise, it will default to `localhost`.
+
+!!! tip "Automatic Connection Merging with YAML Plans"
+
+    When you execute YAML plans through the UI or API, connection configurations from `application.conf` are **automatically merged** into your task step options. This means:
+
+    **Key Points:**
+
+    - The connection **format** (e.g., `json`, `postgres`, `kafka`) is determined by the top-level configuration key
+    - Connection details are identified by the `dataSourceName` in your plan's task summary
+    - All connection properties are merged into task step options before execution
+    - Step-specific options take precedence over connection configuration (step options override connection defaults)
+
+    **Example:**
+
+    Configuration in `application.conf`:
+    ```
+    json {
+      my_json_sink {
+        path = "/data/output/accounts"
+        saveMode = "overwrite"
+      }
+    }
+    ```
+
+    YAML task file (`account-task.yaml`):
+    ```yaml
+    name: "account_task"
+    steps:
+      - name: "account_step"
+        count:
+          records: 1000
+        options:
+          saveMode: "append"  # This overrides the connection's "overwrite"
+        fields:
+          - name: "account_id"
+            type: "string"
+    ```
+
+    YAML plan file:
+    ```yaml
+    name: "account_plan"
+    tasks:
+      - name: "account_task"
+        dataSourceName: "my_json_sink"  # References the connection name
+        enabled: true
+    ```
+
+    **Result:** The task will use:
+    - `format = "json"` (from top-level key)
+    - `path = "/data/output/accounts"` (from connection config)
+    - `saveMode = "append"` (from step options, overriding connection default)
+
+    This eliminates the need to duplicate connection details across multiple task files!
 
 ## Data sources
 
