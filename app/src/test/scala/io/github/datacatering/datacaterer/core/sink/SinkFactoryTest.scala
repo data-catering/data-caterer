@@ -1,10 +1,11 @@
 package io.github.datacatering.datacaterer.core.sink
 
-import io.github.datacatering.datacaterer.api.model.Constants.{DELTA, FORMAT, ICEBERG, PATH, SAVE_MODE, TABLE}
+import io.github.datacatering.datacaterer.api.model.Constants.{CSV, DELTA, FORMAT, ICEBERG, JSON, PARQUET, PATH, SAVE_MODE, TABLE}
 import io.github.datacatering.datacaterer.api.model.{FlagsConfig, FoldersConfig, MetadataConfig, Step}
 import io.github.datacatering.datacaterer.core.util.{SparkSuite, Transaction}
 
 import java.io.File
+import java.nio.file.{Files, Paths}
 import java.sql.Date
 import java.time.LocalDateTime
 import scala.reflect.io.Directory
@@ -77,5 +78,300 @@ class SinkFactoryTest extends SparkSuite {
     assertResult(ICEBERG)(res.format)
     assert(res.exception.isEmpty)
     assertResult(4)(sparkSession.table("local.account.transactions_overwrite").count())
+  }
+
+  test("Should consolidate part files into single JSON file when path has .json suffix") {
+    val filePath = "/tmp/output_test.json"
+    val path = Paths.get(filePath)
+
+    // Clean up any existing file
+    if (Files.exists(path)) {
+      Files.delete(path)
+    }
+
+    val sinkFactory = new SinkFactory(FlagsConfig(), MetadataConfig(), FoldersConfig())
+    val step = Step(options = Map(FORMAT -> JSON, PATH -> filePath))
+    val res = sinkFactory.pushToSink(df, "json-single-file", step, LocalDateTime.now())
+
+    assert(res.isSuccess)
+    assertResult(4)(res.count)
+    assertResult(JSON)(res.format)
+    assert(res.exception.isEmpty)
+
+    // Verify that a single file exists (not a directory)
+    assert(Files.exists(path), s"File should exist at $filePath")
+    assert(Files.isRegularFile(path), s"Path should be a regular file, not a directory: $filePath")
+
+    // Verify no temporary directory remains
+    val tempDirPattern = s"${filePath}_spark_temp_"
+    val parentDir = path.getParent
+    val tempDirs = Files.list(parentDir)
+      .filter(p => p.getFileName.toString.startsWith(new File(filePath).getName + "_spark_temp_"))
+      .toArray()
+    assert(tempDirs.isEmpty, "Temporary Spark directories should be cleaned up")
+
+    // Verify content can be read back
+    val readBack = sparkSession.read.json(filePath)
+    assertResult(4)(readBack.count())
+
+    // Clean up
+    Files.delete(path)
+  }
+
+  test("Should consolidate part files into single CSV file when path has .csv suffix") {
+    val filePath = "/tmp/output_test.csv"
+    val path = Paths.get(filePath)
+
+    // Clean up any existing file
+    if (Files.exists(path)) {
+      Files.delete(path)
+    }
+
+    // Create simple data without complex types for CSV compatibility
+    val simpleCsvData = Seq(
+      ("acc123", "peter", "txn1", 10.0),
+      ("acc123", "peter", "txn2", 50.0),
+      ("acc123", "peter", "txn3", 200.0),
+      ("acc123", "peter", "txn4", 500.0)
+    )
+    val csvDf = sparkSession.createDataFrame(simpleCsvData).toDF("account", "name", "transaction", "amount")
+
+    val sinkFactory = new SinkFactory(FlagsConfig(), MetadataConfig(), FoldersConfig())
+    val step = Step(options = Map(FORMAT -> CSV, PATH -> filePath, "header" -> "true"))
+    val res = sinkFactory.pushToSink(csvDf, "csv-single-file", step, LocalDateTime.now())
+
+    assert(res.isSuccess)
+    assertResult(4)(res.count)
+    assertResult(CSV)(res.format)
+    assert(res.exception.isEmpty)
+
+    // Verify that a single file exists (not a directory)
+    assert(Files.exists(path), s"File should exist at $filePath")
+    assert(Files.isRegularFile(path), s"Path should be a regular file, not a directory: $filePath")
+
+    // Verify no temporary directory remains
+    val tempDirPattern = s"${filePath}_spark_temp_"
+    val parentDir = path.getParent
+    val tempDirs = Files.list(parentDir)
+      .filter(p => p.getFileName.toString.startsWith(new File(filePath).getName + "_spark_temp_"))
+      .toArray()
+    assert(tempDirs.isEmpty, "Temporary Spark directories should be cleaned up")
+
+    // Verify content can be read back
+    val readBack = sparkSession.read.option("header", "true").csv(filePath)
+    assertResult(4)(readBack.count())
+
+    // Clean up
+    Files.delete(path)
+  }
+
+  test("Should consolidate part files into single Parquet file when path has .parquet suffix") {
+    val filePath = "/tmp/output_test.parquet"
+    val path = Paths.get(filePath)
+
+    // Clean up any existing file
+    if (Files.exists(path)) {
+      Files.delete(path)
+    }
+
+    val sinkFactory = new SinkFactory(FlagsConfig(), MetadataConfig(), FoldersConfig())
+    val step = Step(options = Map(FORMAT -> PARQUET, PATH -> filePath))
+    val res = sinkFactory.pushToSink(df, "parquet-single-file", step, LocalDateTime.now())
+
+    assert(res.isSuccess)
+    assertResult(4)(res.count)
+    assertResult(PARQUET)(res.format)
+    assert(res.exception.isEmpty)
+
+    // Verify that a single file exists (not a directory)
+    assert(Files.exists(path), s"File should exist at $filePath")
+    assert(Files.isRegularFile(path), s"Path should be a regular file, not a directory: $filePath")
+
+    // Verify no temporary directory remains
+    val parentDir = path.getParent
+    val tempDirs = Files.list(parentDir)
+      .filter(p => p.getFileName.toString.startsWith(new File(filePath).getName + "_spark_temp_"))
+      .toArray()
+    assert(tempDirs.isEmpty, "Temporary Spark directories should be cleaned up")
+
+    // Verify content can be read back
+    val readBack = sparkSession.read.parquet(filePath)
+    assertResult(4)(readBack.count())
+
+    // Clean up
+    Files.delete(path)
+  }
+
+  test("Should NOT consolidate when path has no file suffix (directory mode)") {
+    val dirPath = "/tmp/output_test_directory"
+    val directory = new Directory(new File(dirPath))
+    directory.deleteRecursively()
+
+    val sinkFactory = new SinkFactory(FlagsConfig(), MetadataConfig(), FoldersConfig())
+    val step = Step(options = Map(FORMAT -> JSON, PATH -> dirPath))
+    val res = sinkFactory.pushToSink(df, "json-directory", step, LocalDateTime.now())
+
+    assert(res.isSuccess)
+    assertResult(4)(res.count)
+    assertResult(JSON)(res.format)
+    assert(res.exception.isEmpty)
+
+    // Verify that a directory exists with part files (Spark's default behavior)
+    val path = Paths.get(dirPath)
+    assert(Files.exists(path), s"Directory should exist at $dirPath")
+    assert(Files.isDirectory(path), s"Path should be a directory: $dirPath")
+
+    // Verify part files exist in the directory
+    val partFiles = Files.list(path)
+      .filter(p => p.getFileName.toString.startsWith("part-"))
+      .toArray()
+    assert(partFiles.nonEmpty, "Part files should exist in the directory")
+
+    // Clean up
+    directory.deleteRecursively()
+  }
+
+  test("Should consolidate CSV with headers and only include header once") {
+    val filePath = "/tmp/output_test_with_headers.csv"
+    val path = Paths.get(filePath)
+
+    // Clean up any existing file
+    if (Files.exists(path)) {
+      Files.delete(path)
+    }
+
+    // Create larger dataset to force multiple partitions
+    val largeCsvData = (1 to 20).map(i =>
+      (s"acc$i", s"user$i", s"txn$i", i * 10.0)
+    )
+    val largeCsvDf = sparkSession.createDataFrame(largeCsvData).toDF("account", "name", "transaction", "amount")
+
+    val sinkFactory = new SinkFactory(FlagsConfig(), MetadataConfig(), FoldersConfig())
+    // Force multiple partitions with repartition
+    val step = Step(options = Map(
+      FORMAT -> CSV,
+      PATH -> filePath,
+      "header" -> "true",
+      "partitions" -> "3"  // Force 3 partitions to test header consolidation
+    ))
+    val res = sinkFactory.pushToSink(largeCsvDf, "csv-with-headers", step, LocalDateTime.now())
+
+    assert(res.isSuccess)
+    assertResult(20)(res.count)
+    assertResult(CSV)(res.format)
+    assert(res.exception.isEmpty)
+
+    // Verify that a single file exists
+    assert(Files.exists(path), s"File should exist at $filePath")
+    assert(Files.isRegularFile(path), s"Path should be a regular file, not a directory: $filePath")
+
+    // Read the file and verify header appears only once
+    val lines = Files.readAllLines(path)
+    assert(lines.size() > 0, "File should not be empty")
+
+    // Count how many times the header appears
+    val headerLine = "account,name,transaction,amount"
+    val headerCount = lines.toArray().count(line => line.toString == headerLine)
+    assertResult(1, s"Header should appear exactly once, but found $headerCount times")(headerCount)
+
+    // Verify we have header + 20 data rows
+    assertResult(21, "Should have 1 header row + 20 data rows")(lines.size())
+
+    // Verify content can be read back correctly
+    val readBack = sparkSession.read.option("header", "true").csv(filePath)
+    assertResult(20)(readBack.count())
+
+    // Verify all original data is present
+    val readBackData = readBack.collect().sortBy(_.getString(0))
+    assertResult(20)(readBackData.length)
+
+    // Clean up
+    Files.delete(path)
+  }
+
+  test("Should handle CSV without headers when consolidating multiple part files") {
+    val filePath = "/tmp/output_test_no_headers.csv"
+    val path = Paths.get(filePath)
+
+    // Clean up any existing file
+    if (Files.exists(path)) {
+      Files.delete(path)
+    }
+
+    // Create dataset with multiple partitions
+    val csvData = (1 to 15).map(i =>
+      (s"acc$i", s"user$i", s"txn$i", i * 10.0)
+    )
+    val csvDf = sparkSession.createDataFrame(csvData).toDF("account", "name", "transaction", "amount")
+
+    val sinkFactory = new SinkFactory(FlagsConfig(), MetadataConfig(), FoldersConfig())
+    val step = Step(options = Map(
+      FORMAT -> CSV,
+      PATH -> filePath,
+      "header" -> "false",
+      "partitions" -> "3"  // Force 3 partitions
+    ))
+    val res = sinkFactory.pushToSink(csvDf, "csv-no-headers", step, LocalDateTime.now())
+
+    assert(res.isSuccess)
+    assertResult(15)(res.count)
+    assertResult(CSV)(res.format)
+    assert(res.exception.isEmpty)
+
+    // Verify that a single file exists
+    assert(Files.exists(path), s"File should exist at $filePath")
+    assert(Files.isRegularFile(path), s"Path should be a regular file, not a directory: $filePath")
+
+    // Verify we have exactly 15 data rows (no header)
+    val lines = Files.readAllLines(path)
+    assertResult(15, "Should have exactly 15 data rows (no header)")(lines.size())
+
+    // Verify content can be read back correctly
+    val readBack = sparkSession.read.option("header", "false").csv(filePath)
+    assertResult(15)(readBack.count())
+
+    // Clean up
+    Files.delete(path)
+  }
+
+  test("Should handle CSV with headers when only single partition exists") {
+    val filePath = "/tmp/output_test_single_partition.csv"
+    val path = Paths.get(filePath)
+
+    // Clean up any existing file
+    if (Files.exists(path)) {
+      Files.delete(path)
+    }
+
+    // Create small dataset that will fit in single partition
+    val smallCsvData = Seq(
+      ("acc1", "user1", "txn1", 10.0),
+      ("acc2", "user2", "txn2", 20.0)
+    )
+    val smallCsvDf = sparkSession.createDataFrame(smallCsvData).toDF("account", "name", "transaction", "amount")
+
+    val sinkFactory = new SinkFactory(FlagsConfig(), MetadataConfig(), FoldersConfig())
+    val step = Step(options = Map(FORMAT -> CSV, PATH -> filePath, "header" -> "true"))
+    val res = sinkFactory.pushToSink(smallCsvDf, "csv-single-partition", step, LocalDateTime.now())
+
+    assert(res.isSuccess)
+    assertResult(2)(res.count)
+    assertResult(CSV)(res.format)
+    assert(res.exception.isEmpty)
+
+    // Verify that a single file exists
+    assert(Files.exists(path), s"File should exist at $filePath")
+    assert(Files.isRegularFile(path), s"Path should be a regular file, not a directory: $filePath")
+
+    // Verify we have header + 2 data rows
+    val lines = Files.readAllLines(path)
+    assertResult(3, "Should have 1 header row + 2 data rows")(lines.size())
+
+    // Verify header is present
+    val headerLine = "account,name,transaction,amount"
+    assertResult(headerLine)(lines.get(0))
+
+    // Clean up
+    Files.delete(path)
   }
 }

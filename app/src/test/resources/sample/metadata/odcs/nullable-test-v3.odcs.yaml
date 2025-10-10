@@ -1,0 +1,31 @@
+# Test file to verify required field mapping to nullable metadata
+domain: test
+dataProduct: nullable-test
+version: 1.0.0
+status: current
+id: test-nullable-mapping
+
+kind: DataContract
+apiVersion: v3.0.0
+
+schema:
+  - name: test_table
+    physicalName: test_table
+    physicalType: table
+    description: Test table for nullable field mapping
+    properties:
+      - name: required_field
+        logicalType: string
+        physicalType: varchar(100)
+        required: true
+        description: This field is required, so it should NOT be nullable
+        primaryKey: false
+        primaryKeyPosition: -1
+      - name: optional_field
+        logicalType: string
+        physicalType: varchar(100)
+        required: false
+        description: This field is optional, so it should be nullable
+        primaryKey: false
+        primaryKeyPosition: -1
+
