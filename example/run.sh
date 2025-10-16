@@ -24,7 +24,8 @@ else
   PROP_FILE="$PROP_FILE_LOCAL"
 fi
 
-data_caterer_version=$(grep -E "^version=" "$PROP_FILE" | cut -d= -f2)
+data_caterer_version="yaml-test"
+#data_caterer_version=$(grep -E "^version=" "$PROP_FILE" | cut -d= -f2)
 
 if [[ -s ".tmp_prev_class_name" ]]; then
   prev_class_name=$(cat .tmp_prev_class_name)
@@ -76,7 +77,7 @@ else
     echo "Failed to build!"
     exit 1
   fi
-  jar_path="$(pwd)/build/libs/example-${data_caterer_version}.jar"
+  jar_path="$(pwd)/build/libs/data-caterer-example.jar"
 fi
 
 docker network create --driver bridge docker_default || true

@@ -1,6 +1,6 @@
 package io.github.datacatering.datacaterer.core.generator.metadata.datasource.jsonschema
 
-import io.github.datacatering.datacaterer.api.model.{ExpressionValidation, FieldNamesValidation, GroupByValidation}
+import io.github.datacatering.datacaterer.api.model.{ExpressionValidation, FieldNamesValidation}
 import io.github.datacatering.datacaterer.core.generator.metadata.datasource.jsonschema.model.{JsonSchemaDefinition, JsonSchemaProperty}
 import org.scalatest.funsuite.AnyFunSuite
 

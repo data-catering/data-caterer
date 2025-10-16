@@ -261,18 +261,20 @@ tasks.register<JavaExec>("runUI") {
     description = "Run Data Caterer UI (standalone mode)"
     classpath = sourceSets.main.get().runtimeClasspath
     mainClass.set("io.github.datacatering.datacaterer.core.ui.DataCatererUI")
-    
+
     // Set environment variables for YAML plan and task paths (absolute paths)
     val projectDir = project.projectDir.absolutePath
     val rootProjectDir = project.rootProject.projectDir.absolutePath
     environment("PLAN_FILE_PATH", "$rootProjectDir/app/src/test/resources/sample/plan/customer-create-plan.yaml")
     environment("TASK_FOLDER_PATH", "$rootProjectDir/app/src/test/resources/sample/task")
-    
+    environment("GENERATED_REPORTS_FOLDER_PATH", "/tmp/data-caterer/report")
+    environment("LOG_LEVEL", "debug")
+
     // Set working directory to project root to help with relative path resolution
     workingDir(rootProjectDir)
-    
-    // Add JVM arguments similar to docker script
-    jvmArgs(
+
+    // Build list of JVM arguments
+    val jvmArgsList = mutableListOf(
         "-Djava.security.manager=allow",
         "-Djdk.module.illegalAccess=deny",
         "--add-opens=java.base/java.lang=ALL-UNNAMED",
@@ -290,6 +292,9 @@ tasks.register<JavaExec>("runUI") {
         "--add-opens=java.base/sun.util.calendar=ALL-UNNAMED",
         "--add-opens=java.security.jgss/sun.security.krb5=ALL-UNNAMED"
     )
+
+
+    jvmArgs(jvmArgsList)
 }
 
 tasks.register<JavaExec>("runSpark") {

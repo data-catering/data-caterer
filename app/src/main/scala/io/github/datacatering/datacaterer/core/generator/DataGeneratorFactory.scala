@@ -1,6 +1,6 @@
 package io.github.datacatering.datacaterer.core.generator
 
-import io.github.datacatering.datacaterer.api.model.Constants.{ALL_COMBINATIONS, EXCLUDE_FIELDS, EXCLUDE_FIELD_PATTERNS, INCLUDE_FIELDS, INCLUDE_FIELD_PATTERNS, INDEX_INC_FIELD, OMIT, ONE_OF_GENERATOR, SQL_GENERATOR, STATIC}
+import io.github.datacatering.datacaterer.api.model.Constants.{ALL_COMBINATIONS, EXCLUDE_FIELDS, EXCLUDE_FIELD_PATTERNS, INCLUDE_FIELDS, INCLUDE_FIELD_PATTERNS, INDEX_INC_FIELD, ONE_OF_GENERATOR, SQL_GENERATOR, STATIC}
 import io.github.datacatering.datacaterer.api.model.{Field, PerFieldCount, Step}
 import io.github.datacatering.datacaterer.core.exception.InvalidStepCountGeneratorConfigurationException
 import io.github.datacatering.datacaterer.core.generator.provider.DataGenerator
@@ -489,9 +489,17 @@ object UDFHelperFunctions extends Serializable {
 
   private val RANDOM = new Random()
 
-  def regex(faker: Faker): UserDefinedFunction = udf((s: String) => faker.regexify(s)).asNondeterministic()
+  def regex(faker: Faker): UserDefinedFunction = udf((s: String) => {
+    // Create a new Faker instance inside the UDF to avoid serialization issues
+    val localFaker = new Faker()
+    localFaker.regexify(s)
+  }).asNondeterministic()
 
-  def expression(faker: Faker): UserDefinedFunction = udf((s: String) => faker.expression(s)).asNondeterministic()
+  def expression(faker: Faker): UserDefinedFunction = udf((s: String) => {
+    // Create a new Faker instance inside the UDF to avoid serialization issues
+    val localFaker = new Faker()
+    localFaker.expression(s)
+  }).asNondeterministic()
 
   def alphaNumeric(faker: Faker): UserDefinedFunction = udf((minLength: Int, maxLength: Int) => {
     val length = RANDOM.nextInt(maxLength + 1) + minLength

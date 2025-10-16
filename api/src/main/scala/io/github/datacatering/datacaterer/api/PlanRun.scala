@@ -183,6 +183,14 @@ trait PlanRun {
   def metadataSource: MetadataSourceBuilder = MetadataSourceBuilder()
 
   /**
+   * Create new YAML builder for referencing existing YAML plan and task files.
+   * This allows loading existing YAML configurations and overriding specific parts using the programmatic API.
+   *
+   * @return YamlBuilder
+   */
+  def yaml: YamlBuilder = YamlBuilder()
+
+  /**
    * Create new CSV generation step with configurations
    *
    * @param name    Data source name

@@ -257,12 +257,144 @@ Content-Type: application/json
 
         ```bash
         curl -X GET http://localhost:9898/run/status/execution-123
+
+        # Alternative endpoint (same functionality)
+        curl -X GET http://localhost:9898/run/executions/execution-123
         ```
 
     === "wget"
 
         ```bash
         wget -O - http://localhost:9898/run/status/execution-123
+
+        # Alternative endpoint (same functionality)
+        wget -O - http://localhost:9898/run/executions/execution-123
+        ```
+
+    **Note:** Both `/run/status/{id}` and `/run/executions/{id}` provide the same functionality.
+
+??? example "Execute Plan by Name - `POST /run/plans/{planName}`"
+
+    Execute a saved plan by name with enhanced control options. This is the recommended way to execute YAML-defined plans.
+
+    **Path Parameters:**
+
+    - `planName` - The name of the plan to execute (alphanumeric, hyphens, and underscores allowed)
+
+    **Query Parameters:**
+
+    - `source` (optional, default: "auto") - Source type for plan loading
+    - `mode` (optional, default: "generate") - Execution mode: "generate" or "delete"
+    - `fileName` (optional) - Specific file name for plan loading
+
+    **Response:** `200 OK`
+
+    ```
+    Plan 'my-plan' started in generate mode
+    ```
+
+    **Example:**
+
+    === "curl"
+
+        ```bash
+        # Execute plan with default parameters
+        curl -X POST http://localhost:9898/run/plans/my-customer-plan
+
+        # Execute in delete mode
+        curl -X POST "http://localhost:9898/run/plans/my-customer-plan?mode=delete"
+
+        # Execute with specific source and file
+        curl -X POST "http://localhost:9898/run/plans/my-plan?source=yaml&fileName=custom-plan.yaml"
+        ```
+
+    === "wget"
+
+        ```bash
+        # Execute plan with default parameters
+        wget --method=POST http://localhost:9898/run/plans/my-customer-plan
+
+        # Execute in delete mode
+        wget --method=POST "http://localhost:9898/run/plans/my-customer-plan?mode=delete"
+        ```
+
+??? example "Execute Plan Task - `POST /run/plans/{planName}/tasks/{taskName}`"
+
+    Execute a specific task within a saved plan. This allows selective execution of individual tasks without running the entire plan.
+
+    **Path Parameters:**
+
+    - `planName` - The name of the plan
+    - `taskName` - The name of the task to execute
+
+    **Query Parameters:**
+
+    - `source` (optional, default: "auto") - Source type for plan loading
+    - `mode` (optional, default: "generate") - Execution mode: "generate" or "delete"
+    - `fileName` (optional) - Specific file name for plan loading
+
+    **Response:** `200 OK`
+
+    ```
+    Task 'json_account_file' in plan 'account-plan' started in generate mode
+    ```
+
+    **Example:**
+
+    === "curl"
+
+        ```bash
+        # Execute specific task
+        curl -X POST http://localhost:9898/run/plans/account-plan/tasks/json_account_file
+
+        # Execute task in delete mode
+        curl -X POST "http://localhost:9898/run/plans/account-plan/tasks/json_account_file?mode=delete"
+        ```
+
+    === "wget"
+
+        ```bash
+        wget --method=POST http://localhost:9898/run/plans/account-plan/tasks/json_account_file
+        ```
+
+??? example "Execute Plan Step - `POST /run/plans/{planName}/tasks/{taskName}/steps/{stepName}`"
+
+    Execute a specific step within a task in a saved plan. This provides the most granular control over plan execution.
+
+    **Path Parameters:**
+
+    - `planName` - The name of the plan
+    - `taskName` - The name of the task
+    - `stepName` - The name of the step to execute
+
+    **Query Parameters:**
+
+    - `source` (optional, default: "auto") - Source type for plan loading
+    - `mode` (optional, default: "generate") - Execution mode: "generate" or "delete"
+    - `fileName` (optional) - Specific file name for plan loading
+
+    **Response:** `200 OK`
+
+    ```
+    Step 'file_account' in task 'json_account_file' of plan 'account-plan' started in generate mode
+    ```
+
+    **Example:**
+
+    === "curl"
+
+        ```bash
+        # Execute specific step
+        curl -X POST http://localhost:9898/run/plans/account-plan/tasks/json_account_file/steps/file_account
+
+        # Execute step in delete mode
+        curl -X POST "http://localhost:9898/run/plans/account-plan/tasks/json_account_file/steps/file_account?mode=delete"
+        ```
+
+    === "wget"
+
+        ```bash
+        wget --method=POST http://localhost:9898/run/plans/account-plan/tasks/json_account_file/steps/file_account
         ```
 
 ### Plan Management
@@ -702,57 +834,110 @@ Content-Type: application/json
 
 ### Sample Data Generation
 
-??? abstract "Generate Sample from Task File - `POST /sample/task-file`"
+!!! info "Fast Mode"
 
-    Generate sample data based on a task file configuration.
+    All sample endpoints support a `fastMode` parameter that controls the data generation strategy:
 
-    **Request Body:**
+    **Fast Mode Enabled (`fastMode=true`, default):**
 
-    ```json
-    {
-      "taskYamlPath": "/path/to/task.yaml",
-      "stepName": "optional-step-name",
-      "sampleSize": 10,
-      "fastMode": true
-    }
-    ```
+    - Uses SQL-only generators for maximum performance
+    - Response times: 80-141ms for most requests (after warm-up)
+    - Ideal for quick API usage and interactive applications
+    - Best for simple to moderately complex data generation
+    - Recommended for production use
 
-    **Response:** `200 OK`
+    **Fast Mode Disabled (`fastMode=false`):**
+
+    - Uses advanced generators with Faker library support
+    - Response times: 150-210ms for most requests
+    - Supports more complex data generation patterns
+    - Required for some advanced expression fields
+    - Use when you need specific Faker expressions
+
+    **Performance Comparison:**
+
+    - Fast mode is **45-58% faster** for complex field generation
+    - Fast mode shows more consistent performance across requests
+    - Both modes scale efficiently (50 records ≈ 10 records in execution time)
+
+    **When to use each mode:**
+
+    - ✅ **Fast Mode ON**: Default choice for most use cases, APIs, and interactive tools
+    - ⚠️ **Fast Mode OFF**: Only when you specifically need advanced Faker expressions
+
+??? abstract "Generate Sample from Task - `GET /sample/tasks/{taskName}`"
+
+    Generate sample data from all steps within a specific task by its name. This endpoint searches for the task across all available task files and generates samples for all steps within that task.
+
+    **Path Parameters:**
+
+    - `taskName` - The name of the task (alphanumeric, hyphens, and underscores allowed)
+
+    **Query Parameters:**
+
+    - `sampleSize` (optional, default: 10) - Number of sample records to generate per step
+    - `fastMode` (optional, default: true) - Enable fast generation mode (see Fast Mode section above)
+
+    **Response:** `200 OK` (MultiSchemaSampleResponse)
+
+    Returns a JSON object with samples grouped by step name. Each step within the task generates the specified number of sample records.
 
     ```json
     {
       "success": true,
-      "executionId": "sample-exec-123",
-      "schema": {
-        "fields": [
+      "executionId": "b5c9a2f1",
+      "samples": {
+        "customer_details_step": [
           {
-            "name": "id",
-            "type": "integer",
-            "nullable": false
+            "customer_id": "CUST001234",
+            "name": "John Smith",
+            "email": "john.smith@example.com",
+            "age": 34,
+            "created_at": "2024-01-15T10:30:00Z"
           },
           {
-            "name": "name",
-            "type": "string",
-            "nullable": true
+            "customer_id": "CUST001235",
+            "name": "Jane Doe", 
+            "email": "jane.doe@example.com",
+            "age": 28,
+            "created_at": "2024-01-15T11:45:00Z"
+          }
+        ],
+        "customer_addresses_step": [
+          {
+            "customer_id": "CUST001234",
+            "address_id": "ADDR567890",
+            "street": "123 Main St",
+            "city": "Springfield",
+            "state": "IL",
+            "zip_code": "62701"
+          },
+          {
+            "customer_id": "CUST001235", 
+            "address_id": "ADDR567891",
+            "street": "456 Oak Ave",
+            "city": "Chicago",
+            "state": "IL", 
+            "zip_code": "60601"
           }
         ]
       },
-      "sampleData": [
-        {
-          "id": 1,
-          "name": "John Doe"
-        },
-        {
-          "id": 2,
-          "name": "Jane Smith"
-        }
-      ],
       "metadata": {
-        "sampleSize": 10,
-        "actualRecords": 2,
-        "generatedInMs": 150,
+        "sampleSize": 2,
+        "actualRecords": 4,
+        "generatedInMs": 180,
         "fastModeEnabled": true
       }
+    }
+    ```
+
+    **Error Response:** `400 Bad Request`
+
+    ```json
+    {
+      "code": "TASK_SAMPLE_ERROR",
+      "message": "Task 'nonexistent_task' not found in task folder: /path/to/tasks. Available tasks: customer_task, account_task, transaction_task",
+      "details": "IllegalArgumentException"
     }
     ```
 
@@ -761,156 +946,406 @@ Content-Type: application/json
     === "curl"
 
         ```bash
-        curl -X POST http://localhost:9898/sample/task-file \
-          -H "Content-Type: application/json" \
-          -d '{
-            "taskYamlPath": "/path/to/task.yaml",
-            "stepName": "optional-step-name",
-            "sampleSize": 10,
-            "fastMode": true
-          }'
+        # Generate sample from task with default parameters
+        curl -X GET http://localhost:9898/sample/tasks/customer_task
+
+        # Generate with custom sample size and fast mode disabled
+        curl -X GET "http://localhost:9898/sample/tasks/customer_task?sampleSize=25&fastMode=false"
+
+        # Generate samples for account task
+        curl -X GET "http://localhost:9898/sample/tasks/account_generation_task?sampleSize=5"
         ```
 
     === "wget"
 
         ```bash
-        wget --method=POST \
-          --header="Content-Type: application/json" \
-          --body-data='{
-            "taskYamlPath": "/path/to/task.yaml",
-            "stepName": "optional-step-name",
-            "sampleSize": 10,
-            "fastMode": true
-          }' \
-          http://localhost:9898/sample/task-file
+        # Generate sample from task with default parameters
+        wget -O - http://localhost:9898/sample/tasks/customer_task
+
+        # Generate with custom sample size
+        wget -O - "http://localhost:9898/sample/tasks/customer_task?sampleSize=25&fastMode=true"
         ```
 
-??? abstract "Generate Sample from Task YAML Content - `POST /sample/task-yaml`"
+??? abstract "Generate Sample from Step - `GET /sample/steps/{stepName}`"
 
-    Generate sample data based on a task YAML content passed directly in the request body. This endpoint supports both JSON and raw YAML content types using custom unmarshallers.
+    Generate sample data from a specific step by its name. This endpoint searches for the step across all available tasks and generates sample data using that step's configuration. Returns **raw data** in the step's configured format.
 
-    **Content Type Options:**
+    **Path Parameters:**
 
-    1. **Raw YAML (recommended)**: Send YAML content directly with query parameters
-       - **Content-Type**: `text/plain` or `application/yaml`
-       - **Request Body**: Raw YAML task content
-       - **Query Parameters**:
-         - `stepName` (optional) - The name of the specific step to use for sample generation
-         - `sampleSize` (optional) - Number of sample records to generate (default: 10)
-         - `fastMode` (optional) - Enable fast generation mode (default: true)
+    - `stepName` - The name of the step (alphanumeric, hyphens, and underscores allowed)
 
-    2. **JSON format** (backward compatibility): Send JSON with YAML content as string property
-       - **Content-Type**: `application/json`
-       - **Request Body**: JSON object with `taskYamlContent` field
+    **Query Parameters:**
 
-    **Response:** `200 OK` - Same format as other sample endpoints
+    - `sampleSize` (optional, default: 10) - Number of sample records to generate
+    - `fastMode` (optional, default: true) - Enable fast generation mode
 
-    **Error Handling:**
-    The endpoint returns specific error codes for different failure scenarios:
-    - `INVALID_YAML` - When YAML content cannot be parsed or contains invalid structure
-    - `YAML_PARSE_ERROR` - When there are syntax errors in the YAML content  
-    - `INVALID_REQUEST` - When required parameters are missing or invalid
-    - `STEP_NOT_FOUND` - When the specified stepName doesn't exist in the YAML
+    **Response:** `200 OK` - Returns **raw data** in the step's configured format
 
-    **Examples:**
+    The response format depends on the step configuration:
 
-    === "Raw YAML with curl"
+    **JSON Format** (`Content-Type: application/json`):
+
+    Returns newline-delimited JSON (each line is a valid JSON object):
+
+    ```json
+    {"customer_id":"CUST001234","name":"John Smith","email":"john.smith@example.com","age":34}
+    {"customer_id":"CUST001235","name":"Jane Doe","email":"jane.doe@example.com","age":28}
+    {"customer_id":"CUST001236","name":"Bob Johnson","email":"bob.johnson@example.com","age":42}
+    ```
+
+    **CSV Format** (`Content-Type: text/csv; charset=UTF-8`):
+
+    Returns CSV data with headers:
+
+    ```csv
+    customer_id,name,email,age
+    CUST001234,John Smith,john.smith@example.com,34
+    CUST001235,Jane Doe,jane.doe@example.com,28
+    CUST001236,Bob Johnson,bob.johnson@example.com,42
+    ```
+
+    **Error Response:** `400 Bad Request`
+
+    ```json
+    {
+      "code": "STEP_SAMPLE_ERROR",
+      "message": "Step 'nonexistent_step' not found in any task. Available steps: customer_details, customer_addresses, account_info, transaction_data",
+      "details": "IllegalArgumentException"
+    }
+    ```
+
+    !!! tip "Direct Step Access"
+
+        This endpoint is perfect for:
+
+        - **Quick Testing**: Generate samples from specific steps without knowing which task contains them
+        - **Step Validation**: Test individual step configurations in isolation
+        - **Integration**: Get data directly in the step's native format for use in other systems
+        - **Debugging**: Isolate and test problematic step configurations
+
+        The step name must be unique across all tasks. If multiple tasks contain steps with the same name, the first one found will be used.
+
+    **Example:**
+
+    === "curl"
 
         ```bash
-        # Using a task YAML file with query parameters
-        curl -X POST "http://localhost:9898/sample/task-yaml?stepName=file_account&sampleSize=5&fastMode=true" \
-           -H "Content-Type: text/plain" \
-           --data-binary '@app/src/test/resources/sample/task/file/simple-json-task.yaml'
+        # Generate sample from step with default parameters
+        curl -X GET http://localhost:9898/sample/steps/customer_details
 
-        # Using inline YAML content with query parameters
-        curl -X POST "http://localhost:9898/sample/task-yaml?stepName=test_step&sampleSize=5&fastMode=true" \
-          -H "Content-Type: text/plain" \
-          --data-binary @- <<'EOF'
-        name: test_task
-        steps:
-        - name: test_step
-          type: file
-          fields:
-            - name: id
-              type: long
-              options:
-                min: 1
-                max: 1000
-            - name: name
-              type: string
-              options:
-                expression: "#{Name.fullName}"
-        EOF
+        # Generate with custom sample size and fast mode disabled 
+        curl -X GET "http://localhost:9898/sample/steps/customer_details?sampleSize=15&fastMode=false"
 
-        # Using application/yaml content type
-        curl -X POST "http://localhost:9898/sample/task-yaml?stepName=test_step&sampleSize=3" \
-          -H "Content-Type: application/yaml" \
-          --data-binary @- <<'EOF'
-        name: customer_task
-        steps:
-        - name: test_step
-          type: file
-          fields:
-            - name: customer_id
-              type: string
-              options:
-                regex: "CUST[0-9]{6}"
-            - name: email
-              type: string
-              options:
-                expression: "#{Internet.emailAddress}"
-        EOF
+        # Generate CSV data from step
+        curl -X GET "http://localhost:9898/sample/steps/customer_csv_step?sampleSize=20" -o customers.csv
+
+        # Generate large JSON sample
+        curl -X GET "http://localhost:9898/sample/steps/transaction_data?sampleSize=100" -o transactions.json
         ```
 
-    === "JSON with curl"
+    === "wget"
 
         ```bash
-        # JSON format with parameters in request body
-        curl -X POST http://localhost:9898/sample/task-yaml \
-          -H "Content-Type: application/json" \
-          -d '{
-            "taskYamlContent": "name: test_task\nsteps:\n  - name: test_step\n    type: file\n    fields:\n      - name: id\n        type: long\n        options:\n          min: 1\n          max: 1000",
-            "stepName": "test_step",
-            "sampleSize": 5,
-            "fastMode": true
-          }'
+        # Generate sample from step with default parameters
+        wget -O - http://localhost:9898/sample/steps/customer_details
 
-        # JSON format with query parameters overriding request body
-        curl -X POST "http://localhost:9898/sample/task-yaml?sampleSize=3&fastMode=false" \
-          -H "Content-Type: application/json" \
-          -d '{
-            "taskYamlContent": "name: test_task\nsteps:\n  - name: test_step\n    type: file\n    fields:\n      - name: id\n        type: long\n        options:\n          min: 1\n          max: 1000",
-            "stepName": "test_step",
-            "sampleSize": 10,
-            "fastMode": true
-          }'
+        # Generate with custom parameters and save to file
+        wget -O customer_sample.json "http://localhost:9898/sample/steps/customer_details?sampleSize=15"
+
+        # Generate CSV data
+        wget -O customers.csv "http://localhost:9898/sample/steps/customer_csv_step?sampleSize=50"
         ```
 
-    === "Raw YAML with wget"
+??? abstract "Generate Sample from Saved Plan - `GET /sample/plans/{planName}`"
+
+    Generate sample data from an entire saved plan configuration. This endpoint loads a plan by name and generates sample data for all enabled tasks and steps within it.
+
+    **Path Parameters:**
+
+    - `planName` - The name of the saved plan (alphanumeric, hyphens, and underscores allowed)
+
+    **Query Parameters:**
+
+    - `sampleSize` (optional, default: 10) - Number of sample records to generate per step
+    - `fastMode` (optional, default: true) - Enable fast generation mode (see Fast Mode section above)
+
+    **Response:** `200 OK` (MultiSchemaSampleResponse)
+
+    Returns a JSON object with samples grouped by task/step name. Each task generates sample data for all its steps.
+
+    ```json
+    {
+      "success": true,
+      "executionId": "a8b3c4d5",
+      "samples": {
+        "customer-plan/customer_data": [
+          {
+            "customer_id": "CUST000123",
+            "name": "John Smith",
+            "email": "john.smith@example.com",
+            "created_at": "2024-01-15T10:30:00Z"
+          },
+          {
+            "customer_id": "CUST000124",
+            "name": "Jane Doe",
+            "email": "jane.doe@example.com",
+            "created_at": "2024-01-15T11:45:00Z"
+          }
+        ],
+        "customer-plan/account_data": [
+          {
+            "account_id": "ACC1234567890",
+            "customer_id": "CUST000123",
+            "balance": 5432.10,
+            "account_type": "checking"
+          },
+          {
+            "account_id": "ACC9876543210",
+            "customer_id": "CUST000124",
+            "balance": 12500.50,
+            "account_type": "savings"
+          }
+        ]
+      },
+      "metadata": {
+        "sampleSize": 2,
+        "actualRecords": 4,
+        "generatedInMs": 245,
+        "fastModeEnabled": true
+      }
+    }
+    ```
+
+    **Error Response:** `400 Bad Request`
+
+    ```json
+    {
+      "code": "GENERATION_ERROR",
+      "message": "Plan not found: my-customer-plan (searched in JSON and YAML sources)",
+      "details": "FileNotFoundException"
+    }
+    ```
+
+    **Example:**
+
+    === "curl"
 
         ```bash
-        # Using application/yaml content type
-        wget --method=POST \
-          --header="Content-Type: application/yaml" \
-          --body-data='name: customer_task
-        steps:
-          - name: generate_customers
-            type: file
-            fields:
-              - name: customer_id
-                type: string
-                options:
-                  regex: "CUST[0-9]{6}"
-              - name: name
-                type: string
-                options:
-                  expression: "#{Name.fullName}"' \
-          "http://localhost:9898/sample/task-yaml?stepName=generate_customers&sampleSize=8"
+        # Generate sample from plan with default parameters
+        curl -X GET http://localhost:9898/sample/plans/my-customer-plan
+
+        # Generate with custom sample size and fast mode disabled
+        curl -X GET "http://localhost:9898/sample/plans/my-customer-plan?sampleSize=20&fastMode=false"
+        ```
+
+    === "wget"
+
+        ```bash
+        # Generate sample from plan with default parameters
+        wget -O - http://localhost:9898/sample/plans/my-customer-plan
+
+        # Generate with custom sample size
+        wget -O - "http://localhost:9898/sample/plans/my-customer-plan?sampleSize=20&fastMode=true"
+        ```
+
+??? abstract "Generate Sample from Plan Task - `GET /sample/plans/{planName}/tasks/{taskName}`"
+
+    Generate sample data from a specific task within a saved plan. If the task contains multiple steps, all steps will be included in the response.
+
+    **Path Parameters:**
+
+    - `planName` - The name of the saved plan
+    - `taskName` - The name of the task within the plan
+
+    **Query Parameters:**
+
+    - `sampleSize` (optional, default: 10) - Number of sample records to generate per step
+    - `fastMode` (optional, default: true) - Enable fast generation mode
+
+    **Response:** `200 OK` (MultiSchemaSampleResponse)
+
+    Returns a JSON object with samples for all steps within the specified task.
+
+    ```json
+    {
+      "success": true,
+      "executionId": "f2a8b1c4",
+      "samples": {
+        "customer-plan/accounts_step": [
+          {
+            "account_id": "ACC1234567890",
+            "customer_id": "CUST000123",
+            "balance": 5432.10,
+            "status": "active",
+            "opened_date": "2023-05-15"
+          },
+          {
+            "account_id": "ACC9876543210",
+            "customer_id": "CUST000456",
+            "balance": 12500.50,
+            "status": "active",
+            "opened_date": "2023-08-22"
+          },
+          {
+            "account_id": "ACC5555555555",
+            "customer_id": "CUST000789",
+            "balance": 825.75,
+            "status": "frozen",
+            "opened_date": "2024-01-10"
+          }
+        ],
+        "customer-plan/transactions_step": [
+          {
+            "transaction_id": "TXN001",
+            "account_id": "ACC1234567890",
+            "amount": 150.00,
+            "type": "debit",
+            "timestamp": "2024-01-15T14:30:00Z"
+          },
+          {
+            "transaction_id": "TXN002",
+            "account_id": "ACC9876543210",
+            "amount": 2500.00,
+            "type": "credit",
+            "timestamp": "2024-01-15T15:45:00Z"
+          }
+        ]
+      },
+      "metadata": {
+        "sampleSize": 3,
+        "actualRecords": 5,
+        "generatedInMs": 180,
+        "fastModeEnabled": true
+      }
+    }
+    ```
+
+    **Error Response:** `400 Bad Request`
+
+    ```json
+    {
+      "code": "GENERATION_ERROR",
+      "message": "Step/Task 'invalid_task' not found in plan. Available: json_account_file, csv_customer_file",
+      "details": "IllegalArgumentException"
+    }
+    ```
+
+    **Example:**
+
+    === "curl"
+
+        ```bash
+        curl -X GET "http://localhost:9898/sample/plans/customer-plan/tasks/json_account_file?sampleSize=5"
+        ```
+
+    === "wget"
+
+        ```bash
+        wget -O - "http://localhost:9898/sample/plans/customer-plan/tasks/json_account_file?sampleSize=5"
+        ```
+
+??? abstract "Generate Sample from Plan Step - `GET /sample/plans/{planName}/tasks/{taskName}/steps/{stepName}`"
+
+    Generate sample data from a specific step within a task in a saved plan. Returns **raw data** in the step's configured format (JSON, CSV, Parquet, etc.), making it ideal for integration with other systems or quick data inspection.
+
+    **Path Parameters:**
+
+    - `planName` - The name of the saved plan
+    - `taskName` - The name of the task within the plan
+    - `stepName` - The name of the step within the task
+
+    **Query Parameters:**
+
+    - `sampleSize` (optional, default: 10) - Number of sample records to generate
+    - `fastMode` (optional, default: true) - Enable fast generation mode
+
+    **Response:** `200 OK` - Returns **raw data** in the step's configured format
+
+    The response format depends on the step configuration:
+
+    **JSON Format** (`Content-Type: application/json`):
+
+    Returns newline-delimited JSON (each line is a valid JSON object):
+
+    ```json
+    {"account_id":"ACC1234567890","balance":5432.10,"status":"active","opened_date":"2023-05-15"}
+    {"account_id":"ACC9876543210","balance":12500.50,"status":"active","opened_date":"2023-08-22"}
+    {"account_id":"ACC5555555555","balance":825.75,"status":"frozen","opened_date":"2024-01-10"}
+    ```
+
+    **CSV Format** (`Content-Type: text/csv; charset=UTF-8`):
+
+    Returns CSV data with headers:
+
+    ```csv
+    account_id,balance,status,opened_date
+    ACC1234567890,5432.10,active,2023-05-15
+    ACC9876543210,12500.50,active,2023-08-22
+    ACC5555555555,825.75,frozen,2024-01-10
+    ```
+
+    **Parquet/ORC Format** (`Content-Type: application/octet-stream`):
+
+    Returns binary data that can be written to a file and read by Spark/other tools.
+
+    **Error Response:** `400 Bad Request`
+
+    ```json
+    {
+      "success": false,
+      "executionId": "err12345",
+      "error": {
+        "code": "GENERATION_ERROR",
+        "message": "Step 'invalid_step' not found in task 'json_account'. Available steps: file_account, validation_step",
+        "details": "IllegalArgumentException"
+      }
+    }
+    ```
+
+    !!! tip "Working with Raw Data"
+
+        This endpoint returns raw data without the JSON envelope, making it perfect for:
+
+        - **Testing**: Validate your data generation configuration before running full plans
+        - **Integration**: Pipe output directly to other tools or scripts
+        - **Inspection**: Quick preview of generated data in native format
+        - **Data Seeding**: Use generated data directly in your applications
+
+        For JSON format, the output is newline-delimited JSON (NDJSON), where each line is a complete JSON object. This is the standard output format for Spark DataFrames written as JSON.
+
+    **Example:**
+
+    === "curl"
+
+        ```bash
+        # Get JSON sample data (newline-delimited JSON)
+        curl -X GET "http://localhost:9898/sample/plans/account-plan/tasks/json_account/steps/file_account?sampleSize=3"
+
+        # Get CSV sample data with fast mode disabled
+        curl -X GET "http://localhost:9898/sample/plans/csv-plan/tasks/csv_task/steps/csv_step?sampleSize=10&fastMode=false"
+
+        # Save JSON sample to file
+        curl -X GET "http://localhost:9898/sample/plans/account-plan/tasks/json_account/steps/file_account?sampleSize=100" \
+          -o sample_accounts.json
+
+        # Save CSV sample to file
+        curl -X GET "http://localhost:9898/sample/plans/customer-plan/tasks/csv_task/steps/customer_step?sampleSize=50" \
+          -o sample_customers.csv
+        ```
+
+    === "wget"
+
+        ```bash
+        # Get sample data and save to file
+        wget -O sample.json "http://localhost:9898/sample/plans/account-plan/tasks/json_account/steps/file_account?sampleSize=3"
+
+        # Get CSV data and save
+        wget -O customers.csv "http://localhost:9898/sample/plans/customer-plan/tasks/csv_task/steps/customer_step?sampleSize=20"
         ```
 
 ??? abstract "Generate Sample from Schema - `POST /sample/schema`"
 
-    Generate sample data based on field definitions. This endpoint allows you to define fields directly without needing a complete step configuration.
+    Generate sample data based on inline field definitions. This endpoint is ideal for ad-hoc testing, prototyping schemas, or generating sample data without creating task/plan files.
 
     **Request Body:**
 
@@ -935,7 +1370,7 @@ Content-Type: application/json
           "nullable": false
         },
         {
-          "name": "customer_name", 
+          "name": "customer_name",
           "type": "string",
           "options": {
             "expression": "#{Name.fullName}"
@@ -943,18 +1378,72 @@ Content-Type: application/json
           "nullable": true
         }
       ],
+      "format": "json",
       "sampleSize": 5,
       "fastMode": true
     }
     ```
 
-    **Response:** `200 OK` - Same format as task file sample response
+    **Parameters:**
+
+    - `fields` (required) - Array of field definitions with name, type, and optional configuration
+    - `format` (optional, default: "json") - Output format: "json", "csv", "parquet", "orc"
+    - `sampleSize` (optional, default: 10) - Number of records to generate (max: 100)
+    - `fastMode` (optional, default: true) - Enable fast generation mode
+
+    **Response:** `200 OK` - Returns **raw data** in the specified format
+
+    **JSON Format Response:**
+
+    ```json
+    {"account_id":"ACC1234567890","balance":5432.10,"customer_name":"John Smith"}
+    {"account_id":"ACC9876543210","balance":7821.45,"customer_name":"Jane Doe"}
+    {"account_id":"ACC5555555555","balance":9234.67,"customer_name":"Bob Johnson"}
+    {"account_id":"ACC7777777777","balance":3456.89,"customer_name":"Alice Williams"}
+    {"account_id":"ACC3333333333","balance":6789.12,"customer_name":"Charlie Brown"}
+    ```
+
+    **CSV Format Response:**
+
+    ```csv
+    account_id,balance,customer_name
+    ACC1234567890,5432.10,John Smith
+    ACC9876543210,7821.45,Jane Doe
+    ACC5555555555,9234.67,Bob Johnson
+    ACC7777777777,3456.89,Alice Williams
+    ACC3333333333,6789.12,Charlie Brown
+    ```
+
+    **Error Response:** `400 Bad Request`
+
+    ```json
+    {
+      "success": false,
+      "executionId": "err98765",
+      "error": {
+        "code": "INVALID_SCHEMA",
+        "message": "Field type 'invalid_type' is not supported. Use: string, int, long, double, boolean, timestamp, date, etc.",
+        "details": "IllegalArgumentException"
+      }
+    }
+    ```
+
+    !!! tip "Use Cases"
+
+        The `/sample/schema` endpoint is perfect for:
+
+        - **Quick Prototyping**: Test field configurations without creating YAML files
+        - **API Integration**: Generate mock data for testing APIs and services
+        - **Schema Validation**: Verify field types and constraints before using in plans
+        - **Documentation**: Generate sample data for API documentation and examples
+        - **Data Exploration**: Experiment with different field generators and options
 
     **Example:**
 
     === "curl"
 
         ```bash
+        # Generate JSON sample data
         curl -X POST http://localhost:9898/sample/schema \
           -H "Content-Type: application/json" \
           -d '{
@@ -969,7 +1458,7 @@ Content-Type: application/json
               },
               {
                 "name": "balance",
-                "type": "double", 
+                "type": "double",
                 "options": {
                   "min": 100.0,
                   "max": 10000.0
@@ -977,14 +1466,47 @@ Content-Type: application/json
                 "nullable": false
               }
             ],
+            "format": "json",
             "sampleSize": 5,
             "fastMode": true
           }'
+
+        # Generate CSV sample data
+        curl -X POST http://localhost:9898/sample/schema \
+          -H "Content-Type: application/json" \
+          -d '{
+            "fields": [
+              {
+                "name": "user_id",
+                "type": "long"
+              },
+              {
+                "name": "email",
+                "type": "string",
+                "options": {
+                  "expression": "#{Internet.emailAddress}"
+                }
+              },
+              {
+                "name": "age",
+                "type": "int",
+                "options": {
+                  "min": 18,
+                  "max": 80
+                }
+              }
+            ],
+            "format": "csv",
+            "sampleSize": 10,
+            "fastMode": true
+          }' \
+          -o users.csv
         ```
 
     === "wget"
 
         ```bash
+        # Generate JSON sample data
         wget --method=POST \
           --header="Content-Type: application/json" \
           --body-data='{
@@ -1007,10 +1529,31 @@ Content-Type: application/json
                 "nullable": false
               }
             ],
+            "format": "json",
             "sampleSize": 5,
             "fastMode": true
           }' \
-          http://localhost:9898/sample/schema
+          -O - http://localhost:9898/sample/schema
+
+        # Generate CSV and save to file
+        wget --method=POST \
+          --header="Content-Type: application/json" \
+          --body-data='{
+            "fields": [
+              {
+                "name": "user_id",
+                "type": "long"
+              },
+              {
+                "name": "email",
+                "type": "string"
+              }
+            ],
+            "format": "csv",
+            "sampleSize": 20,
+            "fastMode": true
+          }' \
+          -O users.csv http://localhost:9898/sample/schema
         ```
 
 ### Reports
@@ -1203,7 +1746,7 @@ Each endpoint above includes copy-paste ready examples for both `curl` and `wget
 
 - **Plan Management**: Use `/run` to execute plans, `/plan` to save/retrieve configurations
 - **Connection Setup**: Use `/connection` to manage data source connections  
-- **Sample Generation**: Use `/sample/task-file` or `/sample/schema` for quick data previews
+- **Sample Generation**: Use `/sample/tasks/{taskName}`, `/sample/steps/{stepName}`, or `/sample/schema` for quick data previews
 - **Monitoring**: Use `/run/history` and `/run/status/{id}` to track execution progress
 - **Reports**: Use `/report/{runId}/{resource}` to access generated reports
 

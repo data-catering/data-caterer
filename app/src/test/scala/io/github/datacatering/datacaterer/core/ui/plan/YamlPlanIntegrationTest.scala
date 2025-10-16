@@ -80,7 +80,7 @@ class YamlPlanIntegrationTest extends SparkSuite with BeforeAndAfterAll with Moc
   
   test("PlanProcessor should find correct YAML plan file when UI plan references YAML tasks") {
     import io.github.datacatering.datacaterer.api.PlanRun
-    import io.github.datacatering.datacaterer.api.model.{DataCatererConfiguration, Plan, TaskSummary}
+    import io.github.datacatering.datacaterer.api.model.{Plan, TaskSummary}
     import io.github.datacatering.datacaterer.core.config.ConfigParser
     import io.github.datacatering.datacaterer.core.plan.PlanProcessor
     

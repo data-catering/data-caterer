@@ -1,0 +1,120 @@
+package io.github.datacatering.plan;
+
+import io.github.datacatering.datacaterer.api.model.DoubleType;
+import io.github.datacatering.datacaterer.api.model.TimestampType;
+import io.github.datacatering.datacaterer.javaapi.api.PlanRun;
+import scala.Tuple2;
+
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+
+/**
+ * Example demonstrating how to programmatically generate different numbers of records
+ * per company based on a configuration map.
+ *
+ * Use case: Generate payment JSON files where each company gets a specific number of records.
+ *
+ * This approach is useful when:
+ * - You have dynamic requirements (e.g., from CSV, database, config file)
+ * - Different entities (companies, users, etc.) need different record counts
+ * - You want to control the exact distribution programmatically
+ */
+public class DynamicCompanyPaymentsJavaPlan extends PlanRun {
+    {
+        // Configuration: Map of company name -> number of records to generate
+        // In a real scenario, this could be loaded from:
+        // - CSV file using java.nio.file.Files.readAllLines()
+        // - Database query using JDBC
+        // - Configuration file (JSON, YAML, properties)
+        // - Environment variables
+        var companyRecordCounts = new LinkedHashMap<String, Long>();
+        companyRecordCounts.put("Acme Corp", 1000L);
+        companyRecordCounts.put("TechStart Inc", 500L);
+        companyRecordCounts.put("Global Solutions", 750L);
+        companyRecordCounts.put("SmallBiz LLC", 250L);
+
+        // Calculate total records
+        long totalRecords = companyRecordCounts.values().stream()
+                .mapToLong(Long::longValue)
+                .sum();
+
+        // Convert to weighted distribution format: "CompanyName->0.4"
+        var weightedCompanies = companyRecordCounts.entrySet().stream()
+                .map(entry -> new Tuple2<Object, Object>(entry.getKey(), entry.getValue()))
+                .collect(Collectors.toList());
+
+        // Define the payment generation task
+        var paymentTask = json("company_payments", "/opt/app/data/payments")
+                .fields(
+                        // Company name field - will be distributed according to the weights
+                        field().name("company_name").oneOfWeighted(weightedCompanies.get(0)),
+
+                        // Payment ID - unique identifier for each payment
+                        field().name("payment_id").regex("PAY-[0-9]{10}"),
+
+                        // Transaction ID - UUID format
+                        field().name("transaction_id").expression("#{Internet.uuid}"),
+
+                        // Payment amount - between $10 and $10,000
+                        field().name("amount").type(DoubleType.instance()).min(10.0).max(10000.0),
+
+                        // Payment timestamp
+                        field().name("payment_timestamp").type(TimestampType.instance())
+                                .min(java.sql.Date.valueOf("2024-01-01")),
+
+                        // Payment method - randomly selected
+                        field().name("payment_method")
+                                .oneOf("CREDIT_CARD", "DEBIT_CARD", "BANK_TRANSFER", "PAYPAL", "CRYPTOCURRENCY"),
+
+                        // Status - use simple approach with SQL for weighting
+                        field().name("status_random").type(DoubleType.instance()).min(0.0).max(1.0).omit(true),
+                        field().name("status")
+                                .sql("""
+                                        CASE
+                                            WHEN status_random < 0.85 THEN 'SUCCESS'
+                                            WHEN status_random < 0.95 THEN 'PENDING'
+                                            ELSE 'FAILED'
+                                        END
+                                        """),
+
+                        // Currency based on company (using SQL expression)
+                        field().name("currency")
+                                .sql("""
+                                        CASE
+                                            WHEN company_name LIKE '%Global%' THEN 'EUR'
+                                            WHEN company_name LIKE '%Tech%' THEN 'GBP'
+                                            ELSE 'USD'
+                                        END
+                                        """),
+
+                        // Metadata as nested structure
+                        field().name("metadata").fields(
+                                field().name("ip_address").expression("#{Internet.ipV4Address}"),
+                                field().name("user_agent").staticValue("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"),
+                                field().name("session_id").expression("#{Internet.uuid}")
+                        )
+                )
+                .count(count().records(totalRecords));
+
+        // Configuration
+        var conf = configuration()
+                .generatedReportsFolderPath("/opt/app/data/report")
+                .enableUniqueCheck(true);
+
+        // Print summary for visibility
+        System.out.println("=".repeat(80));
+        System.out.println("Dynamic Company Payments Generation Plan");
+        System.out.println("=".repeat(80));
+        companyRecordCounts.forEach((company, count) -> {
+            double percentage = (count.doubleValue() / totalRecords * 100);
+            System.out.printf("  %-30s: %,6d records (%5.1f%%)%n", company, count, percentage);
+        });
+        System.out.println("-".repeat(80));
+        System.out.printf("  Total records to generate: %,d%n", totalRecords);
+        System.out.println("=".repeat(80));
+
+        execute(conf, paymentTask);
+    }
+}

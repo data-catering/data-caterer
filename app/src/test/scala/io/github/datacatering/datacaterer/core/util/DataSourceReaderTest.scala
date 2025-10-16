@@ -3,7 +3,6 @@ package io.github.datacatering.datacaterer.core.util
 import io.github.datacatering.datacaterer.api.model.Constants._
 import io.github.datacatering.datacaterer.api.model.Step
 import org.scalatest.BeforeAndAfterEach
-import org.scalatest.funsuite.AnyFunSuite
 
 import java.io.File
 import java.nio.file.{Files, Paths}

@@ -2,8 +2,8 @@ package io.github.datacatering.datacaterer.api
 
 import com.softwaremill.quicklens.ModifyPimp
 import io.github.datacatering.datacaterer.api.converter.Converters.toScalaMap
-import io.github.datacatering.datacaterer.api.model.Constants.{CONFLUENT_SCHEMA_REGISTRY_ID, CONFLUENT_SCHEMA_REGISTRY_SUBJECT, CONFLUENT_SCHEMA_REGISTRY_VERSION, DATA_CONTRACT_FILE, DATA_CONTRACT_SCHEMA, GREAT_EXPECTATIONS_FILE, JSON_SCHEMA_FILE, METADATA_SOURCE_URL, OPEN_LINEAGE_DATASET, OPEN_LINEAGE_NAMESPACE, OPEN_METADATA_API_VERSION, OPEN_METADATA_AUTH_TYPE, OPEN_METADATA_AUTH_TYPE_OPEN_METADATA, OPEN_METADATA_DEFAULT_API_VERSION, OPEN_METADATA_HOST, OPEN_METADATA_JWT_TOKEN, SCHEMA_LOCATION}
-import io.github.datacatering.datacaterer.api.model.{ConfluentSchemaRegistrySource, DataContractCliSource, GreatExpectationsSource, JsonSchemaSource, MarquezMetadataSource, MetadataSource, OpenAPISource, OpenDataContractStandardSource, OpenMetadataSource}
+import io.github.datacatering.datacaterer.api.model.Constants.{CONFLUENT_SCHEMA_REGISTRY_ID, CONFLUENT_SCHEMA_REGISTRY_SUBJECT, CONFLUENT_SCHEMA_REGISTRY_VERSION, DATA_CONTRACT_FILE, DATA_CONTRACT_SCHEMA, GREAT_EXPECTATIONS_FILE, JSON_SCHEMA_FILE, METADATA_SOURCE_URL, OPEN_LINEAGE_DATASET, OPEN_LINEAGE_NAMESPACE, OPEN_METADATA_API_VERSION, OPEN_METADATA_AUTH_TYPE, OPEN_METADATA_AUTH_TYPE_OPEN_METADATA, OPEN_METADATA_DEFAULT_API_VERSION, OPEN_METADATA_HOST, OPEN_METADATA_JWT_TOKEN, SCHEMA_LOCATION, YAML_PLAN_FILE, YAML_STEP_NAME, YAML_TASK_FILE, YAML_TASK_NAME}
+import io.github.datacatering.datacaterer.api.model.{ConfluentSchemaRegistrySource, DataContractCliSource, GreatExpectationsSource, JsonSchemaSource, MarquezMetadataSource, MetadataSource, OpenAPISource, OpenDataContractStandardSource, OpenMetadataSource, YamlPlanSource, YamlTaskSource}
 
 case class MetadataSourceBuilder(metadataSource: MetadataSource = MarquezMetadataSource()) {
   def this() = this(MarquezMetadataSource())
@@ -138,4 +138,56 @@ case class MetadataSourceBuilder(metadataSource: MetadataSource = MarquezMetadat
 
   def jsonSchemaJava(schemaFile: String, options: java.util.Map[String, String]): MetadataSourceBuilder =
     jsonSchema(schemaFile, toScalaMap(options))
+
+  /**
+   * Create metadata source from YAML plan file. This allows referencing existing YAML plan files
+   * and optionally override configurations using the builder pattern.
+   *
+   * @param planFile Path to the YAML plan file
+   * @return MetadataSourceBuilder with YamlPlanSource
+   */
+  def yamlPlan(planFile: String): MetadataSourceBuilder = {
+    this.modify(_.metadataSource).setTo(YamlPlanSource(Map(YAML_PLAN_FILE -> planFile)))
+  }
+
+  /**
+   * Create metadata source from YAML task file. This allows referencing existing YAML task files
+   * and optionally override configurations using the builder pattern.
+   *
+   * @param taskFile Path to the YAML task file
+   * @return MetadataSourceBuilder with YamlTaskSource
+   */
+  def yamlTask(taskFile: String): MetadataSourceBuilder = {
+    this.modify(_.metadataSource).setTo(YamlTaskSource(Map(YAML_TASK_FILE -> taskFile)))
+  }
+
+  /**
+   * Create metadata source from YAML task file with specific task name filter.
+   *
+   * @param taskFile Path to the YAML task file
+   * @param taskName Name of the specific task to use from the YAML file
+   * @return MetadataSourceBuilder with YamlTaskSource
+   */
+  def yamlTask(taskFile: String, taskName: String): MetadataSourceBuilder = {
+    this.modify(_.metadataSource).setTo(YamlTaskSource(Map(
+      YAML_TASK_FILE -> taskFile,
+      YAML_TASK_NAME -> taskName
+    )))
+  }
+
+  /**
+   * Create metadata source from YAML task file with specific task and step name filters.
+   *
+   * @param taskFile Path to the YAML task file
+   * @param taskName Name of the specific task to use from the YAML file
+   * @param stepName Name of the specific step to use from the task
+   * @return MetadataSourceBuilder with YamlTaskSource
+   */
+  def yamlTask(taskFile: String, taskName: String, stepName: String): MetadataSourceBuilder = {
+    this.modify(_.metadataSource).setTo(YamlTaskSource(Map(
+      YAML_TASK_FILE -> taskFile,
+      YAML_TASK_NAME -> taskName,
+      YAML_STEP_NAME -> stepName
+    )))
+  }
 }

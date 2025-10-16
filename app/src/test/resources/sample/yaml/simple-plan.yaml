@@ -1,0 +1,9 @@
+name: "test-plan"
+description: "Test plan for YAML metadata"
+tasks:
+  - name: "user-task"
+    dataSourceName: "my_postgres"
+    enabled: true
+  - name: "order-task"
+    dataSourceName: "my_kafka"
+    enabled: true

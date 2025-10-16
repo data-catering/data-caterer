@@ -165,6 +165,54 @@ class SinkFactoryTest extends SparkSuite {
     Files.delete(path)
   }
 
+  test("Should consolidate part files from multiple batches into single JSON file") {
+    val filePath = "/tmp/multibatch_output_test.json"
+    val path = Paths.get(filePath)
+
+    // Clean up any existing file
+    if (Files.exists(path)) {
+      Files.delete(path)
+    }
+
+    val sinkFactory = new SinkFactory(FlagsConfig(), MetadataConfig(), FoldersConfig())
+    val step = Step(options = Map(FORMAT -> JSON, PATH -> filePath))
+    
+    // Simulate multi-batch scenario: first batch
+    val batch1Data = sampleData.take(2)
+    val df1 = sparkSession.createDataFrame(batch1Data)
+    val res1 = sinkFactory.pushToSink(df1, "json-multi-batch", step, LocalDateTime.now(), isMultiBatch = true, isLastBatch = false)
+    
+    // Verify first batch success but no final file created yet
+    assert(res1.isSuccess)
+    assertResult(2)(res1.count)
+    assert(!Files.exists(path), "Final file should not exist after first batch")
+    
+    // Second batch (last batch)
+    val batch2Data = sampleData.drop(2)
+    val df2 = sparkSession.createDataFrame(batch2Data)
+    val res2 = sinkFactory.pushToSink(df2, "json-multi-batch", step, LocalDateTime.now(), isMultiBatch = true, isLastBatch = true)
+    
+    // Verify second batch success and final file exists
+    assert(res2.isSuccess)
+    assertResult(2)(res2.count)
+    assert(Files.exists(path), s"Final consolidated file should exist at $filePath")
+    assert(Files.isRegularFile(path), s"Path should be a regular file: $filePath")
+
+    // Verify no temporary directories remain
+    val parentDir = path.getParent
+    val tempDirs = Files.list(parentDir)
+      .filter(p => p.getFileName.toString.contains("multibatch_temp_"))
+      .toArray()
+    assert(tempDirs.isEmpty, "Temporary multi-batch directories should be cleaned up")
+
+    // Verify all data is present in the consolidated file
+    val readBack = sparkSession.read.json(filePath)
+    assertResult(4)(readBack.count())
+
+    // Clean up
+    Files.delete(path)
+  }
+
   test("Should consolidate part files into single Parquet file when path has .parquet suffix") {
     val filePath = "/tmp/output_test.parquet"
     val path = Paths.get(filePath)
@@ -197,6 +245,43 @@ class SinkFactoryTest extends SparkSuite {
     // Verify content can be read back
     val readBack = sparkSession.read.parquet(filePath)
     assertResult(4)(readBack.count())
+
+    // Clean up
+    Files.delete(path)
+  }
+
+  test("Should handle finalizePendingConsolidations when batches are incomplete") {
+    val filePath = "/tmp/incomplete_batch_test.json"
+    val path = Paths.get(filePath)
+
+    // Clean up any existing file
+    if (Files.exists(path)) {
+      Files.delete(path)
+    }
+
+    val sinkFactory = new SinkFactory(FlagsConfig(), MetadataConfig(), FoldersConfig())
+    val step = Step(options = Map(FORMAT -> JSON, PATH -> filePath))
+    
+    // Simulate incomplete multi-batch scenario: only first batch, no last batch call
+    val batch1Data = sampleData.take(2)
+    val df1 = sparkSession.createDataFrame(batch1Data)
+    val res1 = sinkFactory.pushToSink(df1, "json-incomplete-batch", step, LocalDateTime.now(), isMultiBatch = true, isLastBatch = false)
+    
+    // Verify first batch success but no final file created yet
+    assert(res1.isSuccess)
+    assertResult(2)(res1.count)
+    assert(!Files.exists(path), "Final file should not exist after incomplete batch")
+    
+    // Call finalizePendingConsolidations to handle incomplete batches
+    sinkFactory.finalizePendingConsolidations()
+    
+    // Verify final file exists after finalization
+    assert(Files.exists(path), s"Final consolidated file should exist after finalization at $filePath")
+    assert(Files.isRegularFile(path), s"Path should be a regular file: $filePath")
+
+    // Verify all data from the one batch is present
+    val readBack = sparkSession.read.json(filePath)
+    assertResult(2)(readBack.count())
 
     // Clean up
     Files.delete(path)

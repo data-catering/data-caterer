@@ -2,7 +2,6 @@ package io.github.datacatering.datacaterer.core.generator.provider
 
 import io.github.datacatering.datacaterer.api.model.Constants._
 import io.github.datacatering.datacaterer.core.exception.UnsupportedDataGeneratorType
-import io.github.datacatering.datacaterer.core.generator.provider.RandomDataGenerator.tryGetValue
 import io.github.datacatering.datacaterer.core.model.Constants._
 import io.github.datacatering.datacaterer.core.util.GeneratorUtil
 import net.datafaker.Faker

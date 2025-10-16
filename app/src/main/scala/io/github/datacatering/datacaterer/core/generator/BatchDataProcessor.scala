@@ -6,7 +6,6 @@ import io.github.datacatering.datacaterer.core.exception.InvalidRandomSeedExcept
 import io.github.datacatering.datacaterer.core.generator.track.RecordTrackingProcessor
 import io.github.datacatering.datacaterer.core.sink.SinkFactory
 import io.github.datacatering.datacaterer.core.util.GeneratorUtil.getDataSourceName
-import io.github.datacatering.datacaterer.core.util.PlanImplicits.PerFieldCountOps
 import io.github.datacatering.datacaterer.core.util.RecordCountUtil.calculateNumBatches
 import io.github.datacatering.datacaterer.core.util.{DataSourceReader, ForeignKeyUtil, UniqueFieldsUtil}
 import net.datafaker.Faker
@@ -209,7 +208,7 @@ class BatchDataProcessor(connectionConfigsByName: Map[String, Map[String, String
       val sinkDf = plan.sinkOptions
         .map(_ => ForeignKeyUtil.getDataFramesWithForeignKeys(plan, generatedDataForeachTask))
         .getOrElse(generatedDataForeachTask)
-      val sinkResults = pushDataToSinks(plan, executableTasks, sinkDf, batch, startTime, optValidations)
+      val sinkResults = pushDataToSinks(plan, executableTasks, sinkDf, batch, numBatches, startTime, optValidations)
       sinkDf.foreach(_._2.unpersist())
       sparkSession.sparkContext.getPersistentRDDs.foreach { case (_, rdd) => rdd.unpersist() }
       val endTime = LocalDateTime.now()
@@ -219,6 +218,10 @@ class BatchDataProcessor(connectionConfigsByName: Map[String, Map[String, String
     }).toList
 
     LOGGER.debug(s"Completed all batches, num-batches=$numBatches")
+    
+    // Finalize any pending consolidations for multi-batch scenarios
+    sinkFactory.finalizePendingConsolidations()
+    
     uniqueFieldUtil.cleanup()
     dataSourceResults
   }
@@ -228,6 +231,7 @@ class BatchDataProcessor(connectionConfigsByName: Map[String, Map[String, String
                                executableTasks: List[(TaskSummary, Task)],
                                sinkDf: List[(String, DataFrame)],
                                batchNum: Int,
+                               numBatches: Int,
                                startTime: LocalDateTime,
                                optValidations: Option[List[ValidationConfiguration]]
                              ): List[DataSourceResult] = {
@@ -266,7 +270,8 @@ class BatchDataProcessor(connectionConfigsByName: Map[String, Map[String, String
         validationRecordTrackingProcessor.trackRecords(df._2, dataSourceName, plan.name, stepWithSaveMode)
       }
 
-      val sinkResult = sinkFactory.pushToSink(df._2, dataSourceName, stepWithSaveMode, startTime)
+      val isLastBatch = batchNum == numBatches
+      val sinkResult = sinkFactory.pushToSink(df._2, dataSourceName, stepWithSaveMode, startTime, numBatches > 1, isLastBatch)
       DataSourceResult(dataSourceName, task, stepWithSaveMode, sinkResult, batchNum)
     })
   }

@@ -1,8 +1,9 @@
 package io.github.datacatering.datacaterer.core.integration
 
 import io.github.datacatering.datacaterer.api.DataCatererConfigurationBuilder
-import io.github.datacatering.datacaterer.api.model.Constants.{CONFIG_FLAGS_FAST_GENERATION, PATH}
+import io.github.datacatering.datacaterer.api.model.Constants.CONFIG_FLAGS_FAST_GENERATION
 import io.github.datacatering.datacaterer.core.config.ConfigParser
+import io.github.datacatering.datacaterer.core.model.Constants.APPLICATION_CONFIG_PATH
 import io.github.datacatering.datacaterer.core.ui.mapper.ConfigurationMapper
 import io.github.datacatering.datacaterer.core.ui.model.ConfigurationRequest
 import io.github.datacatering.datacaterer.core.util.SparkSuite
@@ -11,7 +12,6 @@ import org.scalatest.BeforeAndAfterEach
 
 import java.io.File
 import java.nio.file.Files
-import io.github.datacatering.datacaterer.core.model.Constants.APPLICATION_CONFIG_PATH
 
 class FastGenerationModeIntegrationTest extends SparkSuite with BeforeAndAfterEach {
 

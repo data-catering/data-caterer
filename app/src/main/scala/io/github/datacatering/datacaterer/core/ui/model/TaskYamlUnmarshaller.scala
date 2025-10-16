@@ -1,11 +1,11 @@
 package io.github.datacatering.datacaterer.core.ui.model
 
 import io.github.datacatering.datacaterer.core.util.ObjectMapperUtil
-import org.apache.pekko.http.scaladsl.model.{ContentTypes, HttpEntity, MediaTypes}
+import org.apache.pekko.http.scaladsl.model.{HttpEntity, MediaTypes}
 import org.apache.pekko.http.scaladsl.unmarshalling.{FromEntityUnmarshaller, Unmarshaller}
 
-import scala.concurrent.{ExecutionContext, Future}
 import scala.concurrent.duration._
+import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success, Try}
 
 object TaskYamlUnmarshaller {

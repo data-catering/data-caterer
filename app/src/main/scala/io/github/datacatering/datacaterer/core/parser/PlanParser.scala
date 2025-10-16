@@ -20,12 +20,15 @@ object PlanParser {
   def getPlanTasksFromYaml(dataCatererConfiguration: DataCatererConfiguration, enabledOnly: Boolean = true)
                           (implicit sparkSession: SparkSession): (Plan, List[Task], Option[List[ValidationConfiguration]]) = {
     val parsedPlan = PlanParser.parsePlan(dataCatererConfiguration.foldersConfig.planFilePath)
+    LOGGER.debug(s"Parsed plan from YAML: name=${parsedPlan.name}, num-tasks=${parsedPlan.tasks.size}, task-names=${parsedPlan.tasks.map(_.name).mkString(", ")}")
     val enabledPlannedTasks = if (enabledOnly) parsedPlan.tasks.filter(_.enabled) else parsedPlan.tasks
     val enabledTaskMap = enabledPlannedTasks.map(t => (t.name, t)).toMap
     val planWithEnabledTasks = parsedPlan.copy(tasks = enabledPlannedTasks)
 
     val tasks = PlanParser.parseTasks(dataCatererConfiguration.foldersConfig.taskFolderPath)
+    LOGGER.debug(s"Parsed tasks from folder: task-folder=${dataCatererConfiguration.foldersConfig.taskFolderPath}, num-tasks=${tasks.size}, task-names=${tasks.map(_.name).mkString(", ")}")
     val enabledTasks = tasks.filter(t => enabledTaskMap.contains(t.name)).toList
+    LOGGER.debug(s"Filtered enabled tasks: num-enabled-tasks=${enabledTasks.size}, enabled-task-names=${enabledTasks.map(_.name).mkString(", ")}")
     val validations = if (dataCatererConfiguration.flagsConfig.enableValidation) {
       Some(PlanParser.parseValidations(dataCatererConfiguration.foldersConfig.validationFolderPath, dataCatererConfiguration.connectionConfigByName))
     } else None

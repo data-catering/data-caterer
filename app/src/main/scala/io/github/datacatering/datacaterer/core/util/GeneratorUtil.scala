@@ -2,15 +2,14 @@ package io.github.datacatering.datacaterer.core.util
 
 import io.github.datacatering.datacaterer.api.model.Constants.{EXPRESSION, HTTP, JMS, ONE_OF_GENERATOR, REGEX_GENERATOR, SQL_GENERATOR}
 import io.github.datacatering.datacaterer.api.model.{Step, TaskSummary}
-import io.github.datacatering.datacaterer.core.generator.provider.{DataGenerator, OneOfDataGenerator, RandomDataGenerator, RegexDataGenerator}
 import io.github.datacatering.datacaterer.core.generator.provider.FastDataGenerator.{FastRegexDataGenerator, FastStringDataGenerator}
+import io.github.datacatering.datacaterer.core.generator.provider.{DataGenerator, OneOfDataGenerator, RandomDataGenerator, RegexDataGenerator}
 import io.github.datacatering.datacaterer.core.model.Constants.{BATCH, REAL_TIME}
 import net.datafaker.Faker
 import org.apache.log4j.Logger
-import org.apache.spark.sql.types.{LongType, StructField, StructType, DataType, ArrayType}
-import org.apache.spark.sql.{DataFrame, Row}
 import org.apache.spark.sql.functions.{col, expr}
-import org.apache.spark.sql.types.MetadataBuilder
+import org.apache.spark.sql.types.{ArrayType, DataType, LongType, StructField, StructType}
+import org.apache.spark.sql.{DataFrame, Row}
 
 object GeneratorUtil {
 

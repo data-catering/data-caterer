@@ -16,6 +16,29 @@ case class PlanRunRequest(
                            configuration: Option[ConfigurationRequest] = None,
                          )
 
+/**
+ * Enhanced plan execution request with filtering options
+ * @param planName Name of the plan to execute
+ * @param sourceType Source type: "auto", "json", "yaml", "file"
+ * @param fileName Optional file name for file-based lookup
+ * @param taskFilter Optional task name to filter execution to specific task
+ * @param stepFilter Optional step name to filter execution to specific step (requires taskFilter)
+ * @param mode Execution mode: "generate", "delete", "validate"
+ */
+case class EnhancedPlanRunRequest(
+                                   planName: String,
+                                   sourceType: String = "auto",
+                                   fileName: Option[String] = None,
+                                   taskFilter: Option[String] = None,
+                                   stepFilter: Option[String] = None,
+                                   mode: String = "generate"
+                                 ) {
+  def isDeleteMode: Boolean = mode == "delete"
+  def hasTaskFilter: Boolean = taskFilter.isDefined
+  def hasStepFilter: Boolean = stepFilter.isDefined
+  def isFileBased: Boolean = sourceType == "file" && fileName.isDefined
+}
+
 case class ConfigurationRequest(
                                  flag: Map[String, String] = Map(),
                                  folder: Map[String, String] = Map(),

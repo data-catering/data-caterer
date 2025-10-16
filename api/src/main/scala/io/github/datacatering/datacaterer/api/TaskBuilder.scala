@@ -145,6 +145,20 @@ case class TaskBuilder(task: Task = Task()) {
    * @return the updated `TaskBuilder` instance
    */
   @varargs def steps(steps: StepBuilder*): TaskBuilder = this.modify(_.task.steps)(_ ++ steps.map(_.step))
+
+  /**
+   * Create a TaskBuilder that loads base configuration from a YAML file.
+   * This allows referencing existing YAML task definitions while still being able to override
+   * specific configurations using the builder pattern.
+   *
+   * @param yamlConfig Configuration specifying which YAML file to load
+   * @return TaskBuilder with YAML task as base configuration
+   */
+  def fromYaml(yamlConfig: YamlConfig): TaskBuilder = {
+    // Add special marker to indicate this task should load from YAML
+    // The actual YAML loading will happen during execution when the task is processed
+    this.modify(_.task.name).setTo(s"${task.name}_yaml_${yamlConfig.taskFile.getOrElse("unknown").hashCode}")
+  }
 }
 
 case class StepBuilder(step: Step = Step(), optValidation: Option[DataSourceValidationBuilder] = None) {

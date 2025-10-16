@@ -1,6 +1,6 @@
 package io.github.datacatering.datacaterer.core.generator.metadata
 
-import io.github.datacatering.datacaterer.api.model.Constants.{EXPRESSION, FIELD_LABEL, IS_PII, LABEL_ADDRESS, LABEL_APP, LABEL_FOOD, LABEL_INTERNET, LABEL_JOB, LABEL_MONEY, LABEL_NAME, LABEL_NATION, LABEL_PHONE, LABEL_RELATIONSHIP, LABEL_USERNAME, LABEL_WEATHER, MINIMUM_LENGTH, MAXIMUM_LENGTH}
+import io.github.datacatering.datacaterer.api.model.Constants.{EXPRESSION, FIELD_LABEL, IS_PII, LABEL_ADDRESS, LABEL_APP, LABEL_FOOD, LABEL_INTERNET, LABEL_JOB, LABEL_MONEY, LABEL_NAME, LABEL_NATION, LABEL_PHONE, LABEL_RELATIONSHIP, LABEL_USERNAME, LABEL_WEATHER, MAXIMUM_LENGTH, MINIMUM_LENGTH}
 import org.apache.spark.sql.types.{MetadataBuilder, StringType, StructField, StructType}
 import org.scalatest.funsuite.AnyFunSuite
 

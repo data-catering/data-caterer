@@ -1,7 +1,7 @@
 package io.github.datacatering.datacaterer.core.integration
 
 import io.github.datacatering.datacaterer.api.PlanRun
-import io.github.datacatering.datacaterer.api.model.{StructType, StringType}
+import io.github.datacatering.datacaterer.api.model.StringType
 import io.github.datacatering.datacaterer.core.plan.PlanProcessor
 import io.github.datacatering.datacaterer.core.util.SparkSuite
 import org.scalatest.BeforeAndAfterEach

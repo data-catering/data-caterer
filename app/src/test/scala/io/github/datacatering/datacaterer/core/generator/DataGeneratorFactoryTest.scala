@@ -1,14 +1,13 @@
 package io.github.datacatering.datacaterer.core.generator
 
 import io.github.datacatering.datacaterer.api.FieldBuilder
-import io.github.datacatering.datacaterer.api.model.Constants.{ALL_COMBINATIONS, OMIT, ONE_OF_GENERATOR, REGEX_GENERATOR, ARRAY_MINIMUM_LENGTH, ARRAY_MAXIMUM_LENGTH, MINIMUM, MAXIMUM}
+import io.github.datacatering.datacaterer.api.model.Constants.{ALL_COMBINATIONS, MAXIMUM, MINIMUM, OMIT, ONE_OF_GENERATOR, REGEX_GENERATOR}
 import io.github.datacatering.datacaterer.api.model.{Count, DoubleType, Field, IntegerType, PerFieldCount, Step}
 import io.github.datacatering.datacaterer.core.util.{Account, SparkSuite}
 import net.datafaker.Faker
 import org.apache.spark
-import org.apache.spark.sql.{Dataset, Encoder, Encoders, Row}
-import io.github.datacatering.datacaterer.api.ConnectionConfigWithTaskBuilder
 import org.apache.spark.sql.types.StructType
+import org.apache.spark.sql.{Dataset, Encoder, Encoders, Row}
 
 class DataGeneratorFactoryTest extends SparkSuite {
 

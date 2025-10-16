@@ -2,9 +2,13 @@ package io.github.datacatering.datacaterer.core.generator.metadata.datasource.fi
 
 import io.github.datacatering.datacaterer.api.model.Constants.{DELTA, FORMAT, PARQUET, PATH}
 import io.github.datacatering.datacaterer.core.generator.metadata.datasource.{DataSourceMetadata, SubDataSourceMetadata}
+import io.github.datacatering.datacaterer.core.plan.PlanProcessor.getClass
+import org.apache.log4j.Logger
 import org.apache.spark.sql.SparkSession
 
 case class FileMetadata(name: String, format: String, connectionConfig: Map[String, String]) extends DataSourceMetadata {
+
+  private val LOGGER = Logger.getLogger(getClass.getName)
 
   override val hasSourceData: Boolean = true
 
@@ -15,6 +19,10 @@ case class FileMetadata(name: String, format: String, connectionConfig: Map[Stri
    * @return Array of connection config for files
    */
   override def getSubDataSourcesMetadata(implicit sparkSession: SparkSession): Array[SubDataSourceMetadata] = {
+    if (!connectionConfig.contains(PATH)) {
+      LOGGER.warn(s"No path defined for connection, unable to extract existing metadata from data source, name=$name, format=$format")
+      return Array()
+    }
     val baseFolderPath = connectionConfig(PATH)
     val fileSuffix = format match {
       case DELTA => PARQUET

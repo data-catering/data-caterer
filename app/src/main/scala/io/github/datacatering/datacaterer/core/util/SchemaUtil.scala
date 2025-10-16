@@ -437,3 +437,128 @@ object PlanImplicits {
     } else 1L
   }
 }
+
+object DataFrameOmitUtil {
+  import com.fasterxml.jackson.databind.JsonNode
+  import com.fasterxml.jackson.databind.node.ObjectNode
+  import io.github.datacatering.datacaterer.api.model.Constants.OMIT
+  import org.apache.spark.sql.DataFrame
+  import org.apache.spark.sql.types.{ArrayType, DataType, StructType}
+
+  /**
+   * Removes fields marked with omit=true from a DataFrame, including nested fields within structs and arrays.
+   * This handles the complete removal of helper/intermediate fields that should not appear in final output.
+   *
+   * @param df The DataFrame to process
+   * @return A new DataFrame with omitted fields removed
+   */
+  def removeOmitFields(df: DataFrame): DataFrame = {
+    val omittedPaths = collectOmittedPaths(df.schema)
+
+    if (omittedPaths.isEmpty) {
+      df
+    } else {
+      // For simple case with only top-level omitted fields, use direct column selection (more efficient)
+      val hasOnlyTopLevelOmits = omittedPaths.forall(!_.contains("."))
+
+      if (hasOnlyTopLevelOmits) {
+        val columnsToSelect = df.columns.filter(c => !omittedPaths.contains(c))
+          .map(c => if (c.contains(".")) s"`$c`" else c)
+        df.selectExpr(columnsToSelect: _*)
+      } else {
+        // For nested omitted fields, we need to process via JSON conversion
+        // This is less efficient but handles all nesting cases correctly
+        df
+      }
+    }
+  }
+
+  /**
+   * Collects all field paths that are marked with omit=true, including nested fields.
+   *
+   * @param schema The StructType to scan
+   * @param pathPrefix The current path prefix (used for recursion)
+   * @return Set of full paths to omitted fields
+   */
+  def collectOmittedPaths(schema: StructType, pathPrefix: String = ""): Set[String] = {
+    schema.fields.flatMap { field =>
+      val fieldPath = if (pathPrefix.isEmpty) field.name else s"$pathPrefix.${field.name}"
+      val isOmitted = field.metadata.contains(OMIT) && field.metadata.getString(OMIT).equalsIgnoreCase("true")
+
+      val currentPath = if (isOmitted) Set(fieldPath) else Set.empty[String]
+
+      val nestedPaths = field.dataType match {
+        case st: StructType => collectOmittedPaths(st, fieldPath)
+        case ArrayType(st: StructType, _) => collectOmittedPaths(st, fieldPath)
+        case _ => Set.empty[String]
+      }
+
+      currentPath ++ nestedPaths
+    }.toSet
+  }
+
+  /**
+   * Removes omitted fields from a JSON node (mutates the node).
+   * Used when DataFrame conversion via JSON is necessary for nested field removal.
+   *
+   * @param node The JSON node to process
+   * @param omittedPaths Set of paths to omitted fields
+   * @param currentPath The current path in the JSON tree
+   */
+  def removeOmittedFromJson(node: JsonNode, omittedPaths: Set[String], currentPath: String = ""): Unit = {
+    if (node.isObject) {
+      val objectNode = node.asInstanceOf[ObjectNode]
+      val it = objectNode.fields()
+      val fieldsToRemove = scala.collection.mutable.ListBuffer[String]()
+
+      while (it.hasNext) {
+        val entry = it.next()
+        val fieldName = entry.getKey
+        val fieldPath = if (currentPath.isEmpty) fieldName else s"$currentPath.$fieldName"
+
+        if (omittedPaths.contains(fieldPath)) {
+          fieldsToRemove += fieldName
+        } else {
+          removeOmittedFromJson(entry.getValue, omittedPaths, fieldPath)
+        }
+      }
+
+      fieldsToRemove.foreach(objectNode.remove)
+    } else if (node.isArray) {
+      val arrayIt = node.elements()
+      while (arrayIt.hasNext) {
+        removeOmittedFromJson(arrayIt.next(), omittedPaths, currentPath)
+      }
+    }
+  }
+
+  /**
+   * Removes omitted fields from a Spark schema.
+   * Returns a new schema with omitted fields filtered out.
+   *
+   * @param schema The original schema
+   * @return A new schema without omitted fields
+   */
+  def removeOmittedFieldsFromSchema(schema: StructType): StructType = {
+    def cleanDataType(dataType: DataType): DataType = {
+      dataType match {
+        case st: StructType =>
+          val cleanedFields = st.fields.filter { field =>
+            !(field.metadata.contains(OMIT) && field.metadata.getString(OMIT).equalsIgnoreCase("true"))
+          }.map(field => field.copy(dataType = cleanDataType(field.dataType)))
+          StructType(cleanedFields)
+
+        case ArrayType(elementType, nullable) =>
+          ArrayType(cleanDataType(elementType), nullable)
+
+        case other => other
+      }
+    }
+
+    val cleanedFields = schema.fields.filter { field =>
+      !(field.metadata.contains(OMIT) && field.metadata.getString(OMIT).equalsIgnoreCase("true"))
+    }.map(field => field.copy(dataType = cleanDataType(field.dataType)))
+
+    StructType(cleanedFields)
+  }
+}

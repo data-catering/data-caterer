@@ -1,8 +1,8 @@
 package io.github.datacatering.datacaterer.core.validator
 
 import io.github.datacatering.datacaterer.api.model.Constants.CSV
-import io.github.datacatering.datacaterer.api.{ConnectionConfigWithTaskBuilder, ValidationBuilder}
 import io.github.datacatering.datacaterer.api.model.UpstreamDataSourceValidation
+import io.github.datacatering.datacaterer.api.{ConnectionConfigWithTaskBuilder, ValidationBuilder}
 import io.github.datacatering.datacaterer.core.util.SparkSuite
 import org.apache.spark.sql.SaveMode
 import org.scalatest.matchers.should.Matchers

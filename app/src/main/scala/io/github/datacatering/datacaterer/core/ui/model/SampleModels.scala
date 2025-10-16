@@ -2,7 +2,7 @@ package io.github.datacatering.datacaterer.core.ui.model
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties
 import io.github.datacatering.datacaterer.api.model.Field
-import org.apache.spark.sql.types.{DataType, StructType}
+import org.apache.spark.sql.types.StructType
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 case class TaskFileSampleRequest(
@@ -15,6 +15,7 @@ case class TaskFileSampleRequest(
 @JsonIgnoreProperties(ignoreUnknown = true)
 case class SchemaSampleRequest(
   fields: List[Field],
+  format: String = "json",
   sampleSize: Int = 10,
   fastMode: Boolean = true
 )
@@ -33,6 +34,16 @@ case class SampleResponse(
   executionId: String,
   schema: Option[SchemaInfo] = None,
   sampleData: Option[List[Map[String, Any]]] = None,
+  metadata: Option[SampleMetadata] = None,
+  error: Option[SampleError] = None,
+  format: Option[String] = None
+)
+
+@JsonIgnoreProperties(ignoreUnknown = true)
+case class MultiSchemaSampleResponse(
+  success: Boolean,
+  executionId: String,
+  samples: Map[String, List[Map[String, Any]]],
   metadata: Option[SampleMetadata] = None,
   error: Option[SampleError] = None
 )

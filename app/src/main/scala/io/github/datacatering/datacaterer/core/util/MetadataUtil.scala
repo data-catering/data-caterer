@@ -6,30 +6,27 @@ import io.github.datacatering.datacaterer.api.util.ConfigUtil
 import io.github.datacatering.datacaterer.core.exception.UnsupportedDataFormatForTrackingException
 import io.github.datacatering.datacaterer.core.generator.metadata.ExpressionPredictor
 import io.github.datacatering.datacaterer.core.generator.metadata.datasource.DataSourceMetadata
-import io.github.datacatering.datacaterer.core.generator.metadata.datasource.database.CassandraMetadata
 import io.github.datacatering.datacaterer.core.generator.metadata.datasource.confluentschemaregistry.ConfluentSchemaRegistryMetadata
-import io.github.datacatering.datacaterer.core.generator.metadata.datasource.database.FieldMetadata
+import io.github.datacatering.datacaterer.core.generator.metadata.datasource.database.{CassandraMetadata, FieldMetadata, MysqlMetadata, PostgresMetadata}
 import io.github.datacatering.datacaterer.core.generator.metadata.datasource.datacontractcli.DataContractCliDataSourceMetadata
 import io.github.datacatering.datacaterer.core.generator.metadata.datasource.file.FileMetadata
 import io.github.datacatering.datacaterer.core.generator.metadata.datasource.greatexpectations.GreatExpectationsDataSourceMetadata
 import io.github.datacatering.datacaterer.core.generator.metadata.datasource.http.HttpMetadata
 import io.github.datacatering.datacaterer.core.generator.metadata.datasource.jms.JmsMetadata
 import io.github.datacatering.datacaterer.core.generator.metadata.datasource.jsonschema.JsonSchemaDataSourceMetadata
-import io.github.datacatering.datacaterer.core.generator.metadata.datasource.database.MysqlMetadata
+import io.github.datacatering.datacaterer.core.generator.metadata.datasource.opendatacontractstandard.OpenDataContractStandardDataSourceMetadata
 import io.github.datacatering.datacaterer.core.generator.metadata.datasource.openlineage.OpenLineageMetadata
 import io.github.datacatering.datacaterer.core.generator.metadata.datasource.openmetadata.OpenMetadataDataSourceMetadata
-import io.github.datacatering.datacaterer.core.generator.metadata.datasource.opendatacontractstandard.OpenDataContractStandardDataSourceMetadata
-import io.github.datacatering.datacaterer.core.generator.metadata.datasource.database.PostgresMetadata
+import io.github.datacatering.datacaterer.core.generator.metadata.datasource.yaml.YamlDataSourceMetadata
 import io.github.datacatering.datacaterer.core.util.ValidationUtil.cleanValidationIdentifier
 import org.apache.log4j.Logger
 import org.apache.spark.sql.catalyst.TableIdentifier
 import org.apache.spark.sql.catalyst.catalog.CatalogColumnStat
 import org.apache.spark.sql.execution.command.AnalyzeColumnCommand
-import org.apache.spark.sql.types.{BinaryType, BooleanType, DataType, DateType, DecimalType, DoubleType, FloatType, IntegerType, LongType, Metadata, MetadataBuilder, ShortType, StringType, StructField, StructType, TimestampType, ArrayType}
+import org.apache.spark.sql.types.{ArrayType, BinaryType, BooleanType, DataType, DateType, DecimalType, DoubleType, FloatType, IntegerType, LongType, Metadata, MetadataBuilder, ShortType, StringType, StructField, StructType, TimestampType}
 import org.apache.spark.sql.{DataFrame, Dataset, Encoder, Encoders, SparkSession}
 
 import scala.util.{Failure, Success, Try}
-import io.github.datacatering.datacaterer.api.model.Step
 
 object MetadataUtil {
 
@@ -312,6 +309,7 @@ object MetadataUtil {
           case DATA_CONTRACT_CLI => Some(DataContractCliDataSourceMetadata(connectionConfig._1, format, connectionConfig._2))
           case CONFLUENT_SCHEMA_REGISTRY => Some(ConfluentSchemaRegistryMetadata(connectionConfig._1, format, connectionConfig._2))
           case JSON_SCHEMA => Some(JsonSchemaDataSourceMetadata(connectionConfig._1, format, connectionConfig._2))
+          case YAML_PLAN | YAML_TASK => Some(YamlDataSourceMetadata(connectionConfig._1, format, connectionConfig._2))
           case metadataSourceType =>
             LOGGER.warn(s"Unsupported external metadata source, connection-name=${connectionConfig._1}, metadata-source-type=$metadataSourceType")
             None
