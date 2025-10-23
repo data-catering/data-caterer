@@ -5,7 +5,7 @@ import io.github.datacatering.datacaterer.core.config.ConfigParser
 import io.github.datacatering.datacaterer.core.generator.DataGeneratorFactory
 import io.github.datacatering.datacaterer.core.parser.PlanParser
 import io.github.datacatering.datacaterer.core.ui.model._
-import io.github.datacatering.datacaterer.core.util.{FileUtil, ObjectMapperUtil}
+import io.github.datacatering.datacaterer.core.util.{ForeignKeyUtil, ObjectMapperUtil}
 import net.datafaker.Faker
 import org.apache.log4j.Logger
 import org.apache.spark.sql.{DataFrame, SparkSession}
@@ -94,7 +94,7 @@ object FastSampleGenerator {
       case _ => "application/octet-stream"
     }
   }
-  
+
   case class SampleResponseWithDataFrame(response: SampleResponse, dataFrame: Option[DataFrame] = None)
 
   def generateFromTaskFile(request: TaskFileSampleRequest)(implicit sparkSession: SparkSession): SampleResponse = {
@@ -107,7 +107,10 @@ object FastSampleGenerator {
     Try {
       val step = parseStepFromYaml(request.taskYamlPath, request.stepName)
       val format = step.options.getOrElse("format", "json")
-      generateSampleWithDataFrame(step.fields, request.sampleSize, request.fastMode, format)
+
+      // For file-based step requests, we don't have full plan context for relationships
+      // So we generate the step individually
+      generateSampleForSingleStep(step.fields, request.sampleSize, request.fastMode, format)
     } match {
       case Success(responseWithDf) => responseWithDf
       case Failure(ex: java.io.FileNotFoundException) =>
@@ -133,7 +136,7 @@ object FastSampleGenerator {
         SampleResponseWithDataFrame(handleError(ex))
     }
   }
-  
+
   def generateFromSchema(request: SchemaSampleRequest)(implicit sparkSession: SparkSession): SampleResponse = {
     generateFromSchemaWithDataFrame(request).response
   }
@@ -142,7 +145,9 @@ object FastSampleGenerator {
     LOGGER.info(s"Generating sample from inline fields: ${request.fields.size} fields")
 
     Try {
-      generateSampleWithDataFrame(request.fields, request.sampleSize, request.fastMode, request.format)
+      // For schema-based requests, we don't have step/plan context for relationships
+      // So we generate the fields individually
+      generateSampleForSingleStep(request.fields, request.sampleSize, request.fastMode, request.format)
     } match {
       case Success(responseWithDf) => responseWithDf
       case Failure(ex) =>
@@ -150,7 +155,7 @@ object FastSampleGenerator {
         SampleResponseWithDataFrame(handleError(ex))
     }
   }
-  
+
   def generateFromTaskYaml(request: TaskYamlSampleRequest)(implicit sparkSession: SparkSession): SampleResponse = {
     generateFromTaskYamlWithDataFrame(request).response
   }
@@ -161,7 +166,10 @@ object FastSampleGenerator {
     Try {
       val step = parseStepFromYamlContent(request.taskYamlContent, request.stepName)
       val format = step.options.getOrElse("format", "json")
-      generateSampleWithDataFrame(step.fields, request.sampleSize, request.fastMode, format)
+
+      // For YAML content-based step requests, we don't have full plan context for relationships
+      // So we generate the step individually
+      generateSampleForSingleStep(step.fields, request.sampleSize, request.fastMode, format)
     } match {
       case Success(responseWithDf) => responseWithDf
       case Failure(ex: IllegalArgumentException) =>
@@ -189,107 +197,25 @@ object FastSampleGenerator {
   }
 
 
-  private def generateSampleWithDataFrame(fields: List[Field], sampleSize: Int, fastMode: Boolean, format: String)(implicit sparkSession: SparkSession): SampleResponseWithDataFrame = {
-    val startTime = System.currentTimeMillis()
-    val executionId = generateId()
-
-    LOGGER.debug(s"Generating sample: fields=${fields.size}, size=$sampleSize, fastMode=$fastMode, format=$format")
-
-    // Validate and sanitize sample size
-    val validatedSampleSize = Math.min(Math.max(sampleSize, 1), MAX_SAMPLE_SIZE)
-    if (validatedSampleSize != sampleSize) {
-      LOGGER.warn(s"Sample size adjusted from $sampleSize to $validatedSampleSize (max: $MAX_SAMPLE_SIZE)")
-    }
-
-    // Create a minimal step for generation with the provided fields
-    val step = Step(
-      name = "sample",
-      `type` = "file",
-      options = Map("path" -> "sample", "format" -> format),
-      count = Count(records = Some(validatedSampleSize.toLong)),
-      fields = fields
-    )
-
-    val optimizedStep = step.copy(
-      options = step.options ++ Map(
-        "enableFastGeneration" -> fastMode.toString
-      )
-    )
-
-    // Generate using core logic (bypass all orchestration)
-    val locale = Locale.ENGLISH
-    val faker = new Faker(locale)
-
-    val factory = new DataGeneratorFactory(faker, enableFastGeneration = fastMode)
-
-    val df = factory.generateDataForStep(optimizedStep, "sample", 0L, validatedSampleSize.toLong)
-
-    // Collect omitted field paths for filtering
-    val omittedPaths = io.github.datacatering.datacaterer.core.util.DataFrameOmitUtil.collectOmittedPaths(df.schema)
-
-    // Convert to response format using Spark's native JSON serialization to preserve nested structures
-    val sampleData = df.collect().map(row => {
-      // Use Spark's row.json method to properly serialize nested structures
-      val jsonString = row.json
-      val jsonNode = ObjectMapperUtil.jsonObjectMapper.readTree(jsonString)
-
-      // Remove omitted fields from the JSON
-      io.github.datacatering.datacaterer.core.util.DataFrameOmitUtil.removeOmittedFromJson(jsonNode, omittedPaths)
-
-      // Convert back to Map
-      ObjectMapperUtil.jsonObjectMapper.convertValue(jsonNode, classOf[java.util.Map[String, Any]])
-        .asInstanceOf[java.util.Map[String, Any]]
-        .asScala
-        .toMap
-    }).toList
-
-    // Build a new schema without omitted fields
-    val cleanSchema = io.github.datacatering.datacaterer.core.util.DataFrameOmitUtil.removeOmittedFieldsFromSchema(df.schema)
-    // Create clean DataFrame without omitted fields for raw output
-    val cleanDf = io.github.datacatering.datacaterer.core.util.DataFrameOmitUtil.removeOmitFields(df)
-    val schemaInfo = SchemaInfo.fromSparkSchema(cleanSchema)
-    val generationTime = System.currentTimeMillis() - startTime
-
-    LOGGER.info(s"Sample generation completed: records=${sampleData.length}, time=${generationTime}ms")
-
-    val response = SampleResponse(
-      success = true,
-      executionId = executionId,
-      schema = Some(schemaInfo),
-      sampleData = Some(sampleData),
-      metadata = Some(SampleMetadata(
-        sampleSize = validatedSampleSize,
-        actualRecords = sampleData.length,
-        generatedInMs = generationTime,
-        fastModeEnabled = fastMode
-      )),
-      format = Some(format)
-    )
-
-    SampleResponseWithDataFrame(response, Some(cleanDf))
-  }
-  
   private def parseStepFromYaml(taskPath: String, stepName: Option[String])(implicit sparkSession: SparkSession): Step = {
     LOGGER.debug(s"Parsing step from YAML file: $taskPath, step: $stepName")
-    
+
     if (!Files.exists(Paths.get(taskPath))) {
       throw new java.io.FileNotFoundException(s"Task file not found: $taskPath")
     }
-    
-    // Use existing YAML parsing infrastructure and apply field conversions
-    val taskFile = new java.io.File(taskPath)
-    val rawTask = ObjectMapperUtil.yamlObjectMapper.readValue(taskFile, classOf[Task])
-    val convertedTask = PlanParser.convertToSpecificFields(rawTask)
-    
+
+    // Use consolidated YAML parsing from PlanParser
+    val convertedTask = PlanParser.parseTaskFile(taskPath)
+
     if (convertedTask.steps.isEmpty) {
       throw new IllegalArgumentException("No steps found in task file")
     }
-    
+
     stepName match {
-      case Some(name) => 
+      case Some(name) =>
         convertedTask.steps.find(_.name == name) match {
           case Some(step) => step
-          case None => 
+          case None =>
             val availableSteps = convertedTask.steps.map(_.name).mkString(", ")
             throw new IllegalArgumentException(
               s"Step '$name' not found in task. Available steps: $availableSteps"
@@ -298,27 +224,26 @@ object FastSampleGenerator {
       case None => convertedTask.steps.head
     }
   }
-  
+
   private def parseStepFromYamlContent(yamlContent: String, stepName: Option[String]): Step = {
     LOGGER.debug(s"Parsing step from YAML content, step: $stepName")
-    
+
     if (yamlContent.trim.isEmpty) {
       throw new IllegalArgumentException("YAML content is empty")
     }
-    
-    // Use existing YAML parsing infrastructure and apply field conversions
-    val rawTask = ObjectMapperUtil.yamlObjectMapper.readValue(yamlContent, classOf[Task])
-    val convertedTask = PlanParser.convertToSpecificFields(rawTask)
-    
+
+    // Use consolidated YAML parsing from PlanParser
+    val convertedTask = PlanParser.parseTaskFromContent(yamlContent)
+
     if (convertedTask.steps.isEmpty) {
       throw new IllegalArgumentException("No steps found in task YAML")
     }
-    
+
     stepName match {
-      case Some(name) => 
+      case Some(name) =>
         convertedTask.steps.find(_.name == name) match {
           case Some(step) => step
-          case None => 
+          case None =>
             val availableSteps = convertedTask.steps.map(_.name).mkString(", ")
             throw new IllegalArgumentException(
               s"Step '$name' not found in task. Available steps: $availableSteps"
@@ -327,8 +252,8 @@ object FastSampleGenerator {
       case None => convertedTask.steps.head
     }
   }
-  
-  
+
+
   private def handleError(ex: Throwable): SampleResponse = {
     val errorCode = ex match {
       case _: IllegalArgumentException => "INVALID_SCHEMA"
@@ -336,7 +261,7 @@ object FastSampleGenerator {
       case _: com.fasterxml.jackson.core.JsonParseException => "INVALID_YAML"
       case _ => "INTERNAL_ERROR"
     }
-    
+
     SampleResponse(
       success = false,
       executionId = generateId(),
@@ -347,23 +272,198 @@ object FastSampleGenerator {
       ))
     )
   }
-  
+
   private def generateId(): String = UUID.randomUUID().toString.split("-").head
+
+  /**
+   * Generate samples with relationship-aware processing
+   * This is the unified method that handles both individual and relationship-aware generation efficiently
+   */
+  private def generateSamplesWithRelationships(
+                                                plan: Option[Plan],
+                                                requestedSteps: List[(Step, String)], // (step, dataSourceName)
+                                                sampleSize: Int,
+                                                fastMode: Boolean,
+                                                enableRelationships: Boolean,
+                                                taskDirectory: Option[String] = None
+                                              )(implicit sparkSession: SparkSession): Map[String, (Step, SampleResponseWithDataFrame)] = {
+
+    if (!enableRelationships || plan.isEmpty) {
+      // Simple case: generate each step independently
+      LOGGER.debug(s"Generating ${requestedSteps.size} steps independently (relationships disabled or no plan)")
+      requestedSteps.map { case (step, dataSourceName) =>
+        val format = step.options.getOrElse("format", "json")
+        val responseWithDf = generateSampleForSingleStep(step.fields, sampleSize, fastMode, format)
+        val key = s"$dataSourceName/${step.name}"
+        (key, (step, responseWithDf))
+      }.toMap
+    } else {
+      // Complex case: generate all plan steps together to handle relationships
+      LOGGER.info(s"Generating samples with relationships for plan: ${plan.get.name}")
+
+      try {
+        // Generate data for all plan steps to establish relationship context
+        val allPlanSteps = plan.get.tasks.filter(_.enabled).flatMap { planTask =>
+          try {
+            val task = findTaskByName(planTask.name, taskDirectory)
+            val steps = task.steps.filter(_.enabled).map((_, planTask.dataSourceName))
+            LOGGER.debug(s"Found ${steps.size} steps in task ${planTask.name}: ${steps.map(_._1.name).mkString(", ")}")
+            steps
+          } catch {
+            case ex: Exception =>
+              LOGGER.warn(s"Failed to load task ${planTask.name}: ${ex.getMessage}")
+              List.empty
+          }
+        }
+
+        LOGGER.debug(s"All plan steps: ${allPlanSteps.size} steps: ${allPlanSteps.map { case (step, ds) => s"${ds}.${step.name}" }.mkString(", ")}")
+        LOGGER.debug(s"Requested steps: ${requestedSteps.size} steps: ${requestedSteps.map { case (step, ds) => s"${ds}.${step.name}" }.mkString(", ")}")
+
+        // Generate DataFrames for all plan steps
+        val factory = new DataGeneratorFactory(new Faker(Locale.ENGLISH), enableFastGeneration = fastMode)
+        val allGeneratedData = allPlanSteps.map { case (step, dataSourceName) =>
+          val recordCount = step.count.records.getOrElse(sampleSize.toLong)
+          LOGGER.debug(s"Generating step ${step.name} with recordCount=$recordCount (step.count.records=${step.count.records}, sampleSize=$sampleSize)")
+          val df = factory.generateDataForStep(step, dataSourceName, 0L, sampleSize)
+          val stepKey = s"$dataSourceName.${step.name}"
+          LOGGER.debug(s"Generated step ${step.name}: ${df.count()} records")
+          df.show(false)
+          df.cache()
+          (stepKey, df)
+        }.toMap
+
+        LOGGER.info(s"Generated ${allGeneratedData.size} DataFrames, applying foreign key relationships")
+
+        // Apply foreign key relationships
+        val dataFramesWithForeignKeys = ForeignKeyUtil.getDataFramesWithForeignKeys(plan.get, allGeneratedData.toList)
+        val updatedDataMap = dataFramesWithForeignKeys.toMap
+
+        // Convert requested steps to response format using relationship-aware data
+        requestedSteps.map { case (step, dataSourceName) =>
+          val stepKey = s"$dataSourceName.${step.name}"
+          LOGGER.debug(s"Looking for step key: $stepKey in updatedDataMap with keys: ${updatedDataMap.keys.mkString(", ")}")
+          val df = updatedDataMap.getOrElse(stepKey, {
+            LOGGER.warn(s"Step $stepKey not found in relationship-processed data, falling back to individual generation")
+            val factory = new DataGeneratorFactory(new Faker(Locale.ENGLISH), enableFastGeneration = fastMode)
+            // Use step's configured record count, fallback to sampleSize if not configured
+            val recordCount = step.count.records.getOrElse(sampleSize.toLong)
+            factory.generateDataForStep(step, dataSourceName, 0L, recordCount)
+          })
+          LOGGER.debug(s"Using dataframe for step $stepKey with ${df.count()} records")
+
+          val format = step.options.getOrElse("format", "json")
+          val responseWithDf = convertDataFrameToSampleResponse(df, sampleSize, fastMode, format, enableRelationships)
+          val responseKey = s"$dataSourceName/${step.name}"
+          (responseKey, (step, responseWithDf))
+        }.toMap
+
+      } catch {
+        case ex: Exception =>
+          LOGGER.error(s"Error in relationship-aware generation, falling back to individual generation: ${ex.getMessage}", ex)
+          // Fallback to individual generation
+          requestedSteps.map { case (step, dataSourceName) =>
+            val format = step.options.getOrElse("format", "json")
+            val responseWithDf = generateSampleForSingleStep(step.fields, sampleSize, fastMode, format)
+            val key = s"$dataSourceName/${step.name}"
+            (key, (step, responseWithDf))
+          }.toMap
+      }
+    }
+  }
+
+  /**
+   * Generate sample for a single step (no relationships)
+   */
+  private def generateSampleForSingleStep(fields: List[Field], sampleSize: Int, fastMode: Boolean, format: String)(implicit sparkSession: SparkSession): SampleResponseWithDataFrame = {
+    val startTime = System.currentTimeMillis()
+    val executionId = generateId()
+
+    // Validate and sanitize sample size
+    val validatedSampleSize = Math.min(Math.max(sampleSize, 1), MAX_SAMPLE_SIZE)
+
+    // Create a minimal step for generation
+    val sampleStep = Step(
+      name = "sample",
+      `type` = "file",
+      options = Map("path" -> "sample", "format" -> format, "enableFastGeneration" -> fastMode.toString),
+      count = Count(records = Some(validatedSampleSize.toLong)),
+      fields = fields
+    )
+
+    val factory = new DataGeneratorFactory(new Faker(Locale.ENGLISH), enableFastGeneration = fastMode)
+    val df = factory.generateDataForStep(sampleStep, "sample", 0L, validatedSampleSize.toLong)
+
+    convertDataFrameToSampleResponse(df, validatedSampleSize, fastMode, format, enableRelationships = false)
+  }
+
+  /**
+   * Convert a DataFrame to SampleResponseWithDataFrame
+   */
+  private def convertDataFrameToSampleResponse(df: DataFrame, sampleSize: Int, fastMode: Boolean, format: String, enableRelationships: Boolean): SampleResponseWithDataFrame = {
+    val startTime = System.currentTimeMillis()
+    val executionId = generateId()
+
+    // Collect omitted field paths for filtering
+    val omittedPaths = io.github.datacatering.datacaterer.core.util.DataFrameOmitUtil.collectOmittedPaths(df.schema)
+
+    // Convert to response format
+    val sampleData = df.collect().map(row => {
+      val jsonString = row.json
+      val jsonNode = ObjectMapperUtil.jsonObjectMapper.readTree(jsonString)
+      io.github.datacatering.datacaterer.core.util.DataFrameOmitUtil.removeOmittedFromJson(jsonNode, omittedPaths)
+      ObjectMapperUtil.jsonObjectMapper.convertValue(jsonNode, classOf[java.util.Map[String, Any]])
+        .asInstanceOf[java.util.Map[String, Any]]
+        .asScala
+        .toMap
+    }).toList
+
+    val cleanSchema = io.github.datacatering.datacaterer.core.util.DataFrameOmitUtil.removeOmittedFieldsFromSchema(df.schema)
+    val cleanDf = io.github.datacatering.datacaterer.core.util.DataFrameOmitUtil.removeOmitFields(df)
+    val schemaInfo = SchemaInfo.fromSparkSchema(cleanSchema)
+    val generationTime = System.currentTimeMillis() - startTime
+
+    val response = SampleResponse(
+      success = true,
+      executionId = executionId,
+      schema = Some(schemaInfo),
+      sampleData = Some(sampleData),
+      metadata = Some(SampleMetadata(
+        sampleSize = sampleSize,
+        actualRecords = sampleData.length,
+        generatedInMs = generationTime,
+        fastModeEnabled = fastMode,
+        relationshipsEnabled = enableRelationships
+      )),
+      format = Some(format)
+    )
+
+    SampleResponseWithDataFrame(response, Some(cleanDf))
+  }
+
 
   /**
    * Generate sample data from a specific step (which may contain nested sub-steps) from a saved plan
    * Note: In PlanRunRequest, "tasks" is actually List[Step] where each Step represents a task definition
    */
-  def generateFromPlanStep(planName: String, taskName: String, stepName: String, sampleSize: Int = 10, fastMode: Boolean = true)(implicit sparkSession: SparkSession): Either[SampleError, (Step, SampleResponseWithDataFrame)] = {
+  def generateFromPlanStep(
+                                    planName: String, 
+                                    taskName: String, 
+                                    stepName: String, 
+                                    sampleSize: Int = 10, 
+                                    fastMode: Boolean = true,
+                                    planDirectory: Option[String] = None,
+                                    taskDirectory: Option[String] = None
+                                  )(implicit sparkSession: SparkSession): Either[SampleError, (Step, SampleResponseWithDataFrame)] = {
     LOGGER.info(s"Generating sample from plan step: plan=$planName, task=$taskName, step=$stepName")
 
     Try {
       // Load plan and find the specific step within the task
-      val planRequest = loadPlan(planName)
-      val step = findSpecificStepInTask(planRequest, taskName, stepName)
+      val planRequest = loadPlan(planName, planDirectory, taskDirectory)
+      val step = findSpecificStepInTask(planRequest, taskName, stepName, taskDirectory)
 
       val format = step.options.getOrElse("format", "json")
-      val responseWithDf = generateSampleWithDataFrame(step.fields, sampleSize, fastMode, format)
+      // For step-level generation, relationships are not enabled as per requirement
+      val responseWithDf = generateSampleForSingleStep(step.fields, sampleSize, fastMode, format)
       (step, responseWithDf)
     } match {
       case Success((step, responseWithDf)) => Right((step, responseWithDf))
@@ -377,32 +477,55 @@ object FastSampleGenerator {
    * Generate sample data from a specific task from a saved plan
    * Note: In PlanRunRequest, "tasks" is actually List[Step] where each Step represents a task definition
    */
-  def generateFromPlanTask(planName: String, taskName: String, sampleSize: Int = 10, fastMode: Boolean = true)(implicit sparkSession: SparkSession): Either[SampleError, Map[String, (Step, SampleResponseWithDataFrame)]] = {
-    LOGGER.info(s"Generating samples from plan task: plan=$planName, task=$taskName")
+  def generateFromPlanTask(
+                            planName: String,
+                            taskName: String,
+                            sampleSize: Int = 10,
+                            fastMode: Boolean = true,
+                            enableRelationships: Boolean = false,
+                            planDirectory: Option[String] = None,
+                            taskDirectory: Option[String] = None
+                          )(implicit sparkSession: SparkSession): Either[SampleError, Map[String, (Step, SampleResponseWithDataFrame)]] = {
+    LOGGER.info(s"Generating samples from plan task: plan=$planName, task=$taskName, enableRelationships=$enableRelationships")
 
     Try {
-      val planRequest = loadPlan(planName)
-      
+      val planRequest = loadPlan(planName, planDirectory, taskDirectory)
+
       // Handle both JSON and YAML plans
       val stepsToGenerate = if (planRequest.tasks.nonEmpty) {
         // JSON plan - step is directly in planRequest.tasks
-        findStepsInPlan(planRequest, taskName)
+        findStepsInPlan(planRequest, taskName, taskDirectory)
       } else {
         // YAML plan - load task from task files and get first step
-        val task = findTaskByName(taskName)
+        val task = findTaskByName(taskName, taskDirectory)
         if (task.steps.isEmpty) {
           throw new IllegalArgumentException(s"No steps found in task '$taskName'")
         }
         task.steps
       }
 
-      // Generate samples for each step
-      stepsToGenerate.map { step =>
-        val format = step.options.getOrElse("format", "json")
-        val responseWithDf = generateSampleWithDataFrame(step.fields, sampleSize, fastMode, format)
-        val key = s"$planName/${step.name}"
-        (key, (step, responseWithDf))
-      }.toMap
+      // Prepare steps with their data source names for unified generation
+      val requestedSteps = stepsToGenerate.map { step =>
+        val planTask = planRequest.plan.tasks.find(_.name == taskName)
+        val dataSourceName = planTask.map(_.dataSourceName).getOrElse(taskName)
+        (step, dataSourceName)
+      }
+
+      // Use the unified generation method
+      val results = generateSamplesWithRelationships(
+        plan = Some(planRequest.plan),
+        requestedSteps = requestedSteps,
+        sampleSize = sampleSize,
+        fastMode = fastMode,
+        enableRelationships = enableRelationships,
+        taskDirectory = taskDirectory
+      )
+
+      // Convert key format from "dataSource/stepName" to "planName/stepName" for backward compatibility
+      results.map { case (_, (step, response)) =>
+        val newKey = s"$planName/${step.name}"
+        (newKey, (step, response))
+      }
     } match {
       case Success(results) => Right(results)
       case Failure(ex) =>
@@ -415,35 +538,52 @@ object FastSampleGenerator {
    * Generate sample data from all tasks in a plan
    * Note: In PlanRunRequest, "tasks" is actually List[Step] where each Step represents a task definition
    */
-  def generateFromPlan(planName: String, sampleSize: Int = 10, fastMode: Boolean = true)(implicit sparkSession: SparkSession): Either[SampleError, Map[String, (Step, SampleResponseWithDataFrame)]] = {
-    LOGGER.info(s"Generating samples from plan: plan=$planName")
+  def generateFromPlan(planName: String, sampleSize: Int = 10, fastMode: Boolean = true, enableRelationships: Boolean = false, planDirectory: Option[String] = None, taskDirectory: Option[String] = None)(implicit sparkSession: SparkSession): Either[SampleError, Map[String, (Step, SampleResponseWithDataFrame)]] = {
+    LOGGER.info(s"Generating samples from plan: plan=$planName, enableRelationships=$enableRelationships")
 
     Try {
-      val planRequest = loadPlan(planName)
+      val planRequest = loadPlan(planName, planDirectory, taskDirectory)
 
-      // Handle both JSON and YAML plans
-      val stepsToGenerate = if (planRequest.tasks.nonEmpty) {
+      // Prepare steps with their data source names for unified generation
+      val requestedSteps = if (planRequest.tasks.nonEmpty) {
         // JSON plan - steps are in planRequest.tasks
-        planRequest.tasks
+        planRequest.tasks.map(step => (step, planName))
       } else {
         // YAML plan - load tasks from task files
         val taskNames = planRequest.plan.tasks.map(_.name)
         val allTasks = if (taskNames.nonEmpty) {
-          taskNames.map(taskName => findTaskByName(taskName))
+          taskNames.flatMap(taskName => {
+            try {
+              val task = findTaskByName(taskName, taskDirectory)
+              val planTask = planRequest.plan.tasks.find(_.name == taskName)
+              task.steps.map(step => (step, planTask.map(_.dataSourceName).getOrElse(taskName)))
+            } catch {
+              case ex: Exception =>
+                LOGGER.warn(s"Failed to load task $taskName: ${ex.getMessage}")
+                List.empty
+            }
+          })
         } else {
           List()
         }
-        // Get first step from each task
-        allTasks.flatMap(_.steps)
+        allTasks
       }
 
-      // Generate samples for each step
-      stepsToGenerate.map { step =>
-        val format = step.options.getOrElse("format", "json")
-        val responseWithDf = generateSampleWithDataFrame(step.fields, sampleSize, fastMode, format)
-        val key = s"$planName/${step.name}"
-        (key, (step, responseWithDf))
-      }.toMap
+      // Use the unified generation method
+      val results = generateSamplesWithRelationships(
+        plan = Some(planRequest.plan),
+        requestedSteps = requestedSteps,
+        sampleSize = sampleSize,
+        fastMode = fastMode,
+        enableRelationships = enableRelationships,
+        taskDirectory = taskDirectory
+      )
+
+      // Convert key format from "dataSource/stepName" to "planName/stepName" for backward compatibility  
+      results.map { case (key, (step, response)) =>
+        val newKey = s"$planName/${step.name}"
+        (newKey, (step, response))
+      }
     } match {
       case Success(results) => Right(results)
       case Failure(ex) =>
@@ -452,10 +592,10 @@ object FastSampleGenerator {
     }
   }
 
-  private def loadPlan(planName: String): io.github.datacatering.datacaterer.core.ui.model.PlanRunRequest = {
+  private def loadPlan(planName: String, planDirectory: Option[String] = None, taskDirectory: Option[String] = None): io.github.datacatering.datacaterer.core.ui.model.PlanRunRequest = {
     import io.github.datacatering.datacaterer.core.ui.config.UiConfiguration.INSTALL_DIRECTORY
-    val planSaveFolder = s"$INSTALL_DIRECTORY/plan"
-    
+    val planSaveFolder = planDirectory.getOrElse(s"$INSTALL_DIRECTORY/plan")
+
     // Try JSON first
     val jsonFile = java.nio.file.Paths.get(s"$planSaveFolder/$planName.json")
     if (Files.exists(jsonFile)) {
@@ -463,13 +603,55 @@ object FastSampleGenerator {
       return ObjectMapperUtil.jsonObjectMapper.readValue(fileContent, classOf[io.github.datacatering.datacaterer.core.ui.model.PlanRunRequest])
     }
 
-    // Try YAML plans
-    val yamlPlanRequest = loadYamlPlanByName(planName)
+    // Try YAML plans using enhanced resolution
+    val yamlPlanRequest = loadYamlPlanByNameWithEnhancedResolution(planName)
     if (yamlPlanRequest.isDefined) {
       return yamlPlanRequest.get
     }
 
     throw new java.io.FileNotFoundException(s"Plan not found: $planName (searched in JSON and YAML sources)")
+  }
+
+  /**
+   * Load YAML plan by plan name using enhanced resolution logic from PlanRepository
+   */
+  private def loadYamlPlanByNameWithEnhancedResolution(planName: String): Option[io.github.datacatering.datacaterer.core.ui.model.PlanRunRequest] = {
+    // First try finding a specific YAML plan file by name
+    val planFilePath = ConfigParser.foldersConfig.planFilePath
+    val yamlPlanFilePath = findYamlPlanFile(planFilePath, planName)
+
+    yamlPlanFilePath match {
+      case Some(planPath) =>
+        // Parse the specific plan file
+        scala.util.Try {
+          val parsedPlan = PlanParser.parsePlanFile(planPath)
+          convertYamlPlanToPlanRunRequest(parsedPlan, planName)
+        }.toOption
+      case None =>
+        // Fallback to searching all YAML plans
+        val allYamlPlans = getYamlPlansAsPlanRunRequests
+        allYamlPlans.find(_.plan.name == planName)
+    }
+  }
+
+  /**
+   * Find YAML plan file by name, similar to PlanRepository logic
+   */
+  private def findYamlPlanFile(planFilePath: String, planName: String): Option[String] = {
+    val planDir = new java.io.File(planFilePath).getParent
+    if (planDir != null) {
+      val planDirectory = getPlanDirectory(planDir)
+      planDirectory match {
+        case Some(dir) if dir.exists() && dir.isDirectory =>
+          val yamlFiles = dir.listFiles()
+          if (yamlFiles != null) {
+            yamlFiles.find(f => f.isFile && f.getName.endsWith(".yaml") &&
+                (f.getName == s"$planName.yaml" || f.getName.replaceAll("\\.yaml$", "") == planName))
+              .map(_.getAbsolutePath)
+          } else None
+        case _ => None
+      }
+    } else None
   }
 
   /**
@@ -488,7 +670,7 @@ object FastSampleGenerator {
     val yamlPlanFiles = getYamlPlanFiles
     yamlPlanFiles.flatMap(planFile => {
       val tryParse = scala.util.Try {
-        val parsedPlan = ObjectMapperUtil.yamlObjectMapper.readValue(planFile, classOf[Plan])
+        val parsedPlan = PlanParser.parsePlanFile(planFile.getAbsolutePath)
         // Convert YAML Plan to PlanRunRequest format
         convertYamlPlanToPlanRunRequest(parsedPlan, planFile.getName.replaceAll("\\.yaml$", ""))
       }
@@ -507,7 +689,7 @@ object FastSampleGenerator {
    */
   private def getYamlPlanFiles: List[java.io.File] = {
     import io.github.datacatering.datacaterer.core.ui.config.UiConfiguration.INSTALL_DIRECTORY
-    
+
     // First, check the plan save folder (where UI stores plans)
     val planSaveFolder = s"$INSTALL_DIRECTORY/plan"
     val planFolder = new java.io.File(planSaveFolder)
@@ -559,23 +741,10 @@ object FastSampleGenerator {
   }
 
   /**
-   * Try to get the plan directory using multiple approaches (similar to FileUtil.getDirectory)
-   * Reuses logic from PlanRepository.getPlanDirectory
+   * Get plan directory using consolidated method from PlanParser
    */
   private def getPlanDirectory(dirPath: String): Option[java.io.File] = {
-    val directFile = new java.io.File(dirPath)
-    val classFile = scala.util.Try(new java.io.File(getClass.getResource(s"/$dirPath").getPath))
-    val classLoaderFile = scala.util.Try(new java.io.File(getClass.getClassLoader.getResource(dirPath).getPath))
-
-    if (directFile.isDirectory) {
-      Some(directFile)
-    } else if (classFile.isSuccess && classFile.get.isDirectory) {
-      Some(classFile.get)
-    } else if (classLoaderFile.isSuccess && classLoaderFile.get.isDirectory) {
-      Some(classLoaderFile.get)
-    } else {
-      None
-    }
+    PlanParser.findDirectory(dirPath)
   }
 
   /**
@@ -595,7 +764,7 @@ object FastSampleGenerator {
     )
   }
 
-  private def findStepsInPlan(planRequest: io.github.datacatering.datacaterer.core.ui.model.PlanRunRequest, taskName: String)(implicit sparkSession: SparkSession): List[io.github.datacatering.datacaterer.api.model.Step] = {
+  private def findStepsInPlan(planRequest: io.github.datacatering.datacaterer.core.ui.model.PlanRunRequest, taskName: String, taskDirectory: Option[String] = None)(implicit sparkSession: SparkSession): List[io.github.datacatering.datacaterer.api.model.Step] = {
     // For JSON plans, steps are in planRequest.tasks
     if (planRequest.tasks.nonEmpty) {
       planRequest.tasks.find(_.name == taskName) match {
@@ -611,9 +780,9 @@ object FastSampleGenerator {
       if (!taskNames.contains(taskName)) {
         throw new IllegalArgumentException(s"Step/Task '$taskName' not found in plan. Available: ${taskNames.mkString(", ")}")
       }
-      
+
       // Load the task from YAML files using the same logic as PlanRepository
-      findTaskByName(taskName).steps.headOption match {
+      findTaskByName(taskName, taskDirectory).steps.headOption match {
         case Some(step) => List(step)
         case None =>
           throw new IllegalArgumentException(s"No steps found in task '$taskName'")
@@ -623,19 +792,18 @@ object FastSampleGenerator {
 
   /**
    * Find a task by name by parsing all task files in the configured task folder
-   * This uses the same logic as PlanParser.parseTasks to ensure consistency
-   * Reuses logic from PlanRepository.findTaskByName
+   * This uses the consolidated parsing logic from PlanParser
    */
-  private def findTaskByName(taskName: String)(implicit sparkSession: SparkSession): Task = {
-    val taskFolderPath = ConfigParser.foldersConfig.taskFolderPath
-    val allTasks = PlanParser.parseTasks(taskFolderPath)
+  private def findTaskByName(taskName: String, taskDirectory: Option[String] = None)(implicit sparkSession: SparkSession): Task = {
+    val taskFolderPath = taskDirectory.getOrElse(ConfigParser.foldersConfig.taskFolderPath)
+    val allTasks = PlanParser.parseTasksFromFolder(taskFolderPath)
 
     allTasks.find(_.name == taskName) match {
       case Some(task) => task
       case None =>
         throw new IllegalArgumentException(
           s"Task '$taskName' not found in task folder: $taskFolderPath. " +
-          s"Available tasks: ${allTasks.map(_.name).mkString(", ")}"
+            s"Available tasks: ${allTasks.map(_.name).mkString(", ")}"
         )
     }
   }
@@ -643,20 +811,43 @@ object FastSampleGenerator {
   /**
    * Generate sample from a task by name
    */
-  def generateFromTaskName(taskName: String, sampleSize: Int = 10, fastMode: Boolean = true)(implicit sparkSession: SparkSession): Either[SampleError, Map[String, (Step, SampleResponseWithDataFrame)]] = {
-    LOGGER.info(s"Generating samples from task: task=$taskName")
+  def generateFromTaskName(taskName: String, sampleSize: Int = 10, fastMode: Boolean = true, enableRelationships: Boolean = false, taskDirectory: Option[String] = None)(implicit sparkSession: SparkSession): Either[SampleError, Map[String, (Step, SampleResponseWithDataFrame)]] = {
+    LOGGER.info(s"Generating samples from task: task=$taskName, enableRelationships=$enableRelationships")
 
     Try {
-      val task = findTaskByName(taskName)
-      
-      // Generate samples for all steps in the task
-      val results = task.steps.map { step =>
-        val format = step.options.getOrElse("format", "json")
-        val responseWithDf = generateSampleWithDataFrame(step.fields, sampleSize, fastMode, format)
-        (step.name, (step, responseWithDf))
-      }.toMap
+      val task = findTaskByName(taskName, taskDirectory)
 
-      results
+      // Try to find a plan that contains this task for relationship processing
+      val planOption = if (enableRelationships) {
+        val allYamlPlans = getYamlPlansAsPlanRunRequests
+        allYamlPlans.find(_.plan.tasks.exists(_.name == taskName)).map(_.plan)
+      } else {
+        None
+      }
+
+      // Prepare steps with their data source names for unified generation
+      val requestedSteps = task.steps.map { step =>
+        val dataSourceName = planOption
+          .flatMap(_.tasks.find(_.name == taskName))
+          .map(_.dataSourceName)
+          .getOrElse(taskName)
+        (step, dataSourceName)
+      }
+
+      // Use the unified generation method
+      val results = generateSamplesWithRelationships(
+        plan = planOption,
+        requestedSteps = requestedSteps,
+        sampleSize = sampleSize,
+        fastMode = fastMode,
+        enableRelationships = enableRelationships,
+        taskDirectory = taskDirectory
+      )
+
+      // Convert key format from "dataSource/stepName" to just "stepName" for backward compatibility
+      results.map { case (key, (step, response)) =>
+        (step.name, (step, response))
+      }
     } match {
       case Success(results) => Right(results)
       case Failure(ex) =>
@@ -681,7 +872,8 @@ object FastSampleGenerator {
       stepOption match {
         case Some(step) =>
           val format = step.options.getOrElse("format", "json")
-          val responseWithDf = generateSampleWithDataFrame(step.fields, sampleSize, fastMode, format)
+          // For step-level generation, relationships are not enabled as per requirement
+          val responseWithDf = generateSampleForSingleStep(step.fields, sampleSize, fastMode, format)
           (step, responseWithDf)
         case None =>
           val allStepNames = allTasks.flatMap(_.steps).map(_.name).mkString(", ")
@@ -700,12 +892,12 @@ object FastSampleGenerator {
   /**
    * Find a specific step within a task from a plan
    */
-  private def findSpecificStepInTask(planRequest: io.github.datacatering.datacaterer.core.ui.model.PlanRunRequest, taskName: String, stepName: String)(implicit sparkSession: SparkSession): io.github.datacatering.datacaterer.api.model.Step = {
+  private def findSpecificStepInTask(planRequest: io.github.datacatering.datacaterer.core.ui.model.PlanRunRequest, taskName: String, stepName: String, taskDirectory: Option[String] = None)(implicit sparkSession: SparkSession): io.github.datacatering.datacaterer.api.model.Step = {
     // For JSON plans, steps are in planRequest.tasks
     if (planRequest.tasks.nonEmpty) {
       // In JSON plans, each "task" in planRequest.tasks is actually a Step representing the entire task
       planRequest.tasks.find(_.name == taskName) match {
-        case Some(taskStep) => 
+        case Some(taskStep) =>
           // The task itself is the step we want (no sub-steps in JSON plans)
           taskStep
         case None =>
@@ -714,7 +906,7 @@ object FastSampleGenerator {
       }
     } else {
       // For YAML plans, load the task from task files and find the specific step
-      val task = findTaskByName(taskName)
+      val task = findTaskByName(taskName, taskDirectory)
       task.steps.find(_.name == stepName) match {
         case Some(step) => step
         case None =>

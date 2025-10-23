@@ -9,10 +9,12 @@ import org.scalatest.funsuite.AnyFunSuite
 import org.scalatest.matchers.should.Matchers
 
 import java.net.http.{HttpClient, HttpRequest, HttpResponse}
-import java.net.{URI, URLEncoder}
-import java.nio.charset.StandardCharsets
-import java.nio.file.{Files, Paths}
+import java.net.URI
+import java.nio.file.{Files, Path, Paths}
+import java.util.stream.Collectors
+import scala.collection.JavaConverters.{asScalaIteratorConverter, collectionAsScalaIterableConverter}
 import scala.concurrent.duration._
+import scala.reflect.io.Directory
 import scala.util.{Failure, Success, Try}
 
 /**
@@ -24,38 +26,64 @@ import scala.util.{Failure, Success, Try}
  */
 class PlanApiEndToEndTest extends AnyFunSuite with Matchers with BeforeAndAfterAll {
 
-  private val baseUrl = "http://localhost:9898"
+  // Use a dynamic port to avoid conflicts when tests run in parallel
+  private val serverPort = findAvailablePort()
+  private val baseUrl = s"http://localhost:$serverPort"
   private val client = HttpClient.newBuilder().build()
   private val objectMapper: ObjectMapper = ObjectMapperUtil.jsonObjectMapper
   private val testDirectory = "sample/e2e"
-  private val tempTestDirectory = getClass.getClassLoader.getResource(testDirectory).getPath
+  private val baseTestDirectory = getClass.getClassLoader.getResource(testDirectory).getPath
+  private var originalConfigPath: Option[String] = None
+  private var originalPortProperty: Option[String] = None
+  private var originalPlanFilePath: Option[String] = None
+  private var originalTaskFolderPath: Option[String] = None
+  private var tempTestDirectory: Path = _
+  private var tempPlanFile: Path = _
+  private var tempTaskDirectory: Path = _
+
+  // Helper method to find an available port
+  private def findAvailablePort(): Int = {
+    val socket = new java.net.ServerSocket(0)
+    val port = socket.getLocalPort
+    socket.close()
+    port
+  }
+
+  // Helper methods to create unique names per test
+  private def getUniqueId: String = java.util.UUID.randomUUID().toString.take(8)
+
+  private def getUniqueTestPath(subPath: String): String = s"$baseTestDirectory/$subPath"
 
   override def beforeAll(): Unit = {
     super.beforeAll()
 
-    println(s"Test directory path: $tempTestDirectory")
-
-    // Set up temp directories
-    System.setProperty("data-caterer-install-dir", tempTestDirectory)
-    System.setProperty("APPLICATION_CONFIG_PATH", "application-e2e.conf")
-    println("Setting up test directories...")
-    setupTestDirectories()
-    println("Setting up test data...")
-    setupTestData()
-
-    // Start UI server in a separate thread to avoid blocking
-    println("Starting Data Caterer UI server...")
-    val serverThread = new Thread(() => {
-      try {
+    // Store original properties and environment variables to restore later
+    originalConfigPath = Option(System.getProperty("APPLICATION_CONFIG_PATH"))
+    originalPortProperty = Option(System.getProperty("datacaterer.ui.port"))
+    originalPlanFilePath = Option(System.getProperty("PLAN_FILE_PATH"))
+    originalTaskFolderPath = Option(System.getProperty("TASK_FOLDER_PATH"))
+    
+    // Create temporary directories for test isolation
+    setupTemporaryTestDirectories()
+    
+    println(s"Starting Data Caterer UI server on port $serverPort...")
+    try {
+      // Start server in a separate thread to avoid blocking
+      val serverThread = new Thread(() => {
+        // Set unique test config and paths
+        System.setProperty("APPLICATION_CONFIG_PATH", "application-e2e.conf")
+        System.setProperty("datacaterer.ui.port", serverPort.toString)
+        System.setProperty("PLAN_FILE_PATH", tempPlanFile.toString)
+        System.setProperty("TASK_FOLDER_PATH", tempTaskDirectory.toString)
         DataCatererUI.main(Array.empty)
-      } catch {
-        case e: Exception => 
-          println(s"Server startup error: ${e.getMessage}")
-          e.printStackTrace()
-      }
-    })
-    serverThread.setDaemon(true)
-    serverThread.start()
+      })
+      serverThread.setDaemon(true)
+      serverThread.start()
+    } catch {
+      case e: Exception =>
+        println(s"Server startup error: ${e.getMessage}")
+        e.printStackTrace()
+    }
 
     // Wait for server to be ready
     println("Waiting for server to be ready...")
@@ -64,136 +92,38 @@ class PlanApiEndToEndTest extends AnyFunSuite with Matchers with BeforeAndAfterA
   }
 
   override def afterAll(): Unit = {
-    println("Cleaning up test directories...")
-    cleanupTestDirectories()
-    // Note: Not calling shutdownServer() as it calls System.exit(0) which interferes with test execution
-    // The server will be cleaned up when the test JVM terminates
-    super.afterAll()
-  }
-
-  /**
-   * Setup test directories for plans, tasks, connections, etc.
-   */
-  private def setupTestDirectories(): Unit = {
-    val dirs = List(
-      s"$tempTestDirectory/plan",
-      s"$tempTestDirectory/task",
-      s"$tempTestDirectory/connection",
-      s"$tempTestDirectory/execution",
-      s"$tempTestDirectory/data/csv",
-      s"$tempTestDirectory/data/json"
-    )
-    dirs.foreach { dir =>
-      val path = Paths.get(dir)
-      if (!Files.exists(path)) {
-        Files.createDirectories(path)
+    try {
+      // Restore original properties
+      originalConfigPath match {
+        case Some(path) => System.setProperty("APPLICATION_CONFIG_PATH", path)
+        case None => System.clearProperty("APPLICATION_CONFIG_PATH")
       }
+      
+      originalPortProperty match {
+        case Some(port) => System.setProperty("datacaterer.ui.port", port)
+        case None => System.clearProperty("datacaterer.ui.port")
+      }
+      
+      originalPlanFilePath match {
+        case Some(path) => System.setProperty("PLAN_FILE_PATH", path)
+        case None => System.clearProperty("PLAN_FILE_PATH")
+      }
+      
+      originalTaskFolderPath match {
+        case Some(path) => System.setProperty("TASK_FOLDER_PATH", path)
+        case None => System.clearProperty("TASK_FOLDER_PATH")
+      }
+      
+      // Clean up temporary test directories
+      cleanupTemporaryTestDirectories()
+      
+      println("Cleaned up test configuration")
+    } catch {
+      case e: Exception =>
+        println(s"Error during cleanup: ${e.getMessage}")
     }
-  }
-
-  /**
-   * Create test YAML plan and task files
-   */
-  private def setupTestData(): Unit = {
-    // Create a simple CSV task
-    val csvTaskYaml =
-      s"""name: "e2e_csv_task"
-         |steps:
-         |  - name: "csv_step1"
-         |    type: "csv"
-         |    count:
-         |      records: 100
-         |    options:
-         |      path: "$tempTestDirectory/data/csv/output"
-         |      header: "true"
-         |    fields:
-         |      - name: "id"
-         |        type: "string"
-         |      - name: "name"
-         |        type: "string"
-         |      - name: "age"
-         |        type: "int"
-         |        options:
-         |          min: 18
-         |          max: 80
-         |  - name: "csv_step2"
-         |    type: "csv"
-         |    count:
-         |      records: 50
-         |    options:
-         |      path: "$tempTestDirectory/data/csv/output2"
-         |      header: "true"
-         |    fields:
-         |      - name: "id"
-         |        type: "string"
-         |      - name: "value"
-         |        type: "double"
-         |""".stripMargin
-    Files.write(Paths.get(s"$tempTestDirectory/task/e2e_csv_task.yaml"), csvTaskYaml.getBytes)
-
-    // Create a JSON task
-    val jsonTaskYaml =
-      s"""name: "e2e_json_task"
-         |steps:
-         |  - name: "json_step1"
-         |    type: "json"
-         |    count:
-         |      records: 50
-         |    options:
-         |      path: "$tempTestDirectory/data/json/output"
-         |    fields:
-         |      - name: "user_id"
-         |        type: "string"
-         |      - name: "email"
-         |        type: "string"
-         |      - name: "created_at"
-         |        type: "timestamp"
-         |""".stripMargin
-    Files.write(Paths.get(s"$tempTestDirectory/task/e2e_json_task.yaml"), jsonTaskYaml.getBytes)
-
-    // Create a YAML plan that references both tasks
-    val planYaml =
-      s"""name: "e2e_test_plan"
-         |description: "End-to-end test plan"
-         |tasks:
-         |  - name: "e2e_csv_task"
-         |    dataSourceName: "csv_datasource"
-         |    enabled: true
-         |  - name: "e2e_json_task"
-         |    dataSourceName: "json_datasource"
-         |    enabled: true
-         |sinkOptions:
-         |  foreignKeys: []
-         |validations: []
-         |""".stripMargin
-    Files.write(Paths.get(s"$tempTestDirectory/plan/e2e_test_plan.yaml"), planYaml.getBytes)
     
-    // Create a JSON-only plan for testing filtering
-    val jsonOnlyPlanYaml =
-      s"""name: "json_only_plan"
-         |description: "Plan with only JSON task for testing filtering"
-         |tasks:
-         |  - name: "e2e_json_task"
-         |    dataSourceName: "json_datasource"
-         |    enabled: true
-         |sinkOptions:
-         |  foreignKeys: []
-         |validations: []
-         |""".stripMargin
-    Files.write(Paths.get(s"$tempTestDirectory/plan/json_only_plan.yaml"), jsonOnlyPlanYaml.getBytes)
-  }
-
-  private def cleanupTestDirectories(): Unit = {
-    val tempDir = Paths.get(tempTestDirectory).toFile
-    if (tempDir.exists()) {
-      def deleteRecursively(file: java.io.File): Unit = {
-        if (file.isDirectory) {
-          file.listFiles().foreach(deleteRecursively)
-        }
-        if (file.getName != "e2e") file.delete()
-      }
-      deleteRecursively(tempDir)
-    }
+    super.afterAll()
   }
 
   /**
@@ -232,6 +162,93 @@ class PlanApiEndToEndTest extends AnyFunSuite with Matchers with BeforeAndAfterA
       throw new RuntimeException(s"Server did not become ready within $timeout after $attempt attempts")
     }
     println(s"Server is ready after $attempt attempts!")
+  }
+
+  private def deleteFolder(path: Path): Unit = {
+    if (Files.exists(path)) {
+      new Directory(path.toFile).deleteRecursively()
+    }
+  }
+  
+  /**
+   * Set up temporary directories and copy test files for test isolation
+   */
+  private def setupTemporaryTestDirectories(): Unit = {
+    // Create temporary test directory
+    tempTestDirectory = Files.createTempDirectory("datacaterer-integration-test")
+    println(s"Created temporary test directory: $tempTestDirectory")
+    
+    // Create plan and task subdirectories
+    val tempPlanDirectory = tempTestDirectory.resolve("plan")
+    tempTaskDirectory = tempTestDirectory.resolve("task")
+    Files.createDirectories(tempPlanDirectory)
+    Files.createDirectories(tempTaskDirectory)
+    
+    // Copy test plan files from resources to temp directory
+    val resourcePlanDirectory = Paths.get(baseTestDirectory, "plan")
+    if (Files.exists(resourcePlanDirectory)) {
+      val planStream = Files.list(resourcePlanDirectory)
+      try {
+        val planFiles = planStream.collect(Collectors.toList())
+        planFiles.asScala.foreach { planFile =>
+          if (Files.isRegularFile(planFile) && planFile.toString.endsWith(".yaml")) {
+            val targetFile = tempPlanDirectory.resolve(planFile.getFileName)
+            Files.copy(planFile, targetFile)
+            println(s"Copied plan file: ${planFile.getFileName} -> $targetFile")
+            
+            // Set the first plan file as the default plan file path
+            if (tempPlanFile == null) {
+              tempPlanFile = targetFile
+            }
+          }
+        }
+      } finally {
+        planStream.close()
+      }
+    }
+    
+    // Copy test task files from resources to temp directory
+    val resourceTaskDirectory = Paths.get(baseTestDirectory, "task")
+    if (Files.exists(resourceTaskDirectory)) {
+      val taskStream = Files.list(resourceTaskDirectory)
+      try {
+        val taskFiles = taskStream.collect(Collectors.toList())
+        taskFiles.asScala.foreach { taskFile =>
+          if (Files.isRegularFile(taskFile) && taskFile.toString.endsWith(".yaml")) {
+            val targetFile = tempTaskDirectory.resolve(taskFile.getFileName)
+            Files.copy(taskFile, targetFile)
+            println(s"Copied task file: ${taskFile.getFileName} -> $targetFile")
+          }
+        }
+      } finally {
+        taskStream.close()
+      }
+    }
+    
+    // If no plan file was found, create a default one
+    if (tempPlanFile == null) {
+      tempPlanFile = tempPlanDirectory.resolve("e2e_test_plan.yaml")
+      println(s"No plan files found, will use default: $tempPlanFile")
+    }
+    
+    println(s"Temporary directories setup complete:")
+    println(s"  Plan file: $tempPlanFile")
+    println(s"  Task directory: $tempTaskDirectory")
+  }
+  
+  /**
+   * Clean up temporary test directories
+   */
+  private def cleanupTemporaryTestDirectories(): Unit = {
+    if (tempTestDirectory != null && Files.exists(tempTestDirectory)) {
+      try {
+        deleteFolder(tempTestDirectory)
+        println(s"Cleaned up temporary test directory: $tempTestDirectory")
+      } catch {
+        case e: Exception =>
+          println(s"Warning: Could not fully clean up temporary directory: ${e.getMessage}")
+      }
+    }
   }
 
   // ============================================================================
@@ -273,27 +290,29 @@ class PlanApiEndToEndTest extends AnyFunSuite with Matchers with BeforeAndAfterA
   // ============================================================================
 
   test("POST /connection - should save connections successfully") {
+    val uniqueId = getUniqueId
     val connection = Connection(
-      name = "test_csv_connection",
+      name = s"test_csv_connection_$uniqueId",
       `type` = "csv",
       groupType = Some("dataSource"),
-      options = Map("path" -> s"$tempTestDirectory/data/csv")
+      options = Map("path" -> getUniqueTestPath("data/csv"))
     )
     val request = SaveConnectionsRequest(connections = List(connection))
 
     val response = postJson("/connection", request)
 
     response.statusCode() shouldBe 200
-    response.body() should include("test_csv_connection")
+    response.body() should include(s"test_csv_connection_$uniqueId")
   }
 
   test("GET /connections - should retrieve all connections") {
     // First save a connection
+    val uniqueId = getUniqueId
     val connection = Connection(
-      name = "test_csv_get",
+      name = s"test_csv_get_$uniqueId",
       `type` = "csv",
       groupType = Some("dataSource"),
-      options = Map("path" -> s"$tempTestDirectory/data/csv")
+      options = Map("path" -> getUniqueTestPath("data/csv"))
     )
     postJson("/connection", SaveConnectionsRequest(List(connection)))
 
@@ -302,43 +321,45 @@ class PlanApiEndToEndTest extends AnyFunSuite with Matchers with BeforeAndAfterA
 
     response.statusCode() shouldBe 200
     val body = response.body()
-    body should include("test_csv_get")
+    body should include(s"test_csv_get_$uniqueId")
   }
 
   test("GET /connection/{name} - should retrieve specific connection") {
     // First save a connection
+    val uniqueId = getUniqueId
     val connection = Connection(
-      name = "test_csv_specific",
+      name = s"test_csv_specific_$uniqueId",
       `type` = "csv",
       groupType = Some("dataSource"),
-      options = Map("path" -> s"$tempTestDirectory/data/csv")
+      options = Map("path" -> getUniqueTestPath("data/csv"))
     )
     postJson("/connection", SaveConnectionsRequest(List(connection)))
 
     // Then retrieve it
-    val response = get("/connection/test_csv_specific")
+    val response = get(s"/connection/test_csv_specific_$uniqueId")
 
     response.statusCode() shouldBe 200
     val body = response.body()
-    body should include("test_csv_specific")
+    body should include(s"test_csv_specific_$uniqueId")
   }
 
   test("DELETE /connection/{name} - should delete connection") {
     // First save a connection
+    val uniqueId = getUniqueId
     val connection = Connection(
-      name = "test_csv_delete",
+      name = s"test_csv_delete_$uniqueId",
       `type` = "csv",
       groupType = Some("dataSource"),
-      options = Map("path" -> s"$tempTestDirectory/data/csv")
+      options = Map("path" -> getUniqueTestPath("data/csv"))
     )
     postJson("/connection", SaveConnectionsRequest(List(connection)))
 
     // Delete it
-    val deleteResponse = delete("/connection/test_csv_delete")
+    val deleteResponse = delete(s"/connection/test_csv_delete_$uniqueId")
     deleteResponse.statusCode() shouldBe 200
 
     // Verify it's gone (should return 404 or empty)
-    val getResponse = get("/connection/test_csv_delete")
+    val getResponse = get(s"/connection/test_csv_delete_$uniqueId")
     getResponse.statusCode() should (be(404) or be(200))
   }
 
@@ -360,28 +381,11 @@ class PlanApiEndToEndTest extends AnyFunSuite with Matchers with BeforeAndAfterA
   // ============================================================================
 
   test("POST /run/plans/{planName} - should execute YAML plan with default settings") {
-    // First create connection for the plan
-    val csvConnection = Connection(
-      name = "csv_datasource",
-      `type` = "csv",
-      groupType = Some("dataSource"),
-      options = Map("path" -> s"$tempTestDirectory/data/csv")
-    )
-    val jsonConnection = Connection(
-      name = "json_datasource",
-      `type` = "json",
-      groupType = Some("dataSource"),
-      options = Map("path" -> s"$tempTestDirectory/data/json")
-    )
-    postJson("/connection", SaveConnectionsRequest(List(csvConnection, jsonConnection)))
-
-    Thread.sleep(100) // Brief wait for connection to be saved
-
     // Execute the plan
-    val response = post("/run/plans/e2e_test_plan?source=yaml&mode=generate")
+    val response = post(s"/run/plans/e2e_test_plan?source=yaml&mode=generate")
 
     response.statusCode() shouldBe 200
-    response.body() should include("Plan 'e2e_test_plan' started in generate mode")
+    response.body() should include(s"Plan 'e2e_test_plan' started in generate mode")
   }
 
   test("POST /run/plans/{planName}/tasks/{taskName} - should execute specific task from YAML plan") {
@@ -436,7 +440,7 @@ class PlanApiEndToEndTest extends AnyFunSuite with Matchers with BeforeAndAfterA
       `type` = "csv",
       count = Count(records = Some(10)),
       options = Map(
-        "path" -> s"$tempTestDirectory/data/csv/json-plan-output",
+        "path" -> getUniqueTestPath("data/csv/json-plan-output"),
         "header" -> "true"
       ),
       fields = List(
@@ -482,7 +486,7 @@ class PlanApiEndToEndTest extends AnyFunSuite with Matchers with BeforeAndAfterA
 
   test("GET /run/executions/{id} - should retrieve execution status by ID") {
     // First run a plan
-    val runResponse = post("/run/plans/e2e_test_plan?source=yaml&mode=generate")
+    post("/run/plans/e2e_test_plan?source=yaml&mode=generate")
     Thread.sleep(3000) // Wait for execution to complete
 
     // Get the history to find an execution ID
@@ -567,54 +571,38 @@ class PlanApiEndToEndTest extends AnyFunSuite with Matchers with BeforeAndAfterA
   // ============================================================================
 
   test("Task filtering should only execute specified task") {
-    // Clear output directories
-    val csvStep1Path = Paths.get(s"$tempTestDirectory/data/csv/output")
-    val csvStep2Path = Paths.get(s"$tempTestDirectory/data/csv/output2")
-    val jsonPath = Paths.get(s"$tempTestDirectory/data/json/output")
-    if (Files.exists(csvStep1Path)) {
-      Files.walk(csvStep1Path).sorted(java.util.Comparator.reverseOrder()).forEach(Files.delete)
-    }
-    if (Files.exists(csvStep2Path)) {
-      Files.walk(csvStep2Path).sorted(java.util.Comparator.reverseOrder()).forEach(Files.delete)
-    }
-    if (Files.exists(jsonPath)) {
-      Files.walk(jsonPath).sorted(java.util.Comparator.reverseOrder()).forEach(Files.delete)
-    }
+    val csvStep1Path = Paths.get("/tmp/data/csv/filter/task/output")
+    val csvStep2Path = Paths.get("/tmp/data/csv/filter/task/output2")
+    val jsonPath = Paths.get("/tmp/data/json/filter/task/output")
 
-    // Execute only the JSON task (not CSV task)  
-    val response = post("/run/plans/e2e_test_plan/tasks/e2e_json_task?source=yaml&mode=generate")
+    // Clean all directories before running
+    List(csvStep1Path, csvStep2Path, jsonPath).foreach(deleteFolder)
+
+    // Execute only the JSON task (not CSV task)
+    val response = post(s"/run/plans/e2e_test_plan_filter_task/tasks/e2e_json_task_filter_task?source=yaml&mode=generate")
     response.statusCode() shouldBe 200
 
     Thread.sleep(5000) // Wait for execution
 
-
-    // JSON output should exist, CSV output should not exist
+    // JSON should exist, no other output should exist
     Files.exists(csvStep1Path) shouldBe false
     Files.exists(csvStep2Path) shouldBe false
     Files.exists(jsonPath) shouldBe true
   }
 
   test("Step filtering should only execute specified step") {
-    // Clear output directories
-    val csvStep1Path = Paths.get(s"$tempTestDirectory/data/csv/output")
-    val csvStep2Path = Paths.get(s"$tempTestDirectory/data/csv/output2")
-    val jsonPath = Paths.get(s"$tempTestDirectory/data/json/output")
-    if (Files.exists(csvStep1Path)) {
-      Files.walk(csvStep1Path).sorted(java.util.Comparator.reverseOrder()).forEach(Files.delete)
-    }
-    if (Files.exists(csvStep2Path)) {
-      Files.walk(csvStep2Path).sorted(java.util.Comparator.reverseOrder()).forEach(Files.delete)
-    }
-    if (Files.exists(jsonPath)) {
-      Files.walk(jsonPath).sorted(java.util.Comparator.reverseOrder()).forEach(Files.delete)
-    }
+    val csvStep1Path = Paths.get("/tmp/data/csv/filter/step/output")
+    val csvStep2Path = Paths.get("/tmp/data/csv/filter/step/output2")
+    val jsonPath = Paths.get("/tmp/data/json/filter/step/output")
+
+    // Clean all directories before running
+    List(csvStep1Path, csvStep2Path, jsonPath).foreach(deleteFolder)
 
     // Execute only csv_step1 (not csv_step2)
-    val response = post("/run/plans/e2e_test_plan/tasks/e2e_csv_task/steps/csv_step1?source=yaml&mode=generate")
+    val response = post(s"/run/plans/e2e_test_plan_filter_step/tasks/e2e_csv_task_filter_step/steps/csv_filter_step1?source=yaml&mode=generate")
     response.statusCode() shouldBe 200
 
     Thread.sleep(5000) // Wait for execution
-
 
     // CSV output 1 should exist, no other output should exist
     Files.exists(csvStep1Path) shouldBe true
@@ -794,7 +782,7 @@ class PlanApiEndToEndTest extends AnyFunSuite with Matchers with BeforeAndAfterA
   }
 
   // ============================================================================
-  // Task and Step Sample Generation Tests (NEW ENDPOINTS)
+  // Task and Step Sample Generation Tests
   // ============================================================================
 
   test("GET /sample/tasks/{taskName} - should generate samples from task by name") {
@@ -949,5 +937,137 @@ class PlanApiEndToEndTest extends AnyFunSuite with Matchers with BeforeAndAfterA
     } else {
       fail(s"Unexpected response format: ${bodyContent.take(200)}")
     }
+  }
+
+  // ============================================================================
+  // Relationship-enabled Sample Generation Tests
+  // ============================================================================
+
+  test("POST /sample/schema with enableRelationships=true - should accept enableRelationships flag") {
+    import io.github.datacatering.datacaterer.api.model.Field
+    
+    val sampleRequest = SchemaSampleRequest(
+      fields = List(
+        Field(name = "user_id", `type` = Some("string")),
+        Field(name = "email", `type` = Some("string")),
+        Field(name = "created_at", `type` = Some("timestamp"))
+      ),
+      format = "json",
+      sampleSize = 5,
+      fastMode = true,
+      enableRelationships = true
+    )
+
+    val response = postJson("/sample/schema", sampleRequest)
+
+    println(s"Schema sample with relationships response status: ${response.statusCode()}")
+    val bodyContent = response.body()
+    println(s"Schema sample with relationships response body (first 300 chars): ${bodyContent.take(300)}")
+
+    response.statusCode() shouldBe 200
+    bodyContent should not be empty
+    
+    // Should return raw JSON data (one object per line)
+    val lines = bodyContent.split("\\n").filter(_.trim.nonEmpty)
+    lines should have length 5
+
+    lines.foreach { line =>
+      val sample = objectMapper.readValue(line, classOf[Map[String, Any]])
+      sample should contain key "user_id"
+      sample should contain key "email"
+      sample should contain key "created_at"
+    }
+  }
+
+  test("GET /sample/plans/{planName} with enableRelationships=true - should include relationshipsEnabled in metadata") {
+    val response = get("/sample/plans/e2e_test_plan?sampleSize=5&fastMode=true&enableRelationships=true")
+
+    response.statusCode() shouldBe 200
+    val sampleResponse = objectMapper.readValue(response.body(), classOf[io.github.datacatering.datacaterer.core.ui.model.MultiSchemaSampleResponse])
+    
+    sampleResponse.success shouldBe true
+    sampleResponse.metadata shouldBe defined
+    sampleResponse.metadata.get.relationshipsEnabled shouldBe true
+    sampleResponse.metadata.get.fastModeEnabled shouldBe true
+    sampleResponse.metadata.get.sampleSize shouldBe 5
+  }
+
+  test("GET /sample/plans/{planName}/tasks/{taskName} with enableRelationships=true - should handle relationships flag") {
+    val response = get("/sample/plans/e2e_test_plan/tasks/e2e_json_task?sampleSize=5&fastMode=true&enableRelationships=true")
+
+    response.statusCode() shouldBe 200
+    val sampleResponse = objectMapper.readValue(response.body(), classOf[io.github.datacatering.datacaterer.core.ui.model.MultiSchemaSampleResponse])
+    
+    sampleResponse.success shouldBe true
+    sampleResponse.metadata shouldBe defined
+    sampleResponse.metadata.get.relationshipsEnabled shouldBe true
+    sampleResponse.samples should not be empty
+  }
+
+  test("GET /sample/plans/{planName}/tasks/{taskName}/steps/{stepName} with enableRelationships=true - should process step with relationships flag") {
+    val response = get("/sample/plans/e2e_test_plan/tasks/e2e_json_task/steps/json_step1?sampleSize=5&fastMode=true&enableRelationships=true")
+
+    println(s"Step sample with relationships response status: ${response.statusCode()}")
+    val bodyContent = response.body()
+    println(s"Step sample with relationships response body (first 300 chars): ${bodyContent.take(300)}")
+
+    response.statusCode() shouldBe 200
+    bodyContent should not be empty
+
+    // Should return raw JSON data (one object per line)
+    val lines = bodyContent.split("\\n").filter(_.trim.nonEmpty)
+    lines should have length 5
+
+    lines.foreach { line =>
+      val sample = objectMapper.readValue(line, classOf[Map[String, Any]])
+      sample should contain key "user_id"
+      sample should contain key "email"
+      sample should contain key "created_at"
+    }
+  }
+
+  test("GET /sample/tasks/{taskName} with enableRelationships=true - should handle relationships for task-based sampling") {
+    val response = get("/sample/tasks/e2e_csv_task?sampleSize=5&fastMode=true&enableRelationships=true")
+
+    response.statusCode() shouldBe 200
+    val sampleResponse = objectMapper.readValue(response.body(), classOf[io.github.datacatering.datacaterer.core.ui.model.MultiSchemaSampleResponse])
+    
+    sampleResponse.success shouldBe true
+    sampleResponse.metadata shouldBe defined
+    sampleResponse.metadata.get.relationshipsEnabled shouldBe true
+    sampleResponse.samples should not be empty
+  }
+
+  test("GET /sample/steps/{stepName} with enableRelationships=true - should handle relationships for step-based sampling") {
+    val response = get("/sample/steps/json_step1?sampleSize=5&fastMode=true&enableRelationships=true")
+
+    response.statusCode() shouldBe 200
+    val bodyContent = response.body()
+    bodyContent should not be empty
+
+    // Should return raw JSON data (one object per line) 
+    val lines = bodyContent.split("\\n").filter(_.trim.nonEmpty)
+    lines should have length 5
+
+    lines.foreach { line =>
+      val sample = objectMapper.readValue(line, classOf[Map[String, Any]])
+      sample should contain key "user_id"
+      sample should contain key "email"
+      sample should contain key "created_at"
+    }
+  }
+
+  test("Relationships flag backward compatibility - default enableRelationships=false should work") {
+    // Test that existing endpoints still work without the flag (default to false)
+    val response = get("/sample/plans/e2e_test_plan?sampleSize=5&fastMode=true")
+
+    response.statusCode() shouldBe 200
+    val sampleResponse = objectMapper.readValue(response.body(), classOf[io.github.datacatering.datacaterer.core.ui.model.MultiSchemaSampleResponse])
+    
+    sampleResponse.success shouldBe true
+    sampleResponse.metadata shouldBe defined
+    sampleResponse.metadata.get.relationshipsEnabled shouldBe false  // Should default to false
+    sampleResponse.metadata.get.fastModeEnabled shouldBe true
+    sampleResponse.samples should not be empty
   }
 }

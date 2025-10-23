@@ -83,7 +83,8 @@ class PlanRoutes(
   private def buildMultiSchemaResponse(
     results: Map[String, (io.github.datacatering.datacaterer.api.model.Step, FastSampleGenerator.SampleResponseWithDataFrame)],
     size: Int,
-    fast: Boolean
+    fast: Boolean,
+    relationships: Boolean = false
   ): io.github.datacatering.datacaterer.core.ui.model.MultiSchemaSampleResponse = {
     val samplesMap = results.map { case (key, (_, responseWithDf)) =>
       (key, responseWithDf.response.sampleData.getOrElse(List()))
@@ -97,7 +98,8 @@ class PlanRoutes(
         sampleSize = size,
         actualRecords = samplesMap.values.map(_.size).sum,
         generatedInMs = 0L,
-        fastModeEnabled = fast
+        fastModeEnabled = fast,
+        relationshipsEnabled = relationships
       ))
     )
   }
@@ -297,7 +299,7 @@ class PlanRoutes(
               val plan = planRepository.ask(PlanRepository.GetPlan(planName, _))
               onComplete(plan) {
                 case Success(value) => complete(value)
-                case Failure(_) => complete(StatusCodes.NotFound, s"Failed to find plan with name: ${planName}")
+                case Failure(_) => complete(StatusCodes.NotFound, s"Failed to find plan with name: $planName")
               }
             },
             delete {
@@ -336,8 +338,9 @@ class PlanRoutes(
             // Sample from specific step within a task
             path("""[A-Za-z0-9-_]+""".r / "tasks" / """[A-Za-z0-9-_]+""".r / "steps" / """[A-Za-z0-9-_]+""".r) { (planName, taskName, stepName) =>
               get {
-                parameters("sampleSize".as[Int].optional, "fastMode".as[Boolean].optional) { (sampleSize, fastMode) =>
+                parameters("sampleSize".as[Int].optional, "fastMode".as[Boolean].optional, "enableRelationships".as[Boolean].optional) { (sampleSize, fastMode, enableRelationships) =>
                   implicit val sparkSession: SparkSession = createSparkSession()
+                  val relationships = enableRelationships.getOrElse(false)
                   FastSampleGenerator.generateFromPlanStep(planName, taskName, stepName, sampleSize.getOrElse(10), fastMode.getOrElse(true)) match {
                     case Right((_, responseWithDf)) => completeWithRawData(responseWithDf)
                     case Left(error) => completeWithError(error)
@@ -348,13 +351,14 @@ class PlanRoutes(
             // Sample from specific task
             path("""[A-Za-z0-9-_]+""".r / "tasks" / """[A-Za-z0-9-_]+""".r) { (planName, taskName) =>
               get {
-                parameters("sampleSize".as[Int].optional, "fastMode".as[Boolean].optional) { (sampleSize, fastMode) =>
+                parameters("sampleSize".as[Int].optional, "fastMode".as[Boolean].optional, "enableRelationships".as[Boolean].optional) { (sampleSize, fastMode, enableRelationships) =>
                   implicit val sparkSession: SparkSession = createSparkSession()
                   val size = sampleSize.getOrElse(10)
                   val fast = fastMode.getOrElse(true)
+                  val relationships = enableRelationships.getOrElse(false)
 
                   FastSampleGenerator.generateFromPlanTask(planName, taskName, size, fast) match {
-                    case Right(results) => complete(buildMultiSchemaResponse(results, size, fast))
+                    case Right(results) => complete(buildMultiSchemaResponse(results, size, fast, relationships))
                     case Left(error) => completeWithError(error)
                   }
                 }
@@ -363,13 +367,14 @@ class PlanRoutes(
             // Sample from entire plan
             path("""[A-Za-z0-9-_]+""".r) { planName =>
               get {
-                parameters("sampleSize".as[Int].optional, "fastMode".as[Boolean].optional) { (sampleSize, fastMode) =>
+                parameters("sampleSize".as[Int].optional, "fastMode".as[Boolean].optional, "enableRelationships".as[Boolean].optional) { (sampleSize, fastMode, enableRelationships) =>
                   implicit val sparkSession: SparkSession = createSparkSession()
                   val size = sampleSize.getOrElse(10)
                   val fast = fastMode.getOrElse(true)
+                  val relationships = enableRelationships.getOrElse(false)
 
                   FastSampleGenerator.generateFromPlan(planName, size, fast) match {
-                    case Right(results) => complete(buildMultiSchemaResponse(results, size, fast))
+                    case Right(results) => complete(buildMultiSchemaResponse(results, size, fast, relationships))
                     case Left(error) => completeWithError(error)
                   }
                 }
@@ -389,13 +394,14 @@ class PlanRoutes(
         // Task name-based sample generation
         path("tasks" / """[A-Za-z0-9-_]+""".r) { taskName =>
           get {
-            parameters("sampleSize".as[Int].optional, "fastMode".as[Boolean].optional) { (sampleSize, fastMode) =>
+            parameters("sampleSize".as[Int].optional, "fastMode".as[Boolean].optional, "enableRelationships".as[Boolean].optional) { (sampleSize, fastMode, enableRelationships) =>
               implicit val sparkSession: SparkSession = createSparkSession()
               val size = sampleSize.getOrElse(10)
               val fast = fastMode.getOrElse(true)
+              val relationships = enableRelationships.getOrElse(false)
 
               FastSampleGenerator.generateFromTaskName(taskName, size, fast) match {
-                case Right(results) => complete(buildMultiSchemaResponse(results, size, fast))
+                case Right(results) => complete(buildMultiSchemaResponse(results, size, fast, relationships))
                 case Left(error) => completeWithError(error)
               }
             }
@@ -404,10 +410,11 @@ class PlanRoutes(
         // Step name-based sample generation  
         path("steps" / """[A-Za-z0-9-_]+""".r) { stepName =>
           get {
-            parameters("sampleSize".as[Int].optional, "fastMode".as[Boolean].optional) { (sampleSize, fastMode) =>
+            parameters("sampleSize".as[Int].optional, "fastMode".as[Boolean].optional, "enableRelationships".as[Boolean].optional) { (sampleSize, fastMode, enableRelationships) =>
               implicit val sparkSession: SparkSession = createSparkSession()
               val size = sampleSize.getOrElse(10)
               val fast = fastMode.getOrElse(true)
+              val relationships = enableRelationships.getOrElse(false)
 
               FastSampleGenerator.generateFromStepName(stepName, size, fast) match {
                 case Right((_, responseWithDf)) => completeWithRawData(responseWithDf)

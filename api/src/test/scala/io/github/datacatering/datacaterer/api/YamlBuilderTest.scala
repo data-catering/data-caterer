@@ -21,25 +21,61 @@ class YamlBuilderTest extends AnyFunSuite {
     assert(planBuilder.plan.description.contains("YAML: /path/to/plan.yaml"))
   }
 
-  test("Can create task builder from YAML file") {
+  test("Can create task builder from YAML file using taskByFile") {
     val yamlBuilder = YamlBuilder()
-    val taskBuilder = yamlBuilder.task("/path/to/task.yaml")
-    
-    assert(taskBuilder.task.name.contains("yaml_"))
+    val taskBuilder = yamlBuilder.taskByFile("/path/to/task.yaml")
+
+    assert(taskBuilder.task.steps.nonEmpty)
+    assert(taskBuilder.task.steps.head.name == "yaml_placeholder")
+    assert(taskBuilder.task.steps.head.options.contains(YAML_TASK_FILE))
+    assert(taskBuilder.task.steps.head.options(YAML_TASK_FILE) == "/path/to/task.yaml")
   }
 
-  test("Can create task builder from YAML file with task name filter") {
+  test("Can create task builder by task name using taskByName") {
     val yamlBuilder = YamlBuilder()
-    val taskBuilder = yamlBuilder.task("/path/to/task.yaml", "myTask")
-    
-    assert(taskBuilder.task.name.contains("yaml_"))
+    val taskBuilder = yamlBuilder.taskByName("myTask")
+
+    assert(taskBuilder.task.steps.nonEmpty)
+    assert(taskBuilder.task.steps.head.name == "yaml_placeholder")
+    assert(taskBuilder.task.steps.head.options.contains(YAML_TASK_NAME))
+    assert(taskBuilder.task.steps.head.options(YAML_TASK_NAME) == "myTask")
   }
 
-  test("Can create task builder from YAML file with task and step name filters") {
+  test("Can create step builder from YAML file using stepByFile") {
     val yamlBuilder = YamlBuilder()
-    val taskBuilder = yamlBuilder.task("/path/to/task.yaml", "myTask", "myStep")
-    
-    assert(taskBuilder.task.name.contains("yaml_"))
+    val taskBuilder = yamlBuilder.stepByFile("/path/to/task.yaml", "myStep")
+
+    assert(taskBuilder.task.steps.nonEmpty)
+    assert(taskBuilder.task.steps.head.name == "yaml_placeholder")
+    assert(taskBuilder.task.steps.head.options.contains(YAML_TASK_FILE))
+    assert(taskBuilder.task.steps.head.options.contains(YAML_STEP_NAME))
+    assert(taskBuilder.task.steps.head.options(YAML_STEP_NAME) == "myStep")
+  }
+
+  test("Can create step builder by task name using stepByName") {
+    val yamlBuilder = YamlBuilder()
+    val taskBuilder = yamlBuilder.stepByName("myTask", "myStep")
+
+    assert(taskBuilder.task.steps.nonEmpty)
+    assert(taskBuilder.task.steps.head.name == "yaml_placeholder")
+    assert(taskBuilder.task.steps.head.options.contains(YAML_TASK_NAME))
+    assert(taskBuilder.task.steps.head.options.contains(YAML_STEP_NAME))
+    assert(taskBuilder.task.steps.head.options(YAML_TASK_NAME) == "myTask")
+    assert(taskBuilder.task.steps.head.options(YAML_STEP_NAME) == "myStep")
+  }
+
+  test("Can create step builder from YAML file with task name using stepByFileAndName") {
+    val yamlBuilder = YamlBuilder()
+    val taskBuilder = yamlBuilder.stepByFileAndName("/path/to/task.yaml", "myTask", "myStep")
+
+    assert(taskBuilder.task.steps.nonEmpty)
+    assert(taskBuilder.task.steps.head.name == "yaml_placeholder")
+    assert(taskBuilder.task.steps.head.options.contains(YAML_TASK_FILE))
+    assert(taskBuilder.task.steps.head.options.contains(YAML_TASK_NAME))
+    assert(taskBuilder.task.steps.head.options.contains(YAML_STEP_NAME))
+    assert(taskBuilder.task.steps.head.options(YAML_TASK_FILE) == "/path/to/task.yaml")
+    assert(taskBuilder.task.steps.head.options(YAML_TASK_NAME) == "myTask")
+    assert(taskBuilder.task.steps.head.options(YAML_STEP_NAME) == "myStep")
   }
 
   test("YamlConfig can convert to options map") {

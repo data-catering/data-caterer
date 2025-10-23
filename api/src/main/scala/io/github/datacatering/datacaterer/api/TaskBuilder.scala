@@ -8,6 +8,7 @@ import io.github.datacatering.datacaterer.api.model.Constants._
 import io.github.datacatering.datacaterer.api.model.{ArrayType, Count, DataType, DoubleType, Field, HeaderType, PerFieldCount, Step, StringType, Task, TaskSummary}
 
 import scala.annotation.varargs
+import scala.collection.JavaConverters._
 
 /**
  * Builds a `TaskSummary` with optional `Task` information.
@@ -147,17 +148,25 @@ case class TaskBuilder(task: Task = Task()) {
   @varargs def steps(steps: StepBuilder*): TaskBuilder = this.modify(_.task.steps)(_ ++ steps.map(_.step))
 
   /**
-   * Create a TaskBuilder that loads base configuration from a YAML file.
-   * This allows referencing existing YAML task definitions while still being able to override
-   * specific configurations using the builder pattern.
+   * Create a TaskBuilder that references configuration from a YAML file.
+   * This stores YAML metadata information that will be resolved during execution.
+   * The actual YAML loading will happen during execution when the task is processed.
    *
-   * @param yamlConfig Configuration specifying which YAML file to load
-   * @return TaskBuilder with YAML task as base configuration
+   * Note: The YAML configuration is stored as a placeholder step with the YAML metadata
+   * in its options. The actual YAML task will be loaded and merged during plan execution.
+   *
+   * @param yamlConfig Configuration specifying which YAML file to reference
+   * @return TaskBuilder with YAML reference metadata stored in a placeholder step
    */
   def fromYaml(yamlConfig: YamlConfig): TaskBuilder = {
-    // Add special marker to indicate this task should load from YAML
-    // The actual YAML loading will happen during execution when the task is processed
-    this.modify(_.task.name).setTo(s"${task.name}_yaml_${yamlConfig.taskFile.getOrElse("unknown").hashCode}")
+    // Store YAML config as a placeholder step's options
+    // This will be resolved during execution by the metadata loading pipeline
+    val yamlOptions = yamlConfig.toOptionsMap
+    val placeholderStep = Step(
+      name = "yaml_placeholder",
+      options = yamlOptions
+    )
+    this.modify(_.task.steps)(_ ++ List(placeholderStep))
   }
 }
 
@@ -774,6 +783,38 @@ case class FieldBuilder(field: Field = Field()) {
 
   def oneOfWeighted(values: List[(Any, Double)]): List[FieldBuilder] =
     if (values.nonEmpty) oneOfWeighted(values.head, values.tail: _*) else List(this)
+
+  /**
+   * Java-friendly overload for oneOfWeighted method using WeightedValue objects.
+   * Sets the field to use weighted random values from the provided weighted values.
+   * Returns an array to work seamlessly with Java varargs in fields() method.
+   *
+   * @param value  The first value-weight pair (required)
+   * @param values Additional value-weight pairs
+   * @return An array of FieldBuilder instances (the weighted field and a weight field)
+   */
+  @varargs def oneOfWeightedJava(value: io.github.datacatering.datacaterer.javaapi.api.WeightedValue, values: io.github.datacatering.datacaterer.javaapi.api.WeightedValue*): Array[FieldBuilder] = {
+    val scalaValues = values.map(wv => (wv.value, wv.weight))
+    oneOfWeighted((value.value, value.weight), scalaValues: _*).toArray
+  }
+
+  /**
+   * Java-friendly overload for oneOfWeighted method using a List of WeightedValue.
+   * Sets the field to use weighted random values from the provided weighted values.
+   * Returns an array to work seamlessly with Java varargs in fields() method.
+   *
+   * @param values A Java List of WeightedValue objects containing value-weight pairs
+   * @return An array of FieldBuilder instances (the weighted field and a weight field)
+   */
+  def oneOfWeightedJava(values: java.util.List[io.github.datacatering.datacaterer.javaapi.api.WeightedValue]): Array[FieldBuilder] = {
+    if (values.isEmpty) {
+      Array(this)
+    } else {
+      val first = values.get(0)
+      val rest = values.subList(1, values.size()).asScala
+      oneOfWeightedJava(first, rest: _*)
+    }
+  }
 
   /**
    * Sets the options for the field generator.

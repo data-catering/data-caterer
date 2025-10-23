@@ -72,6 +72,8 @@ object TaskHelper {
   ): (Step, Option[(String, String)]) = {
     
     val stepName = generatedDetails.dataSourceMetadata.toStepName(generatedDetails.sparkOptions)
+    LOGGER.debug(s"enrichWithUserDefinedOptions: stepName=$stepName, generatedDetails.structType.size=${generatedDetails.structType.fields.length}")
+    LOGGER.debug(s"Generated struct type fields: ${generatedDetails.structType.fields.map(_.name).mkString(", ")}")
     val userConfig = findUserConfiguration(name, stepName, generatedDetails, optPlanRun)
     
     val mergedFields = mergeUserAndGeneratedSchemas(generatedDetails, userConfig, hasMultipleSubDataSources)
@@ -315,28 +317,55 @@ object TaskHelper {
     val generatedSchema = SchemaHelper.fromStructType(generatedDetails.structType)
     val userSchema = userConfig.flatMap(_._1.step.map(_.step.fields))
     
+    LOGGER.debug(s"mergeUserAndGeneratedSchemas: generatedSchema.size=${generatedSchema.size}, userSchema.size=${userSchema.map(_.size).getOrElse(0)}, hasMultipleSubDataSources=$hasMultipleSubDataSources")
+    LOGGER.debug(s"Generated schema fields: ${generatedSchema.map(_.name).mkString(", ")}")
+    userSchema.foreach(fields => LOGGER.debug(s"User schema fields: ${fields.map(_.name).mkString(", ")}"))
+    
     // Debug logging to see what's being passed to merging
     val result = userSchema.map(userFields => {
-      SchemaHelper.mergeSchemaInfo(generatedSchema, userFields, hasMultipleSubDataSources)
-    }).getOrElse(generatedSchema)
+      LOGGER.debug(s"Calling SchemaHelper.mergeSchemaInfo with ${generatedSchema.size} generated fields and ${userFields.size} user fields")
+      val merged = SchemaHelper.mergeSchemaInfo(generatedSchema, userFields, hasMultipleSubDataSources)
+      LOGGER.debug(s"Merge result: ${merged.size} fields: ${merged.map(_.name).mkString(", ")}")
+      merged
+    }).getOrElse({
+      LOGGER.debug(s"No user fields found, using generated schema with ${generatedSchema.size} fields")
+      generatedSchema
+    })
     
+    LOGGER.debug(s"Final result: ${result.size} fields: ${result.map(_.name).mkString(", ")}")
     result
   }
 
   /**
    * Merges user-defined options with generated options.
+   *
+   * Priority: Generated options < Connection-level options < Step-level options
+   *
+   * User options with non-empty values override metadata values.
+   * Empty string values in user options signal to use the metadata value.
+   * This allows users to selectively override specific options while inheriting others from metadata.
    */
   private def mergeUserAndGeneratedOptions(
     generatedDetails: DataSourceDetail,
     userConfig: Option[(ConnectionTaskBuilder[_], Option[(String, String)])],
     hasMultipleSubDataSources: Boolean
   ): Map[String, String] = {
-    
-    val userOptions = userConfig
+
+    // Get connection-level options (includes path and other connection config)
+    val connectionOptions = userConfig
+      .map(_._1.connectionConfigWithTaskBuilder.options)
+      .getOrElse(Map.empty)
+      .filter { case (_, v) => v.nonEmpty } // Filter out empty values to use metadata defaults
+
+    // Get step-level options (user-defined field overrides)
+    val stepOptions = userConfig
       .flatMap(_._1.step.map(_.step.options))
       .getOrElse(Map.empty)
-    
-    generatedDetails.sparkOptions ++ userOptions
+      .filter { case (_, v) => v.nonEmpty } // Filter out empty values to use metadata defaults
+
+    // Merge with priority: generated < connection < step
+    // Only non-empty user values override metadata values
+    generatedDetails.sparkOptions ++ connectionOptions ++ stepOptions
   }
 
   /**

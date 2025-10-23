@@ -1,0 +1,82 @@
+name: "nested_structure_base_task"
+steps:
+  - name: "user_orders"
+    type: "json"
+    count:
+      records: 50
+    options:
+      path: "/tmp/user-orders/orders.json"
+    fields:
+      - name: "order_id"
+        type: "string"
+        options:
+          regex: "ORD[0-9]{8}"
+      - name: "order_date"
+        type: "date"
+        options:
+          sql: "current_date()"
+      - name: "customer"
+        type: "struct"
+        fields:
+          - name: "customer_id"
+            type: "string"
+            options:
+              regex: "CUST[0-9]{6}"
+          - name: "name"
+            type: "string"
+            options:
+              expression: "#{Name.fullName}"
+          - name: "contact"
+            type: "struct"
+            fields:
+              - name: "email"
+                type: "string"
+                options:
+                  expression: "#{Internet.emailAddress}"
+              - name: "phone"
+                type: "string"
+                options:
+                  expression: "#{PhoneNumber.phoneNumber}"
+      - name: "shipping_address"
+        type: "struct"
+        fields:
+          - name: "street"
+            type: "string"
+            options:
+              expression: "#{Address.streetAddress}"
+          - name: "city"
+            type: "string"
+            options:
+              expression: "#{Address.city}"
+          - name: "country"
+            type: "string"
+            options:
+              oneOf: "USA,Canada,UK,Germany"
+          - name: "postal_code"
+            type: "string"
+            options:
+              expression: "#{Address.zipCode}"
+      - name: "items"
+        type: "array"
+        options:
+          arrayMinLen: 1
+          arrayMaxLen: 5
+        fields:
+          - name: "product_id"
+            type: "string"
+            options:
+              regex: "PROD[0-9]{5}"
+          - name: "product_name"
+            type: "string"
+            options:
+              expression: "#{Commerce.productName}"
+          - name: "quantity"
+            type: "int"
+            options:
+              min: 1
+              max: 10
+          - name: "price"
+            type: "double"
+            options:
+              min: 5.0
+              max: 500.0

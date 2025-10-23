@@ -9,7 +9,8 @@ case class TaskFileSampleRequest(
   taskYamlPath: String,
   stepName: Option[String] = None,
   sampleSize: Int = 10,
-  fastMode: Boolean = true
+  fastMode: Boolean = true,
+  enableRelationships: Boolean = false
 )
 
 @JsonIgnoreProperties(ignoreUnknown = true)
@@ -17,7 +18,8 @@ case class SchemaSampleRequest(
   fields: List[Field],
   format: String = "json",
   sampleSize: Int = 10,
-  fastMode: Boolean = true
+  fastMode: Boolean = true,
+  enableRelationships: Boolean = false
 )
 
 @JsonIgnoreProperties(ignoreUnknown = true)
@@ -25,7 +27,8 @@ case class TaskYamlSampleRequest(
   taskYamlContent: String,
   stepName: Option[String] = None,
   sampleSize: Int = 10,
-  fastMode: Boolean = true
+  fastMode: Boolean = true,
+  enableRelationships: Boolean = false
 )
 
 @JsonIgnoreProperties(ignoreUnknown = true)
@@ -60,7 +63,8 @@ case class SampleMetadata(
   sampleSize: Int,
   actualRecords: Int,
   generatedInMs: Long,
-  fastModeEnabled: Boolean
+  fastModeEnabled: Boolean,
+  relationshipsEnabled: Boolean = false
 )
 
 @JsonIgnoreProperties(ignoreUnknown = true)

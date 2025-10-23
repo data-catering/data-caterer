@@ -58,9 +58,9 @@ image: "https://data.catering/diagrams/logo/data_catering_logo.svg"
 ### Java/Scala API
 
 ```shell
-git clone git@github.com:data-catering/data-caterer-example.git
-cd data-caterer-example && ./run.sh
-#check results under docker/sample/report/index.html folder
+git clone git@github.com:data-catering/data-caterer.git
+cd example && ./run.sh
+#check results under example/docker/sample/report/index.html folder
 #If you want to run any other examples, check the class names under src/scala or src/java
 #And then run with ./run.sh <class_name>
 #i.e. ./run.sh CsvPlan
@@ -69,9 +69,9 @@ cd data-caterer-example && ./run.sh
 ### YAML
 
 ```shell
-git clone git@github.com:data-catering/data-caterer-example.git
-cd data-caterer-example && ./run.sh simple-json.yaml
-#check results under docker/sample/report/index.html folder
+git clone git@github.com:data-catering/data-caterer.git
+cd example && ./run.sh simple-json.yaml
+#check results under example/docker/sample/report/index.html folder
 #check example YAML files under:
 # - docker/data/custom/plan
 # - docker/data/custom/task
@@ -85,7 +85,7 @@ cd data-caterer-example && ./run.sh simple-json.yaml
 
 1. Docker
    ```shell
-   docker run -d -i -p 9898:9898 -e DEPLOY_MODE=standalone --name datacaterer datacatering/data-caterer:0.16.11
+   docker run -d -i -p 9898:9898 -e DEPLOY_MODE=standalone --name datacaterer datacatering/data-caterer:0.17.0
    ```
 2. [Open localhost:9898](http://localhost:9898)
 
@@ -109,7 +109,7 @@ cd data-caterer-example && ./run.sh simple-json.yaml
 
 #### Report
 
-Check the report generated under `docker/data/custom/report/index.html`.
+Check the report generated under `example/docker/data/custom/report/index.html`.
 
 [**Sample report can also be seen here**](../sample/report/html/index.html).
 

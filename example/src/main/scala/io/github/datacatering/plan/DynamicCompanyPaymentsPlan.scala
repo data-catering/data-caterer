@@ -103,7 +103,7 @@ class DynamicCompanyPaymentsPlan extends PlanRun {
   println("Dynamic Company Payments Generation Plan")
   println("=" * 80)
   companyRecordCounts.foreach { case (company, count) =>
-    val percentage = (count.toDouble / totalRecords * 100).formatted("%.1f")
+    val percentage = "%.1f".formatted((count.toDouble / totalRecords * 100).toString)
     println(f"  $company%-30s: $count%,6d records ($percentage%5s%%)")
   }
   println("-" * 80)

@@ -834,9 +834,13 @@ Content-Type: application/json
 
 ### Sample Data Generation
 
-!!! info "Fast Mode"
+!!! info "Sample Generation Parameters"
 
-    All sample endpoints support a `fastMode` parameter that controls the data generation strategy:
+    All sample endpoints support the following query parameters:
+
+    **fastMode** (boolean, default: true)
+
+    Controls the data generation strategy:
 
     **Fast Mode Enabled (`fastMode=true`, default):**
 
@@ -848,7 +852,7 @@ Content-Type: application/json
 
     **Fast Mode Disabled (`fastMode=false`):**
 
-    - Uses advanced generators with Faker library support
+    - Uses advanced generators with Faker library support, regex, etc.
     - Response times: 150-210ms for most requests
     - Supports more complex data generation patterns
     - Required for some advanced expression fields
@@ -863,7 +867,109 @@ Content-Type: application/json
     **When to use each mode:**
 
     - ✅ **Fast Mode ON**: Default choice for most use cases, APIs, and interactive tools
-    - ⚠️ **Fast Mode OFF**: Only when you specifically need advanced Faker expressions
+    - ⚠️ **Fast Mode OFF**: Only when you specifically need data to meet all options specified
+
+    **enableRelationships** (boolean, default: false)
+
+    Enables relationship-based data generation across multiple steps:
+
+    - When enabled, generates data with referential integrity between related fields (e.g., foreign keys)
+    - Useful for generating realistic datasets with parent-child relationships
+    - Automatically detected from metadata or explicit field configurations
+    - Response metadata includes `relationshipsEnabled` field indicating if relationships were used
+
+??? abstract "Generate Sample from Saved Plan - `GET /sample/plans/{planName}`"
+
+    Generate sample data from an entire saved plan configuration. This endpoint loads a plan by name and generates sample data for all enabled tasks and steps within it.
+
+    **Path Parameters:**
+
+    - `planName` - The name of the saved plan (alphanumeric, hyphens, and underscores allowed)
+
+    **Query Parameters:**
+
+    - `sampleSize` (optional, default: 10) - Number of sample records to generate per step
+    - `fastMode` (optional, default: true) - Enable fast generation mode
+    - `enableRelationships` (optional, default: false) - Enable relationship-based data generation
+
+    **Response:** `200 OK` (MultiSchemaSampleResponse)
+
+    Returns a JSON object with samples grouped by task/step name. Each task generates sample data for all its steps.
+
+    ```json
+    {
+      "success": true,
+      "executionId": "a8b3c4d5",
+      "samples": {
+        "customer-plan/customer_data": [
+          {
+            "customer_id": "CUST000123",
+            "name": "John Smith",
+            "email": "john.smith@example.com",
+            "created_at": "2024-01-15T10:30:00Z"
+          },
+          {
+            "customer_id": "CUST000124",
+            "name": "Jane Doe",
+            "email": "jane.doe@example.com",
+            "created_at": "2024-01-15T11:45:00Z"
+          }
+        ],
+        "customer-plan/account_data": [
+          {
+            "account_id": "ACC1234567890",
+            "customer_id": "CUST000123",
+            "balance": 5432.10,
+            "account_type": "checking"
+          },
+          {
+            "account_id": "ACC9876543210",
+            "customer_id": "CUST000124",
+            "balance": 12500.50,
+            "account_type": "savings"
+          }
+        ]
+      },
+      "metadata": {
+        "sampleSize": 2,
+        "actualRecords": 4,
+        "generatedInMs": 245,
+        "fastModeEnabled": true
+      }
+    }
+    ```
+
+    **Error Response:** `400 Bad Request`
+
+    ```json
+    {
+      "code": "GENERATION_ERROR",
+      "message": "Plan not found: my-customer-plan (searched in JSON and YAML sources)",
+      "details": "FileNotFoundException"
+    }
+    ```
+
+    **Example:**
+
+    === "curl"
+
+        ```bash
+        # Generate sample from plan with default parameters
+        curl -X GET http://localhost:9898/sample/plans/my-customer-plan
+
+        # Generate with custom sample size and fast mode disabled
+        curl -X GET "http://localhost:9898/sample/plans/my-customer-plan?sampleSize=20&fastMode=false"
+        ```
+
+    === "wget"
+
+        ```bash
+        # Generate sample from plan with default parameters
+        wget -O - http://localhost:9898/sample/plans/my-customer-plan
+
+        # Generate with custom sample size
+        wget -O - "http://localhost:9898/sample/plans/my-customer-plan?sampleSize=20&fastMode=true"
+        ```
 
 ??? abstract "Generate Sample from Task - `GET /sample/tasks/{taskName}`"
 
@@ -876,7 +982,8 @@ Content-Type: application/json
     **Query Parameters:**
 
     - `sampleSize` (optional, default: 10) - Number of sample records to generate per step
-    - `fastMode` (optional, default: true) - Enable fast generation mode (see Fast Mode section above)
+    - `fastMode` (optional, default: true) - Enable fast generation mode
+    - `enableRelationships` (optional, default: false) - Enable relationship-based data generation
 
     **Response:** `200 OK` (MultiSchemaSampleResponse)
 
@@ -952,8 +1059,8 @@ Content-Type: application/json
         # Generate with custom sample size and fast mode disabled
         curl -X GET "http://localhost:9898/sample/tasks/customer_task?sampleSize=25&fastMode=false"
 
-        # Generate samples for account task
-        curl -X GET "http://localhost:9898/sample/tasks/account_generation_task?sampleSize=5"
+        # Generate samples with relationships enabled
+        curl -X GET "http://localhost:9898/sample/tasks/customer_task?sampleSize=10&enableRelationships=true"
         ```
 
     === "wget"
@@ -1054,98 +1161,6 @@ Content-Type: application/json
 
         # Generate CSV data
         wget -O customers.csv "http://localhost:9898/sample/steps/customer_csv_step?sampleSize=50"
-        ```
-
-??? abstract "Generate Sample from Saved Plan - `GET /sample/plans/{planName}`"
-
-    Generate sample data from an entire saved plan configuration. This endpoint loads a plan by name and generates sample data for all enabled tasks and steps within it.
-
-    **Path Parameters:**
-
-    - `planName` - The name of the saved plan (alphanumeric, hyphens, and underscores allowed)
-
-    **Query Parameters:**
-
-    - `sampleSize` (optional, default: 10) - Number of sample records to generate per step
-    - `fastMode` (optional, default: true) - Enable fast generation mode (see Fast Mode section above)
-
-    **Response:** `200 OK` (MultiSchemaSampleResponse)
-
-    Returns a JSON object with samples grouped by task/step name. Each task generates sample data for all its steps.
-
-    ```json
-    {
-      "success": true,
-      "executionId": "a8b3c4d5",
-      "samples": {
-        "customer-plan/customer_data": [
-          {
-            "customer_id": "CUST000123",
-            "name": "John Smith",
-            "email": "john.smith@example.com",
-            "created_at": "2024-01-15T10:30:00Z"
-          },
-          {
-            "customer_id": "CUST000124",
-            "name": "Jane Doe",
-            "email": "jane.doe@example.com",
-            "created_at": "2024-01-15T11:45:00Z"
-          }
-        ],
-        "customer-plan/account_data": [
-          {
-            "account_id": "ACC1234567890",
-            "customer_id": "CUST000123",
-            "balance": 5432.10,
-            "account_type": "checking"
-          },
-          {
-            "account_id": "ACC9876543210",
-            "customer_id": "CUST000124",
-            "balance": 12500.50,
-            "account_type": "savings"
-          }
-        ]
-      },
-      "metadata": {
-        "sampleSize": 2,
-        "actualRecords": 4,
-        "generatedInMs": 245,
-        "fastModeEnabled": true
-      }
-    }
-    ```
-
-    **Error Response:** `400 Bad Request`
-
-    ```json
-    {
-      "code": "GENERATION_ERROR",
-      "message": "Plan not found: my-customer-plan (searched in JSON and YAML sources)",
-      "details": "FileNotFoundException"
-    }
-    ```
-
-    **Example:**
-
-    === "curl"
-
-        ```bash
-        # Generate sample from plan with default parameters
-        curl -X GET http://localhost:9898/sample/plans/my-customer-plan
-
-        # Generate with custom sample size and fast mode disabled
-        curl -X GET "http://localhost:9898/sample/plans/my-customer-plan?sampleSize=20&fastMode=false"
-        ```
-
-    === "wget"
-
-        ```bash
-        # Generate sample from plan with default parameters
-        wget -O - http://localhost:9898/sample/plans/my-customer-plan
-
-        # Generate with custom sample size
-        wget -O - "http://localhost:9898/sample/plans/my-customer-plan?sampleSize=20&fastMode=true"
         ```
 
 ??? abstract "Generate Sample from Plan Task - `GET /sample/plans/{planName}/tasks/{taskName}`"
@@ -1258,6 +1273,7 @@ Content-Type: application/json
 
     - `sampleSize` (optional, default: 10) - Number of sample records to generate
     - `fastMode` (optional, default: true) - Enable fast generation mode
+    - `enableRelationships` (optional, default: false) - Enable relationship-based data generation
 
     **Response:** `200 OK` - Returns **raw data** in the step's configured format
 

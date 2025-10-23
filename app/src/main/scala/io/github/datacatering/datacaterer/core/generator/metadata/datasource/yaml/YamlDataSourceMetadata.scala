@@ -16,21 +16,40 @@ case class YamlDataSourceMetadata(
                                  ) extends DataSourceMetadata {
 
   private val LOGGER = Logger.getLogger(getClass.getName)
-  
+
   override val hasSourceData: Boolean = false
 
   override def toStepName(options: Map[String, String]): String = {
     options(METADATA_IDENTIFIER)
   }
 
-  override def getSubDataSourcesMetadata(implicit sparkSession: SparkSession): Array[SubDataSourceMetadata] = {
+  /**
+   * Override to create a more specific cache key for YAML metadata.
+   * Includes YAML file path and filters for precise caching.
+   */
+  override protected def createCacheKey(): String = {
+    val yamlPlanFile = connectionConfig.get(YAML_PLAN_FILE).getOrElse("")
+    val yamlTaskFile = connectionConfig.get(YAML_TASK_FILE).getOrElse("")
+    val yamlTaskName = connectionConfig.get(YAML_TASK_NAME).getOrElse("")
+    val yamlStepName = connectionConfig.get(YAML_STEP_NAME).getOrElse("")
+
+    s"${getClass.getSimpleName}|plan:$yamlPlanFile|task:$yamlTaskFile|taskName:$yamlTaskName|stepName:$yamlStepName"
+  }
+
+  /**
+   * Loads YAML metadata from plan or task files.
+   * This method is called by the base trait's caching mechanism.
+   */
+  override protected def loadSubDataSourcesMetadata(implicit sparkSession: SparkSession): Array[SubDataSourceMetadata] = {
     val yamlPlanFile = connectionConfig.get(YAML_PLAN_FILE)
     val yamlTaskFile = connectionConfig.get(YAML_TASK_FILE)
     val yamlTaskName = connectionConfig.get(YAML_TASK_NAME)
     val yamlStepName = connectionConfig.get(YAML_STEP_NAME)
 
+    LOGGER.info(s"Processing YAML metadata source - planFile=$yamlPlanFile, taskFile=$yamlTaskFile, taskName=$yamlTaskName, stepName=$yamlStepName")
+
     try {
-      (yamlPlanFile, yamlTaskFile) match {
+      val result = (yamlPlanFile, yamlTaskFile) match {
         case (Some(planFile), None) =>
           LOGGER.info(s"Loading metadata from YAML plan file: $planFile")
           getMetadataFromPlan(planFile)
@@ -38,15 +57,23 @@ case class YamlDataSourceMetadata(
           LOGGER.info(s"Loading metadata from YAML task file: $taskFile, taskName=$yamlTaskName, stepName=$yamlStepName")
           getMetadataFromTask(taskFile, yamlTaskName, yamlStepName)
         case (Some(planFile), Some(taskFile)) =>
-          LOGGER.warn(s"Both plan and task files specified, using task file: $taskFile")
+          LOGGER.warn(s"Both plan and task files specified, using task file: $taskFile (ignoring plan file: $planFile)")
           getMetadataFromTask(taskFile, yamlTaskName, yamlStepName)
         case (None, None) =>
-          LOGGER.error("No YAML plan or task file specified in connection config")
+          LOGGER.error(s"YAML metadata source configuration error: No YAML plan or task file specified in connection config. Please provide either '${YAML_PLAN_FILE}' or '${YAML_TASK_FILE}' in your metadata source configuration.")
           Array.empty[SubDataSourceMetadata]
       }
+      
+      if (result.nonEmpty) {
+        LOGGER.info(s"Successfully loaded ${result.length} sub-data sources from YAML metadata. Sub-data sources: ${result.map(_.readOptions.getOrElse(METADATA_IDENTIFIER, "unknown")).mkString(", ")}")
+      } else {
+        LOGGER.warn(s"No sub-data sources found in YAML metadata. This could mean: 1) File is empty, 2) Task/step filters don't match, 3) Parsing failed. Check file content and filters.")
+      }
+      
+      result
     } catch {
       case ex: Exception =>
-        LOGGER.error(s"Failed to load YAML metadata from files, plan=$yamlPlanFile, task=$yamlTaskFile", ex)
+        LOGGER.error(s"Failed to load YAML metadata from files. Configuration: plan=$yamlPlanFile, task=$yamlTaskFile, taskName=$yamlTaskName, stepName=$yamlStepName. Error: ${ex.getMessage}", ex)
         Array.empty[SubDataSourceMetadata]
     }
   }
@@ -60,10 +87,13 @@ case class YamlDataSourceMetadata(
       // We return metadata placeholders that will be resolved when tasks are loaded
       plan.tasks.map(taskSummary => {
         val identifier = s"${taskSummary.dataSourceName}.${taskSummary.name}"
-        val readOptions = Map(METADATA_IDENTIFIER -> identifier)
+        val baseReadOptions = Map(METADATA_IDENTIFIER -> identifier)
+        
+        // Include YAML context in readOptions for better traceability and debugging
+        val readOptionsWithYamlContext = baseReadOptions ++ Map(YAML_PLAN_FILE -> planFile)
         
         // TaskSummary doesn't have steps, so no field metadata available
-        SubDataSourceMetadata(readOptions, None)
+        SubDataSourceMetadata(readOptionsWithYamlContext, None)
       }).toArray
     } catch {
       case ex: Exception =>
@@ -78,60 +108,101 @@ case class YamlDataSourceMetadata(
                                    stepNameFilter: Option[String]
                                  )(implicit sparkSession: SparkSession): Array[SubDataSourceMetadata] = {
     try {
-      // Parse single task file directly using ObjectMapper like PlanParser does
-      val taskObj = FileUtil.getFile(taskFile)
-      val task = ObjectMapperUtil.yamlObjectMapper.readValue(taskObj, classOf[Task])
-      LOGGER.debug(s"Parsed task from file: $taskFile, task-name=${task.name}")
+      // Use consolidated task parsing from PlanParser
+      val task = PlanParser.parseTaskFileSimple(taskFile)
+      LOGGER.info(s"Successfully parsed YAML task file: $taskFile. Found task: '${task.name}' with ${task.steps.length} steps: [${task.steps.map(_.name).mkString(", ")}]")
       
       // Check if task name matches filter (if provided)
       val taskMatches = taskNameFilter.forall(_ == task.name)
       if (!taskMatches) {
-        LOGGER.debug(s"Task name '${task.name}' does not match filter '${taskNameFilter.getOrElse("")}', skipping")
+        LOGGER.error(s"YAML metadata task filter mismatch: Task name '${task.name}' does not match required filter '${taskNameFilter.getOrElse("<none>")}'. Please check your yamlTask configuration or update the task name in the YAML file. Available task: '${task.name}'")
         return Array.empty[SubDataSourceMetadata]
       }
       
       // Filter steps by step name if provided
       val filteredSteps = stepNameFilter match {
-        case Some(stepName) => task.steps.filter(_.name == stepName)
-        case None => task.steps
+        case Some(stepName) => 
+          val matchingSteps = task.steps.filter(_.name == stepName)
+          if (matchingSteps.isEmpty) {
+            LOGGER.error(s"YAML metadata step filter mismatch: Step name '$stepName' not found in task '${task.name}'. Available steps: [${task.steps.map(_.name).mkString(", ")}]. Please check your yamlTask configuration.")
+          } else {
+            LOGGER.info(s"Step filter applied: Using step '$stepName' from task '${task.name}'")
+          }
+          matchingSteps
+        case None => 
+          LOGGER.info(s"No step filter specified, using all ${task.steps.length} steps from task '${task.name}'")
+          task.steps
+      }
+      
+      if (filteredSteps.isEmpty) {
+        LOGGER.warn(s"No steps found after filtering in task '${task.name}'. Check your step name filter: $stepNameFilter")
+        return Array.empty[SubDataSourceMetadata]
       }
       
       filteredSteps.map(step => {
         val identifier = s"${task.name}.${step.name}"
-        val readOptions = Map(METADATA_IDENTIFIER -> identifier)
-        
-        // Convert step fields to field metadata
-        val fieldMetadata = convertStepToFieldMetadata(step.fields)
-        
-        SubDataSourceMetadata(readOptions, Some(fieldMetadata))
+        val baseReadOptions = Map(METADATA_IDENTIFIER -> identifier)
+
+        // Include YAML context in readOptions for better traceability and debugging
+        val yamlContextOptions =
+          taskNameFilter.map(YAML_TASK_NAME -> _).toMap ++
+          stepNameFilter.map(YAML_STEP_NAME -> _).toMap ++
+          Map(YAML_TASK_FILE -> taskFile)
+
+        // Combine base options, YAML context, and step options
+        // Priority: base > YAML context > step options (step options have lowest priority)
+        val readOptionsWithYamlContext = step.options ++ yamlContextOptions ++ baseReadOptions
+
+        LOGGER.info(s"Processing step '${step.name}' with ${step.fields.length} fields. Metadata identifier: '$identifier'")
+        if (step.options.nonEmpty) {
+          LOGGER.debug(s"Step '${step.name}' has ${step.options.size} options that will be included in readOptions: ${step.options.keys.mkString(", ")}")
+        }
+
+        // Convert step fields to field metadata with the correct identifier and all read options
+        val fieldMetadata = convertStepToFieldMetadata(step.fields, identifier, readOptionsWithYamlContext)
+
+        SubDataSourceMetadata(readOptionsWithYamlContext, Some(fieldMetadata))
       }).toArray
       
     } catch {
       case ex: Exception =>
-        LOGGER.error(s"Failed to parse task file: $taskFile", ex)
+        LOGGER.error(s"Failed to parse YAML task file: $taskFile. Common causes: 1) File not found, 2) Invalid YAML syntax, 3) File doesn't match expected Task structure. Error: ${ex.getMessage}", ex)
         Array.empty[SubDataSourceMetadata]
     }
   }
 
-  private[yaml] def convertStepToFieldMetadata(fields: List[io.github.datacatering.datacaterer.api.model.Field])
-                                       (implicit sparkSession: SparkSession): Dataset[FieldMetadata] = {
+  private[yaml] def convertStepToFieldMetadata(
+      fields: List[io.github.datacatering.datacaterer.api.model.Field],
+      identifier: String,
+      dataSourceReadOptions: Map[String, String] = Map()
+  )(implicit sparkSession: SparkSession): Dataset[FieldMetadata] = {
     import sparkSession.implicits._
-    
+
     try {
       if (fields.nonEmpty) {
-        LOGGER.debug(s"Converting ${fields.size} fields to field metadata")
-        
-        // Convert Fields directly to FieldMetadata using helper method
-        val fieldMetadataList = convertFieldsToFieldMetadata(fields)
-        
+        LOGGER.debug(s"Converting ${fields.size} fields to field metadata with identifier '$identifier'. Fields: [${fields.map(f => s"${f.name}:${f.`type`.getOrElse("unknown")}").mkString(", ")}]")
+
+        // Combine identifier with additional read options
+        val readOptionsWithIdentifier = dataSourceReadOptions + (METADATA_IDENTIFIER -> identifier)
+
+        // Convert Fields directly to FieldMetadata using helper method with correct identifier and read options
+        val fieldMetadataList = convertFieldsToFieldMetadata(fields, readOptionsWithIdentifier)
+        LOGGER.debug(s"Successfully converted ${fieldMetadataList.size} field metadata entries for identifier '$identifier'")
+
+        // Log any complex types for debugging
+        val complexFields = fields.filter(f => f.`type`.exists(t => t == "struct" || t == "array"))
+        if (complexFields.nonEmpty) {
+          LOGGER.debug(s"Found ${complexFields.size} complex type fields: [${complexFields.map(f => s"${f.name}:${f.`type`.getOrElse("unknown")}(${f.fields.size} nested)").mkString(", ")}]")
+        }
+
         sparkSession.createDataset(fieldMetadataList)
       } else {
-        LOGGER.debug("No fields found, returning empty field metadata dataset")
+        LOGGER.warn(s"No fields found in YAML metadata for identifier '$identifier'. This may indicate an empty step or parsing issue.")
         sparkSession.emptyDataset[FieldMetadata]
       }
     } catch {
       case ex: Exception =>
-        LOGGER.error("Failed to convert fields to field metadata", ex)
+        LOGGER.error(s"Failed to convert fields to field metadata for identifier '$identifier'. This could be due to: 1) Invalid field type definitions, 2) Complex nested structure issues, 3) Missing required field properties. Error: ${ex.getMessage}", ex)
         sparkSession.emptyDataset[FieldMetadata]
     }
   }
@@ -140,20 +211,26 @@ case class YamlDataSourceMetadata(
    * Convert Field objects to FieldMetadata objects, handling nested fields recursively.
    * This method can be reused for nested field conversion as well.
    */
-  private def convertFieldsToFieldMetadata(fields: List[io.github.datacatering.datacaterer.api.model.Field]): List[FieldMetadata] = {
-    fields.map(convertFieldToFieldMetadata)
+  private def convertFieldsToFieldMetadata(
+      fields: List[io.github.datacatering.datacaterer.api.model.Field],
+      dataSourceReadOptions: Map[String, String]
+  ): List[FieldMetadata] = {
+    fields.map(convertFieldToFieldMetadata(_, dataSourceReadOptions))
   }
 
   /**
    * Convert a single Field to FieldMetadata, handling nested fields recursively.
    * Package-private for testing.
    */
-  private[yaml] def convertFieldToFieldMetadata(field: io.github.datacatering.datacaterer.api.model.Field): FieldMetadata = {
+  private[yaml] def convertFieldToFieldMetadata(
+      field: io.github.datacatering.datacaterer.api.model.Field,
+      dataSourceReadOptions: Map[String, String]
+  ): FieldMetadata = {
     FieldMetadata(
       field = field.name,
-      dataSourceReadOptions = Map(METADATA_IDENTIFIER -> s"yaml.${field.name}"),
+      dataSourceReadOptions = dataSourceReadOptions,
       metadata = buildFieldMetadata(field),
-      nestedFields = if (field.fields.nonEmpty) convertFieldsToFieldMetadata(field.fields) else List.empty
+      nestedFields = if (field.fields.nonEmpty) convertFieldsToFieldMetadata(field.fields, dataSourceReadOptions) else List.empty
     )
   }
 
@@ -165,7 +242,7 @@ case class YamlDataSourceMetadata(
       "type" -> field.`type`.getOrElse("string"),
       "nullable" -> field.nullable.toString
     ) ++ field.options.map { case (k, v) => k -> v.toString }
-    
+
     // Include static value if present
     field.static match {
       case Some(staticValue) => baseMetadata + ("static" -> staticValue)

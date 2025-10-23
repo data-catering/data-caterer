@@ -134,7 +134,7 @@ class YamlDataSourceMetadataTest extends SparkSuite {
     val metadata = YamlDataSourceMetadata("test-task", "yaml", connectionConfig)
     
     // Test with empty fields
-    val emptyFieldsDataset = metadata.convertStepToFieldMetadata(List.empty)
+    val emptyFieldsDataset = metadata.convertStepToFieldMetadata(List.empty, "test.step")
     assert(emptyFieldsDataset.count() == 0)
   }
 
@@ -185,13 +185,58 @@ class YamlDataSourceMetadataTest extends SparkSuite {
     val taskPath = getClass.getResource("/sample/yaml/simple-task.yaml").getPath
     val connectionConfig = Map(YAML_TASK_FILE -> taskPath)
     val metadata = YamlDataSourceMetadata("test", "yaml", connectionConfig)
-    
+
     // Test the conversion method directly
-    val fieldMetadata = metadata.convertFieldToFieldMetadata(staticField)
-    
+    val readOptions = Map(METADATA_IDENTIFIER -> "test.step")
+    val fieldMetadata = metadata.convertFieldToFieldMetadata(staticField, readOptions)
+
     assert(fieldMetadata.field == "status")
     assert(fieldMetadata.metadata("type") == "string")
     assert(fieldMetadata.metadata("nullable") == "false")
     assert(fieldMetadata.metadata("static") == "ACTIVE")
+    assert(fieldMetadata.dataSourceReadOptions(METADATA_IDENTIFIER) == "test.step")
+  }
+
+  test("includes YAML context in readOptions for task metadata") {
+    val taskPath = getClass.getResource("/sample/yaml/multi-task.yaml").getPath
+    val connectionConfig = Map(
+      YAML_TASK_FILE -> taskPath,
+      YAML_TASK_NAME -> "multi-step-task",
+      YAML_STEP_NAME -> "users"
+    )
+    
+    val metadata = YamlDataSourceMetadata("test-task", "yaml", connectionConfig)
+    val subDataSources = metadata.getSubDataSourcesMetadata
+    
+    assert(subDataSources.length == 1)
+    
+    val subDataSource = subDataSources.head
+    val readOptions = subDataSource.readOptions
+    
+    // Verify YAML context is included in readOptions
+    assert(readOptions(METADATA_IDENTIFIER) == "multi-step-task.users")
+    assert(readOptions(YAML_TASK_FILE) == taskPath)
+    assert(readOptions(YAML_TASK_NAME) == "multi-step-task") 
+    assert(readOptions(YAML_STEP_NAME) == "users")
+  }
+
+  test("includes YAML context in readOptions for plan metadata") {
+    val planPath = getClass.getResource("/sample/yaml/simple-plan.yaml").getPath
+    val connectionConfig = Map(YAML_PLAN_FILE -> planPath)
+    
+    val metadata = YamlDataSourceMetadata("test-plan", "yaml", connectionConfig)
+    val subDataSources = metadata.getSubDataSourcesMetadata
+    
+    assert(subDataSources.length == 2)
+    
+    val subDataSource = subDataSources.head
+    val readOptions = subDataSource.readOptions
+    
+    // Verify YAML context is included in readOptions
+    assert(readOptions.contains(METADATA_IDENTIFIER))
+    assert(readOptions(YAML_PLAN_FILE) == planPath)
+    assert(!readOptions.contains(YAML_TASK_FILE))
+    assert(!readOptions.contains(YAML_TASK_NAME))
+    assert(!readOptions.contains(YAML_STEP_NAME))
   }
 }

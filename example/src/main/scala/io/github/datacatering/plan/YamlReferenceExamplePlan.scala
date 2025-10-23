@@ -18,13 +18,13 @@ class YamlReferenceExamplePlan extends PlanRun {
   def yamlTaskWithOverrides(): Unit = {
     // Reference existing YAML task file and override specific field
     val jsonTask = yaml
-      .task("app/src/test/resources/sample/task/file/simple-json-task.yaml", "simple_json")
-    
+      .stepByFileAndName("app/src/test/resources/sample/task/file/simple-json-task.yaml", "simple_json", "file_account")
+
     // Create JSON file builder referencing the YAML task but with custom path
     val jsonWithYamlSchema = json("custom_json", "/tmp/custom-output")
       .fields(metadataSource.yamlTask(
-        "app/src/test/resources/sample/task/file/simple-json-task.yaml", 
-        "simple_json", 
+        "app/src/test/resources/sample/task/file/simple-json-task.yaml",
+        "simple_json",
         "file_account"
       ))
       // Override specific field configurations

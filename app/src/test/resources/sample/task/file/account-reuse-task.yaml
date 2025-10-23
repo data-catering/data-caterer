@@ -1,0 +1,34 @@
+name: "account_base_task"
+steps:
+  - name: "accounts"
+    type: "json"
+    count:
+      records: 100
+    options:
+      path: "/tmp/accounts/my-accounts.json"
+    fields:
+      - name: "account_id"
+        type: "string"
+        options:
+          regex: "ACC[0-9]{8}"
+      - name: "name"
+        type: "string"
+        options:
+          expression: "#{Name.name}"
+      - name: "balance"
+        type: "double"
+        options:
+          min: 0.0
+          max: 10000.0
+      - name: "email"
+        type: "string"
+        options:
+          expression: "#{Internet.emailAddress}"
+      - name: "status"
+        type: "string"
+        options:
+          oneOf: "ACTIVE,PENDING,CLOSED"
+      - name: "created_date"
+        type: "date"
+        options:
+          sql: "current_date()"

@@ -29,7 +29,7 @@ class DataSourceMetadataFactory(dataCatererConfiguration: DataCatererConfigurati
    */
   def extractAllDataSourceMetadata(planRun: PlanRun): Option[(Plan, List[Task], List[ValidationConfiguration])] = {
     if (flagsConfig.enableGeneratePlanAndTasks || flagsConfig.enableGenerateValidations) {
-      LOGGER.info("Attempting to extract all data source metadata as defined in connection configurations in application config")
+      LOGGER.info("Attempting to extract all data source metadata")
       val connectionMetadata = getMetadataFromConnections(planRun)
       val updatedPlanRun = getExternalMetadataFromPlanRun(planRun)
 

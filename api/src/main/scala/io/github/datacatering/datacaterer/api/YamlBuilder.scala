@@ -28,55 +28,77 @@ case class YamlBuilder(yamlConfig: YamlConfig = YamlConfig()) {
   }
 
   /**
-   * Load from a YAML task file. This creates a task builder that references the existing YAML task
-   * and allows overriding specific configurations.
+   * Load from a YAML task file. Creates a task builder that references the existing YAML task.
+   * 
+   * WARNING: If the YAML task file contains multiple tasks or a task with multiple steps, 
+   * you may encounter schema ambiguity. Consider using stepByFile() if you need a specific step.
    *
    * @param taskFile Path to the YAML task file
    * @return TaskBuilder with YAML task as base
    */
-  def task(taskFile: String): TaskBuilder = {
+  def taskByFile(taskFile: String): TaskBuilder = {
     val updatedConfig = this.modify(_.yamlConfig.taskFile).setTo(Some(taskFile))
     TaskBuilder().fromYaml(updatedConfig.yamlConfig)
   }
 
   /**
-   * Load from a YAML task file with specific task name filter.
+   * Load from a YAML task by name. Creates a task builder that references the existing YAML task
+   * identified by the task name.
+   * 
+   * WARNING: If the specified task has multiple steps, you may encounter schema ambiguity.
+   * Consider using stepByName() if you need a specific step.
    *
-   * @param taskFile Path to the YAML task file
-   * @param taskName Name of the specific task to use from the YAML file
+   * @param taskName Name of the specific task to use
    * @return TaskBuilder with filtered YAML task as base
    */
-  def task(taskFile: String, taskName: String): TaskBuilder = {
-    val updatedConfig = this.modify(_.yamlConfig.taskFile).setTo(Some(taskFile))
-      .modify(_.yamlConfig.taskName).setTo(Some(taskName))
+  def taskByName(taskName: String): TaskBuilder = {
+    val updatedConfig = this.modify(_.yamlConfig.taskName).setTo(Some(taskName))
     TaskBuilder().fromYaml(updatedConfig.yamlConfig)
   }
 
   /**
-   * Load from a YAML task file with specific task and step name filters.
+   * Load a specific step from a YAML task file. Creates a task builder that references a specific step
+   * within a YAML task file.
    *
    * @param taskFile Path to the YAML task file
-   * @param taskName Name of the specific task to use from the YAML file
    * @param stepName Name of the specific step to use from the task
-   * @return TaskBuilder with filtered YAML task as base
+   * @return TaskBuilder with filtered YAML step as base
    */
-  def task(taskFile: String, taskName: String, stepName: String): TaskBuilder = {
+  def stepByFile(taskFile: String, stepName: String): TaskBuilder = {
     val updatedConfig = this.modify(_.yamlConfig.taskFile).setTo(Some(taskFile))
-      .modify(_.yamlConfig.taskName).setTo(Some(taskName))
       .modify(_.yamlConfig.stepName).setTo(Some(stepName))
     TaskBuilder().fromYaml(updatedConfig.yamlConfig)
   }
 
   /**
-   * Java API - Load from a YAML task file with specific task name filter.
+   * Load a specific step from a YAML task by name. Creates a task builder that references a specific step
+   * within a named YAML task.
+   *
+   * @param taskName Name of the specific task to use
+   * @param stepName Name of the specific step to use from the task
+   * @return TaskBuilder with filtered YAML step as base
    */
-  def taskJava(taskFile: String, taskName: String): TaskBuilder = task(taskFile, taskName)
+  def stepByName(taskName: String, stepName: String): TaskBuilder = {
+    val updatedConfig = this.modify(_.yamlConfig.taskName).setTo(Some(taskName))
+      .modify(_.yamlConfig.stepName).setTo(Some(stepName))
+    TaskBuilder().fromYaml(updatedConfig.yamlConfig)
+  }
 
   /**
-   * Java API - Load from a YAML task file with specific task and step name filters.
+   * Load a specific step from a YAML task file with task name filter. Creates a task builder that references 
+   * a specific step within a specific task from a YAML file.
+   *
+   * @param taskFile Path to the YAML task file
+   * @param taskName Name of the specific task to use from the YAML file
+   * @param stepName Name of the specific step to use from the task
+   * @return TaskBuilder with filtered YAML step as base
    */
-  def taskJava(taskFile: String, taskName: String, stepName: String): TaskBuilder = 
-    task(taskFile, taskName, stepName)
+  def stepByFileAndName(taskFile: String, taskName: String, stepName: String): TaskBuilder = {
+    val updatedConfig = this.modify(_.yamlConfig.taskFile).setTo(Some(taskFile))
+      .modify(_.yamlConfig.taskName).setTo(Some(taskName))
+      .modify(_.yamlConfig.stepName).setTo(Some(stepName))
+    TaskBuilder().fromYaml(updatedConfig.yamlConfig)
+  }
 }
 
 /**

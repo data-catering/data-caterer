@@ -54,67 +54,142 @@ object SchemaHelper {
    * @return Merged schema
    */
   def mergeSchemaInfo(schema1: List[Field], schema2: List[Field], hasMultipleSubDataSources: Boolean = false): List[Field] = {
-    val result = if (schema1.nonEmpty && schema2.isEmpty) {
-      schema1
-    } else if (schema1.isEmpty && schema2.nonEmpty) {
-      schema2
-    } else if (schema1.nonEmpty && schema2.nonEmpty) {
-      val mergedFields = schema1.map(field => {
-        val filterInSchema2 = schema2.filter(f2 => f2.name == field.name)
-        val optFieldToMerge = if (filterInSchema2.nonEmpty) {
-          if (filterInSchema2.size > 1) {
-            LOGGER.warn(s"Multiple field definitions found. Only taking the first definition, field-name=${field.name}")
-          }
-          Some(filterInSchema2.head)
-        } else {
-          None
-        }
-        optFieldToMerge.map(f2 => {
-          val fieldSchema = if (field.fields.nonEmpty && f2.fields.nonEmpty) {
-            mergeSchemaInfo(field.fields, f2.fields)
-          } else if (field.fields.nonEmpty && f2.fields.isEmpty) {
-            field.fields
-          } else if (field.fields.isEmpty && f2.fields.nonEmpty) {
-            f2.fields
-          } else {
-            List()
-          }
+    LOGGER.debug(s"mergeSchemaInfo: schema1.size=${schema1.size}, schema2.size=${schema2.size}, hasMultipleSubDataSources=$hasMultipleSubDataSources")
+    LOGGER.debug(s"Schema1 fields: ${schema1.map(_.name).mkString(", ")}")
+    LOGGER.debug(s"Schema2 fields: ${schema2.map(_.name).mkString(", ")}")
 
-          val fieldType = mergeFieldType(field, f2, fieldSchema)
-          val fieldGenerator = mergeGenerator(field, f2)
-          val fieldNullable = mergeNullable(field, f2)
-          val fieldStatic = mergeStaticValue(field, f2)
-          Field(field.name, fieldType, fieldGenerator, fieldNullable, fieldStatic, fieldSchema)
-        }).getOrElse(field)
-      })
-
-      val fieldsInSchema2NotInSchema1 = if (hasMultipleSubDataSources) {
-        LOGGER.debug(s"Multiple sub data sources created, not adding fields that are manually defined")
+    val result = (schema1.isEmpty, schema2.isEmpty) match {
+      case (false, true) =>
+        LOGGER.debug("Using schema1 (schema2 is empty)")
+        schema1
+      case (true, false) =>
+        LOGGER.debug("Using schema2 (schema1 is empty)")
+        schema2
+      case (true, true) =>
+        LOGGER.debug("Both schemas are empty")
         List()
-      } else {
-        schema2.filter(f2 => !schema1.exists(f1 => f1.name == f2.name))
-      }
-      
-      // Also add fields from schema1 that don't exist in schema2 (like JSON schema fields not overridden by user)
-      val fieldsInSchema1NotInSchema2 = schema1.filter(f1 => !schema2.exists(f2 => f2.name == f1.name))
-      
-      // Combine all fields, avoiding duplicates by tracking field names we've already included
-      var result = mergedFields
-      val includedNames = mergedFields.map(_.name).toSet
-      
-      // Add fields from schema2 that aren't in schema1 and aren't already included
-      result = result ++ fieldsInSchema2NotInSchema1.filter(f => !includedNames.contains(f.name))
-      val updatedIncludedNames = includedNames ++ fieldsInSchema2NotInSchema1.map(_.name)
-      
-      // Add fields from schema1 that aren't in schema2 and aren't already included
-      result = result ++ fieldsInSchema1NotInSchema2.filter(f => !updatedIncludedNames.contains(f.name))
-      
-      result
-    } else {
-      List()
+      case (false, false) =>
+        LOGGER.debug("Both schemas non-empty, merging...")
+        mergeBothSchemas(schema1, schema2, hasMultipleSubDataSources)
     }
-    
+
+    LOGGER.debug(s"mergeSchemaInfo final result: ${result.map(_.name).mkString(", ")} (count: ${result.size})")
     result
+  }
+
+  /**
+   * Merge two non-empty schemas together
+   */
+  private def mergeBothSchemas(schema1: List[Field], schema2: List[Field], hasMultipleSubDataSources: Boolean): List[Field] = {
+    val mergedFields = mergePrimaryFields(schema1, schema2)
+    val userOnlyFields = getUserOnlyFields(schema2, schema1, hasMultipleSubDataSources)
+    val metadataOnlyFields = getMetadataOnlyFields(schema1, schema2)
+
+    combineFieldsWithoutDuplicates(mergedFields, userOnlyFields, metadataOnlyFields)
+  }
+
+  /**
+   * Merge fields that exist in schema1 with their overrides from schema2
+   */
+  private def mergePrimaryFields(schema1: List[Field], schema2: List[Field]): List[Field] = {
+    schema1.map(field => {
+      val matchingFieldsInSchema2 = schema2.filter(_.name == field.name)
+
+      if (matchingFieldsInSchema2.isEmpty) {
+        LOGGER.debug(s"Field '${field.name}' from metadata not overridden by user (keeping metadata definition)")
+        field
+      } else {
+        if (matchingFieldsInSchema2.size > 1) {
+          LOGGER.warn(s"Multiple field definitions found for field '${field.name}'. Only taking the first definition. Found ${matchingFieldsInSchema2.size} definitions.")
+        }
+        val f2 = matchingFieldsInSchema2.head
+        LOGGER.debug(s"Merging field '${field.name}': metadata type=${field.`type`.getOrElse("unknown")}, user type=${f2.`type`.getOrElse("unknown")}")
+        mergeTwoFields(field, f2)
+      }
+    })
+  }
+
+  /**
+   * Merge two individual fields together
+   */
+  private def mergeTwoFields(field1: Field, field2: Field): Field = {
+    val mergedNestedFields = mergeNestedFields(field1, field2)
+    val fieldType = mergeFieldType(field1, field2, mergedNestedFields)
+    val fieldGenerator = mergeGenerator(field1, field2)
+    val fieldNullable = mergeNullable(field1, field2)
+    val fieldStatic = mergeStaticValue(field1, field2)
+
+    LOGGER.debug(s"Merged field '${field1.name}': final type=${fieldType.getOrElse("unknown")}, options=${fieldGenerator.size} entries")
+    Field(field1.name, fieldType, fieldGenerator, fieldNullable, fieldStatic, mergedNestedFields)
+  }
+
+  /**
+   * Merge nested fields from two field definitions
+   */
+  private def mergeNestedFields(field1: Field, field2: Field): List[Field] = {
+    (field1.fields.nonEmpty, field2.fields.nonEmpty) match {
+      case (true, true) =>
+        LOGGER.debug(s"Merging nested fields for '${field1.name}': metadata has ${field1.fields.size} nested, user has ${field2.fields.size} nested")
+        mergeSchemaInfo(field1.fields, field2.fields)
+      case (true, false) =>
+        LOGGER.debug(s"Using metadata nested fields for '${field1.name}' (${field1.fields.size} fields)")
+        field1.fields
+      case (false, true) =>
+        LOGGER.debug(s"Using user nested fields for '${field1.name}' (${field2.fields.size} fields)")
+        field2.fields
+      case (false, false) =>
+        List()
+    }
+  }
+
+  /**
+   * Get fields that exist only in schema2 (user-defined fields)
+   */
+  private def getUserOnlyFields(schema2: List[Field], schema1: List[Field], hasMultipleSubDataSources: Boolean): List[Field] = {
+    if (hasMultipleSubDataSources) {
+      LOGGER.info(s"Multiple sub data sources detected, skipping user-only fields to avoid field duplication")
+      List()
+    } else {
+      val additionalFields = schema2.filter(f2 => !schema1.exists(f1 => f1.name == f2.name))
+      if (additionalFields.nonEmpty) {
+        LOGGER.debug(s"Found ${additionalFields.size} user-defined fields not in metadata: [${additionalFields.map(_.name).mkString(", ")}]")
+      }
+      additionalFields
+    }
+  }
+
+  /**
+   * Get fields that exist only in schema1 (metadata-only fields not overridden)
+   */
+  private def getMetadataOnlyFields(schema1: List[Field], schema2: List[Field]): List[Field] = {
+    val metadataOnlyFields = schema1.filter(f1 => !schema2.exists(f2 => f2.name == f1.name))
+    if (metadataOnlyFields.nonEmpty) {
+      LOGGER.debug(s"Found ${metadataOnlyFields.size} metadata fields not overridden by user: [${metadataOnlyFields.map(_.name).mkString(", ")}]")
+    }
+    metadataOnlyFields
+  }
+
+  /**
+   * Combine merged, user-only, and metadata-only fields while avoiding duplicates
+   */
+  private def combineFieldsWithoutDuplicates(mergedFields: List[Field], userOnlyFields: List[Field], metadataOnlyFields: List[Field]): List[Field] = {
+    val includedNames = mergedFields.map(_.name).toSet
+    LOGGER.debug(s"Base merged fields (metadata + user overrides): [${mergedFields.map(_.name).mkString(", ")}] (count: ${mergedFields.size})")
+
+    // Add user-only fields that aren't already included
+    val fieldsToAddFromUser = userOnlyFields.filter(f => !includedNames.contains(f.name))
+    if (fieldsToAddFromUser.nonEmpty) {
+      LOGGER.debug(s"Added user-only fields: [${fieldsToAddFromUser.map(_.name).mkString(", ")}]")
+    }
+
+    // Add metadata-only fields that aren't already included
+    val updatedIncludedNames = includedNames ++ fieldsToAddFromUser.map(_.name)
+    val fieldsToAddFromMetadata = metadataOnlyFields.filter(f => !updatedIncludedNames.contains(f.name))
+    if (fieldsToAddFromMetadata.nonEmpty) {
+      LOGGER.debug(s"Added metadata-only fields: [${fieldsToAddFromMetadata.map(_.name).mkString(", ")}]")
+    }
+
+    mergedFields ++ fieldsToAddFromUser ++ fieldsToAddFromMetadata
   }
 
   private def mergeStaticValue(field: Field, f2: Field) = {

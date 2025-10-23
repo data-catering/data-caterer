@@ -1,0 +1,31 @@
+name: "e2e_csv_task"
+steps:
+  - name: "csv_step1"
+    type: "csv"
+    count:
+      records: 100
+    options:
+      path: "/tmp/data/csv/output"
+      header: "true"
+    fields:
+      - name: "id"
+        type: "string"
+      - name: "name"
+        type: "string"
+      - name: "age"
+        type: "int"
+        options:
+          min: 18
+          max: 80
+  - name: "csv_step2"
+    type: "csv"
+    count:
+      records: 50
+    options:
+      path: "/tmp/data/csv/output2"
+      header: "true"
+    fields:
+      - name: "id"
+        type: "string"
+      - name: "value"
+        type: "double"

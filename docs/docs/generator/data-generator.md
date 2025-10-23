@@ -41,7 +41,7 @@ descriptions:
 | `regex`               | <empty> | `regex: "ACC[0-9]{10}"`                                                                             | Regular expression to define pattern generated data should follow                                                                                                                                                                                                                               |
 | `seed`                | <empty> | `seed: "1"`                                                                                         | Defines the random seed for generating data for that particular field. It will override any seed defined at a global level                                                                                                                                                                      |
 | `sql`                 | <empty> | `sql: "CASE WHEN amount < 10 THEN true ELSE false END"`                                             | Define any SQL statement for generating that fields value. Computation occurs after all non-SQL fields are generated. This means any fields used in the SQL cannot be based on other SQL generated fields. Data type of generated value from SQL needs to match data type defined for the field. See [Advanced SQL Generation](#advanced-sql-generation) for more examples |
-| `oneOf`               | <empty> | `oneOf: ["open", "closed", "suspended"]` or `oneOf: ["open->0.8", "closed->0.1", "suspended->0.1"]` | Field can only take one of the prescribed values. Chance of value being chosen is based on the weight assigned to it. Weight can be any double value.                                                                                                                                           |
+| `oneOf`               | <empty> | `oneOf: ["open", "closed", "suspended"]` or `oneOf: ["open->0.8", "closed->0.1", "suspended->0.1"]` | Field can only take one of the prescribed values. Chance of value being chosen is based on the weight assigned to it. Weight can be any double value. **Java API also supports `WeightedValue` for better type safety.**                                                                                                                                           |
 | `omit`                | false   | `omit: "true"`                                                                                      | If true, field will not be included in final data generated. Useful for intermediate transformations that are not included in final outcome                                                                                                                                                     |
 
 ### String
@@ -65,6 +65,8 @@ Förlåt", "你好吗", "Nhà vệ sinh ở đâu", "こんにちは", "नम�
 === "Java"
 
     ```java
+    import io.github.datacatering.datacaterer.javaapi.api.WeightedValue;
+    
     csv("transactions", "app/src/test/resources/sample/csv/transactions")
       .fields(
         field()
@@ -104,6 +106,16 @@ Förlåt", "你好吗", "Nhà vệ sinh ở đâu", "こんにちは", "नम�
           .name("calculated_field")
           .type(StringType.instance())
           .sql("CASE WHEN amount < 10 THEN 'small' ELSE 'large' END")
+      )
+      .fields(
+         field()
+           .name("priority_weighted")
+           .type(StringType.instance())
+           .oneOfWeightedJava(  // Separate .fields() as it returns an array of fields
+             WeightedValue.of("high", 0.1),
+             WeightedValue.of("medium", 0.7),
+             WeightedValue.of("low", 0.2)
+           )
       );
     ```
 

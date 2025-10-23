@@ -487,7 +487,7 @@ object PlanRepository {
     val yamlPlanFiles = getYamlPlanFiles
     yamlPlanFiles.flatMap(planFile => {
       val tryParse = Try {
-        val parsedPlan = ObjectMapperUtil.yamlObjectMapper.readValue(planFile, classOf[Plan])
+        val parsedPlan = PlanParser.parsePlanFile(planFile.getAbsolutePath)
         // Convert YAML Plan to PlanRunRequest format
         convertYamlPlanToPlanRunRequest(parsedPlan, planFile.getName.replaceAll("\\.yaml$", ""))
       }
@@ -554,22 +554,10 @@ object PlanRepository {
   }
 
   /**
-   * Try to get the plan directory using multiple approaches (similar to FileUtil.getDirectory)
+   * Get plan directory using consolidated method from PlanParser
    */
   private def getPlanDirectory(dirPath: String): Option[File] = {
-    val directFile = new File(dirPath)
-    val classFile = scala.util.Try(new File(getClass.getResource(s"/$dirPath").getPath))
-    val classLoaderFile = scala.util.Try(new File(getClass.getClassLoader.getResource(dirPath).getPath))
-
-    if (directFile.isDirectory) {
-      Some(directFile)
-    } else if (classFile.isSuccess && classFile.get.isDirectory) {
-      Some(classFile.get)
-    } else if (classLoaderFile.isSuccess && classLoaderFile.get.isDirectory) {
-      Some(classLoaderFile.get)
-    } else {
-      None
-    }
+    PlanParser.findDirectory(dirPath)
   }
 
   /**
@@ -598,9 +586,11 @@ object PlanRepository {
     val tryRunPlan = Try {
       if (request.sourceType == "yaml" || (request.sourceType == "auto" && !planExistsInJson(request.planName))) {
         // For YAML plans, use the enhanced parsing pipeline that supports filtering
+        LOGGER.debug(s"Running YAML plan, plan-name=${request.planName}")
         runEnhancedYamlPlan(request, replyTo)
       } else {
         // For JSON plans, use the existing filtering approach
+        LOGGER.debug(s"Running JSON plan, plan-name=${request.planName}")
         val planRunRequest = loadPlanBySourceType(request)
         val filteredPlanRunRequest = applyTaskAndStepFiltering(planRunRequest, request)
         val finalPlanRunRequest = applyExecutionMode(filteredPlanRunRequest, request)
@@ -685,25 +675,30 @@ object PlanRepository {
       case None => throw new IllegalArgumentException(s"YAML plan file not found: $fileName")
     }
 
-    val parsedPlan = ObjectMapperUtil.yamlObjectMapper.readValue(planFile, classOf[Plan])
+    val parsedPlan = PlanParser.parsePlanFile(planFile.getAbsolutePath)
     convertYamlPlanToPlanRunRequest(parsedPlan, fileName.replaceAll("\\.yaml$", ""))
   }
 
   /**
    * Find a task by name by parsing all task files in the configured task folder
-   * This uses the same logic as PlanParser.parseTasks to ensure consistency
+   * This uses the consolidated parsing logic from PlanParser
+   *
+   * Note: Currently parses all tasks on each call. Consider adding caching if this becomes
+   * a performance bottleneck. For now, kept simple as task lookups are infrequent during
+   * plan validation phase.
    */
   private def findTaskByName(taskName: String)(implicit sparkSession: SparkSession): Task = {
     val taskFolderPath = ConfigParser.foldersConfig.taskFolderPath
-    val allTasks = PlanParser.parseTasks(taskFolderPath)
 
-    allTasks.find(_.name == taskName) match {
-      case Some(task) => task
-      case None =>
-        throw new IllegalArgumentException(
-          s"Task '$taskName' not found in task folder: $taskFolderPath. " +
-            s"Available tasks: ${allTasks.map(_.name).mkString(", ")}"
-        )
+    // TODO: Add caching mechanism if this becomes a performance issue
+    // For now, parse on-demand to ensure we always have latest task definitions
+    val allTasks = PlanParser.parseTasksFromFolder(taskFolderPath)
+
+    allTasks.find(_.name == taskName).getOrElse {
+      throw new IllegalArgumentException(
+        s"Task '$taskName' not found in task folder: $taskFolderPath. " +
+          s"Available tasks: ${allTasks.map(_.name).mkString(", ")}"
+      )
     }
   }
 
@@ -713,60 +708,13 @@ object PlanRepository {
    */
   private def applyTaskAndStepFiltering(planRunRequest: PlanRunRequest, request: EnhancedPlanRunRequest): PlanRunRequest = {
     if (!request.hasTaskFilter && !request.hasStepFilter) {
-      // No filtering needed
       return planRunRequest
     }
 
-    if (request.hasStepFilter && !request.hasTaskFilter) {
-      throw new IllegalArgumentException("Step filter requires task filter to be specified")
-    }
+    validateFilterRequirements(request)
 
-    // For YAML-based plans, we need to load the actual task files to access step information
-    val taskFilter = request.taskFilter
-    val stepFilter = request.stepFilter
-
-    // Filter plan tasks by name
-    val filteredPlanTasks = taskFilter match {
-      case Some(taskName) =>
-        val matchingTasks = planRunRequest.plan.tasks.filter(_.name == taskName)
-        if (matchingTasks.isEmpty) {
-          throw new IllegalArgumentException(s"Task not found in plan: $taskName, plan-tasks=${planRunRequest.plan.tasks.map(_.name).mkString(", ")}")
-        }
-        matchingTasks
-      case None =>
-        planRunRequest.plan.tasks
-    }
-
-    // If there's a step filter, we need to validate that the step exists within the task
-    // For JSON plans: PlanRunRequest.tasks is List[Step] representing task configurations
-    // For YAML plans: Steps are loaded from task YAML files during execution
-    val filteredSteps = (taskFilter, stepFilter) match {
-      case (Some(taskName), Some(stepName)) =>
-        // Need to load the task and verify the step exists
-        implicit val sparkSession: SparkSession = createSparkSession()
-        val parsedTask = findTaskByName(taskName)
-        val matchingSteps = parsedTask.steps.filter(_.name == stepName)
-
-        if (matchingSteps.isEmpty) {
-          throw new IllegalArgumentException(s"Step '$stepName' not found in task '$taskName'. Available steps: ${parsedTask.steps.map(_.name).mkString(", ")}")
-        }
-
-        // For PlanRunRequest.tasks:
-        // - JSON plans: Contains actual Step configurations, so filter them
-        // - YAML plans: Empty list (tasks loaded during execution), return empty list
-        planRunRequest.tasks.filter(_.name == taskName)
-
-      case (Some(taskName), None) =>
-        // Filter by task name only
-        // For YAML plans, planRunRequest.tasks is empty (tasks loaded during execution)
-        // Just validate the task exists in the plan and return the filtered list (which may be empty)
-        val matchingSteps = planRunRequest.tasks.filter(_.name == taskName)
-        // Don't throw error if tasks is empty - this is expected for YAML plans
-        matchingSteps
-
-      case _ =>
-        planRunRequest.tasks
-    }
+    val filteredPlanTasks = filterPlanTasksByName(planRunRequest, request.taskFilter)
+    val filteredSteps = filterStepsByTaskAndStep(planRunRequest, request.taskFilter, request.stepFilter)
 
     planRunRequest.copy(
       tasks = filteredSteps,
@@ -775,10 +723,74 @@ object PlanRepository {
   }
 
   /**
+   * Validate that filter requirements are met
+   */
+  private def validateFilterRequirements(request: EnhancedPlanRunRequest): Unit = {
+    if (request.hasStepFilter && !request.hasTaskFilter) {
+      throw new IllegalArgumentException("Step filter requires task filter to be specified")
+    }
+  }
+
+  /**
+   * Filter plan tasks by task name
+   */
+  private def filterPlanTasksByName(planRunRequest: PlanRunRequest, taskFilter: Option[String]): List[io.github.datacatering.datacaterer.api.model.TaskSummary] = {
+    taskFilter match {
+      case Some(taskName) =>
+        val matchingTasks = planRunRequest.plan.tasks.filter(_.name == taskName)
+        if (matchingTasks.isEmpty) {
+          throw new IllegalArgumentException(
+            s"Task not found in plan: $taskName, plan-tasks=${planRunRequest.plan.tasks.map(_.name).mkString(", ")}"
+          )
+        }
+        matchingTasks
+      case None =>
+        planRunRequest.plan.tasks
+    }
+  }
+
+  /**
+   * Filter steps by task name and optionally by step name
+   * For YAML plans, validates step exists by loading task files
+   */
+  private def filterStepsByTaskAndStep(
+    planRunRequest: PlanRunRequest,
+    taskFilter: Option[String],
+    stepFilter: Option[String]
+  ): List[io.github.datacatering.datacaterer.api.model.Step] = {
+    (taskFilter, stepFilter) match {
+      case (Some(taskName), Some(stepName)) =>
+        validateStepExistsInTask(taskName, stepName)
+        planRunRequest.tasks.filter(_.name == taskName)
+
+      case (Some(taskName), None) =>
+        planRunRequest.tasks.filter(_.name == taskName)
+
+      case _ =>
+        planRunRequest.tasks
+    }
+  }
+
+  /**
+   * Validate that a step exists within a task by loading the task file
+   */
+  private def validateStepExistsInTask(taskName: String, stepName: String): Unit = {
+    implicit val sparkSession: SparkSession = createSparkSession()
+    val parsedTask = findTaskByName(taskName)
+    val matchingSteps = parsedTask.steps.filter(_.name == stepName)
+
+    if (matchingSteps.isEmpty) {
+      throw new IllegalArgumentException(
+        s"Step '$stepName' not found in task '$taskName'. Available steps: ${parsedTask.steps.map(_.name).mkString(", ")}"
+      )
+    }
+  }
+
+  /**
    * Apply execution mode (generate, delete, validate) to plan configuration
    */
   private def applyExecutionMode(planRunRequest: PlanRunRequest, request: EnhancedPlanRunRequest): PlanRunRequest = {
-    request.mode match {
+    request.mode.toLowerCase match {
       case "delete" =>
         // Delete mode is handled by runPlanWithDeleteFlags, so just return the plan
         planRunRequest
@@ -849,9 +861,21 @@ object PlanRepository {
           ConfigParser.toDataCatererConfiguration
         }
 
+        // Find the correct YAML plan file by name, similar to PlanProcessor logic
+        val yamlPlanFilePath = PlanParser.findYamlPlanFile(dataCatererConfiguration.foldersConfig.planFilePath, request.planName)
+        if (yamlPlanFilePath.isEmpty) {
+          throw new RuntimeException(s"Failed to find YAML plan, folder-path=${dataCatererConfiguration.foldersConfig.planFilePath}, plan-name=${request.planName}")
+        }
+        LOGGER.debug(s"Found YAML plan file path, plan-file-path=$yamlPlanFilePath")
+        val configForParsing = yamlPlanFilePath.map { planPath =>
+          dataCatererConfiguration.copy(
+            foldersConfig = dataCatererConfiguration.foldersConfig.copy(planFilePath = planPath)
+          )
+        }.getOrElse(dataCatererConfiguration)
+
         // Use the enhanced parsing that supports filtering
         val (planRun, _) = PlanProcessor.parsePlanWithFiltering(
-          dataCatererConfiguration,
+          configForParsing,
           None, // No pre-existing plan run
           io.github.datacatering.datacaterer.api.model.Constants.DATA_CATERER_INTERFACE_YAML,
           request.taskFilter,

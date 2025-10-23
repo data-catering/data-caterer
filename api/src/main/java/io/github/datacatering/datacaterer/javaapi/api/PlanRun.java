@@ -125,6 +125,18 @@ public abstract class PlanRun {
     }
 
     /**
+     * Creates a WeightedValue for weighted field values. Useful for oneOfWeightedJava field method.
+     *
+     * @param value  The value
+     * @param weight The weight associated with the value
+     * @return A WeightedValue containing the value and weight
+     */
+    public static WeightedValue weightedValue(Object value, double weight) {
+        return new WeightedValue(value, weight);
+    }
+
+
+    /**
      * Creates a CountBuilder instance.
      *
      * @return A CountBuilder instance.
@@ -819,6 +831,21 @@ public abstract class PlanRun {
         execute(plan(), configuration(), Collections.emptyList(), connectionTaskBuilder, connectionTaskBuilders);
     }
 
+    /**
+     * Executes the data catering plan with the provided list of tasks.
+     *
+     * @param connectionTaskBuilders A list of ConnectionTaskBuilder objects representing tasks to be executed.
+     */
+    public void execute(List<ConnectionTaskBuilder<?>> connectionTaskBuilders) {
+        if (connectionTaskBuilders.isEmpty()) {
+            throw new IllegalArgumentException("At least one ConnectionTaskBuilder must be provided");
+        }
+        ConnectionTaskBuilder<?> first = connectionTaskBuilders.get(0);
+        ConnectionTaskBuilder<?>[] rest = connectionTaskBuilders.subList(1, connectionTaskBuilders.size())
+                .toArray(new ConnectionTaskBuilder<?>[0]);
+        execute(first, rest);
+    }
+
 
     /**
      * Executes the data catering plan with the provided configurations.
@@ -836,6 +863,25 @@ public abstract class PlanRun {
     }
 
     /**
+     * Executes the data catering plan with the provided configuration and list of tasks.
+     *
+     * @param configurationBuilder   The DataCatererConfigurationBuilder object representing the configuration for the plan execution.
+     * @param connectionTaskBuilders A list of ConnectionTaskBuilder objects representing tasks to be executed.
+     */
+    public void execute(
+            DataCatererConfigurationBuilder configurationBuilder,
+            List<ConnectionTaskBuilder<?>> connectionTaskBuilders
+    ) {
+        if (connectionTaskBuilders.isEmpty()) {
+            throw new IllegalArgumentException("At least one ConnectionTaskBuilder must be provided");
+        }
+        ConnectionTaskBuilder<?> first = connectionTaskBuilders.get(0);
+        ConnectionTaskBuilder<?>[] rest = connectionTaskBuilders.subList(1, connectionTaskBuilders.size())
+                .toArray(new ConnectionTaskBuilder<?>[0]);
+        execute(configurationBuilder, first, rest);
+    }
+
+    /**
      * Executes the data catering plan with the provided configurations.
      *
      * @param planBuilder            The PlanBuilder object representing the plan to be executed.
@@ -850,6 +896,27 @@ public abstract class PlanRun {
             ConnectionTaskBuilder<?>... connectionTaskBuilders
     ) {
         execute(planBuilder, configurationBuilder, Collections.emptyList(), connectionTaskBuilder, connectionTaskBuilders);
+    }
+
+    /**
+     * Executes the data catering plan with the provided plan, configuration and list of tasks.
+     *
+     * @param planBuilder            The PlanBuilder object representing the plan to be executed.
+     * @param configurationBuilder   The DataCatererConfigurationBuilder object representing the configuration for the plan execution.
+     * @param connectionTaskBuilders A list of ConnectionTaskBuilder objects representing tasks to be executed.
+     */
+    public void execute(
+            PlanBuilder planBuilder,
+            DataCatererConfigurationBuilder configurationBuilder,
+            List<ConnectionTaskBuilder<?>> connectionTaskBuilders
+    ) {
+        if (connectionTaskBuilders.isEmpty()) {
+            throw new IllegalArgumentException("At least one ConnectionTaskBuilder must be provided");
+        }
+        ConnectionTaskBuilder<?> first = connectionTaskBuilders.get(0);
+        ConnectionTaskBuilder<?>[] rest = connectionTaskBuilders.subList(1, connectionTaskBuilders.size())
+                .toArray(new ConnectionTaskBuilder<?>[0]);
+        execute(planBuilder, configurationBuilder, first, rest);
     }
 
     /**

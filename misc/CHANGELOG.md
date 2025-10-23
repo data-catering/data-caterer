@@ -1,5 +1,31 @@
 # Changelog
 
+## 0.17.0
+
+Major YAML support enhancements with new YamlBuilder API, enhanced metadata processing, Java API improvements, and comprehensive end-to-end testing infrastructure.
+
+- YAML Enhancements:
+  - New YamlBuilder API for programmatic loading and extension of YAML configurations
+  - Enhanced YAML metadata processing with improved type inference and filtering capabilities
+  - Comprehensive end-to-end testing framework for YAML configurations
+  - Better integration between YAML-defined tasks and programmatic overrides
+- Java API:
+  - New WeightedValue class for weighted random selection in Java API
+  - Enhanced Java-Scala interoperability with improved type safety
+  - Better support for Java collections in field builders
+- Core Engine:
+  - Enhanced YamlDataSourceMetadata with refined field type inference
+  - Improved PlanParser with better error handling for YAML configurations
+  - Performance improvements in FastDataGenerator and FastSampleGenerator
+- Testing:
+  - Comprehensive test coverage for YAML functionality
+  - New end-to-end test infrastructure with sample plans and tasks
+  - Enhanced Java API testing with integration test suites
+- Examples:
+  - 8 new example projects demonstrating YAML capabilities
+  - Environment-specific configurations, extensions, and validation patterns
+  - Comprehensive reference examples and best practices
+
 ## 0.16.9
 
 Add pre and post processor script support for Docker deployments with configurable execution conditions.

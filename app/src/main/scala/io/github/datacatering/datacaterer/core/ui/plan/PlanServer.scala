@@ -28,8 +28,13 @@ object PlanServer {
     val connectionRepository = ctx.spawn(ConnectionRepository(), "ConnectionRepository")
     val routes = new PlanRoutes(planRepository, planResponseHandler, connectionRepository)
 
-    //TODO should check if port 9898 is available, try other ports if not available
-    val server = Http().newServerAt("0.0.0.0", 9898).bind(routes.planRoutes)
+    // Use configurable port with fallback to 9898
+    val port = Option(System.getProperty("datacaterer.ui.port"))
+      .map(_.toInt)
+      .getOrElse(9898)
+    
+    //TODO should check if port is available, try other ports if not available
+    val server = Http().newServerAt("0.0.0.0", port).bind(routes.planRoutes)
 
     ctx.pipeToSelf(server) {
       case Failure(exception) => StartFailed(exception)
