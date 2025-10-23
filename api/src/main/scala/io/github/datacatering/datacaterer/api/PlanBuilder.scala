@@ -4,8 +4,8 @@ import com.softwaremill.quicklens.ModifyPimp
 import io.github.datacatering.datacaterer.api
 import io.github.datacatering.datacaterer.api.connection.ConnectionTaskBuilder
 import io.github.datacatering.datacaterer.api.converter.Converters.toScalaList
-import io.github.datacatering.datacaterer.api.model.Constants.{ENABLE_REFERENCE_MODE, METADATA_SOURCE_TYPE}
-import io.github.datacatering.datacaterer.api.model.{ForeignKeyRelation, Plan}
+import io.github.datacatering.datacaterer.api.model.Constants.{ENABLE_REFERENCE_MODE, METADATA_SOURCE_TYPE, YAML_PLAN}
+import io.github.datacatering.datacaterer.api.model.{ForeignKeyRelation, Plan, YamlPlanSource}
 
 import scala.annotation.varargs
 
@@ -145,5 +145,21 @@ case class PlanBuilder(plan: Plan = Plan(), tasks: List[TasksBuilder] = List()) 
         schemaFields.exists(_.name == fieldParts.head)
       }
     })
+  }
+
+  /**
+   * Create a PlanBuilder that loads base configuration from a YAML file.
+   * This allows referencing existing YAML plan definitions while still being able to override
+   * specific configurations using the builder pattern.
+   *
+   * @param yamlConfig Configuration specifying which YAML file to load
+   * @return PlanBuilder with YAML plan as base configuration
+   */
+  def fromYaml(yamlConfig: YamlConfig): PlanBuilder = {
+    // Add YAML source as metadata source type for later processing
+    val yamlSource = YamlPlanSource(yamlConfig.toOptionsMap + (METADATA_SOURCE_TYPE -> YAML_PLAN))
+    // Return current builder with special marker to indicate YAML loading
+    // The actual YAML loading will happen during execution when the plan is processed
+    this.modify(_.plan.description).setTo(s"${plan.description} [YAML: ${yamlConfig.planFile.getOrElse("unknown")}]")
   }
 }

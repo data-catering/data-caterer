@@ -25,6 +25,16 @@ trait DataSourceMetadata {
   val connectionConfig: Map[String, String]
   val hasSourceData: Boolean
 
+  /**
+   * Creates a cache key for this metadata source instance.
+   * Default implementation uses the connection config as the key.
+   * Subclasses can override to provide more specific cache keys.
+   */
+  protected def createCacheKey(): String = {
+    val sortedConfig = connectionConfig.toSeq.sorted.map { case (k, v) => s"$k=$v" }.mkString("|")
+    s"${getClass.getSimpleName}|$name|$format|$sortedConfig"
+  }
+
   def getAdditionalFieldMetadata(implicit sparkSession: SparkSession): Dataset[FieldMetadata] = {
     sparkSession.emptyDataset[FieldMetadata]
   }
@@ -35,7 +45,23 @@ trait DataSourceMetadata {
 
   def close(): Unit = {}
 
-  def getSubDataSourcesMetadata(implicit sparkSession: SparkSession): Array[SubDataSourceMetadata] =
+  /**
+   * Gets sub-data sources metadata with caching support.
+   * This method uses MetadataSourceCache to avoid reloading the same metadata multiple times.
+   */
+  def getSubDataSourcesMetadata(implicit sparkSession: SparkSession): Array[SubDataSourceMetadata] = {
+    val cacheKey = createCacheKey()
+    MetadataSourceCache.getOrLoad(cacheKey, this) {
+      loadSubDataSourcesMetadata
+    }
+  }
+
+  /**
+   * Loads sub-data sources metadata without caching.
+   * Subclasses can override this to provide custom metadata loading logic.
+   * Default implementation returns a single sub-data source with the connection config.
+   */
+  protected def loadSubDataSourcesMetadata(implicit sparkSession: SparkSession): Array[SubDataSourceMetadata] =
     Array(SubDataSourceMetadata(connectionConfig))
 
   def toStepName(options: Map[String, String]): String = StepNameProvider.fromOptions(options).getOrElse(DEFAULT_STEP_NAME)
@@ -148,4 +174,63 @@ case class SubDataSourceMetadata(readOptions: Map[String, String] = Map(), optFi
 
 object LogHolder extends Serializable {
   @transient lazy val LOGGER: Logger = Logger.getLogger(getClass.getName)
+}
+
+/**
+ * Generic cache for metadata sources to avoid reloading the same metadata multiple times.
+ * This cache is applicable to all metadata source types (YAML, OpenMetadata, Great Expectations, etc.)
+ * and provides thread-safe caching with automatic cache key generation.
+ */
+object MetadataSourceCache {
+  private val LOGGER = Logger.getLogger(getClass.getName)
+
+  // Thread-safe cache to store parsed metadata
+  private val cache = scala.collection.concurrent.TrieMap[String, Array[SubDataSourceMetadata]]()
+
+  /**
+   * Gets cached metadata or loads it if not present in cache.
+   *
+   * @param cacheKey Cache key identifying the metadata configuration
+   * @param dataSource The data source metadata instance (for logging)
+   * @param loader Function to load metadata if not in cache
+   * @return Array of sub data source metadata
+   */
+  def getOrLoad(
+    cacheKey: String,
+    dataSource: DataSourceMetadata
+  )(loader: => Array[SubDataSourceMetadata]): Array[SubDataSourceMetadata] = {
+    cache.get(cacheKey) match {
+      case Some(cachedData) =>
+        LOGGER.info(s"Using cached metadata for: ${dataSource.name} (${dataSource.getClass.getSimpleName})")
+        LOGGER.debug(s"Cache key: $cacheKey")
+        cachedData
+      case None =>
+        LOGGER.info(s"Loading metadata (not in cache) for: ${dataSource.name} (${dataSource.getClass.getSimpleName})")
+        LOGGER.debug(s"Cache key: $cacheKey")
+        val loadedData = loader
+        cache.put(cacheKey, loadedData)
+        loadedData
+    }
+  }
+
+  /**
+   * Clears the entire cache. Useful for testing or when metadata sources are updated.
+   */
+  def clear(): Unit = {
+    LOGGER.debug("Clearing metadata source cache")
+    cache.clear()
+  }
+
+  /**
+   * Gets the current size of the cache.
+   */
+  def size: Int = cache.size
+
+  /**
+   * Removes a specific entry from the cache.
+   */
+  def remove(cacheKey: String): Option[Array[SubDataSourceMetadata]] = {
+    LOGGER.debug(s"Removing cache entry for key: $cacheKey")
+    cache.remove(cacheKey)
+  }
 }

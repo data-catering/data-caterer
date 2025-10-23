@@ -32,6 +32,9 @@ app/src/test/resources/sample/documentation
 app/src/test/resources/sample/java
 app/src/test/resources/sample/report
 app/src/test/resources/sample/plan-gen
+app/src/test/resources/sample/e2e/generated
+app/src/test/resources/sample/e2e/report
+app/src/test/resources/sample/e2e/data
 
 api/out
 api/src/test/resources/sample/documentation

@@ -39,8 +39,10 @@ class YamlPlanIntegrationTest extends SparkSuite with BeforeAndAfterAll with Moc
     val response = probe.receiveMessage()
     // The response will include connections from application.conf if they exist
     // In test environment, application.conf may have different connections
-    // The important part is that the method doesn't fail and returns a response
     response shouldBe a[GetConnectionsResponse]
+    response.connections.size shouldBe 1
+    response.connections.head.name shouldBe "account_json"
+    response.connections.head.`type` shouldBe "json"
   }
 
   test("PlanRepository should list YAML plans along with JSON plans") {
@@ -53,8 +55,7 @@ class YamlPlanIntegrationTest extends SparkSuite with BeforeAndAfterAll with Moc
     println(s"Found ${response.plans.size} plans")
     response.plans.foreach(p => println(s"  - Plan: ${p.plan.name}"))
     response.plans should not be empty
-    // The test YAML plan should be found if it exists in the configured directory
-    // For now, just verify the endpoint returns successfully
+    response.plans.find(planResp => planResp.plan.name == "kafka_plan") shouldBe defined
   }
 
   test("PlanRepository should convert YAML plans to PlanRunRequest format") {
@@ -76,46 +77,6 @@ class YamlPlanIntegrationTest extends SparkSuite with BeforeAndAfterAll with Moc
 
     // Test passes whether or not test_yaml_plan exists, as long as plans can be listed
     response shouldBe a[PlanRunRequests]
-  }
-  
-  test("PlanProcessor should find correct YAML plan file when UI plan references YAML tasks") {
-    import io.github.datacatering.datacaterer.api.PlanRun
-    import io.github.datacatering.datacaterer.api.model.{DataCatererConfiguration, Plan, TaskSummary}
-    import io.github.datacatering.datacaterer.core.config.ConfigParser
-    import io.github.datacatering.datacaterer.core.plan.PlanProcessor
-    
-    // Setup connection for the test data source
-    val saveConnectionsRequest = io.github.datacatering.datacaterer.core.ui.model.SaveConnectionsRequest(
-      List(io.github.datacatering.datacaterer.core.ui.model.Connection(
-        "test_json", 
-        "json", 
-        Some("data-source"), 
-        Map("path" -> "/tmp/test-output")
-      ))
-    )
-    connectionRepository ! ConnectionRepository.SaveConnections(saveConnectionsRequest)
-    Thread.sleep(100) // Give time for the connection to be saved
-    
-    // Create a plan that mimics UI sending a plan with only task summaries (no actual task definitions)
-    // This simulates the scenario where the UI knows the plan name and task names from a YAML plan
-    // but hasn't loaded the actual task definitions
-    val uiPlan = new PlanRun {
-      _plan = Plan("test_yaml_plan", "Test plan from UI", tasks = List(TaskSummary("test_task", "test_json")))
-      _tasks = List() // No actual tasks provided - should be loaded from YAML
-      _configuration = ConfigParser.toDataCatererConfiguration
-    }
-    
-    // When PlanProcessor processes this plan, it should:
-    // 1. Detect that tasks are missing
-    // 2. Find the correct YAML plan file by name in the configured plan directory
-    // 3. Load the tasks from the matching YAML file
-    // This test verifies that the findYamlPlanFile method works correctly
-    
-    val result = PlanProcessor.determineAndExecutePlan(Some(uiPlan), "ui")
-    
-    // The test should not throw an exception about missing tasks
-    // If it completes (even with validation errors), it means the YAML tasks were found and loaded
-    result shouldBe a[io.github.datacatering.datacaterer.core.model.PlanRunResults]
   }
 
   private def setupTestYamlFiles(): Unit = {

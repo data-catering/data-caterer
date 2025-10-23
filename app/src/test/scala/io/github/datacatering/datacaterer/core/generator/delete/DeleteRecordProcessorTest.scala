@@ -4,12 +4,8 @@ import io.github.datacatering.datacaterer.api.model.Constants.{FORMAT, PATH}
 import io.github.datacatering.datacaterer.api.model.{ForeignKey, ForeignKeyRelation, Plan, SinkOptions, Step, Task, TaskSummary}
 import io.github.datacatering.datacaterer.core.util.SparkSuite
 import org.apache.spark.sql.{Encoder, Encoders, SaveMode}
-import org.apache.spark.sql.delta.implicits.stringEncoder
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.matchers.should.Matchers
-
-import java.nio.charset.StandardCharsets
-import java.nio.file.{Files, Paths, StandardOpenOption}
 
 class DeleteRecordProcessorTest extends SparkSuite with MockFactory with Matchers {
 

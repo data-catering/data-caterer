@@ -1,9 +1,10 @@
 package io.github.datacatering.datacaterer.core.generator.metadata.datasource.jsonschema
 
+import com.fasterxml.jackson.databind.ObjectMapper
 import org.scalatest.funsuite.AnyFunSuite
-import java.nio.file.{Files, Paths}
+
 import java.nio.charset.StandardCharsets
-import com.fasterxml.jackson.databind.{JsonNode, ObjectMapper}
+import java.nio.file.Files
 
 class JsonSchemaLoaderTest extends AnyFunSuite {
 

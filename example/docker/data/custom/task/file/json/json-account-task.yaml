@@ -5,7 +5,7 @@ steps:
     count:
       records: 1000
     options:
-      path: "/opt/app/custom/json/account"
+      path: "/opt/app/data/yaml-custom-output"
       saveMode: "overwrite"
     fields:
       - name: "account_id"

@@ -1,7 +1,7 @@
 package io.github.datacatering.datacaterer.core.plan
 
-import io.github.datacatering.datacaterer.api.model.ArrayType
 import io.github.datacatering.datacaterer.api.PlanRun
+import io.github.datacatering.datacaterer.api.model.ArrayType
 import io.github.datacatering.datacaterer.core.util.{ObjectMapperUtil, SparkSuite}
 import org.apache.spark.sql.Row
 

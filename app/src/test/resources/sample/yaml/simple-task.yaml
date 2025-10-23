@@ -1,0 +1,51 @@
+name: "user-task"
+steps:
+  - name: "users"
+    type: "sql"
+    count:
+      records: 1000
+    fields:
+      - name: "user_id"
+        type: "string"
+        options:
+          regex: "user_[0-9]{5}"
+        nullable: false
+      - name: "username"
+        type: "string"
+        options:
+          expression: "#{Name.username}"
+        nullable: false
+      - name: "email"
+        type: "string"
+        options:
+          expression: "#{Internet.emailAddress}"
+        nullable: true
+      - name: "age"
+        type: "integer"
+        options:
+          min: 18
+          max: 80
+        nullable: true
+      - name: "profile"
+        type: "struct"
+        nullable: true
+        fields:
+          - name: "first_name"
+            type: "string"
+            options:
+              expression: "#{Name.firstName}"
+          - name: "last_name"
+            type: "string" 
+            options:
+              expression: "#{Name.lastName}"
+          - name: "address"
+            type: "struct"
+            fields:
+              - name: "street"
+                type: "string"
+                options:
+                  expression: "#{Address.streetAddress}"
+              - name: "city"
+                type: "string"
+                options:
+                  expression: "#{Address.city}"

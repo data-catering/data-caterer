@@ -1,7 +1,6 @@
 package io.github.datacatering.datacaterer.core.generator.metadata.datasource.jsonschema
 
 import io.github.datacatering.datacaterer.api.model.Constants.{JSON_SCHEMA_FILE, METADATA_IDENTIFIER}
-import io.github.datacatering.datacaterer.core.generator.metadata.datasource.database.FieldMetadata
 import io.github.datacatering.datacaterer.core.util.SparkSuite
 
 class JsonSchemaDataSourceMetadataTest extends SparkSuite {

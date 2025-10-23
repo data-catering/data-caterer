@@ -10,8 +10,8 @@ import io.github.datacatering.datacaterer.core.util.GeneratorUtil.applySqlExpres
 import io.github.datacatering.datacaterer.core.util.PlanImplicits.{ForeignKeyRelationOps, SinkOptionsOps}
 import org.apache.log4j.Logger
 import org.apache.spark.sql.functions.{col, expr, struct}
-import org.apache.spark.sql.types.{ArrayType, DataType, LongType, Metadata, MetadataBuilder, StructField, StructType}
-import org.apache.spark.sql.{DataFrame, Dataset, Row, Column}
+import org.apache.spark.sql.types.{ArrayType, DataType, Metadata, MetadataBuilder, StructField, StructType}
+import org.apache.spark.sql.{Column, DataFrame, Dataset}
 
 import scala.annotation.tailrec
 import scala.collection.mutable

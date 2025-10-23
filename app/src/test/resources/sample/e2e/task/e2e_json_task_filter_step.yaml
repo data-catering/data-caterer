@@ -1,0 +1,15 @@
+name: "e2e_json_task_filter_step"
+steps:
+  - name: "json_filter_step1"
+    type: "json"
+    count:
+      records: 50
+    options:
+      path: "/tmp/data/json/filter/step/output"
+    fields:
+      - name: "user_id"
+        type: "string"
+      - name: "email"
+        type: "string"
+      - name: "created_at"
+        type: "timestamp"

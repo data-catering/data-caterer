@@ -183,6 +183,14 @@ trait PlanRun {
   def metadataSource: MetadataSourceBuilder = MetadataSourceBuilder()
 
   /**
+   * Create new YAML builder for referencing existing YAML plan and task files.
+   * This allows loading existing YAML configurations and overriding specific parts using the programmatic API.
+   *
+   * @return YamlBuilder
+   */
+  def yaml: YamlBuilder = YamlBuilder()
+
+  /**
    * Create new CSV generation step with configurations
    *
    * @param name    Data source name
@@ -637,6 +645,26 @@ trait PlanRun {
    * Execute with non-default configurations for a set of tasks
    *
    * @param baseConfiguration      Runtime configurations
+   * @param connectionTaskBuilders Connection and task builders
+   */
+  def execute(
+               baseConfiguration: DataCatererConfigurationBuilder,
+               connectionTaskBuilders: List[ConnectionTaskBuilder[_]]
+             ): Unit = {
+    if (connectionTaskBuilders.isEmpty) {
+      throw new IllegalArgumentException("At least one ConnectionTaskBuilder must be provided")
+    }
+    if (connectionTaskBuilders.tail.isEmpty) {
+      execute(plan, baseConfiguration, List(), connectionTaskBuilders.head)
+    } else {
+      execute(plan, baseConfiguration, List(), connectionTaskBuilders.head, connectionTaskBuilders.tail: _*)
+    }
+  }
+
+  /**
+   * Execute with non-default configurations for a set of tasks
+   *
+   * @param baseConfiguration      Runtime configurations
    * @param connectionTaskBuilder  First connection and task
    * @param connectionTaskBuilders Other connections and tasks
    */
@@ -663,6 +691,28 @@ trait PlanRun {
                connectionTaskBuilders: ConnectionTaskBuilder[_]*
              ): Unit = {
     execute(planBuilder, baseConfiguration, List(), connectionTaskBuilder, connectionTaskBuilders: _*)
+  }
+
+  /**
+   * Execute with non-default configurations with validations and tasks
+   *
+   * @param planBuilder            Plan to set high level task configurations
+   * @param baseConfiguration      Runtime configurations
+   * @param connectionTaskBuilders Connection and task builders
+   */
+  def execute(
+               planBuilder: PlanBuilder,
+               baseConfiguration: DataCatererConfigurationBuilder,
+               connectionTaskBuilders: List[ConnectionTaskBuilder[_]]
+             ): Unit = {
+    if (connectionTaskBuilders.isEmpty) {
+      throw new IllegalArgumentException("At least one ConnectionTaskBuilder must be provided")
+    }
+    if (connectionTaskBuilders.tail.isEmpty) {
+      execute(planBuilder, baseConfiguration, List(), connectionTaskBuilders.head)
+    } else {
+      execute(planBuilder, baseConfiguration, List(), connectionTaskBuilders.head, connectionTaskBuilders.tail: _*)
+    }
   }
 
   /**

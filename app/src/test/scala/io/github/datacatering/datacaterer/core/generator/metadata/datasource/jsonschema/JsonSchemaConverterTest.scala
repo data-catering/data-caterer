@@ -5,8 +5,6 @@ import io.github.datacatering.datacaterer.api.model._
 import io.github.datacatering.datacaterer.core.generator.metadata.datasource.jsonschema.model._
 import org.scalatest.funsuite.AnyFunSuite
 
-import java.io.File
-
 class JsonSchemaConverterTest extends AnyFunSuite {
 
   test("can convert simple primitive schema") {

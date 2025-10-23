@@ -50,7 +50,7 @@ docker run -d \
   -e POST_PROCESSOR_SCRIPT="/opt/app/scripts/cleanup.sh" \
   -e POST_PROCESSOR_CONDITION="always" \
   -v /path/to/scripts:/opt/app/scripts \
-  datacatering/data-caterer:0.16.11
+  datacatering/data-caterer:0.17.0
 ```
 
 #### Script Execution Behavior

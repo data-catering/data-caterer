@@ -60,6 +60,10 @@ object Constants {
   lazy val GREAT_EXPECTATIONS_FILE = "expectationsFile"
   lazy val DATA_CONTRACT_FILE = "dataContractFile"
   lazy val DATA_CONTRACT_SCHEMA = "dataContractSchema"
+  lazy val YAML_PLAN_FILE = "yamlPlanFile"
+  lazy val YAML_TASK_FILE = "yamlTaskFile"
+  lazy val YAML_TASK_NAME = "yamlTaskName"
+  lazy val YAML_STEP_NAME = "yamlStepName"
   lazy val ROWS_PER_SECOND = "rowsPerSecond"
   lazy val UNWRAP_TOP_LEVEL_ARRAY = "unwrapTopLevelArray"
   lazy val HUDI_TABLE_NAME = "hoodie.table.name"
@@ -393,6 +397,8 @@ object Constants {
   lazy val DATAHUB = "datahub"
   lazy val CONFLUENT_SCHEMA_REGISTRY = "confluentSchemaRegistry"
   lazy val JSON_SCHEMA = "jsonSchema"
+  lazy val YAML_PLAN = "yamlPlan"
+  lazy val YAML_TASK = "yamlTask"
   lazy val DEFAULT_METADATA_SOURCE_NAME = "defaultMetadataSource"
 
   //alert source

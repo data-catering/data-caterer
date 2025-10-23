@@ -1,7 +1,7 @@
 package io.github.datacatering.datacaterer.core.sink
 
 import com.google.common.util.concurrent.RateLimiter
-import io.github.datacatering.datacaterer.api.model.Constants.{CSV, DELTA, DELTA_LAKE_SPARK_CONF, DRIVER, FORMAT, ICEBERG, ICEBERG_SPARK_CONF, JDBC, JSON, OMIT, PARTITIONS, PARTITION_BY, PATH, POSTGRES_DRIVER, RATE, ROWS_PER_SECOND, SAVE_MODE, TABLE, UNWRAP_TOP_LEVEL_ARRAY}
+import io.github.datacatering.datacaterer.api.model.Constants.{CSV, DELTA, DELTA_LAKE_SPARK_CONF, DRIVER, FORMAT, ICEBERG, ICEBERG_SPARK_CONF, JDBC, JSON, PARTITIONS, PARTITION_BY, PATH, POSTGRES_DRIVER, RATE, ROWS_PER_SECOND, SAVE_MODE, TABLE, UNWRAP_TOP_LEVEL_ARRAY}
 import io.github.datacatering.datacaterer.api.model.{FlagsConfig, FoldersConfig, MetadataConfig, SinkResult, Step}
 import io.github.datacatering.datacaterer.api.util.ConfigUtil
 import io.github.datacatering.datacaterer.core.exception.{FailedSaveDataDataFrameV2Exception, FailedSaveDataException}
@@ -34,9 +34,16 @@ class SinkFactory(
 
   private val LOGGER = Logger.getLogger(getClass.getName)
   private var HAS_LOGGED_COUNT_DISABLE_WARNING = false
+  // Track pending consolidations for multi-batch scenarios
+  private val pendingConsolidations = scala.collection.mutable.Map[String, (String, String, String, Map[String, String])]()
 
   def pushToSink(df: DataFrame, dataSourceName: String, step: Step, startTime: LocalDateTime): SinkResult = {
-    val dfWithoutOmitFields = removeOmitFields(df)
+    pushToSink(df, dataSourceName, step, startTime, isMultiBatch = false, isLastBatch = true)
+  }
+
+  def pushToSink(df: DataFrame, dataSourceName: String, step: Step, startTime: LocalDateTime, 
+                 isMultiBatch: Boolean, isLastBatch: Boolean): SinkResult = {
+    val dfWithoutOmitFields = io.github.datacatering.datacaterer.core.util.DataFrameOmitUtil.removeOmitFields(df)
     val saveMode = step.options.get(SAVE_MODE).map(_.toLowerCase.capitalize).map(SaveMode.valueOf).getOrElse(SaveMode.Append)
     val format = step.options.getOrElse(FORMAT, throw new IllegalArgumentException(s"No format specified for data source: $dataSourceName, step: ${step.name}. Available options: ${step.options.keys.mkString(", ")}"))
     val enrichedConnectionConfig = additionalConnectionConfig(format, step.options)
@@ -49,11 +56,12 @@ class SinkFactory(
       "-1"
     } else "-1"
     LOGGER.info(s"Pushing data to sink, data-source-name=$dataSourceName, step-name=${step.name}, save-mode=${saveMode.name()}, num-records=$count, status=$STARTED")
-    saveData(dfWithoutOmitFields, dataSourceName, step, enrichedConnectionConfig, saveMode, format, count, flagsConfig.enableFailOnError, startTime)
+    saveData(dfWithoutOmitFields, dataSourceName, step, enrichedConnectionConfig, saveMode, format, count, flagsConfig.enableFailOnError, startTime, isMultiBatch, isLastBatch)
   }
 
   private def saveData(df: DataFrame, dataSourceName: String, step: Step, connectionConfig: Map[String, String],
-                       saveMode: SaveMode, format: String, count: String, enableFailOnError: Boolean, startTime: LocalDateTime): SinkResult = {
+                       saveMode: SaveMode, format: String, count: String, enableFailOnError: Boolean, startTime: LocalDateTime,
+                       isMultiBatch: Boolean, isLastBatch: Boolean): SinkResult = {
     val saveTiming = determineSaveTiming(dataSourceName, format, step.name)
     val baseSinkResult = SinkResult(dataSourceName, format, saveMode.name())
     //TODO might have use case where empty data can be tested, is it okay just to check for empty schema?
@@ -61,7 +69,7 @@ class SinkFactory(
       LOGGER.debug(s"Generated data schema is empty, not saving to data source, data-source-name=$dataSourceName, format=$format")
       baseSinkResult
     } else if (saveTiming.equalsIgnoreCase(BATCH)) {
-      saveBatchData(dataSourceName, df, saveMode, connectionConfig, count, startTime)
+      saveBatchData(dataSourceName, df, saveMode, connectionConfig, count, startTime, isMultiBatch, isLastBatch)
     } else {
       saveRealTimeData(dataSourceName, df, format, connectionConfig, step, count, startTime)
     }
@@ -84,21 +92,51 @@ class SinkFactory(
   }
 
   private def saveBatchData(dataSourceName: String, df: DataFrame, saveMode: SaveMode, connectionConfig: Map[String, String],
-                            count: String, startTime: LocalDateTime, retry: Int = 0): SinkResult = {
+                            count: String, startTime: LocalDateTime, isMultiBatch: Boolean = false, isLastBatch: Boolean = true, retry: Int = 0): SinkResult = {
     val format = connectionConfig(FORMAT)
 
     // Check if we need to consolidate files (path has file suffix)
     val pathOpt = connectionConfig.get(PATH)
     val shouldConsolidate = pathOpt.flatMap(detectFileSuffix).isDefined
 
-    // If consolidation is needed, use a temporary directory for Spark output
-    val (actualConnectionConfig, targetFilePath) = if (shouldConsolidate && pathOpt.isDefined) {
+    // Handle consolidation for multi-batch scenarios
+    val (actualConnectionConfig, targetFilePath, shouldDeferConsolidation) = if (shouldConsolidate && pathOpt.isDefined) {
       val originalPath = pathOpt.get
-      val tempPath = s"${originalPath}_spark_temp_${System.currentTimeMillis()}"
-      LOGGER.info(s"Detected file suffix in path: $originalPath. Will consolidate part files after Spark write.")
-      (connectionConfig ++ Map(PATH -> tempPath), Some(originalPath))
+      val dataSourceStepKey = s"${dataSourceName}_${originalPath}"
+      
+      if (isMultiBatch && !isLastBatch) {
+        // For multi-batch scenarios, use a persistent temp directory and defer consolidation
+        val tempPath = pendingConsolidations.get(dataSourceStepKey) match {
+          case Some((existingTempPath, _, _, _)) => 
+            LOGGER.debug(s"Using existing temp directory for multi-batch: $existingTempPath")
+            existingTempPath
+          case None =>
+            val newTempPath = s"${originalPath}_multibatch_temp_${System.currentTimeMillis()}"
+            pendingConsolidations.put(dataSourceStepKey, (newTempPath, originalPath, format, connectionConfig))
+            LOGGER.info(s"Created temp directory for multi-batch scenario: $newTempPath, original: $originalPath")
+            newTempPath
+        }
+        (connectionConfig ++ Map(PATH -> tempPath), Some(originalPath), true)
+      } else if (isMultiBatch && isLastBatch) {
+        // Last batch in multi-batch scenario - use existing temp directory and consolidate after
+        pendingConsolidations.get(dataSourceStepKey) match {
+          case Some((tempPath, _, _, _)) =>
+            LOGGER.info(s"Last batch in multi-batch scenario, will consolidate from: $tempPath to: $originalPath")
+            (connectionConfig ++ Map(PATH -> tempPath), Some(originalPath), false)
+          case None =>
+            // Fallback if no temp directory was created (shouldn't happen)
+            val tempPath = s"${originalPath}_spark_temp_${System.currentTimeMillis()}"
+            LOGGER.warn(s"No temp directory found for last batch, creating new one: $tempPath")
+            (connectionConfig ++ Map(PATH -> tempPath), Some(originalPath), false)
+        }
+      } else {
+        // Single batch scenario - consolidate immediately
+        val tempPath = s"${originalPath}_spark_temp_${System.currentTimeMillis()}"
+        LOGGER.info(s"Detected file suffix in path: $originalPath. Will consolidate part files after Spark write.")
+        (connectionConfig ++ Map(PATH -> tempPath), Some(originalPath), false)
+      }
     } else {
-      (connectionConfig, None)
+      (connectionConfig, None, false)
     }
 
     // if format is iceberg, need to use dataframev2 api for partition and writing
@@ -126,26 +164,41 @@ class SinkFactory(
         .save())
     }
 
-    // If save was successful and consolidation is needed, consolidate the files
+    // Handle consolidation based on multi-batch scenario
     val tryConsolidation = if (trySaveData.isSuccess && shouldConsolidate && targetFilePath.isDefined) {
-      val tempPath = actualConnectionConfig(PATH)
-      val consolidationResult = Try(consolidatePartFiles(tempPath, targetFilePath.get, format, connectionConfig))
-      consolidationResult match {
-        case Failure(exception) =>
-          LOGGER.error(s"Failed to consolidate part files from $tempPath to ${targetFilePath.get}", exception)
-          // Clean up temp directory even if consolidation failed
-          Try(cleanupDirectory(Paths.get(tempPath)))
-        case Success(_) =>
-          LOGGER.info(s"Successfully consolidated files to ${targetFilePath.get}")
-          // Clean up temp directory after successful consolidation
-          Try(cleanupDirectory(Paths.get(tempPath))) match {
-            case Failure(cleanupException) =>
-              LOGGER.warn(s"Failed to clean up temporary directory: $tempPath", cleanupException)
-            case Success(_) =>
-              LOGGER.debug(s"Cleaned up temporary directory: $tempPath")
-          }
+      if (shouldDeferConsolidation) {
+        // Defer consolidation for multi-batch scenarios (not last batch)
+        LOGGER.debug(s"Deferring consolidation for multi-batch scenario, data written to temp directory")
+        Success(())
+      } else {
+        // Perform consolidation (single batch or last batch of multi-batch)
+        val tempPath = actualConnectionConfig(PATH)
+        val originalPath = targetFilePath.get
+        val dataSourceStepKey = s"${dataSourceName}_${originalPath}"
+        
+        // If this is the last batch, remove from pending consolidations
+        if (isMultiBatch && isLastBatch) {
+          pendingConsolidations.remove(dataSourceStepKey)
+        }
+        
+        val consolidationResult = Try(consolidatePartFiles(tempPath, originalPath, format, connectionConfig))
+        consolidationResult match {
+          case Failure(exception) =>
+            LOGGER.error(s"Failed to consolidate part files from $tempPath to $originalPath", exception)
+            // Clean up temp directory even if consolidation failed
+            Try(cleanupDirectory(Paths.get(tempPath)))
+          case Success(_) =>
+            LOGGER.info(s"Successfully consolidated files to $originalPath")
+            // Clean up temp directory after successful consolidation
+            Try(cleanupDirectory(Paths.get(tempPath))) match {
+              case Failure(cleanupException) =>
+                LOGGER.warn(s"Failed to clean up temporary directory: $tempPath", cleanupException)
+              case Success(_) =>
+                LOGGER.debug(s"Cleaned up temporary directory: $tempPath")
+            }
+        }
+        consolidationResult
       }
-      consolidationResult
     } else {
       Success(())
     }
@@ -158,7 +211,7 @@ class SinkFactory(
     if (trySaveData.isFailure && retry < 3) {
       LOGGER.info(s"Retrying save to data source, data-source-name=$dataSourceName, retry=$retry")
       val connectionConfigWithBatchSize = connectionConfig ++ Map("batchsize" -> "1")
-      saveBatchData(dataSourceName, df, saveMode, connectionConfigWithBatchSize, count, startTime, retry + 1)
+      saveBatchData(dataSourceName, df, saveMode, connectionConfigWithBatchSize, count, startTime, isMultiBatch, isLastBatch, retry + 1)
     }
     val isSuccess = trySaveData.isSuccess && tryConsolidation.isSuccess
     mapToSinkResult(dataSourceName, df, saveMode, connectionConfig, count, format, isSuccess, startTime, optException)
@@ -405,17 +458,6 @@ class SinkFactory(
     result
   }
 
-  private def removeOmitFields(df: DataFrame): DataFrame = {
-    val dfOmitFields = df.schema.fields
-      .filter(field => field.metadata.contains(OMIT) && field.metadata.getString(OMIT).equalsIgnoreCase("true"))
-      .map(_.name)
-    val columnsToSelect = df.columns.filter(c => !dfOmitFields.contains(c))
-      .map(c => if (c.contains(".")) s"`$c`" else c)
-    val dfWithoutOmitFields = df.selectExpr(columnsToSelect: _*)
-    if (!dfWithoutOmitFields.storageLevel.useMemory) dfWithoutOmitFields.cache()
-    dfWithoutOmitFields
-  }
-
   private def saveRealTimeResponses(step: Step, saveResult: Dataset[Try[RealTimeSinkResult]]): Unit = {
     import sparkSession.implicits._
     LOGGER.debug(s"Attempting to save real time responses for validation, step-name=${step.name}")
@@ -577,6 +619,38 @@ class SinkFactory(
       Files.walk(directory)
         .sorted(java.util.Comparator.reverseOrder())
         .forEach(Files.delete)
+    }
+  }
+
+  /**
+   * Performs final consolidation for any pending multi-batch operations.
+   * This should be called after all batches have been processed.
+   */
+  def finalizePendingConsolidations(): Unit = {
+    if (pendingConsolidations.nonEmpty) {
+      LOGGER.info(s"Finalizing ${pendingConsolidations.size} pending consolidations")
+      
+      pendingConsolidations.foreach { case (dataSourceStepKey, (tempPath, originalPath, format, connectionConfig)) =>
+        LOGGER.info(s"Performing final consolidation for $dataSourceStepKey: $tempPath -> $originalPath")
+        
+        Try(consolidatePartFiles(tempPath, originalPath, format, connectionConfig)) match {
+          case Success(_) =>
+            LOGGER.info(s"Successfully consolidated final files to $originalPath")
+            // Clean up temp directory after successful consolidation
+            Try(cleanupDirectory(Paths.get(tempPath))) match {
+              case Failure(cleanupException) =>
+                LOGGER.warn(s"Failed to clean up temporary directory: $tempPath", cleanupException)
+              case Success(_) =>
+                LOGGER.debug(s"Cleaned up temporary directory: $tempPath")
+            }
+          case Failure(exception) =>
+            LOGGER.error(s"Failed to perform final consolidation from $tempPath to $originalPath", exception)
+            // Clean up temp directory even if consolidation failed
+            Try(cleanupDirectory(Paths.get(tempPath)))
+        }
+      }
+      
+      pendingConsolidations.clear()
     }
   }
 }

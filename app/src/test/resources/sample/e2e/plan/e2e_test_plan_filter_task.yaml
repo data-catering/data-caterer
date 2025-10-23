@@ -1,0 +1,12 @@
+name: "e2e_test_plan_filter_task"
+description: "End-to-end test plan"
+tasks:
+  - name: "e2e_csv_task"
+    dataSourceName: "csv_datasource"
+    enabled: true
+  - name: "e2e_json_task_filter_task"
+    dataSourceName: "json_datasource"
+    enabled: true
+sinkOptions:
+  foreignKeys: []
+validations: []

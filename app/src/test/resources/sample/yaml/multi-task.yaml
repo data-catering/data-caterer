@@ -1,0 +1,35 @@
+name: "multi-step-task"
+steps:
+  - name: "users"
+    type: "sql"
+    count:
+      records: 100
+    fields:
+      - name: "id"
+        type: "long"
+        options:
+          min: 1
+          max: 1000
+      - name: "name"
+        type: "string"
+        options:
+          expression: "#{Name.fullName}"
+  - name: "orders"
+    type: "sql"
+    count:
+      records: 500
+    fields:
+      - name: "order_id"
+        type: "string"
+        options:
+          regex: "ORD_[0-9]{8}"
+      - name: "user_id"
+        type: "long"
+        options:
+          min: 1
+          max: 1000
+      - name: "amount"
+        type: "double"
+        options:
+          min: 10.0
+          max: 1000.0

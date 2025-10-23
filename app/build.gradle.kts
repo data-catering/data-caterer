@@ -247,7 +247,42 @@ tasks.test {
     // Enable proper test filtering
     filter {
         setFailOnNoMatchingTests(false)
+        // Exclude integration tests from regular test run
+        excludeTestsMatching("io.github.datacatering.datacaterer.core.ui.plan.PlanApiEndToEndTest")
     }
+}
+
+// Integration test task
+tasks.register<Test>("integrationTest") {
+    description = "Runs integration tests including PlanApiEndToEndTest"
+    group = "verification"
+    
+    testClassesDirs = sourceSets["integrationTest"].output.classesDirs
+    classpath = sourceSets["integrationTest"].runtimeClasspath
+    
+    // Same JVM settings as regular tests but allow more memory for integration tests
+    minHeapSize = "1024m"
+    maxHeapSize = "4096m"
+    
+    jvmArgs("-Djava.security.manager=allow", "-Djdk.module.illegalAccess=deny", "--add-opens=java.base/java.lang=ALL-UNNAMED", "--add-opens=java.base/java.lang.invoke=ALL-UNNAMED", "--add-opens=java.base/java.lang.reflect=ALL-UNNAMED", "--add-opens=java.base/java.io=ALL-UNNAMED", "--add-opens=java.base/java.net=ALL-UNNAMED", "--add-opens=java.base/java.nio=ALL-UNNAMED", "--add-opens=java.base/java.util=ALL-UNNAMED", "--add-opens=java.base/java.util.concurrent=ALL-UNNAMED", "--add-opens=java.base/java.util.concurrent.atomic=ALL-UNNAMED", "--add-opens=java.base/sun.nio.ch=ALL-UNNAMED", "--add-opens=java.base/sun.nio.cs=ALL-UNNAMED", "--add-opens=java.base/sun.security.action=ALL-UNNAMED", "--add-opens=java.base/sun.util.calendar=ALL-UNNAMED", "--add-opens=java.security.jgss/sun.security.krb5=ALL-UNNAMED")
+    
+    useJUnitPlatform {
+        includeEngines("scalatest")
+        testLogging {
+            events("passed", "failed", "skipped")
+            showStandardStreams = true // Show output for integration tests
+        }
+    }
+    
+    // Integration tests should run sequentially to avoid conflicts
+    maxParallelForks = 1
+    
+    // Enable proper test filtering
+    filter {
+        setFailOnNoMatchingTests(false)
+    }
+    
+    mustRunAfter("test")
 }
 
 application {
@@ -261,18 +296,20 @@ tasks.register<JavaExec>("runUI") {
     description = "Run Data Caterer UI (standalone mode)"
     classpath = sourceSets.main.get().runtimeClasspath
     mainClass.set("io.github.datacatering.datacaterer.core.ui.DataCatererUI")
-    
+
     // Set environment variables for YAML plan and task paths (absolute paths)
     val projectDir = project.projectDir.absolutePath
     val rootProjectDir = project.rootProject.projectDir.absolutePath
     environment("PLAN_FILE_PATH", "$rootProjectDir/app/src/test/resources/sample/plan/customer-create-plan.yaml")
     environment("TASK_FOLDER_PATH", "$rootProjectDir/app/src/test/resources/sample/task")
-    
+    environment("GENERATED_REPORTS_FOLDER_PATH", "/tmp/data-caterer/report")
+    environment("LOG_LEVEL", "debug")
+
     // Set working directory to project root to help with relative path resolution
     workingDir(rootProjectDir)
-    
-    // Add JVM arguments similar to docker script
-    jvmArgs(
+
+    // Build list of JVM arguments
+    val jvmArgsList = mutableListOf(
         "-Djava.security.manager=allow",
         "-Djdk.module.illegalAccess=deny",
         "--add-opens=java.base/java.lang=ALL-UNNAMED",
@@ -290,6 +327,9 @@ tasks.register<JavaExec>("runUI") {
         "--add-opens=java.base/sun.util.calendar=ALL-UNNAMED",
         "--add-opens=java.security.jgss/sun.security.krb5=ALL-UNNAMED"
     )
+
+
+    jvmArgs(jvmArgsList)
 }
 
 tasks.register<JavaExec>("runSpark") {
@@ -324,6 +364,27 @@ sourceSets {
         resources {
             setSrcDirs(listOf("src/test/resources"))
         }
+    }
+    
+    // Integration test source set
+    create("integrationTest") {
+        compileClasspath += sourceSets.main.get().output
+        runtimeClasspath += sourceSets.main.get().output
+        compileClasspath += sourceSets.test.get().output
+        runtimeClasspath += sourceSets.test.get().output
+        resources {
+            setSrcDirs(listOf("src/test/resources")) // Reuse test resources
+        }
+    }
+}
+
+// Configure integration test configurations after source sets are created
+configurations {
+    named("integrationTestImplementation") {
+        extendsFrom(testImplementation.get())
+    }
+    named("integrationTestRuntimeOnly") {
+        extendsFrom(testRuntimeOnly.get())
     }
 }
 

@@ -2,21 +2,24 @@ package io.github.datacatering.datacaterer.core.ui.model
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties
 import io.github.datacatering.datacaterer.api.model.Field
-import org.apache.spark.sql.types.{DataType, StructType}
+import org.apache.spark.sql.types.StructType
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 case class TaskFileSampleRequest(
   taskYamlPath: String,
   stepName: Option[String] = None,
   sampleSize: Int = 10,
-  fastMode: Boolean = true
+  fastMode: Boolean = true,
+  enableRelationships: Boolean = false
 )
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 case class SchemaSampleRequest(
   fields: List[Field],
+  format: String = "json",
   sampleSize: Int = 10,
-  fastMode: Boolean = true
+  fastMode: Boolean = true,
+  enableRelationships: Boolean = false
 )
 
 @JsonIgnoreProperties(ignoreUnknown = true)
@@ -24,7 +27,8 @@ case class TaskYamlSampleRequest(
   taskYamlContent: String,
   stepName: Option[String] = None,
   sampleSize: Int = 10,
-  fastMode: Boolean = true
+  fastMode: Boolean = true,
+  enableRelationships: Boolean = false
 )
 
 @JsonIgnoreProperties(ignoreUnknown = true)
@@ -33,6 +37,16 @@ case class SampleResponse(
   executionId: String,
   schema: Option[SchemaInfo] = None,
   sampleData: Option[List[Map[String, Any]]] = None,
+  metadata: Option[SampleMetadata] = None,
+  error: Option[SampleError] = None,
+  format: Option[String] = None
+)
+
+@JsonIgnoreProperties(ignoreUnknown = true)
+case class MultiSchemaSampleResponse(
+  success: Boolean,
+  executionId: String,
+  samples: Map[String, List[Map[String, Any]]],
   metadata: Option[SampleMetadata] = None,
   error: Option[SampleError] = None
 )
@@ -49,7 +63,8 @@ case class SampleMetadata(
   sampleSize: Int,
   actualRecords: Int,
   generatedInMs: Long,
-  fastModeEnabled: Boolean
+  fastModeEnabled: Boolean,
+  relationshipsEnabled: Boolean = false
 )
 
 @JsonIgnoreProperties(ignoreUnknown = true)

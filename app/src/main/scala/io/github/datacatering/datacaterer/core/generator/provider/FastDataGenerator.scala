@@ -1,9 +1,8 @@
 package io.github.datacatering.datacaterer.core.generator.provider
 
-import io.github.datacatering.datacaterer.api.model.Constants.{EXPRESSION, MAXIMUM_LENGTH, MINIMUM_LENGTH, REGEX_GENERATOR}
+import io.github.datacatering.datacaterer.api.model.Constants.{MAXIMUM_LENGTH, MINIMUM_LENGTH, REGEX_GENERATOR}
 import io.github.datacatering.datacaterer.core.exception.InvalidDataGeneratorConfigurationException
 import io.github.datacatering.datacaterer.core.generator.provider.RandomDataGenerator.tryGetValue
-import io.github.datacatering.datacaterer.core.model.Constants.DATA_CATERER_RANDOM_LENGTH_MAX_VALUE
 import net.datafaker.Faker
 import org.apache.spark.sql.types.StructField
 
@@ -80,7 +79,7 @@ object FastDataGenerator {
           f"${random.nextInt(900) + 100}%03d-${random.nextInt(900) + 100}%03d-${random.nextInt(9000) + 1000}%04d"
         
         // UUID patterns
-        case p if p.contains("uuid") || p.contains("UUID") || (p.contains("8") && p.contains("4") && p.contains("12")) =>
+        case p if p.contains("uuid") || p.contains("UUID") =>
           java.util.UUID.randomUUID().toString
         
         // Alphanumeric patterns with specific length
@@ -118,7 +117,7 @@ object FastDataGenerator {
           s"CONCAT(LPAD(CAST($sqlRandom * 900 + 100 AS INT), 3, '0'), '-', LPAD(CAST($sqlRandom * 900 + 100 AS INT), 3, '0'), '-', LPAD(CAST($sqlRandom * 9000 + 1000 AS INT), 4, '0'))"
         
         // UUID patterns (using simple approach)
-        case p if p.contains("uuid") || p.contains("UUID") || (p.contains("8") && p.contains("4") && p.contains("12")) =>
+        case p if p.contains("uuid") || p.contains("UUID") =>
           s"CONCAT(LPAD(HEX(CAST($sqlRandom * 4294967295 AS BIGINT)), 8, '0'), '-', LPAD(HEX(CAST($sqlRandom * 65535 AS INT)), 4, '0'), '-', LPAD(HEX(CAST($sqlRandom * 65535 AS INT)), 4, '0'), '-', LPAD(HEX(CAST($sqlRandom * 65535 AS INT)), 4, '0'), '-', LPAD(HEX(CAST($sqlRandom * 281474976710655L AS BIGINT)), 12, '0'))"
         
         // Alphanumeric patterns

@@ -52,12 +52,13 @@ object ConnectionRepository {
   }
 
   private def saveConnection(connection: Connection): Unit = {
-    LOGGER.debug(s"Saving connection, connection-name=${connection.name}, connection-type=${connection.`type`}," +
+    LOGGER.info(s"Saving connection, connection-name=${connection.name}, connection-type=${connection.`type`}," +
       s"connection-group=${connection.groupType}")
     val basePath = Path.of(connectionSaveFolder).toFile
     if (!basePath.exists()) basePath.mkdirs()
     val connectionFile = Path.of(s"$connectionSaveFolder/${connection.name}.csv")
-    Files.writeString(connectionFile, connection.toString, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING)
+    val fileWrite = Files.writeString(connectionFile, connection.toString, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING)
+    fileWrite.getParent
   }
 
   def getConnection(name: String, masking: Boolean = true): Connection = {

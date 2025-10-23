@@ -28,13 +28,13 @@ public class ExampleJavaPlanRun extends PlanRun {
                         field().name("year").type(IntegerType.instance()).sql("YEAR(date)"),
                         field().name("balance").type(DoubleType.instance()).min(10).max(1000),
                         field().name("date").type(DateType.instance()).min(Date.valueOf("2022-01-01")),
-                        field().name("status").oneOf((Object[]) accountStatus),
+                        field().name("status").oneOf(accountStatus),
                         field().name("update_history")
                                 .type(ArrayType.instance())
                                 .fields(
                                         field().name("updated_time").type(TimestampType.instance()).min(Timestamp.valueOf("2022-01-01 00:00:00")),
-                                        field().name("prev_status").oneOf((Object[]) accountStatus),
-                                        field().name("new_status").oneOf((Object[]) accountStatus)
+                                        field().name("prev_status").oneOf(accountStatus),
+                                        field().name("new_status").oneOf(accountStatus)
                                 ),
                         field().name("customer_details")
                                 .fields(
@@ -44,6 +44,11 @@ public class ExampleJavaPlanRun extends PlanRun {
                                 ),
                         field().name("_join_txn_name").expression("#{Name.name}").omit(true)
                 )
+                .fields(field().name("package").oneOfWeightedJava(
+                        weightedValue("basic", 10),
+                        weightedValue("moderate", 20),
+                        weightedValue("moderate", 20)
+                ))
                 .count(count().records(100));
 
         var csvTxns = csv("transactions", baseFolder + "/csv", Map.of(Constants.SAVE_MODE(), "overwrite", "header", "true"))

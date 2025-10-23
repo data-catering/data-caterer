@@ -6,30 +6,27 @@ import io.github.datacatering.datacaterer.api.util.ConfigUtil
 import io.github.datacatering.datacaterer.core.exception.UnsupportedDataFormatForTrackingException
 import io.github.datacatering.datacaterer.core.generator.metadata.ExpressionPredictor
 import io.github.datacatering.datacaterer.core.generator.metadata.datasource.DataSourceMetadata
-import io.github.datacatering.datacaterer.core.generator.metadata.datasource.database.CassandraMetadata
 import io.github.datacatering.datacaterer.core.generator.metadata.datasource.confluentschemaregistry.ConfluentSchemaRegistryMetadata
-import io.github.datacatering.datacaterer.core.generator.metadata.datasource.database.FieldMetadata
+import io.github.datacatering.datacaterer.core.generator.metadata.datasource.database.{CassandraMetadata, FieldMetadata, MysqlMetadata, PostgresMetadata}
 import io.github.datacatering.datacaterer.core.generator.metadata.datasource.datacontractcli.DataContractCliDataSourceMetadata
 import io.github.datacatering.datacaterer.core.generator.metadata.datasource.file.FileMetadata
 import io.github.datacatering.datacaterer.core.generator.metadata.datasource.greatexpectations.GreatExpectationsDataSourceMetadata
 import io.github.datacatering.datacaterer.core.generator.metadata.datasource.http.HttpMetadata
 import io.github.datacatering.datacaterer.core.generator.metadata.datasource.jms.JmsMetadata
 import io.github.datacatering.datacaterer.core.generator.metadata.datasource.jsonschema.JsonSchemaDataSourceMetadata
-import io.github.datacatering.datacaterer.core.generator.metadata.datasource.database.MysqlMetadata
+import io.github.datacatering.datacaterer.core.generator.metadata.datasource.opendatacontractstandard.OpenDataContractStandardDataSourceMetadata
 import io.github.datacatering.datacaterer.core.generator.metadata.datasource.openlineage.OpenLineageMetadata
 import io.github.datacatering.datacaterer.core.generator.metadata.datasource.openmetadata.OpenMetadataDataSourceMetadata
-import io.github.datacatering.datacaterer.core.generator.metadata.datasource.opendatacontractstandard.OpenDataContractStandardDataSourceMetadata
-import io.github.datacatering.datacaterer.core.generator.metadata.datasource.database.PostgresMetadata
+import io.github.datacatering.datacaterer.core.generator.metadata.datasource.yaml.YamlDataSourceMetadata
 import io.github.datacatering.datacaterer.core.util.ValidationUtil.cleanValidationIdentifier
 import org.apache.log4j.Logger
 import org.apache.spark.sql.catalyst.TableIdentifier
 import org.apache.spark.sql.catalyst.catalog.CatalogColumnStat
 import org.apache.spark.sql.execution.command.AnalyzeColumnCommand
-import org.apache.spark.sql.types.{BinaryType, BooleanType, DataType, DateType, DecimalType, DoubleType, FloatType, IntegerType, LongType, Metadata, MetadataBuilder, ShortType, StringType, StructField, StructType, TimestampType, ArrayType}
+import org.apache.spark.sql.types.{ArrayType, BinaryType, BooleanType, DataType, DateType, DecimalType, DoubleType, FloatType, IntegerType, LongType, Metadata, MetadataBuilder, ShortType, StringType, StructField, StructType, TimestampType}
 import org.apache.spark.sql.{DataFrame, Dataset, Encoder, Encoders, SparkSession}
 
 import scala.util.{Failure, Success, Try}
-import io.github.datacatering.datacaterer.api.model.Step
 
 object MetadataUtil {
 
@@ -74,11 +71,22 @@ object MetadataUtil {
     val colsMetadata = additionalFieldMetadata.collect()
     val targetMetadataId = dataSourceReadOptions.getOrElse(METADATA_IDENTIFIER, "")
     
+    LOGGER.info(s"Processing metadata for extraction: targetMetadataId='$targetMetadataId', total-field-metadata=${colsMetadata.length}")
+    
+    if (colsMetadata.nonEmpty) {
+      LOGGER.info(s"Available field metadata identifiers: [${colsMetadata.map(_.dataSourceReadOptions.getOrElse(METADATA_IDENTIFIER, "<missing>")).distinct.mkString(", ")}]")
+    }
+    
     val matchedColMetadata = colsMetadata.filter(fm => {
       val fieldMetadataId = fm.dataSourceReadOptions.getOrElse(METADATA_IDENTIFIER, "")
       fieldMetadataId.equals(targetMetadataId)
     })
     
+    if (matchedColMetadata.isEmpty && colsMetadata.nonEmpty) {
+      LOGGER.error(s"Metadata identifier mismatch: No field metadata found matching target identifier '$targetMetadataId'. Available identifiers: [${colsMetadata.map(_.dataSourceReadOptions.getOrElse(METADATA_IDENTIFIER, "<missing>")).distinct.mkString(", ")}]. This usually means the metadata source configuration doesn't match the expected step name.")
+    } else if (matchedColMetadata.nonEmpty) {
+      LOGGER.info(s"Successfully matched ${matchedColMetadata.length} field metadata entries for identifier '$targetMetadataId'. Fields: [${matchedColMetadata.map(_.field).mkString(", ")}]")
+    }
     getStructFieldsForMetadataExtraction(matchedColMetadata)
   }
 
@@ -165,32 +173,55 @@ object MetadataUtil {
    * PRIVATE: Get StructFields for metadata extraction phase - NO ExpressionPredictor applied
    */
   private def getStructFieldsForMetadataExtraction(colsMetadata: Array[FieldMetadata]): Array[StructField] = {
+    if (colsMetadata.nonEmpty) {
+      LOGGER.info(s"Converting ${colsMetadata.length} field metadata entries to Spark StructFields. Fields: [${colsMetadata.map(f => s"${f.field}:${f.metadata.getOrElse(FIELD_DATA_TYPE, DEFAULT_FIELD_TYPE)}").mkString(", ")}]")
+    }
+    
     colsMetadata.map(colMetadata => {
-      var dataType = DataType.fromDDL(colMetadata.metadata.getOrElse(FIELD_DATA_TYPE, DEFAULT_FIELD_TYPE))
+      val fieldType = colMetadata.metadata.getOrElse(FIELD_DATA_TYPE, DEFAULT_FIELD_TYPE)
       
-      // Handle nested structures and arrays with proper metadata preservation
-      if (colMetadata.nestedFields.nonEmpty) {
-        if (dataType.typeName == "struct") {
-          // For struct types, recursively process nested fields and preserve their metadata
-          val nestedStructFields = getStructFieldsForMetadataExtraction(colMetadata.nestedFields.toArray)
-          dataType = StructType(nestedStructFields)
-        } else if (dataType.typeName == "array") {
-          // For array types, check if the element type should be a struct with nested fields
-          val arrayType = dataType.asInstanceOf[ArrayType]
-          if (arrayType.elementType.typeName == "struct" || colMetadata.nestedFields.nonEmpty) {
-            // Create a struct type from the nested fields for the array element
+      try {
+        var dataType = if ((fieldType == "struct" || fieldType == "array") && colMetadata.nestedFields.nonEmpty) {
+          // For struct/array with nested fields, don't parse DDL, let the nested processing handle it
+          LOGGER.debug(s"Field '${colMetadata.field}' has complex type '$fieldType' with ${colMetadata.nestedFields.size} nested fields - skipping DDL parsing")
+          if (fieldType == "struct") StructType(Seq()) else ArrayType(StringType) // placeholder, will be replaced below
+        } else {
+          LOGGER.debug(s"Parsing DDL for field '${colMetadata.field}' with type '$fieldType'")
+          DataType.fromDDL(fieldType)
+        }
+        
+        // Handle nested structures and arrays with proper metadata preservation
+        if (colMetadata.nestedFields.nonEmpty) {
+          if (dataType.typeName == "struct" || fieldType == "struct") {
+            // For struct types, recursively process nested fields and preserve their metadata
+            LOGGER.debug(s"Processing struct field '${colMetadata.field}' with ${colMetadata.nestedFields.size} nested fields")
             val nestedStructFields = getStructFieldsForMetadataExtraction(colMetadata.nestedFields.toArray)
-            val elementStructType = StructType(nestedStructFields)
-            dataType = ArrayType(elementStructType, arrayType.containsNull)
+            dataType = StructType(nestedStructFields)
+          } else if (dataType.typeName == "array") {
+            // For array types, check if the element type should be a struct with nested fields
+            LOGGER.debug(s"Processing array field '${colMetadata.field}' with ${colMetadata.nestedFields.size} nested fields")
+            val arrayType = dataType.asInstanceOf[ArrayType]
+            if (arrayType.elementType.typeName == "struct" || colMetadata.nestedFields.nonEmpty) {
+              // Create a struct type from the nested fields for the array element
+              val nestedStructFields = getStructFieldsForMetadataExtraction(colMetadata.nestedFields.toArray)
+              val elementStructType = StructType(nestedStructFields)
+              dataType = ArrayType(elementStructType, arrayType.containsNull)
+            }
           }
         }
+        
+        val nullable = colMetadata.metadata.get(IS_NULLABLE).map(_.toBoolean).getOrElse(DEFAULT_FIELD_NULLABLE)
+        val metadata = mapToMetadata(colMetadata.metadata)
+        val baseField = StructField(colMetadata.field, dataType, nullable, metadata)
+        // NO ExpressionPredictor applied here - this is metadata extraction phase
+        baseField
+        
+      } catch {
+        case ex: Exception =>
+          LOGGER.error(s"Failed to process field '${colMetadata.field}' with type '$fieldType'. This could be due to: 1) Invalid DDL type definition, 2) Complex nested structure issues, 3) Metadata parsing problems. Error: ${ex.getMessage}", ex)
+          // Return a fallback string field to avoid breaking the entire schema
+          StructField(colMetadata.field, StringType, nullable = true, Metadata.empty)
       }
-      
-      val nullable = colMetadata.metadata.get(IS_NULLABLE).map(_.toBoolean).getOrElse(DEFAULT_FIELD_NULLABLE)
-      val metadata = mapToMetadata(colMetadata.metadata)
-      val baseField = StructField(colMetadata.field, dataType, nullable, metadata)
-      // NO ExpressionPredictor applied here - this is metadata extraction phase
-      baseField
     })
   }
 
@@ -312,6 +343,7 @@ object MetadataUtil {
           case DATA_CONTRACT_CLI => Some(DataContractCliDataSourceMetadata(connectionConfig._1, format, connectionConfig._2))
           case CONFLUENT_SCHEMA_REGISTRY => Some(ConfluentSchemaRegistryMetadata(connectionConfig._1, format, connectionConfig._2))
           case JSON_SCHEMA => Some(JsonSchemaDataSourceMetadata(connectionConfig._1, format, connectionConfig._2))
+          case YAML_PLAN | YAML_TASK => Some(YamlDataSourceMetadata(connectionConfig._1, format, connectionConfig._2))
           case metadataSourceType =>
             LOGGER.warn(s"Unsupported external metadata source, connection-name=${connectionConfig._1}, metadata-source-type=$metadataSourceType")
             None

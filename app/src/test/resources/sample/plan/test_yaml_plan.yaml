@@ -1,8 +1,0 @@
----
-name: "test_yaml_plan"
-description: "Test plan from UI"
-tasks: []
-sinkOptions:
-  foreignKeys: []
-validations: []
-runId: "5d37e327-3275-4755-a5f6-6119455b8d55"

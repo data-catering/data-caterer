@@ -19,6 +19,8 @@ import scala.util.{Failure, Success, Try}
 
 object PlanProcessor {
 
+  private val LOGGER = Logger.getLogger(getClass.getName)
+
   def determineAndExecutePlan(
                                optPlanRun: Option[PlanRun] = None,
                                interface: String = DATA_CATERER_INTERFACE_SCALA,
@@ -65,7 +67,7 @@ object PlanProcessor {
     executePlanWithConfig(dataCatererConfiguration, None, interface)
   }
 
-  private def executePlanWithConfig(
+  def executePlanWithConfig(
                                      dataCatererConfiguration: DataCatererConfiguration,
                                      optPlan: Option[PlanRun],
                                      interface: String
@@ -101,17 +103,26 @@ object PlanProcessor {
     }
   }
 
+  def parsePlanWithFiltering(dataCatererConfiguration: DataCatererConfiguration, optPlan: Option[PlanRun], interface: String, taskFilter: Option[String] = None, stepFilter: Option[String] = None)(implicit sparkSession: SparkSession): (PlanRun, String) = {
+    parsePlanInternal(dataCatererConfiguration, optPlan, interface, taskFilter, stepFilter)
+  }
+
   private def parsePlan(dataCatererConfiguration: DataCatererConfiguration, optPlan: Option[PlanRun], interface: String)(implicit sparkSession: SparkSession): (PlanRun, String) = {
+    parsePlanInternal(dataCatererConfiguration, optPlan, interface)
+  }
+
+  private def parsePlanInternal(dataCatererConfiguration: DataCatererConfiguration, optPlan: Option[PlanRun], interface: String, taskFilter: Option[String] = None, stepFilter: Option[String] = None)(implicit sparkSession: SparkSession): (PlanRun, String) = {
     try {
       if (optPlan.isDefined) {
         // Check if we need to load from YAML by looking at plan task summaries vs actual tasks
         val existingTaskNames = optPlan.get._tasks.map(_.name).toSet
         val planTaskNames = optPlan.get._plan.tasks.map(_.name).toSet
         val missingTaskNames = planTaskNames.diff(existingTaskNames)
-        
-        if (missingTaskNames.nonEmpty) {
+
+        if (missingTaskNames.nonEmpty && interface != DATA_CATERER_INTERFACE_YAML) {
           // Tasks are missing - this means the plan is from a YAML file, not the UI
           // Load the entire plan and all tasks from the YAML file
+          LOGGER.debug(s"Attempting to load plan from YAML file, plan-name=${optPlan.get._plan.name}")
           val yamlConfig = ConfigParser.toDataCatererConfiguration
           
           // Find the correct YAML plan file by name in the configured plan directory
@@ -128,7 +139,7 @@ object PlanProcessor {
           // Load everything from YAML - use only YAML configuration, no UI data
           val (parsedPlan, enabledTasks, validations) = PlanParser.getPlanTasksFromYaml(planConfigForParsing, false)
           
-          val yamlPlanRun = new YamlPlanRun(parsedPlan, enabledTasks, validations, planConfigForParsing)
+          val yamlPlanRun = new YamlPlanRun(parsedPlan, enabledTasks, validations, planConfigForParsing, taskFilter, stepFilter)
           (yamlPlanRun, DATA_CATERER_INTERFACE_YAML)
         } else {
           // All tasks are provided by UI, this is a pure UI plan
@@ -136,7 +147,7 @@ object PlanProcessor {
         }
       } else {
         val (parsedPlan, enabledTasks, validations) = PlanParser.getPlanTasksFromYaml(dataCatererConfiguration)
-        (new YamlPlanRun(parsedPlan, enabledTasks, validations, dataCatererConfiguration), DATA_CATERER_INTERFACE_YAML)
+        (new YamlPlanRun(parsedPlan, enabledTasks, validations, dataCatererConfiguration, taskFilter, stepFilter), DATA_CATERER_INTERFACE_YAML)
       }
     } catch {
       case parsePlanException: Exception =>
@@ -217,7 +228,9 @@ class YamlPlanRun(
                    yamlPlan: Plan,
                    yamlTasks: List[Task],
                    validations: Option[List[ValidationConfiguration]],
-                   dataCatererConfiguration: DataCatererConfiguration
+                   dataCatererConfiguration: DataCatererConfiguration,
+                   taskFilter: Option[String] = None,
+                   stepFilter: Option[String] = None
                  ) extends PlanRun {
   _plan = yamlPlan
   _validations = validations.getOrElse(List())
@@ -231,9 +244,35 @@ class YamlPlanRun(
   private val updatedConnectionConfig = dataCatererConfiguration.connectionConfigByName
     .map(c => c._1 -> (tasksWithMetadataOptions.getOrElse(c._1, Map()) ++ c._2))
 
+  // Apply task and step filtering if specified
+  private val filteredYamlTasks = taskFilter match {
+    case Some(taskName) =>
+      val matchingTasks = yamlTasks.filter(_.name == taskName)
+      if (matchingTasks.isEmpty) {
+        throw new IllegalArgumentException(s"Task '$taskName' not found in YAML tasks. Available tasks: ${yamlTasks.map(_.name).mkString(", ")}")
+      }
+      matchingTasks
+    case None => yamlTasks
+  }
+
+  // Apply step filtering if specified
+  private val tasksWithFilteredSteps = stepFilter match {
+    case Some(stepName) if taskFilter.isDefined =>
+      filteredYamlTasks.map(task => {
+        val matchingSteps = task.steps.filter(_.name == stepName)
+        if (matchingSteps.isEmpty) {
+          throw new IllegalArgumentException(s"Step '$stepName' not found in task '${task.name}'. Available steps: ${task.steps.map(_.name).mkString(", ")}")
+        }
+        task.copy(steps = matchingSteps)
+      })
+    case Some(_) =>
+      throw new IllegalArgumentException("Step filter requires task filter to be specified")
+    case None => filteredYamlTasks
+  }
+
   // Merge connection configuration into task step options
   // This ensures that step.options contains all necessary connection details like 'format'
-  _tasks = yamlTasks.map(task => {
+  _tasks = tasksWithFilteredSteps.map(task => {
     val dataSourceName = yamlPlan.tasks.find(ts => ts.name.equalsIgnoreCase(task.name)).get.dataSourceName
     val connectionConfig = updatedConnectionConfig.getOrElse(dataSourceName, Map())
 

@@ -276,7 +276,6 @@ class ForeignKeyUtilTest extends SparkSuite {
 
   test("Can link foreign keys with nested fields") {
     import org.apache.spark.sql.types._
-    import org.apache.spark.sql.functions._
 
     val sinkOptions = SinkOptions(None, None,
       List(ForeignKey(ForeignKeyRelation("reference", "people", List("name", "email")),
