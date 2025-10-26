@@ -999,15 +999,13 @@ case class FieldValidationBuilder(validationBuilder: ValidationBuilder = Validat
     // If all values are numeric or numeric-looking strings, render as unquoted numbers to form ARRAY<DOUBLE/NUMERIC>
     val allNumericLike = seq.forall {
       case s: String => Try(s.trim.toDouble).isSuccess
-      case n: java.lang.Number => true
-      case n: Number => true
+      case _: java.lang.Number => true
       case _ => false
     }
     if (allNumericLike) {
       seq.map {
         case s: String => BigDecimal(s.trim).toString()
         case n: java.lang.Number => n.toString
-        case n: Number => n.toString
         case other => other.toString
       }.mkString(",")
     } else {

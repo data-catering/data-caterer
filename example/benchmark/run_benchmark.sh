@@ -17,11 +17,20 @@ fi
 enable_query_engine_run=${ENABLE_QUERY_ENGINE_RUN:-true}
 enable_data_size_run=${ENABLE_DATA_SIZE_RUN:-true}
 enable_data_sink_run=${ENABLE_DATA_SINK_RUN:-true}
+enable_fast_generation_run=${ENABLE_FAST_GENERATION_RUN:-true}
 
-data_caterer_version=$(grep -E "^version=" "$PROP_FILE" | cut -d= -f2)
+# Allow overriding version via BENCHMARK_VERSION env var (useful for CI/CD)
+if [[ -n "$BENCHMARK_VERSION" ]]; then
+  data_caterer_version="$BENCHMARK_VERSION"
+  echo "Using BENCHMARK_VERSION from environment: $data_caterer_version"
+else
+  data_caterer_version=$(grep -E "^version=" "$PROP_FILE" | cut -d= -f2)
+  echo "Using version from gradle.properties: $data_caterer_version"
+fi
+query_engine_job="io.github.datacatering.plan.benchmark.BenchmarkForeignKeyPlanRun"
 default_job="io.github.datacatering.plan.benchmark.BenchmarkParquetPlanRun"
-#default_job="io.github.datacatering.plan.benchmark.BenchmarkValidationPlanRun"
 default_record_count="100000"
+query_engine_record_count="20000"
 driver_memory="DRIVER_MEMORY=2g"
 executor_memory="EXECUTOR_MEMORY=2g"
 benchmark_result_file="benchmark/results/benchmark_results_${data_caterer_version}.txt"
@@ -33,6 +42,7 @@ case "${uname_out}" in
 esac
 data_sizes=(10000 100000 1000000)
 job_names=("BenchmarkForeignKeyPlanRun" "BenchmarkJsonPlanRun" "BenchmarkParquetPlanRun")
+fast_job_names=("BenchmarkForeignKeyFastPlanRun" "BenchmarkJsonFastPlanRun" "BenchmarkParquetFastPlanRun")
 
 spark_query_execution_engines=("default" "blaze" "comet" "gluten")
 gluten_spark_conf="--conf \"spark.plugins=io.glutenproject.GlutenPlugin\" --conf \"spark.memory.offHeap.enabled=true\" --conf \"spark.memory.offHeap.size=1024mb\" --conf \"spark.shuffle.manager=org.apache.spark.shuffle.sort.ColumnarShuffleManager\""
@@ -108,10 +118,10 @@ docker pull datacatering/data-caterer:"$data_caterer_version"
 
 echo "Running benchmarks"
 if [[ "$enable_query_engine_run" == true ]]; then
-  echo "Running Spark query execution engine benchmarks"
+  echo "Running Spark query execution engine benchmarks with ForeignKey plan"
   for spark_qe in "${spark_query_execution_engines[@]}"; do
     echo "Running for Spark query execution engine: $spark_qe"
-    run_docker "$default_job" "100000" "$spark_qe"
+    run_docker "$query_engine_job" "$query_engine_record_count" "$spark_qe"
   done
 fi
 
@@ -126,6 +136,15 @@ fi
 if [[ "$enable_data_sink_run" ==  true ]]; then
   echo "Running data sink benchmarks"
   for job in "${job_names[@]}"; do
+    echo "Running for job: $job"
+    full_class_name="io.github.datacatering.plan.benchmark.$job"
+    run_docker "$full_class_name" "$default_record_count"
+  done
+fi
+
+if [[ "$enable_fast_generation_run" ==  true ]]; then
+  echo "Running fast generation benchmarks"
+  for job in "${fast_job_names[@]}"; do
     echo "Running for job: $job"
     full_class_name="io.github.datacatering.plan.benchmark.$job"
     run_docker "$full_class_name" "$default_record_count"

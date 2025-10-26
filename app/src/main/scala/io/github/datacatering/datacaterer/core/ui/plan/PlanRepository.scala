@@ -13,7 +13,9 @@ import io.github.datacatering.datacaterer.core.ui.config.UiConfiguration.INSTALL
 import io.github.datacatering.datacaterer.core.ui.mapper.ConfigurationMapper.configurationMapping
 import io.github.datacatering.datacaterer.core.ui.model.{ConfigurationRequest, Connection, EnhancedPlanRunRequest, PlanRunExecution, PlanRunRequest, PlanRunRequests, SampleResponse, SchemaSampleRequest}
 import io.github.datacatering.datacaterer.core.ui.plan.PlanResponseHandler.{KO, OK, Response}
+import io.github.datacatering.datacaterer.core.ui.resource.{SparkSessionManager, YamlResourceCache}
 import io.github.datacatering.datacaterer.core.ui.sample.FastSampleGenerator
+import io.github.datacatering.datacaterer.core.ui.service.{ConnectionService, PlanLoaderService, TaskLoaderService}
 import io.github.datacatering.datacaterer.core.util.{ObjectMapperUtil, SparkProvider}
 import org.apache.log4j.Logger
 import org.apache.pekko.actor.typed.scaladsl.Behaviors
@@ -249,19 +251,14 @@ object PlanRepository {
 
   private def getMetadataSourceInfo(dataSourceConnectionInfo: Map[String, Map[String, String]], options: Map[String, String]): Map[String, String] = {
     if (options.contains(METADATA_SOURCE_NAME)) {
-      if (dataSourceConnectionInfo.contains(options(METADATA_SOURCE_NAME))) {
-        dataSourceConnectionInfo(options(METADATA_SOURCE_NAME))
-      } else {
-        val metadataConnection = ConnectionRepository.getConnection(options(METADATA_SOURCE_NAME), false)
-        metadataConnection.options ++ Map(METADATA_SOURCE_TYPE -> metadataConnection.`type`)
-      }
+      ConnectionService.getMetadataSourceInfo(options(METADATA_SOURCE_NAME), dataSourceConnectionInfo)
     } else {
       Map()
     }
   }
 
   private def getConnectionDetails(taskToDataSourceMap: Map[String, String]): List[Connection] = {
-    taskToDataSourceMap.values.map(name => ConnectionRepository.getConnection(name, false)).toList
+    ConnectionService.getConnections(taskToDataSourceMap.values.toList, masking = false)
   }
 
   private def savePlanRunExecution(
@@ -307,32 +304,9 @@ object PlanRepository {
 
   private def getPlans: PlanRunRequests = {
     LOGGER.debug("Getting all plans")
-
-    // Get JSON plans (only .json files)
-    val planFolder = Path.of(planSaveFolder)
-    if (!planFolder.toFile.exists()) planFolder.toFile.mkdirs()
-    val jsonPlans = Files.list(planFolder)
-      .iterator()
-      .asScala
-      .filter(file => file.toString.endsWith(".json")) // Only process .json files
-      .map(file => {
-        val fileContent = Files.readString(file)
-        val tryParse = Try(ObjectMapperUtil.jsonObjectMapper.readValue(fileContent, classOf[PlanRunRequest]))
-        tryParse match {
-          case Failure(exception) =>
-            LOGGER.error(s"Failed to parse JSON plan file, file-name=$file, exception=${exception.getMessage}")
-            None
-          case Success(value) => Some(value)
-        }
-      })
-      .filter(_.isDefined)
-      .map(_.get)
-      .toList
-
-    // Get YAML plans from configured folder and yaml-plan folder
-    val yamlPlans = getYamlPlansAsPlanRunRequests
-
-    PlanRunRequests(jsonPlans ++ yamlPlans)
+    implicit val sparkSession: SparkSession = createSparkSession()
+    val allPlans = PlanLoaderService.getAllPlans
+    PlanRunRequests(allPlans)
   }
 
   private def getPlan(name: String): PlanRunRequest = {
@@ -423,7 +397,7 @@ object PlanRepository {
   }
 
   private def createSparkSession(): SparkSession = {
-    new SparkProvider(DEFAULT_MASTER, DEFAULT_RUNTIME_CONFIG).getSparkSession
+    SparkSessionManager.getOrCreate()
   }
 
   private def generateFromSchema(request: SchemaSampleRequest): SampleResponse = {
@@ -481,102 +455,6 @@ object PlanRepository {
   }
 
   /**
-   * Get all YAML plan files from configured folders and convert them to PlanRunRequest format
-   */
-  private def getYamlPlansAsPlanRunRequests: List[PlanRunRequest] = {
-    val yamlPlanFiles = getYamlPlanFiles
-    yamlPlanFiles.flatMap(planFile => {
-      val tryParse = Try {
-        val parsedPlan = PlanParser.parsePlanFile(planFile.getAbsolutePath)
-        // Convert YAML Plan to PlanRunRequest format
-        convertYamlPlanToPlanRunRequest(parsedPlan, planFile.getName.replaceAll("\\.yaml$", ""))
-      }
-      tryParse match {
-        case Failure(exception) =>
-          LOGGER.error(s"Failed to parse YAML plan file, file=${planFile.getAbsolutePath}, exception=${exception.getMessage}")
-          None
-        case Success(value) => Some(value)
-      }
-    })
-  }
-
-  /**
-   * Get all YAML plan files from configured folders
-   */
-  private def getYamlPlanFiles: List[File] = {
-    // First, check the plan save folder (where UI stores plans)
-    val planFolder = new File(planSaveFolder)
-    val planFolderYamlFiles = if (planFolder.exists() && planFolder.isDirectory) {
-      LOGGER.debug(s"Scanning for YAML plan files in plan save folder: ${planFolder.getAbsolutePath}")
-      val files = planFolder.listFiles()
-      if (files != null) {
-        files.filter(f => f.isFile && f.getName.endsWith(".yaml")).toList
-      } else {
-        List()
-      }
-    } else {
-      List()
-    }
-
-    // Also check the directory from the configured planFilePath
-    val planFilePath = ConfigParser.foldersConfig.planFilePath
-    val planDirPath = new File(planFilePath).getParent
-
-    val configuredYamlFiles = if (planDirPath != null) {
-      // Try multiple approaches to find the directory (direct, classpath, classloader)
-      val tryPlanDir = getPlanDirectory(planDirPath)
-
-      tryPlanDir match {
-        case Some(planDir) if planDir.exists() && planDir.isDirectory =>
-          LOGGER.debug(s"Scanning for YAML plan files in configured path: ${planDir.getAbsolutePath}")
-          val files = planDir.listFiles()
-          if (files != null) {
-            files.filter(f => f.isFile && f.getName.endsWith(".yaml")).toList
-          } else {
-            LOGGER.warn(s"Could not list files in directory: ${planDir.getAbsolutePath}")
-            List()
-          }
-        case Some(planDir) =>
-          LOGGER.warn(s"Plan directory does not exist or is not a directory: ${planDir.getAbsolutePath}")
-          List()
-        case None =>
-          LOGGER.warn(s"Could not find plan directory: $planDirPath")
-          List()
-      }
-    } else {
-      LOGGER.warn(s"Could not determine parent directory from planFilePath: $planFilePath")
-      List()
-    }
-
-    // Combine and deduplicate based on file name
-    val allFiles = planFolderYamlFiles ++ configuredYamlFiles
-    allFiles.groupBy(_.getName).values.map(_.head).toList
-  }
-
-  /**
-   * Get plan directory using consolidated method from PlanParser
-   */
-  private def getPlanDirectory(dirPath: String): Option[File] = {
-    PlanParser.findDirectory(dirPath)
-  }
-
-  /**
-   * Convert a YAML Plan to PlanRunRequest format for API consistency
-   */
-  private def convertYamlPlanToPlanRunRequest(plan: Plan, planName: String): PlanRunRequest = {
-    // Create an empty PlanRunRequest with the YAML plan details
-    // Tasks and other details will be loaded when the plan is executed
-    // The Plan type is from api.model.Plan which is what PlanRunRequest expects
-    PlanRunRequest(
-      id = java.util.UUID.randomUUID().toString,
-      plan = plan,
-      tasks = List(), // Tasks will be loaded from YAML task files when executed
-      validation = List(),
-      configuration = None
-    )
-  }
-
-  /**
    * Enhanced plan execution with support for task/step filtering and multiple source types
    */
   private def runEnhancedPlan(request: EnhancedPlanRunRequest, replyTo: ActorRef[Response]): Unit = {
@@ -615,39 +493,33 @@ object PlanRepository {
    * Load plan based on source type (auto, json, yaml, file)
    */
   private def loadPlanBySourceType(request: EnhancedPlanRunRequest): PlanRunRequest = {
+    implicit val sparkSession: SparkSession = createSparkSession()
+
     request.sourceType match {
       case "json" =>
         // Load from JSON plan folder
         LOGGER.debug(s"Loading JSON plan, plan-name=${request.planName}")
-        getPlan(request.planName)
+        PlanLoaderService.loadJsonPlan(request.planName).getOrElse(
+          throw new java.io.FileNotFoundException(s"JSON plan not found: ${request.planName}")
+        )
 
       case "yaml" =>
         // Load from YAML plan files
         LOGGER.debug(s"Loading YAML plan, plan-name=${request.planName}")
-        loadYamlPlanByName(request.planName)
+        PlanLoaderService.loadYamlPlanByName(request.planName).getOrElse(
+          throw new java.io.FileNotFoundException(s"YAML plan not found: ${request.planName}")
+        )
 
       case "file" if request.fileName.isDefined =>
         // Load from specific file name
         LOGGER.debug(s"Loading YAML plan by file name, file-name=${request.fileName.get}")
-        loadYamlPlanByFileName(request.fileName.get)
+        PlanLoaderService.loadYamlPlanByFileName(request.fileName.get).getOrElse(
+          throw new java.io.FileNotFoundException(s"YAML plan file not found: ${request.fileName.get}")
+        )
 
       case "auto" =>
-        // Try JSON first, then YAML
-        val tryJson = Try(getPlan(request.planName))
-        tryJson match {
-          case Success(plan) =>
-            LOGGER.debug(s"Loaded JSON plan, plan-name=${request.planName}")
-            plan
-          case Failure(_) =>
-            val tryYaml = Try(loadYamlPlanByName(request.planName))
-            tryYaml match {
-              case Success(plan) =>
-                LOGGER.debug(s"Loaded YAML plan, plan-name=${request.planName}")
-                plan
-              case Failure(_) =>
-                throw new IllegalArgumentException(s"Plan not found: ${request.planName} (searched in JSON and YAML sources)")
-            }
-        }
+        // Use PlanLoaderService which tries JSON first, then YAML
+        PlanLoaderService.loadPlan(request.planName, None)
 
       case _ =>
         throw new IllegalArgumentException(s"Unsupported source type: ${request.sourceType}")
@@ -655,51 +527,11 @@ object PlanRepository {
   }
 
   /**
-   * Load YAML plan by plan name (from the name field in the YAML)
-   */
-  private def loadYamlPlanByName(planName: String): PlanRunRequest = {
-    val allYamlPlans = getYamlPlansAsPlanRunRequests
-    allYamlPlans.find(_.plan.name == planName) match {
-      case Some(plan) => plan
-      case None => throw new IllegalArgumentException(s"YAML plan not found with name: $planName")
-    }
-  }
-
-  /**
-   * Load YAML plan by file name
-   */
-  private def loadYamlPlanByFileName(fileName: String): PlanRunRequest = {
-    val yamlPlanFiles = getYamlPlanFiles
-    val planFile = yamlPlanFiles.find(_.getName == fileName) match {
-      case Some(file) => file
-      case None => throw new IllegalArgumentException(s"YAML plan file not found: $fileName")
-    }
-
-    val parsedPlan = PlanParser.parsePlanFile(planFile.getAbsolutePath)
-    convertYamlPlanToPlanRunRequest(parsedPlan, fileName.replaceAll("\\.yaml$", ""))
-  }
-
-  /**
-   * Find a task by name by parsing all task files in the configured task folder
-   * This uses the consolidated parsing logic from PlanParser
-   *
-   * Note: Currently parses all tasks on each call. Consider adding caching if this becomes
-   * a performance bottleneck. For now, kept simple as task lookups are infrequent during
-   * plan validation phase.
+   * Find a task by name using cached task folder parsing
+   * This uses TaskLoaderService for efficient task lookups
    */
   private def findTaskByName(taskName: String)(implicit sparkSession: SparkSession): Task = {
-    val taskFolderPath = ConfigParser.foldersConfig.taskFolderPath
-
-    // TODO: Add caching mechanism if this becomes a performance issue
-    // For now, parse on-demand to ensure we always have latest task definitions
-    val allTasks = PlanParser.parseTasksFromFolder(taskFolderPath)
-
-    allTasks.find(_.name == taskName).getOrElse {
-      throw new IllegalArgumentException(
-        s"Task '$taskName' not found in task folder: $taskFolderPath. " +
-          s"Available tasks: ${allTasks.map(_.name).mkString(", ")}"
-      )
-    }
+    TaskLoaderService.findTaskByName(taskName, None)
   }
 
   /**
@@ -825,7 +657,7 @@ object PlanRepository {
    * Check if a plan exists in the JSON plan storage
    */
   private def planExistsInJson(planName: String): Boolean = {
-    Try(getPlan(planName)).isSuccess
+    PlanLoaderService.planExistsInJson(planName)
   }
 
   /**

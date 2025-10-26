@@ -212,20 +212,49 @@ object GeneratorUtil {
       loop(df.schema.fields, parts)
     }
 
-    sqlExpressionsWithoutForeignKeys.foreach { case (path, sqlExpr) =>
+    // Phase 2 Optimization: Batch SQL expression resolution
+    // Build expressions in dependency order to handle lateral column aliases
+    // Spark doesn't support lateral aliases in same selectExpr, so we batch by dependency level
+
+    val tempColumnInfo = sqlExpressionsWithoutForeignKeys.flatMap { case (path, sqlExpr) =>
       val tempColName = s"_temp_${path.replace(".", "_")}"
       val isIdentityExpr = isIdentity(path, sqlExpr)
       if (!isIdentityExpr) {
         val rewired = rewriteWithTempRefs(sqlExpr, path)
-      val finalExpr = lookupDataType(path) match {
-        case Some(dt) if dt.typeName == "string" => s"CAST((${rewired}) AS STRING)"
-        case _ => rewired
-      }
-      LOGGER.debug(s"Adding temp SQL column [$tempColName] for path=[$path], expr=[$finalExpr]")
-      resultDf = resultDf.withColumn(tempColName, expr(finalExpr))
+        val finalExpr = lookupDataType(path) match {
+          case Some(dt) if dt.typeName == "string" => s"CAST((${rewired}) AS STRING)"
+          case _ => rewired
+        }
+        LOGGER.debug(s"Adding temp SQL column [$tempColName] for path=[$path], expr=[$finalExpr]")
+        Some((tempColName, finalExpr, rewired))
       } else {
         LOGGER.debug(s"Skipping temp SQL column for identity expr path=[$path], expr=[$sqlExpr]")
+        None
       }
+    }
+
+    // Group expressions by whether they reference other temp columns
+    // Level 0: No temp column references (can be done in one batch)
+    // Level 1+: References temp columns from previous level (need sequential application)
+    def getDependencyLevel(expr: String, tempNames: Set[String]): Int = {
+      val referencesTemp = tempNames.exists(name => expr.contains(name))
+      if (referencesTemp) 1 else 0
+    }
+
+    val tempNames = tempColumnInfo.map(_._1).toSet
+    val level0 = tempColumnInfo.filter { case (_, _, rewired) => getDependencyLevel(rewired, tempNames) == 0 }
+    val level1 = tempColumnInfo.filter { case (_, _, rewired) => getDependencyLevel(rewired, tempNames) > 0 }
+
+    // Apply level 0 expressions in batch
+    if (level0.nonEmpty) {
+      val existingColumns = resultDf.columns.map(c => s"`$c`")
+      val level0Exprs = level0.map { case (name, expr, _) => s"($expr) AS `$name`" }
+      resultDf = resultDf.selectExpr((existingColumns ++ level0Exprs): _*)
+    }
+
+    // Apply level 1 expressions one at a time (they may have lateral dependencies)
+    level1.foreach { case (tempColName, finalExpr, _) =>
+      resultDf = resultDf.withColumn(tempColName, expr(finalExpr))
     }
     
     // Step 2: Build new columns using the temporary values for regular expressions

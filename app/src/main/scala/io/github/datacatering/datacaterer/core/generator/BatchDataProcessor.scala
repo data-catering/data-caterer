@@ -206,7 +206,7 @@ class BatchDataProcessor(connectionConfigsByName: Map[String, Map[String, String
       })
 
       val sinkDf = plan.sinkOptions
-        .map(_ => ForeignKeyUtil.getDataFramesWithForeignKeys(plan, generatedDataForeachTask))
+        .map(_ => ForeignKeyUtil.getDataFramesWithForeignKeys(plan, generatedDataForeachTask, flagsConfig.enableForeignKeyV2))
         .getOrElse(generatedDataForeachTask)
       val sinkResults = pushDataToSinks(plan, executableTasks, sinkDf, batch, numBatches, startTime, optValidations)
       sinkDf.foreach(_._2.unpersist())

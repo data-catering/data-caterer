@@ -5,8 +5,18 @@ on:
     workflows: ["Build docker images"]
     types:
       - completed
-  # Allow manual triggering for testing
+  # Allow manual triggering with custom version
   workflow_dispatch:
+    inputs:
+      version:
+        description: 'Data Caterer version to benchmark (e.g., 0.17.0)'
+        required: false
+        type: string
+      skip_existence_check:
+        description: 'Skip check for existing benchmark results'
+        required: false
+        type: boolean
+        default: false
 
 jobs:
   build:
@@ -22,24 +32,51 @@ jobs:
       run:
         working-directory: example
     steps:
+      - name: Get branch name
+        id: branch
+        run: |
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            echo "name=${{ github.ref_name }}" >> $GITHUB_OUTPUT
+          else
+            echo "name=${{ github.event.workflow_run.head_branch }}" >> $GITHUB_OUTPUT
+          fi
       - name: Checkout monorepo
         uses: actions/checkout@v4
         with:
-          # For workflow_run, we need to checkout the specific commit that triggered the build
-          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+          # Checkout the branch, not the commit, to avoid detached HEAD
+          ref: ${{ steps.branch.outputs.name }}
           fetch-depth: 2
+      - name: Determine version to benchmark
+        id: benchmark_version
+        run: |
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ] && [ -n "${{ inputs.version }}" ]; then
+            echo "value=${{ inputs.version }}" >> $GITHUB_OUTPUT
+            echo "Using manually specified version: ${{ inputs.version }}"
+          else
+            version=$(grep -E "^version=" ../gradle.properties | cut -d= -f2)
+            echo "value=${version}" >> $GITHUB_OUTPUT
+            echo "Using version from gradle.properties: ${version}"
+          fi
       - name: Check if benchmark has already run
         run: |
-          version=$(grep -E "^version=" ../gradle.properties | cut -d= -f2)
+          skip_check="${{ inputs.skip_existence_check }}"
+          version="${{ steps.benchmark_version.outputs.value }}"
+
+          if [ "$skip_check" == "true" ]; then
+            echo "Skipping existence check as requested"
+            exit 0
+          fi
+
           if [ ! -f benchmark/results/benchmark_results_${version}.txt ]; then
               echo "No benchmark results for version: $version, starting to run benchmarks"
           else
-              echo "Benchmarks already run!"
+              echo "Benchmarks already run for version: $version!"
+              echo "Set 'skip_existence_check' to true to re-run anyway"
               exit 1
           fi
       - name: Wait for Docker image to be available
         run: |
-          version=$(grep -E "^version=" ../gradle.properties | cut -d= -f2)
+          version="${{ steps.benchmark_version.outputs.value }}"
           echo "Waiting for Docker image datacatering/data-caterer:${version} to be available..."
           max_attempts=10
           attempt=1
@@ -53,7 +90,7 @@ jobs:
               ((attempt++))
             fi
           done
-          
+
           if [ $attempt -gt $max_attempts ]; then
             echo "ERROR: Docker image not available after $max_attempts attempts"
             exit 1
@@ -67,11 +104,21 @@ jobs:
       - name: Get Spark query engine jars
         run: bash benchmark/setup_query_engine_jars.sh
       - name: Run benchmark script
+        env:
+          BENCHMARK_VERSION: ${{ steps.benchmark_version.outputs.value }}
         run: |
-          version=$(grep -E "^version=" ../gradle.properties | cut -d= -f2)
           bash benchmark/run_benchmark.sh
-          bash benchmark/compare_benchmark_results.sh "$version"
+          bash benchmark/compare_benchmark_results.sh "${{ steps.benchmark_version.outputs.value }}"
       - name: Create pull request
         uses: peter-evans/create-pull-request@v6
         with:
-          title: Add benchmark results
+          title: Add benchmark results for version ${{ steps.benchmark_version.outputs.value }}
+          body: |
+            Automated benchmark results for Data Caterer version ${{ steps.benchmark_version.outputs.value }}
+
+            This PR adds benchmark performance metrics comparing different configurations.
+
+            Triggered by: ${{ github.event_name }}
+          branch: benchmark-results-${{ steps.benchmark_version.outputs.value }}
+          base: ${{ steps.branch.outputs.name }}
+          commit-message: Add benchmark results for version ${{ steps.benchmark_version.outputs.value }}

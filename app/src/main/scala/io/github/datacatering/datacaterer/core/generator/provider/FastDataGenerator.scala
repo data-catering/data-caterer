@@ -36,128 +36,79 @@ object FastDataGenerator {
     }
 
     override def generateSqlExpression: String = {
-      // Fast mode: Use simple SQL expression without UDF calls
-      // Generate random length between min and max
-      val lengthExpr = s"CAST($sqlRandom * ${maxLength - minLength} + $minLength AS INT)"
-      
-      // Generate random alphanumeric string using pure SQL
-      s"UPPER(CONCAT_WS('', TRANSFORM(SEQUENCE(1, $lengthExpr), i -> SUBSTR('$characterSet', CAST($sqlRandom * $characterSetSize + 1 AS INT), 1))))"
+      // Fast mode: Use MD5-based generation for maximum performance
+      // MD5 produces 32 hex characters, which is much faster than TRANSFORM + SEQUENCE
+      if (maxLength <= 32) {
+        // For strings up to 32 chars, single MD5 hash is sufficient
+        val seedExpr = s"CONCAT(CAST($sqlRandom * 1000000 AS BIGINT), '_', CAST(monotonically_increasing_id() AS BIGINT))"
+        if (minLength == maxLength) {
+          s"UPPER(SUBSTRING(MD5($seedExpr), 1, $maxLength))"
+        } else {
+          val lengthExpr = s"CAST($sqlRandom * (${maxLength - minLength}) + $minLength AS INT)"
+          s"UPPER(SUBSTRING(MD5($seedExpr), 1, $lengthExpr))"
+        }
+      } else {
+        // For longer strings, concatenate multiple MD5 hashes
+        val numHashes = (maxLength / 32) + 1
+        val hashes = (0 until numHashes).map { i =>
+          val seedExpr = s"CONCAT(CAST($sqlRandom * 1000000 AS BIGINT), '_', $i, '_', CAST(monotonically_increasing_id() AS BIGINT))"
+          s"MD5($seedExpr)"
+        }.mkString(", ")
+
+        if (minLength == maxLength) {
+          s"UPPER(SUBSTRING(CONCAT($hashes), 1, $maxLength))"
+        } else {
+          val lengthExpr = s"CAST($sqlRandom * (${maxLength - minLength}) + $minLength AS INT)"
+          s"UPPER(SUBSTRING(CONCAT($hashes), 1, $lengthExpr))"
+        }
+      }
     }
   }
 
   /**
-   * Fast regex data generator that replaces complex regex patterns with simple SQL patterns.
-   * Instead of using Faker's regexify function, it generates simple patterns that approximate common regex use cases.
+   * Fast regex data generator that uses a parser to convert regex patterns to pure SQL expressions.
+   * Uses RegexPatternParser to parse common regex patterns and generate efficient SQL.
+   * Falls back to UDF-based generation for unsupported patterns.
    */
   class FastRegexDataGenerator(val structField: StructField, val faker: Faker = new Faker()) extends NullableDataGenerator[String] {
+    import io.github.datacatering.datacaterer.core.generator.provider.regex.RegexPatternParser
+    import io.github.datacatering.datacaterer.core.model.Constants.GENERATE_REGEX_UDF
+    import org.apache.log4j.Logger
+
+    private val LOGGER = Logger.getLogger(getClass.getName)
     private val regex = Try(structField.metadata.getString(REGEX_GENERATOR))
       .getOrElse(throw InvalidDataGeneratorConfigurationException(structField, REGEX_GENERATOR))
+
+    // Parse the regex pattern once during initialization
+    private val parsedPattern = RegexPatternParser.parse(regex)
+
+    // Log parsing result for debugging
+    parsedPattern match {
+      case scala.util.Success(node) =>
+        LOGGER.debug(s"Successfully parsed regex '$regex' for field ${structField.name}")
+      case scala.util.Failure(ex) =>
+        LOGGER.warn(s"Could not parse regex '$regex' for field ${structField.name}: ${ex.getMessage}. " +
+          s"Falling back to UDF-based generation.")
+    }
 
     override val edgeCases: List[String] = List()
 
     override def generate: String = {
-      // For fast mode, use simplified pattern generation
-      generateSimplePattern(regex)
+      // For JVM generation, still use faker.regexify for accuracy
+      faker.regexify(regex)
     }
 
     override def generateSqlExpression: String = {
-      // Fast mode: Replace regex with simple SQL patterns
-      generateSimpleSqlPattern(regex)
-    }
+      parsedPattern match {
+        case scala.util.Success(node) =>
+          // Successfully parsed - use pure SQL generation
+          node.toSql
 
-    /**
-     * Generate simple patterns for common regex use cases without using Faker.
-     */
-    private def generateSimplePattern(pattern: String): String = {
-      pattern match {
-        // Email patterns
-        case p if p.contains("@") || p.contains("email") =>
-          s"user${random.nextInt(1000)}@example.com"
-        
-        // Phone number patterns
-        case p if p.contains("\\d{3}") && p.contains("\\d{4}") =>
-          f"${random.nextInt(900) + 100}%03d-${random.nextInt(900) + 100}%03d-${random.nextInt(9000) + 1000}%04d"
-        
-        // UUID patterns
-        case p if p.contains("uuid") || p.contains("UUID") =>
-          java.util.UUID.randomUUID().toString
-        
-        // Alphanumeric patterns with specific length
-        case p if p.contains("[A-Z0-9]") || p.contains("[a-zA-Z0-9]") =>
-          val length = extractLengthFromPattern(p).getOrElse(8)
-          random.alphanumeric.take(length).mkString.toUpperCase
-        
-        // Number patterns
-        case p if p.contains("\\d") =>
-          val length = extractLengthFromPattern(p).getOrElse(6)
-          (1 to length).map(_ => random.nextInt(10)).mkString
-        
-        // Letter patterns
-        case p if p.contains("[A-Z]") =>
-          val length = extractLengthFromPattern(p).getOrElse(5)
-          (1 to length).map(_ => ('A' + random.nextInt(26)).toChar).mkString
-        
-        // Default: simple alphanumeric string
-        case _ =>
-          random.alphanumeric.take(8).mkString
+        case scala.util.Failure(_) =>
+          // Parser failed - fall back to UDF (slower but correct)
+          val escapedRegex = regex.replace("\\", "\\\\").replace("'", "\\'")
+          s"$GENERATE_REGEX_UDF('$escapedRegex')"
       }
-    }
-
-    /**
-     * Generate simple SQL patterns for common regex use cases.
-     */
-    private def generateSimpleSqlPattern(pattern: String): String = {
-      pattern match {
-        // Email patterns
-        case p if p.contains("@") || p.contains("email") =>
-          s"CONCAT('user', CAST($sqlRandom * 1000 AS INT), '@example.com')"
-        
-        // Phone number patterns  
-        case p if p.contains("\\d{3}") && p.contains("\\d{4}") =>
-          s"CONCAT(LPAD(CAST($sqlRandom * 900 + 100 AS INT), 3, '0'), '-', LPAD(CAST($sqlRandom * 900 + 100 AS INT), 3, '0'), '-', LPAD(CAST($sqlRandom * 9000 + 1000 AS INT), 4, '0'))"
-        
-        // UUID patterns (using simple approach)
-        case p if p.contains("uuid") || p.contains("UUID") =>
-          s"CONCAT(LPAD(HEX(CAST($sqlRandom * 4294967295 AS BIGINT)), 8, '0'), '-', LPAD(HEX(CAST($sqlRandom * 65535 AS INT)), 4, '0'), '-', LPAD(HEX(CAST($sqlRandom * 65535 AS INT)), 4, '0'), '-', LPAD(HEX(CAST($sqlRandom * 65535 AS INT)), 4, '0'), '-', LPAD(HEX(CAST($sqlRandom * 281474976710655L AS BIGINT)), 12, '0'))"
-        
-        // Alphanumeric patterns
-        case p if p.contains("[A-Z0-9]") || p.contains("[a-zA-Z0-9]") =>
-          val length = extractLengthFromPattern(p).getOrElse(8)
-          val charset = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
-          s"CONCAT_WS('', TRANSFORM(SEQUENCE(1, $length), i -> SUBSTR('$charset', CAST($sqlRandom * ${charset.length} + 1 AS INT), 1)))"
-        
-        // Number patterns
-        case p if p.contains("\\d") =>
-          val length = extractLengthFromPattern(p).getOrElse(6)
-          s"LPAD(CAST($sqlRandom * ${Math.pow(10, length).toLong} AS BIGINT), $length, '0')"
-        
-        // Letter patterns
-        case p if p.contains("[A-Z]") =>
-          val length = extractLengthFromPattern(p).getOrElse(5)
-          s"CONCAT_WS('', TRANSFORM(SEQUENCE(1, $length), i -> CHAR(CAST($sqlRandom * 26 + 65 AS INT))))"
-        
-        // Default: simple alphanumeric string
-        case _ =>
-          val charset = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
-          s"CONCAT_WS('', TRANSFORM(SEQUENCE(1, 8), i -> SUBSTR('$charset', CAST($sqlRandom * ${charset.length} + 1 AS INT), 1)))"
-      }
-    }
-
-    /**
-     * Extract length specification from regex pattern (e.g., {5}, {3,8}).
-     */
-    private def extractLengthFromPattern(pattern: String): Option[Int] = {
-      val lengthRegex = "\\{(\\d+)\\}".r
-      val rangeRegex = "\\{(\\d+),(\\d+)\\}".r
-      
-      lengthRegex.findFirstMatchIn(pattern).map(_.group(1).toInt)
-        .orElse(rangeRegex.findFirstMatchIn(pattern).map(m => (m.group(1).toInt + m.group(2).toInt) / 2))
-        .orElse {
-          // Look for repetition indicators like +, *, {n}
-          if (pattern.contains("+")) Some(5)
-          else if (pattern.contains("*")) Some(3)
-          else None
-        }
     }
   }
 } 
