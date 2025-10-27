@@ -22,7 +22,7 @@ jobs:
           arguments: ":app:shadowJar"
       - name: Run gradle integration tests
         run: |
-          ./gradlew :app:integrationTest
+          ./gradlew :app:integrationTest --info
       - name: Run intsa-integration tests
         id: tests
         uses: data-catering/insta-integration@v4
