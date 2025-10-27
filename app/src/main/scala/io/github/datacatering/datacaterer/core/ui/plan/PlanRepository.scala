@@ -96,7 +96,7 @@ object PlanRepository {
           savePlan(planRunRequest, planSaveFolder)
           Behaviors.same
         case GetPlans(replyTo) =>
-          replyTo ! getPlans
+          replyTo ! getPlans(planSaveFolder)
           Behaviors.same
         case GetPlan(name, replyTo) =>
           replyTo ! getPlan(name, planSaveFolder)
@@ -310,10 +310,10 @@ object PlanRepository {
     }
   }
 
-  private def getPlans: PlanRunRequests = {
-    LOGGER.debug("Getting all plans")
+  private def getPlans(planSaveFolder: String): PlanRunRequests = {
+    LOGGER.debug(s"Getting all plans from folder: $planSaveFolder")
     implicit val sparkSession: SparkSession = createSparkSession()
-    val allPlans = PlanLoaderService.getAllPlans
+    val allPlans = PlanLoaderService.getAllPlans(Some(planSaveFolder), includeConfiguredPath = false)
     PlanRunRequests(allPlans)
   }
 

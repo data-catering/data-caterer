@@ -391,6 +391,32 @@ var plan = plan()
 )
 ```
 
+**Pre-Filter Validations (Subset Validation)**
+```java
+// Run validations only on a subset of data that matches pre-filter conditions
+.validations(
+    // Check that all closed accounts have zero balance
+    validation().preFilter(fieldPreFilter("status").isEqual("closed"))
+        .field("balance").isEqual(0),
+
+    // Multiple pre-filter conditions with AND
+    validation().preFilter(
+        preFilterBuilder(fieldPreFilter("status").isEqual("active"))
+            .and(fieldPreFilter("country").isEqual("US"))
+    ).field("balance").greaterThan(0),
+
+    // Multiple pre-filter conditions with OR
+    validation().preFilter(
+        preFilterBuilder(fieldPreFilter("type").isEqual("savings"))
+            .or(fieldPreFilter("type").isEqual("checking"))
+    ).field("interest_rate").greaterThan(0),
+
+    // Pre-filter with simple field check
+    validation().preFilter(fieldPreFilter("account_id").startsWith("ACC"))
+        .field("amount").greaterThan(100)
+)
+```
+
 ### 8. Metadata Source Integration
 
 Metadata sources allow you to automatically extract schemas and validations from external systems. Different metadata sources serve different purposes:

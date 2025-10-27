@@ -656,7 +656,7 @@ object FastSampleGenerator {
 
       // Try to find a plan that contains this task for relationship processing
       val planOption = if (enableRelationships) {
-        val allYamlPlans = PlanLoaderService.getAllYamlPlansAsPlanRunRequests
+        val allYamlPlans = PlanLoaderService.getAllYamlPlansAsPlanRunRequests()
         allYamlPlans.find(_.plan.tasks.exists(_.name == taskName)).map(_.plan)
       } else {
         None

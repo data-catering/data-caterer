@@ -478,6 +478,34 @@ val accountPlan = plan
 )
 ```
 
+**Pre-Filter Validations (Subset Validation)**
+```scala
+// Run validations only on a subset of data that matches pre-filter conditions
+.validations(
+  // Check that all closed accounts have zero balance
+  validation.preFilter(validation.field("status").isEqual("closed"))
+    .field("balance").isEqual(0),
+
+  // Multiple pre-filter conditions with AND
+  validation.preFilter(
+    PreFilterBuilder()
+      .filter(validation.field("status").isEqual("active"))
+      .and(validation.field("country").isEqual("US"))
+  ).field("balance").greaterThan(0),
+
+  // Multiple pre-filter conditions with OR
+  validation.preFilter(
+    PreFilterBuilder()
+      .filter(validation.field("type").isEqual("savings"))
+      .or(validation.field("type").isEqual("checking"))
+  ).field("interest_rate").greaterThan(0),
+
+  // Pre-filter with expression
+  validation.preFilter(validation.expr("STARTSWITH(account_id, 'ACC')"))
+    .field("amount").greaterThan(100)
+)
+```
+
 ### 8. Metadata Source Integration
 
 Metadata sources allow you to automatically extract schemas and validations from external systems. Different metadata sources serve different purposes:

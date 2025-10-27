@@ -106,6 +106,22 @@ class YamlPlanIntegrationTest extends SparkSuite with BeforeAndAfterAll with Moc
       StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING
     )
 
+    // Create kafka_plan for the test that expects it
+    val kafkaPlanContent =
+      """name: "kafka_plan"
+        |description: "Test Kafka plan"
+        |tasks:
+        |  - name: "kafka_task"
+        |    dataSourceName: "test_kafka"
+        |    enabled: true
+        |""".stripMargin
+
+    Files.writeString(
+      Path.of(s"${planDir.getAbsolutePath}/kafka_plan.yaml"),
+      kafkaPlanContent,
+      StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING
+    )
+
     val testTaskContent =
       """name: "test_task"
         |steps:

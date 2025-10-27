@@ -96,7 +96,7 @@ object PlanLoaderService {
         case None =>
           // Fallback to searching all YAML plans
           LOGGER.debug(s"YAML plan file not found by name search, scanning all YAML plans, plan-name=$planName")
-          val allYamlPlans = getAllYamlPlansAsPlanRunRequests
+          val allYamlPlans = getAllYamlPlansAsPlanRunRequests()
           allYamlPlans.find(_.plan.name == planName) match {
             case Some(plan) => plan
             case None => throw new java.io.FileNotFoundException(s"YAML plan not found with name: $planName")
@@ -110,7 +110,7 @@ object PlanLoaderService {
    */
   def loadYamlPlanByFileName(fileName: String)(implicit sparkSession: SparkSession): Try[PlanRunRequest] = {
     Try {
-      val yamlPlanFiles = getYamlPlanFiles
+      val yamlPlanFiles = getYamlPlanFiles()
       val planFile = yamlPlanFiles.find(_.getName == fileName) match {
         case Some(file) => file
         case None => throw new java.io.FileNotFoundException(s"YAML plan file not found: $fileName")
@@ -123,9 +123,15 @@ object PlanLoaderService {
 
   /**
    * Get all YAML plan files and convert them to PlanRunRequest format
+   *
+   * @param customPlanFolder Optional custom plan folder to use instead of the default INSTALL_DIRECTORY/plan
+   * @param includeConfiguredPath If true, also searches the configured planFilePath directory (default: true)
    */
-  def getAllYamlPlansAsPlanRunRequests(implicit sparkSession: SparkSession): List[PlanRunRequest] = {
-    val yamlPlanFiles = getYamlPlanFiles
+  def getAllYamlPlansAsPlanRunRequests(
+    customPlanFolder: Option[String] = None,
+    includeConfiguredPath: Boolean = true
+  )(implicit sparkSession: SparkSession): List[PlanRunRequest] = {
+    val yamlPlanFiles = getYamlPlanFiles(customPlanFolder, includeConfiguredPath)
     yamlPlanFiles.flatMap(planFile => {
       val tryParse = Try {
         val parsedPlan = PlanParser.parsePlan(planFile.getAbsolutePath)
@@ -143,10 +149,14 @@ object PlanLoaderService {
   /**
    * Get all YAML plan files from configured folders
    * Searches both the plan save folder and the configured plan file directory
+   *
+   * @param customPlanFolder Optional custom plan folder to use instead of the default INSTALL_DIRECTORY/plan
+   * @param includeConfiguredPath If true, also searches the configured planFilePath directory (default: true)
    */
-  def getYamlPlanFiles: List[File] = {
+  def getYamlPlanFiles(customPlanFolder: Option[String] = None, includeConfiguredPath: Boolean = true): List[File] = {
     // Check the plan save folder (where UI stores plans)
-    val planFolder = new File(planSaveFolder)
+    val effectivePlanFolder = customPlanFolder.getOrElse(planSaveFolder)
+    val planFolder = new File(effectivePlanFolder)
     val planFolderYamlFiles = if (planFolder.exists() && planFolder.isDirectory) {
       LOGGER.debug(s"Scanning for YAML plan files in plan save folder: ${planFolder.getAbsolutePath}")
       val files = planFolder.listFiles()
@@ -159,30 +169,34 @@ object PlanLoaderService {
       List()
     }
 
-    // Also check the directory from the configured planFilePath
-    val planFilePath = ConfigParser.foldersConfig.planFilePath
-    val planDirPath = new File(planFilePath).getParent
+    // Also check the directory from the configured planFilePath (unless disabled)
+    val configuredYamlFiles = if (includeConfiguredPath) {
+      val planFilePath = ConfigParser.foldersConfig.planFilePath
+      val planDirPath = new File(planFilePath).getParent
 
-    val configuredYamlFiles = if (planDirPath != null) {
-      PlanParser.findDirectory(planDirPath) match {
-        case Some(planDir) if planDir.exists() && planDir.isDirectory =>
-          LOGGER.debug(s"Scanning for YAML plan files in configured path: ${planDir.getAbsolutePath}")
-          val files = planDir.listFiles()
-          if (files != null) {
-            files.filter(f => f.isFile && f.getName.endsWith(".yaml")).toList
-          } else {
-            LOGGER.warn(s"Could not list files in directory: ${planDir.getAbsolutePath}")
+      if (planDirPath != null) {
+        PlanParser.findDirectory(planDirPath) match {
+          case Some(planDir) if planDir.exists() && planDir.isDirectory =>
+            LOGGER.debug(s"Scanning for YAML plan files in configured path: ${planDir.getAbsolutePath}")
+            val files = planDir.listFiles()
+            if (files != null) {
+              files.filter(f => f.isFile && f.getName.endsWith(".yaml")).toList
+            } else {
+              LOGGER.warn(s"Could not list files in directory: ${planDir.getAbsolutePath}")
+              List()
+            }
+          case Some(planDir) =>
+            LOGGER.warn(s"Plan directory does not exist or is not a directory: ${planDir.getAbsolutePath}")
             List()
-          }
-        case Some(planDir) =>
-          LOGGER.warn(s"Plan directory does not exist or is not a directory: ${planDir.getAbsolutePath}")
-          List()
-        case None =>
-          LOGGER.warn(s"Could not find plan directory: $planDirPath")
-          List()
+          case None =>
+            LOGGER.warn(s"Could not find plan directory: $planDirPath")
+            List()
+        }
+      } else {
+        LOGGER.warn(s"Could not determine parent directory from planFilePath: $planFilePath")
+        List()
       }
     } else {
-      LOGGER.warn(s"Could not determine parent directory from planFilePath: $planFilePath")
       List()
     }
 
@@ -213,10 +227,17 @@ object PlanLoaderService {
 
   /**
    * Get all plans (both JSON and YAML)
+   *
+   * @param customPlanFolder Optional custom plan folder to use instead of the default INSTALL_DIRECTORY/plan
+   * @param includeConfiguredPath If true, also searches the configured planFilePath directory for YAML plans (default: true)
    */
-  def getAllPlans(implicit sparkSession: SparkSession): List[PlanRunRequest] = {
+  def getAllPlans(
+    customPlanFolder: Option[String] = None,
+    includeConfiguredPath: Boolean = true
+  )(implicit sparkSession: SparkSession): List[PlanRunRequest] = {
     // Get JSON plans
-    val planFolder = Path.of(planSaveFolder)
+    val effectivePlanFolder = customPlanFolder.getOrElse(planSaveFolder)
+    val planFolder = Path.of(effectivePlanFolder)
     if (!planFolder.toFile.exists()) planFolder.toFile.mkdirs()
 
     val jsonPlans = if (planFolder.toFile.exists() && planFolder.toFile.isDirectory) {
@@ -225,7 +246,7 @@ object PlanLoaderService {
         files
           .filter(file => file.toString.endsWith(".json"))
           .flatMap(file => {
-            val tryParse = loadJsonPlan(file.getName.replaceAll("\\.json$", ""), planSaveFolder)
+            val tryParse = loadJsonPlan(file.getName.replaceAll("\\.json$", ""), effectivePlanFolder)
             tryParse match {
               case Failure(exception) =>
                 LOGGER.error(s"Failed to parse JSON plan file, file-name=${file.getName}, exception=${exception.getMessage}")
@@ -242,7 +263,7 @@ object PlanLoaderService {
     }
 
     // Get YAML plans
-    val yamlPlans = getAllYamlPlansAsPlanRunRequests
+    val yamlPlans = getAllYamlPlansAsPlanRunRequests(customPlanFolder, includeConfiguredPath)
 
     jsonPlans ++ yamlPlans
   }

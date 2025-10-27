@@ -788,6 +788,39 @@ dataSources:
       value: 100
 ```
 
+**Pre-Filter Validations (Subset Validation)**
+```yaml
+# Run validations only on a subset of data that matches pre-filter conditions
+# Check that all closed accounts have zero balance
+- expr: "balance == 0"
+  preFilterExpr: "status == 'closed'"
+
+# Pre-filter with multiple conditions using AND
+- field: "balance"
+  validation:
+    - type: "greaterThan"
+      value: 0
+  preFilterExpr: "status == 'active' AND country == 'US'"
+
+# Pre-filter with multiple conditions using OR
+- field: "interest_rate"
+  validation:
+    - type: "greaterThan"
+      value: 0
+  preFilterExpr: "type == 'savings' OR type == 'checking'"
+
+# Pre-filter with string operations
+- field: "amount"
+  validation:
+    - type: "greaterThan"
+      value: 100
+  preFilterExpr: "STARTSWITH(account_id, 'ACC')"
+
+# Pre-filter with NULL checks
+- expr: "ISNOTNULL(name)"
+  preFilterExpr: "STARTSWITH(account_id, 'ACC') AND ISNOTNULL(merchant)"
+```
+
 **Aggregations**
 ```yaml
 # Total count
