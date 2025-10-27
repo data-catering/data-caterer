@@ -30,28 +30,27 @@ object ConnectionRepository {
 
   final case class RemoveConnection(name: String) extends ConnectionCommand
 
-  private val connectionSaveFolder = s"$INSTALL_DIRECTORY/connection"
-
-  def apply(): Behavior[ConnectionCommand] = {
+  def apply(baseDirectory: String = INSTALL_DIRECTORY): Behavior[ConnectionCommand] = {
+    val connectionSaveFolder = s"$baseDirectory/connection"
     Behaviors.supervise[ConnectionCommand] {
       Behaviors.receiveMessage {
         case SaveConnections(saveConnectionsRequest) =>
-          saveConnectionsRequest.connections.foreach(saveConnection)
+          saveConnectionsRequest.connections.foreach(conn => saveConnection(conn, connectionSaveFolder))
           Behaviors.same
         case GetConnection(name, replyTo) =>
-          replyTo ! getConnection(name)
+          replyTo ! getConnection(name, connectionSaveFolder)
           Behaviors.same
         case GetConnections(optConnectionGroupType, replyTo) =>
-          replyTo ! getAllConnections(optConnectionGroupType)
+          replyTo ! getAllConnections(optConnectionGroupType, connectionSaveFolder)
           Behaviors.same
         case RemoveConnection(name) =>
-          removeConnection(name)
+          removeConnection(name, connectionSaveFolder)
           Behaviors.same
       }
     }.onFailure(SupervisorStrategy.restart)
   }
 
-  private def saveConnection(connection: Connection): Unit = {
+  private def saveConnection(connection: Connection, connectionSaveFolder: String): Unit = {
     LOGGER.info(s"Saving connection, connection-name=${connection.name}, connection-type=${connection.`type`}," +
       s"connection-group=${connection.groupType}")
     val basePath = Path.of(connectionSaveFolder).toFile
@@ -61,9 +60,9 @@ object ConnectionRepository {
     fileWrite.getParent
   }
 
-  def getConnection(name: String, masking: Boolean = true): Connection = {
+  def getConnection(name: String, connectionSaveFolder: String = s"$INSTALL_DIRECTORY/connection", masking: Boolean = true): Connection = {
     LOGGER.debug(s"Getting connection details, connection-name=$name")
-    
+
     // First try to get from saved connections file
     val connectionFile = Path.of(s"$connectionSaveFolder/$name.csv")
     val tryConnectionFromFile = if (connectionFile.toFile.exists()) {
@@ -71,7 +70,7 @@ object ConnectionRepository {
     } else {
       Failure(new IllegalArgumentException(s"Connection file not found: $name"))
     }
-    
+
     tryConnectionFromFile match {
       case Success(connection) => connection.copy(options = connection.options)
       case Failure(fileException) =>
@@ -108,9 +107,9 @@ object ConnectionRepository {
     }
   }
 
-  private def getAllConnections(optConnectionGroupType: Option[String], masking: Boolean = true): GetConnectionsResponse = {
+  private def getAllConnections(optConnectionGroupType: Option[String], connectionSaveFolder: String, masking: Boolean = true): GetConnectionsResponse = {
     LOGGER.debug(s"Getting all connection details, connection-group=${optConnectionGroupType.getOrElse("")}")
-    
+
     // Get connections from files
     val connectionPath = Path.of(connectionSaveFolder)
     if (!connectionPath.toFile.exists()) connectionPath.toFile.mkdirs()
@@ -127,10 +126,10 @@ object ConnectionRepository {
       .filter(_.isSuccess)
       .map(_.get)
       .toList
-    
+
     // Get connections from application.conf
     val configConnections = getConnectionsFromConfig(masking)
-    
+
     // Merge connections, with file connections taking priority (deduplicating by name)
     val allConnections = (fileConnections ++ configConnections)
       .groupBy(_.name)
@@ -138,7 +137,7 @@ object ConnectionRepository {
       .toList
       .filter(conn => optConnectionGroupType.forall(conn.groupType.contains))
       .sortBy(_.name)
-    
+
     GetConnectionsResponse(allConnections)
   }
   
@@ -161,7 +160,7 @@ object ConnectionRepository {
     }.toList
   }
 
-  private def removeConnection(connectionName: String): Boolean = {
+  private def removeConnection(connectionName: String, connectionSaveFolder: String): Boolean = {
     LOGGER.warn(s"Removing connections details from file system, connection-name=$connectionName")
     val connectionFile = Path.of(s"$connectionSaveFolder/$connectionName.csv").toFile
     if (connectionFile.exists()) {

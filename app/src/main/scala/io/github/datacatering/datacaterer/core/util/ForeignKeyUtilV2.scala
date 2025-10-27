@@ -62,6 +62,7 @@ object ForeignKeyUtilV2 {
    * @param sourceFields List of source field names to sample from
    * @param targetFields List of target field names to populate (must match sourceFields length)
    * @param config Configuration for FK generation behavior
+   * @param targetPerFieldCount Optional perField count configuration from target step
    * @return Target DataFrame with foreign key values populated
    */
   def applyForeignKeysToTargetDf(
@@ -69,7 +70,8 @@ object ForeignKeyUtilV2 {
     targetDf: DataFrame,
     sourceFields: List[String],
     targetFields: List[String],
-    config: ForeignKeyConfig = ForeignKeyConfig()
+    config: ForeignKeyConfig = ForeignKeyConfig(),
+    targetPerFieldCount: Option[io.github.datacatering.datacaterer.api.model.PerFieldCount] = None
   ): DataFrame = {
 
     require(sourceFields.length == targetFields.length,
@@ -78,6 +80,11 @@ object ForeignKeyUtilV2 {
     LOGGER.info(s"Applying foreign keys: source fields=${sourceFields.mkString(",")}, target fields=${targetFields.mkString(",")}")
     LOGGER.info(s"FK Config: violations=${config.violationRatio}, strategy=${config.violationStrategy}")
 
+    if (targetPerFieldCount.isDefined) {
+      LOGGER.info(s"Target has perField count: fields=${targetPerFieldCount.get.fieldNames.mkString(",")}, " +
+        s"count=${targetPerFieldCount.get.count.getOrElse("dynamic")}")
+    }
+
     // Separate nested and flat fields
     val fieldMappings = sourceFields.zip(targetFields)
     val nestedMappings = fieldMappings.filter(_._2.contains("."))
@@ -85,18 +92,76 @@ object ForeignKeyUtilV2 {
 
     LOGGER.debug(s"Field analysis: flat=${flatMappings.length}, nested=${nestedMappings.length}")
 
-    // Determine approach based on field types
+    // Determine approach based on field types and perField configuration
     if (nestedMappings.isEmpty && flatMappings.nonEmpty) {
       // Pure flat fields - use optimized flat field approach
-      applyFlatFieldForeignKeys(sourceDf, targetDf, flatMappings, config)
+      applyFlatFieldForeignKeys(sourceDf, targetDf, flatMappings, config, targetPerFieldCount)
     } else if (nestedMappings.nonEmpty) {
       // Has nested fields - use unified distributed sampling approach
-      applyDistributedSamplingForeignKeys(sourceDf, targetDf, fieldMappings, config)
+      applyDistributedSamplingForeignKeys(sourceDf, targetDf, fieldMappings, config, targetPerFieldCount)
     } else {
       // No fields to process
       LOGGER.warn("No foreign key fields to process")
       targetDf
     }
+  }
+
+  /**
+   * Apply foreign keys when target has perField count defined and FK fields are part of the grouping.
+   *
+   * This method ensures that all records from the same perField group get the same FK value.
+   * It works by:
+   * 1. Creating stable groups based on perField count (expected number of records per group)
+   * 2. Assigning one FK value per group (not per record)
+   * 3. Ensuring referential integrity is maintained
+   */
+  private def applyGroupedForeignKeys(
+    sourceDf: DataFrame,
+    targetDf: DataFrame,
+    fieldMappings: List[(String, String)],
+    config: ForeignKeyConfig,
+    perFieldCount: io.github.datacatering.datacaterer.api.model.PerFieldCount
+  ): DataFrame = {
+
+    val sourceFields = fieldMappings.map(_._1)
+    val targetFields = fieldMappings.map(_._2)
+    val perFieldAvgCount = perFieldCount.count.getOrElse(10L)
+
+    LOGGER.info(s"Applying grouped FKs: perField count=$perFieldAvgCount, grouping fields=${perFieldCount.fieldNames.mkString(",")}")
+
+    // Get distinct source values
+    val distinctSource = sourceDf.select(sourceFields.map(col): _*).distinct()
+    val sourceCount = distinctSource.count()
+
+    // Add index to source
+    val windowSpec = Window.orderBy(lit(1))
+    val sourceWithIndex = distinctSource
+      .withColumn("_fk_idx", row_number().over(windowSpec) - 1)
+
+    // For target, create stable groups based on perField count
+    // Each group of ~perFieldAvgCount consecutive rows should get the same FK
+    val targetWithGroup = targetDf
+      .withColumn("_row_num", row_number().over(Window.orderBy(lit(1))) - 1)
+      .withColumn("_group_id", floor(col("_row_num") / perFieldAvgCount))
+      .withColumn("_fk_idx", col("_group_id") % sourceCount)
+
+    // Rename source fields to avoid ambiguity before join
+    val renamedSource = sourceFields.foldLeft(sourceWithIndex) { case (df, field) =>
+      df.withColumnRenamed(field, s"_src_$field")
+    }
+
+    // Join on index
+    val joined = targetWithGroup.join(broadcast(renamedSource), Seq("_fk_idx"), "left")
+
+    // Update target fields with source values
+    var result = joined
+    fieldMappings.foreach { case (sourceField, targetField) =>
+      val srcColName = s"_src_$sourceField"
+      result = result.withColumn(targetField, col(srcColName))
+    }
+
+    // Clean up temporary columns and return
+    result.select(targetDf.columns.map(col): _*)
   }
 
   /**
@@ -109,13 +174,26 @@ object ForeignKeyUtilV2 {
     sourceDf: DataFrame,
     targetDf: DataFrame,
     fieldMappings: List[(String, String)],
-    config: ForeignKeyConfig
+    config: ForeignKeyConfig,
+    targetPerFieldCount: Option[io.github.datacatering.datacaterer.api.model.PerFieldCount] = None
   ): DataFrame = {
 
     val sourceFields = fieldMappings.map(_._1)
     val targetFields = fieldMappings.map(_._2)
 
     LOGGER.info(s"Using optimized flat field approach for ${fieldMappings.length} fields")
+
+    // Check if we need to handle perField grouping
+    val needsPerFieldGrouping = targetPerFieldCount.isDefined && {
+      val perFieldNames = targetPerFieldCount.get.fieldNames
+      // Check if any of the FK target fields are in the perField grouping
+      targetFields.exists(perFieldNames.contains)
+    }
+
+    if (needsPerFieldGrouping) {
+      LOGGER.info("Target has perField count and FK fields overlap with perField grouping - using grouped FK assignment")
+      return applyGroupedForeignKeys(sourceDf, targetDf, fieldMappings, config, targetPerFieldCount.get)
+    }
 
     // Get distinct source values
     val distinctSource = sourceDf.select(sourceFields.map(col): _*).distinct()
@@ -233,7 +311,8 @@ object ForeignKeyUtilV2 {
     sourceDf: DataFrame,
     targetDf: DataFrame,
     fieldMappings: List[(String, String)],
-    config: ForeignKeyConfig
+    config: ForeignKeyConfig,
+    targetPerFieldCount: Option[io.github.datacatering.datacaterer.api.model.PerFieldCount] = None
   ): DataFrame = {
 
     val sourceFields = fieldMappings.map(_._1)

@@ -37,12 +37,18 @@ object ForeignKeyUtil {
    * @param plan                     where foreign key definitions are defined
    * @param generatedDataForeachTask list of <dataSourceName>.<stepName> => generated data as dataframe
    * @param useV2                    if true, use ForeignKeyUtilV2 implementation; if false, use V1 implementation
+   * @param executableTasks          optional list of (TaskSummary, Task) for accessing step configurations
    * @return map of <dataSourceName>.<stepName> => dataframe
    */
-  def getDataFramesWithForeignKeys(plan: Plan, generatedDataForeachTask: List[(String, DataFrame)], useV2: Boolean): List[(String, DataFrame)] = {
+  def getDataFramesWithForeignKeys(
+    plan: Plan,
+    generatedDataForeachTask: List[(String, DataFrame)],
+    useV2: Boolean,
+    executableTasks: Option[List[(io.github.datacatering.datacaterer.api.model.TaskSummary, io.github.datacatering.datacaterer.api.model.Task)]] = None
+  ): List[(String, DataFrame)] = {
     if (useV2) {
       LOGGER.info("Using ForeignKeyUtilV2 implementation")
-      getDataFramesWithForeignKeysV2(plan, generatedDataForeachTask)
+      getDataFramesWithForeignKeysV2(plan, generatedDataForeachTask, executableTasks)
     } else {
       LOGGER.info("Using ForeignKeyUtil V1 implementation")
       getDataFramesWithForeignKeysV1(plan, generatedDataForeachTask)
@@ -52,7 +58,11 @@ object ForeignKeyUtil {
   /**
    * V2 implementation using ForeignKeyUtilV2 for improved performance
    */
-  private def getDataFramesWithForeignKeysV2(plan: Plan, generatedDataForeachTask: List[(String, DataFrame)]): List[(String, DataFrame)] = {
+  private def getDataFramesWithForeignKeysV2(
+    plan: Plan,
+    generatedDataForeachTask: List[(String, DataFrame)],
+    executableTasks: Option[List[(io.github.datacatering.datacaterer.api.model.TaskSummary, io.github.datacatering.datacaterer.api.model.Task)]]
+  ): List[(String, DataFrame)] = {
     val generatedDataForeachTaskMap = generatedDataForeachTask.toMap
     val enabledSources = plan.tasks.filter(_.enabled).map(_.dataSourceName)
     val sinkOptions = plan.sinkOptions.get
@@ -82,13 +92,25 @@ object ForeignKeyUtil {
         val targetDf = optTargetDf.get._2
         if (target.fields.forall(field => hasDfContainField(field, targetDf.schema.fields))) {
           LOGGER.info(s"Applying foreign key values to target data source using V2, source-data=${foreignKeyDetails.source.dataSource}, target-data=${target.dataSource}")
-          // Use ForeignKeyUtilV2 with default config (no violations)
+
+          // Look up target step from executableTasks to check for perField count
+          val optTargetStep = executableTasks.flatMap(tasks =>
+            tasks
+              .find(_._1.dataSourceName == target.dataSource)
+              .flatMap(_._2.steps.find(_.name == target.step))
+          )
+
+          // Check if target has perField count defined
+          val targetPerFieldCount = optTargetStep.flatMap(step => step.count.perField)
+
+          // Use ForeignKeyUtilV2 with perField information
           val dfWithForeignKeys = ForeignKeyUtilV2.applyForeignKeysToTargetDf(
             sourceDf,
             targetDf,
             foreignKeyDetails.source.fields,
             target.fields,
-            ForeignKeyUtilV2.ForeignKeyConfig()
+            ForeignKeyUtilV2.ForeignKeyConfig(),
+            targetPerFieldCount
           )
           if (!dfWithForeignKeys.storageLevel.useMemory) dfWithForeignKeys.cache()
           (targetDfName, dfWithForeignKeys)

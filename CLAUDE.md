@@ -182,29 +182,26 @@ The system supports:
 
 ### Regex Patterns
 
-Fields can use regex patterns for data generation. The system has two generation modes:
+Fields can use regex patterns for data generation. The system uses an intelligent SQL-based approach by default:
 
-**Standard Mode** (default):
-- Uses DataFaker's `regexify()` for accurate regex generation
-- Slower due to UDF calls in distributed execution
-
-**Fast Mode** (`enableFastGeneration: true`):
-- Parses regex patterns into SQL expressions (no UDFs)
+**Default Regex Generation** (always enabled):
+- Automatically parses regex patterns into efficient SQL expressions (no UDFs)
 - Supports common business patterns: `\d`, `[A-Z]`, `[0-9]`, quantifiers `{n}`, `{m,n}`, alternations `(A|B|C)`
-- Falls back to UDF for unsupported patterns (backreferences, lookaheads, etc.)
+- **Automatically falls back to UDF** for unsupported patterns (backreferences, lookaheads, etc.)
+- No configuration needed - just use `.regex()` and the system chooses the best approach
 
 ```scala
-// Supported patterns in fast mode
+// These patterns use pure SQL generation (fast)
 field.name("account_id").regex("ACC[0-9]{8}")              // → CONCAT('ACC', LPAD(...))
 field.name("product_code").regex("[A-Z]{3}-[0-9]{2}")     // → CONCAT(letters, '-', digits)
 field.name("status").regex("(ACTIVE|INACTIVE|PENDING)")   // → ELEMENT_AT(ARRAY(...), RAND())
 field.name("serial").regex("[A-Z0-9]{16}")                // → Alphanumeric generation
 
-// Unsupported patterns fall back to UDF
+// Complex patterns automatically fall back to UDF (still works correctly)
 field.name("complex").regex("(?=lookahead)pattern")       // → Uses GENERATE_REGEX UDF
 ```
 
-**Implementation**: Regex patterns are parsed using `RegexPatternParser` (in `core.generator.provider.regex` package) which converts supported patterns to an AST and generates pure SQL. Parsing happens once during generator initialization with success/failure logged at DEBUG/WARN levels.
+**Implementation**: Regex patterns are parsed using `RegexPatternParser` (in `core.generator.provider.regex` package) which converts supported patterns to an AST and generates pure SQL. Unsupported patterns automatically fall back to DataFaker's `regexify()` UDF. Parsing happens once during generator initialization with success/failure logged at DEBUG/WARN levels.
 
 ## UI and API Integration
 

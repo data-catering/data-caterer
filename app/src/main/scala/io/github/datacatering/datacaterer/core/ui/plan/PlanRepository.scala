@@ -76,42 +76,42 @@ object PlanRepository {
 
   final case class GenerateFromSchema(request: SchemaSampleRequest, replyTo: ActorRef[SampleResponse]) extends PlanCommand
 
-  private val executionSaveFolder = s"$INSTALL_DIRECTORY/execution"
-  private val planSaveFolder = s"$INSTALL_DIRECTORY/plan"
   implicit val ec: ExecutionContextExecutor = ExecutionContext.global
 
-  def apply(): Behavior[PlanCommand] = {
+  def apply(baseDirectory: String = INSTALL_DIRECTORY): Behavior[PlanCommand] = {
+    val executionSaveFolder = s"$baseDirectory/execution"
+    val planSaveFolder = s"$baseDirectory/plan"
     Behaviors.supervise[PlanCommand] {
       Behaviors.receiveMessage {
         case RunPlan(planRunRequest, replyTo) =>
-          runPlan(planRunRequest, replyTo)
+          runPlan(planRunRequest, replyTo, baseDirectory, executionSaveFolder, planSaveFolder)
           Behaviors.same
         case RunPlanDeleteData(planRunRequest, replyTo) =>
-          runPlanWithDeleteFlags(planRunRequest, replyTo)
+          runPlanWithDeleteFlags(planRunRequest, replyTo, baseDirectory, executionSaveFolder, planSaveFolder)
           Behaviors.same
         case RunEnhancedPlan(request, replyTo) =>
-          runEnhancedPlan(request, replyTo)
+          runEnhancedPlan(request, replyTo, executionSaveFolder, planSaveFolder)
           Behaviors.same
         case SavePlan(planRunRequest) =>
-          savePlan(planRunRequest)
+          savePlan(planRunRequest, planSaveFolder)
           Behaviors.same
         case GetPlans(replyTo) =>
           replyTo ! getPlans
           Behaviors.same
         case GetPlan(name, replyTo) =>
-          replyTo ! getPlan(name)
+          replyTo ! getPlan(name, planSaveFolder)
           Behaviors.same
         case GetPlanRunStatus(id, replyTo) =>
-          replyTo ! getPlanRunStatus(id)
+          replyTo ! getPlanRunStatus(id, executionSaveFolder)
           Behaviors.same
         case GetPlanRunReportPath(id, replyTo) =>
-          replyTo ! getPlanRunReportPath(id)
+          replyTo ! getPlanRunReportPath(id, executionSaveFolder)
           Behaviors.same
         case RemovePlan(name) =>
-          removePlan(name)
+          removePlan(name, planSaveFolder)
           Behaviors.same
         case GetPlanRuns(replyTo) =>
-          replyTo ! getAllPlanExecutions
+          replyTo ! getAllPlanExecutions(executionSaveFolder)
           Behaviors.same
         case StartupSpark() =>
           startupSpark()
@@ -125,7 +125,10 @@ object PlanRepository {
 
   private def runPlanWithDeleteFlags(
                                       planRunRequest: PlanRunRequest,
-                                      replyTo: ActorRef[Response]
+                                      replyTo: ActorRef[Response],
+                                      baseDirectory: String,
+                                      executionSaveFolder: String,
+                                      planSaveFolder: String
                                     ): Unit = {
     // alter plan run request to enable delete, disable data generation and validation
     val optUpdatedConfig = planRunRequest.configuration.map(config => {
@@ -138,43 +141,46 @@ object PlanRepository {
       config.copy(flag = updatedFlagConfig)
     })
     val updatedPlanRunRequest = planRunRequest.copy(configuration = optUpdatedConfig)
-    runPlan(updatedPlanRunRequest, replyTo, true, false)
+    runPlan(updatedPlanRunRequest, replyTo, baseDirectory, executionSaveFolder, planSaveFolder, true, false)
   }
 
   private def runPlan(
                        planRunRequest: PlanRunRequest,
                        replyTo: ActorRef[Response],
+                       baseDirectory: String,
+                       executionSaveFolder: String,
+                       planSaveFolder: String,
                        isDeleteRun: Boolean = false,
                        savePlan: Boolean = true
                      ): Unit = {
     LOGGER.debug("Received request to run plan, attempting to parse plan request")
     val planRunExecution = PlanRunExecution(planRunRequest.plan.name, planRunRequest.id, STARTED)
-    savePlanRunExecution(planRunRequest, planRunExecution, isDeleteRun, savePlan)
+    savePlanRunExecution(planRunRequest, planRunExecution, executionSaveFolder, planSaveFolder, isDeleteRun, savePlan)
 
-    val tryPlanAsYaml = Try(getPlanAsYaml(planRunRequest))
+    val tryPlanAsYaml = Try(getPlanAsYaml(planRunRequest, baseDirectory))
     tryPlanAsYaml match {
       case Success(planAsYaml) =>
-        updatePlanRunExecution(planRunExecution, PARSED_PLAN)
+        updatePlanRunExecution(planRunExecution, PARSED_PLAN, executionSaveFolder)
         val runPlanFuture = Future {
           PlanProcessor.determineAndExecutePlan(Some(planAsYaml), DATA_CATERER_INTERFACE_UI)
         }
 
         runPlanFuture.onComplete {
           case Failure(planException) =>
-            updatePlanRunExecution(planRunExecution, FAILED, Some(planException.getMessage))
+            updatePlanRunExecution(planRunExecution, FAILED, executionSaveFolder, Some(planException.getMessage))
             replyTo ! KO(planException.getMessage, planException)
           case Success(results) =>
-            updatePlanRunExecution(planRunExecution, FINISHED, None, Some(results))
+            updatePlanRunExecution(planRunExecution, FINISHED, executionSaveFolder, None, Some(results))
             replyTo ! OK
         }
       case Failure(parseException) =>
-        updatePlanRunExecution(planRunExecution, FAILED, Some(parseException.getMessage))
+        updatePlanRunExecution(planRunExecution, FAILED, executionSaveFolder, Some(parseException.getMessage))
         replyTo ! KO(parseException.getMessage, parseException)
     }
 
   }
 
-  private def getPlanAsYaml(parsedRequest: PlanRunRequest): YamlPlanRun = {
+  private def getPlanAsYaml(parsedRequest: PlanRunRequest, baseDirectory: String): YamlPlanRun = {
     // Only process tasks that are actually defined in the UI request
     // Tasks referenced in the plan but not provided here will be loaded from YAML files
     val providedTaskNames = parsedRequest.tasks.map(_.name).toSet
@@ -198,7 +204,7 @@ object PlanRepository {
     val updatedValidation = validationWithConnectionInfo(parsedRequest, dataSourceConnectionInfo)
     val updatedTasks = tasksWithConnectionInfo(parsedRequest, taskToDataSourceMap, dataSourceConnectionInfo)
     val updatedConfiguration = parsedRequest.configuration
-      .map(c => configurationMapping(c, INSTALL_DIRECTORY))
+      .map(c => configurationMapping(c, baseDirectory))
       .getOrElse(DataCatererConfigurationBuilder())
     val dataCatererConfiguration = updatedConfiguration.build.copy(connectionConfigByName = dataSourceConnectionInfo)
     new YamlPlanRun(parsedRequest.plan, updatedTasks, Some(updatedValidation), dataCatererConfiguration)
@@ -264,11 +270,13 @@ object PlanRepository {
   private def savePlanRunExecution(
                                     planRunRequest: PlanRunRequest,
                                     planRunExecution: PlanRunExecution,
+                                    executionSaveFolder: String,
+                                    planSaveFolder: String,
                                     isDeleteRun: Boolean = false,
                                     isSavePlan: Boolean = true
                                   ): Unit = {
     LOGGER.debug(s"Saving plan run execution details, plan-name=${planRunRequest.plan.name}, plan-run-id=${planRunRequest.id}")
-    if (!isDeleteRun && isSavePlan) savePlan(planRunRequest)
+    if (!isDeleteRun && isSavePlan) savePlan(planRunRequest, planSaveFolder)
     val filePath = s"$executionSaveFolder/${planRunExecution.id}.csv"
     try {
       val basePath = Path.of(executionSaveFolder).toFile
@@ -284,7 +292,7 @@ object PlanRepository {
     }
   }
 
-  private def savePlan(planRunRequest: PlanRunRequest): Unit = {
+  private def savePlan(planRunRequest: PlanRunRequest, planSaveFolder: String): Unit = {
     LOGGER.debug(s"Saving plan details, plan-name=${planRunRequest.plan.name}")
     val filePath = s"$planSaveFolder/${planRunRequest.plan.name}.json"
     try {
@@ -309,7 +317,7 @@ object PlanRepository {
     PlanRunRequests(allPlans)
   }
 
-  private def getPlan(name: String): PlanRunRequest = {
+  private def getPlan(name: String, planSaveFolder: String): PlanRunRequest = {
     LOGGER.debug(s"Getting plan details, plan-name=$name")
     val planFile = Path.of(s"$planSaveFolder/$name.json")
     val fileContent = Files.readString(planFile)
@@ -319,6 +327,7 @@ object PlanRepository {
   private def updatePlanRunExecution(
                                       planRunExecution: PlanRunExecution,
                                       status: String,
+                                      executionSaveFolder: String,
                                       failedReason: Option[String] = None,
                                       results: Option[PlanRunResults] = None
                                     ): Unit = {
@@ -337,7 +346,7 @@ object PlanRepository {
     Files.writeString(executionFile, updatedPlanRun.toString, StandardOpenOption.WRITE, StandardOpenOption.APPEND)
   }
 
-  private def getPlanRunStatus(id: String): PlanRunExecution = {
+  private def getPlanRunStatus(id: String, executionSaveFolder: String): PlanRunExecution = {
     LOGGER.debug(s"Getting current plan status, plan-run-id=$id")
     try {
       val executionFile = Path.of(s"$executionSaveFolder/$id.csv")
@@ -350,13 +359,13 @@ object PlanRepository {
     }
   }
 
-  private def getPlanRunReportPath(id: String): String = {
-    val planRunExecution = getPlanRunStatus(id)
+  private def getPlanRunReportPath(id: String, executionSaveFolder: String): String = {
+    val planRunExecution = getPlanRunStatus(id, executionSaveFolder)
     LOGGER.debug(s"Report link pathway, id=$id, path=${planRunExecution.reportLink.getOrElse("")}")
     planRunExecution.reportLink.getOrElse(s"/tmp/report/$id")
   }
 
-  private def getAllPlanExecutions: PlanRunExecutionDetails = {
+  private def getAllPlanExecutions(executionSaveFolder: String): PlanRunExecutionDetails = {
     LOGGER.debug("Getting all plan executions")
     val executionPath = Path.of(executionSaveFolder)
     if (!executionPath.toFile.exists()) executionPath.toFile.mkdirs()
@@ -386,7 +395,7 @@ object PlanRepository {
     PlanRunExecutionDetails(groupedExecutions)
   }
 
-  private def removePlan(name: String): Unit = {
+  private def removePlan(name: String, planSaveFolder: String): Unit = {
     LOGGER.debug(s"Removing plan, plan-name=$name")
     val planFile = Path.of(s"$planSaveFolder/$name.json").toFile
     if (planFile.exists()) {
@@ -457,15 +466,16 @@ object PlanRepository {
   /**
    * Enhanced plan execution with support for task/step filtering and multiple source types
    */
-  private def runEnhancedPlan(request: EnhancedPlanRunRequest, replyTo: ActorRef[Response]): Unit = {
+  private def runEnhancedPlan(request: EnhancedPlanRunRequest, replyTo: ActorRef[Response], executionSaveFolder: String, planSaveFolder: String): Unit = {
     LOGGER.info(s"Running enhanced plan, plan-name=${request.planName}, source=${request.sourceType}, " +
       s"mode=${request.mode}, task-filter=${request.taskFilter}, step-filter=${request.stepFilter}")
 
+    val baseDirectory = planSaveFolder.stripSuffix("/plan")
     val tryRunPlan = Try {
       if (request.sourceType == "yaml" || (request.sourceType == "auto" && !planExistsInJson(request.planName))) {
         // For YAML plans, use the enhanced parsing pipeline that supports filtering
         LOGGER.debug(s"Running YAML plan, plan-name=${request.planName}")
-        runEnhancedYamlPlan(request, replyTo)
+        runEnhancedYamlPlan(request, replyTo, executionSaveFolder, planSaveFolder)
       } else {
         // For JSON plans, use the existing filtering approach
         LOGGER.debug(s"Running JSON plan, plan-name=${request.planName}")
@@ -474,9 +484,9 @@ object PlanRepository {
         val finalPlanRunRequest = applyExecutionMode(filteredPlanRunRequest, request)
 
         if (request.isDeleteMode) {
-          runPlanWithDeleteFlags(finalPlanRunRequest, replyTo)
+          runPlanWithDeleteFlags(finalPlanRunRequest, replyTo, baseDirectory, executionSaveFolder, planSaveFolder)
         } else {
-          runPlan(finalPlanRunRequest, replyTo, false, false)
+          runPlan(finalPlanRunRequest, replyTo, baseDirectory, executionSaveFolder, planSaveFolder, false, false)
         }
       }
     }
@@ -663,14 +673,14 @@ object PlanRepository {
   /**
    * Run YAML plan with enhanced filtering support by using PlanProcessor's filtering-aware parsing
    */
-  private def runEnhancedYamlPlan(request: EnhancedPlanRunRequest, replyTo: ActorRef[Response]): Unit = {
+  private def runEnhancedYamlPlan(request: EnhancedPlanRunRequest, replyTo: ActorRef[Response], executionSaveFolder: String, planSaveFolder: String): Unit = {
     val tryRunPlan = Try {
       import io.github.datacatering.datacaterer.core.plan.PlanProcessor
       implicit val sparkSession: SparkSession = createSparkSession()
 
       val runId = java.util.UUID.randomUUID().toString
       val planRunExecution = PlanRunExecution(request.planName, runId, STARTED)
-      savePlanRunExecution(PlanRunRequest(runId, Plan(name = request.planName)), planRunExecution, request.isDeleteMode, false)
+      savePlanRunExecution(PlanRunRequest(runId, Plan(name = request.planName)), planRunExecution, executionSaveFolder, planSaveFolder, request.isDeleteMode, false)
 
       val runPlanFuture = Future {
         val dataCatererConfiguration = if (request.isDeleteMode) {
@@ -719,10 +729,10 @@ object PlanRepository {
 
       runPlanFuture.onComplete {
         case Failure(planException) =>
-          updatePlanRunExecution(planRunExecution, FAILED, Some(planException.getMessage))
+          updatePlanRunExecution(planRunExecution, FAILED, executionSaveFolder, Some(planException.getMessage))
           replyTo ! KO(planException.getMessage, planException)
         case Success(results) =>
-          updatePlanRunExecution(planRunExecution, FINISHED, None, Some(results))
+          updatePlanRunExecution(planRunExecution, FINISHED, executionSaveFolder, None, Some(results))
           replyTo ! OK
       }
     }

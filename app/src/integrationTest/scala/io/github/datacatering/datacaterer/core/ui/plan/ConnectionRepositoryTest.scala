@@ -14,16 +14,26 @@ import java.nio.file.{Files, Path, Paths}
 class ConnectionRepositoryTest extends AnyFunSuiteLike with BeforeAndAfterAll with MockitoSugar with Matchers {
 
   private val testKit: ActorTestKit = ActorTestKit()
-  private val tempTestDirectory = "/tmp/data-caterer-connection-repository-test"
+  // Use unique directory for this test to avoid conflicts with other tests
+  private val tempTestDirectory = s"/tmp/data-caterer-test-${java.util.UUID.randomUUID().toString.take(8)}"
   var connectionRepository: ActorRef[ConnectionRepository.ConnectionCommand] = _
 
   override def beforeAll(): Unit = {
     super.beforeAll()
-    System.setProperty("data-caterer-install-dir", tempTestDirectory)
-    connectionRepository = testKit.spawn(ConnectionRepository(), "connection-repository")
+    // Use unique actor name to avoid conflicts with other tests
+    val uniqueActorName = s"connection-repository-${java.util.UUID.randomUUID().toString.take(8)}"
+    connectionRepository = testKit.spawn(ConnectionRepository(tempTestDirectory), uniqueActorName)
   }
 
-  override def afterAll(): Unit = testKit.shutdownTestKit()
+  override def afterAll(): Unit = {
+    testKit.shutdownTestKit()
+    // Clean up test directory
+    val testDir = Paths.get(tempTestDirectory).toFile
+    if (testDir.exists()) {
+      testDir.listFiles().foreach(_.delete())
+      testDir.delete()
+    }
+  }
 
   test("saveConnection should save connection details correctly") {
     val connection = Connection("testConnection", "csv", Some(CONNECTION_GROUP_DATA_SOURCE), Map("key" -> "value"))
@@ -41,12 +51,14 @@ class ConnectionRepositoryTest extends AnyFunSuiteLike with BeforeAndAfterAll wi
     connectionRepository ! ConnectionRepository.SaveConnections(SaveConnectionsRequest(List(connection)))
 
     Thread.sleep(50) // Wait for async save to complete
-    val retrievedConnection = ConnectionRepository.getConnection("testConnection")
+    val connectionSaveFolder = s"$tempTestDirectory/connection"
+    val retrievedConnection = ConnectionRepository.getConnection("testConnection", connectionSaveFolder)
     retrievedConnection shouldEqual connection
   }
 
   test("getConnection should throw exception for non-existent connection") {
-    an[Exception] should be thrownBy ConnectionRepository.getConnection("nonExistentConnection")
+    val connectionSaveFolder = s"$tempTestDirectory/connection"
+    an[Exception] should be thrownBy ConnectionRepository.getConnection("nonExistentConnection", connectionSaveFolder)
   }
 
   test("getAllConnections should return all saved connections") {

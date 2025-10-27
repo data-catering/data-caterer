@@ -277,6 +277,10 @@ tasks.register<Test>("integrationTest") {
     // Integration tests should run sequentially to avoid conflicts
     maxParallelForks = 1
 
+    // Fork a new JVM for each test class to isolate state (actors, system properties, Spark sessions)
+    // This is necessary because integration tests like PlanApiEndToEndTest modify global state
+    forkEvery = 1
+
     // Enable proper test filtering
     filter {
         setFailOnNoMatchingTests(false)

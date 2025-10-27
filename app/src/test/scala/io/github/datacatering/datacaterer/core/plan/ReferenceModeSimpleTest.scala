@@ -83,7 +83,6 @@ class ReferenceModeSimpleTest extends SparkSuite with BeforeAndAfterEach {
     
     // Debug: Print actual data for inspection
     println(s"Found ${collectedData.length} records:")
-    collectedData.foreach(row => println(s"  Row: ${row.mkString}"))
     
     // Should have 3 records (one for each reference data record)
     assert(collectedData.length == 3, s"Expected 3 records, got ${collectedData.length}")

@@ -36,11 +36,8 @@ object GeneratorUtil {
     if (hasOneOf) {
       OneOfDataGenerator.getGenerator(structField, faker)
     } else if (hasRegex) {
-      if (enableFastGeneration) {
-        new FastRegexDataGenerator(structField, faker)
-      } else {
-        RegexDataGenerator.getGenerator(structField, faker)
-      }
+      // Always use FastRegexDataGenerator for regex patterns (it falls back to UDF for unsupported patterns)
+      new FastRegexDataGenerator(structField, faker)
     } else if (hasSql || hasExpression) {
       if (enableFastGeneration && hasExpression) {
         new FastStringDataGenerator(structField, faker)
@@ -64,11 +61,8 @@ object GeneratorUtil {
     if (generatorOpts.contains(ONE_OF_GENERATOR)) {
       OneOfDataGenerator.getGenerator(structField, faker)
     } else if (generatorOpts.contains(REGEX_GENERATOR)) {
-      if (enableFastGeneration) {
-        new FastRegexDataGenerator(structField, faker)
-      } else {
-        RegexDataGenerator.getGenerator(structField, faker)
-      }
+      // Always use FastRegexDataGenerator for regex patterns (it falls back to UDF for unsupported patterns)
+      new FastRegexDataGenerator(structField, faker)
     } else {
       // For string fields in fast mode, use fast generator
       if (enableFastGeneration && structField.dataType.typeName == "string") {

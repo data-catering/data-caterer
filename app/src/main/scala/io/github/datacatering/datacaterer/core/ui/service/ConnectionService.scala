@@ -31,7 +31,7 @@ object ConnectionService {
    */
   def getConnection(connectionName: String, masking: Boolean = true): Connection = {
     LOGGER.debug(s"Getting connection, connection-name=$connectionName, masking=$masking")
-    ConnectionRepository.getConnection(connectionName, masking)
+    ConnectionRepository.getConnection(connectionName, masking = masking)
   }
 
   /**

@@ -39,7 +39,7 @@ descriptions:
 | `enableEdgeCase`      | false   | `enableEdgeCase: "true"`                                                                            | Enable/disable generated data to contain edge cases based on the data type. For example, integer data type has edge cases of (Int.MaxValue, Int.MinValue and 0)                                                                                                                                                                                                            |
 | `edgeCaseProbability` | 0.0     | `edgeCaseProb: "0.1"`                                                                               | Probability of generating a random edge case value if `enableEdgeCase` is true                                                                                                                                                                                                                                                                                             |
 | `isUnique`            | false   | `isUnique: "true"`                                                                                  | Enable/disable generated data to be unique for that field. Errors will be thrown when it is unable to generate unique data                                                                                                                                                                                                                                                 |
-| `regex`               | <empty> | `regex: "ACC[0-9]{8}"`                                                                              | Regular expression to define pattern generated data should follow. See [Regex Patterns](#regex-patterns) for performance optimization with fast generation mode                                                                                                                                                                                                            |
+| `regex`               | <empty> | `regex: "ACC[0-9]{8}"`                                                                              | Regular expression to define pattern generated data should follow. The system automatically uses SQL generation for supported patterns with fallback to UDF. See [Regex Patterns](#regex-patterns) for details on supported patterns                                                                                                                                                                                                            |
 | `seed`                | <empty> | `seed: "1"`                                                                                         | Defines the random seed for generating data for that particular field. It will override any seed defined at a global level                                                                                                                                                                                                                                                 |
 | `sql`                 | <empty> | `sql: "CASE WHEN amount < 10 THEN true ELSE false END"`                                             | Define any SQL statement for generating that fields value. Computation occurs after all non-SQL fields are generated. This means any fields used in the SQL cannot be based on other SQL generated fields. Data type of generated value from SQL needs to match data type defined for the field. See [Advanced SQL Generation](#advanced-sql-generation) for more examples |
 | `oneOf`               | <empty> | `oneOf: ["open", "closed", "suspended"]` or `oneOf: ["open->0.8", "closed->0.1", "suspended->0.1"]` | Field can only take one of the prescribed values. Chance of value being chosen is based on the weight assigned to it. Weight can be any double value. **Java API also supports `WeightedValue` for better type safety.**                                                                                                                                                   |
@@ -1802,53 +1802,21 @@ Use window functions for ranking, running totals, and analytical calculations.
 
 ## Regex Patterns
 
-Fields can use regex patterns via the `regex` option for pattern-based data generation. The system supports two generation modes with different performance characteristics.
+Fields can use regex patterns via the `regex` option for pattern-based data generation. The system **automatically** uses an intelligent SQL-based approach with fallback to UDF when needed.
 
-### Standard Mode (Default)
+### Default Behavior (Always Enabled)
 
-Uses DataFaker's `regexify()` function for accurate regex generation. This mode:
+By default, Data Caterer automatically optimizes regex generation:
 
-- Supports full regex syntax including complex patterns
-- Slower due to UDF (User Defined Function) calls in distributed execution
-- Recommended for small datasets or when complex regex features are required
+- **Parses common regex patterns into pure SQL expressions** (fast, no UDFs)
+- **Automatically falls back to DataFaker UDF** for unsupported patterns (e.g., lookaheads, backreferences)
+- **No configuration required** - just use `.regex()` and the system chooses the best approach
+- Significantly faster for large datasets with supported patterns
+- Always correct regardless of pattern complexity
 
-### Fast Generation Mode
+### Supported Patterns (SQL Generation)
 
-Enable fast mode to convert regex patterns to pure SQL expressions, avoiding UDF overhead:
-
-=== "Java"
-
-    ```java
-    var config = configuration()
-      .enableFastGeneration(true);  // Enable fast mode globally
-    ```
-
-=== "Scala"
-
-    ```scala
-    val config = configuration
-      .enableFastGeneration(true)  // Enable fast mode globally
-    ```
-
-=== "YAML"
-
-    In your `application.conf` file, add the following:
-    ```
-    flags {
-      enableFastGeneration = true
-    }
-    ```
-
-**Fast mode characteristics:**
-
-- Parses regex patterns into pure SQL expressions (no UDFs)
-- Significantly faster for large datasets
-- Supports common business patterns (see below)
-- Falls back to UDF automatically for unsupported patterns
-
-### Supported Patterns in Fast Mode
-
-Fast mode supports these common regex features:
+The following patterns are converted to efficient SQL expressions automatically:
 
 | Pattern Type            | Examples                                    | SQL Output                           |
 | ----------------------- | ------------------------------------------- | ------------------------------------ |

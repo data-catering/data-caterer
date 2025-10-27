@@ -14,16 +14,29 @@ import java.nio.file.{Files, Path, Paths}
 class PlanRepositoryTest extends AnyFunSuiteLike with BeforeAndAfterAll with MockitoSugar with Matchers {
 
   private val testKit: ActorTestKit = ActorTestKit()
-  private val tempTestDirectory = "/tmp/data-caterer-plan-repository-test"
+  // Use unique directory for this test to avoid conflicts with other tests
+  private val tempTestDirectory = s"/tmp/data-caterer-test-${java.util.UUID.randomUUID().toString.take(8)}"
   var planRepository: ActorRef[PlanRepository.PlanCommand] = _
 
   override def beforeAll(): Unit = {
     super.beforeAll()
-    System.setProperty("data-caterer-install-dir", tempTestDirectory)
-    planRepository = testKit.spawn(PlanRepository(), "plan-repository")
+    // Use unique actor name to avoid conflicts with other tests
+    val uniqueActorName = s"plan-repository-${java.util.UUID.randomUUID().toString.take(8)}"
+    planRepository = testKit.spawn(PlanRepository(tempTestDirectory), uniqueActorName)
   }
 
-  override def afterAll(): Unit = testKit.shutdownTestKit()
+  override def afterAll(): Unit = {
+    testKit.shutdownTestKit()
+    // Clean up test directory
+    val testDir = Paths.get(tempTestDirectory).toFile
+    if (testDir.exists()) {
+      Option(testDir.listFiles()).foreach(_.foreach { subDir =>
+        Option(subDir.listFiles()).foreach(_.foreach(_.delete()))
+        subDir.delete()
+      })
+      testDir.delete()
+    }
+  }
 
   test("savePlan should save plan details correctly") {
     val planRunRequest = PlanRunRequest(
@@ -34,8 +47,9 @@ class PlanRepositoryTest extends AnyFunSuiteLike with BeforeAndAfterAll with Moc
 
     planRepository ! PlanRepository.SavePlan(planRunRequest)
 
-    Thread.sleep(200)
     val planFile = Path.of(s"$tempTestDirectory/plan/test-plan.json")
+    // Wait for file to exist with timeout
+    waitForFileToExist(planFile, timeoutMs = 5000)
     Files.exists(planFile) shouldBe true
   }
 
@@ -47,7 +61,7 @@ class PlanRepositoryTest extends AnyFunSuiteLike with BeforeAndAfterAll with Moc
     planRepository ! PlanRepository.SavePlan(plan1)
     planRepository ! PlanRepository.SavePlan(plan2)
 
-    Thread.sleep(150)
+    Thread.sleep(1000)  // Increased from 150ms to 1000ms
 
     val probe = testKit.createTestProbe[PlanRunRequests]()
     planRepository ! PlanRepository.GetPlans(probe.ref)
@@ -64,7 +78,7 @@ class PlanRepositoryTest extends AnyFunSuiteLike with BeforeAndAfterAll with Moc
     )
     planRepository ! PlanRepository.SavePlan(planRunRequest)
 
-    Thread.sleep(100)
+    Thread.sleep(500)  // Increased from 100ms to 500ms
 
     val probe = testKit.createTestProbe[PlanRunRequest]()
     planRepository ! PlanRepository.GetPlan("test-plan-get", probe.ref)
@@ -78,10 +92,10 @@ class PlanRepositoryTest extends AnyFunSuiteLike with BeforeAndAfterAll with Moc
     val plan = PlanRunRequest(id = "remove-test-001", plan = Plan(name = "test-plan-remove"))
     planRepository ! PlanRepository.SavePlan(plan)
 
-    Thread.sleep(100)
+    Thread.sleep(500)  // Increased from 100ms to 500ms
 
     planRepository ! PlanRepository.RemovePlan("test-plan-remove")
-    Thread.sleep(100)
+    Thread.sleep(500)  // Increased from 100ms to 500ms
     val planFile = Path.of(s"$tempTestDirectory/plan/test-plan-remove.json")
     Files.exists(planFile) shouldBe false
   }
@@ -117,10 +131,10 @@ class PlanRepositoryTest extends AnyFunSuiteLike with BeforeAndAfterAll with Moc
     val plan2 = PlanRunRequest(id = "overwrite-002", plan = Plan(name = "overwrite-test", description = "version2"))
 
     planRepository ! PlanRepository.SavePlan(plan1)
-    Thread.sleep(100)
+    Thread.sleep(500)  // Increased from 100ms to 500ms
 
     planRepository ! PlanRepository.SavePlan(plan2)
-    Thread.sleep(100)
+    Thread.sleep(500)  // Increased from 100ms to 500ms
 
     val probe = testKit.createTestProbe[PlanRunRequest]()
     planRepository ! PlanRepository.GetPlan("overwrite-test", probe.ref)
@@ -133,6 +147,13 @@ class PlanRepositoryTest extends AnyFunSuiteLike with BeforeAndAfterAll with Moc
     val path = Paths.get(s"$tempTestDirectory/$folder").toFile
     if (path.exists()) {
       path.listFiles().foreach(_.delete())
+    }
+  }
+
+  private def waitForFileToExist(file: Path, timeoutMs: Long): Unit = {
+    val startTime = System.currentTimeMillis()
+    while (!Files.exists(file) && (System.currentTimeMillis() - startTime) < timeoutMs) {
+      Thread.sleep(100)
     }
   }
 }
