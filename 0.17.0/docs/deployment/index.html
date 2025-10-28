@@ -2219,6 +2219,57 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#building-your-own-docker-image" class="md-nav__link">
+    <span class="md-ellipsis">
+      Building Your Own Docker Image
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Building Your Own Docker Image">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#using-the-multi-stage-dockerfile" class="md-nav__link">
+    <span class="md-ellipsis">
+      Using the Multi-Stage Dockerfile
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#customizing-for-your-project" class="md-nav__link">
+    <span class="md-ellipsis">
+      Customizing for Your Project
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#running-with-javascala-locally" class="md-nav__link">
+    <span class="md-ellipsis">
+      Running with Java/Scala Locally
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#build-configuration-tips" class="md-nav__link">
+    <span class="md-ellipsis">
+      Build Configuration Tips
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#docker-pre-and-post-processing-scripts" class="md-nav__link">
     <span class="md-ellipsis">
       Docker Pre and Post Processing Scripts
@@ -2613,6 +2664,29 @@
             Changelog
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../use-case/changelog/0.17.1/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    0.17.1
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
             
               
                 
@@ -3303,12 +3377,75 @@
 <h2 id="application">Application</h2>
 <p>Run the OS native application from <a href="../../get-started/quick-start/#quick-start">downloading the specific OS application here</a>.</p>
 <h2 id="docker">Docker</h2>
-<p>To package up your class along with the Data Caterer base image, you can follow
-the <a href="https://github.com/data-catering/data-caterer/blob/main/example/Dockerfile">Dockerfile that is created for you here</a>.</p>
-<p>Then you can run the following:</p>
-<div class="language-shell highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>./gradlew<span class="w"> </span>clean<span class="w"> </span>build
+<h3 id="building-your-own-docker-image">Building Your Own Docker Image</h3>
+<p>Data Caterer provides a multi-stage Dockerfile that automatically builds your custom Scala/Java project and packages it with the Data Caterer runtime. You can use this as a template for your own projects.</p>
+<p>The <a href="https://github.com/data-catering/data-caterer/blob/main/example/Dockerfile">example Dockerfile</a> demonstrates a two-stage build:</p>
+<ol>
+<li><strong>Build Stage</strong>: Uses Gradle to compile your Scala/Java code and create a JAR</li>
+<li><strong>Runtime Stage</strong>: Copies the JAR into the Data Caterer base image</li>
+</ol>
+<h4 id="using-the-multi-stage-dockerfile">Using the Multi-Stage Dockerfile</h4>
+<p>The multi-stage approach offers several advantages:
+- No need to pre-build the JAR locally
+- Consistent build environment across different machines
+- Optimized Docker layer caching for faster rebuilds
+- Smaller final image size (build tools not included)</p>
+<p>To build your own image:</p>
+<div class="language-shell highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="c1"># Build the Docker image (no pre-build needed)</span>
 </span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>docker<span class="w"> </span>build<span class="w"> </span>-t<span class="w"> </span>&lt;my_image_name&gt;:&lt;my_image_tag&gt;<span class="w"> </span>.
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>
+</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="c1"># Run your custom image</span>
+</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>docker<span class="w"> </span>run<span class="w"> </span>-d<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="w">  </span>-e<span class="w"> </span><span class="nv">PLAN_CLASS</span><span class="o">=</span>io.github.datacatering.plan.YourPlanClass<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="w">  </span>-e<span class="w"> </span><span class="nv">DEPLOY_MODE</span><span class="o">=</span>client<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-0-8"><a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a><span class="w">  </span>&lt;my_image_name&gt;:&lt;my_image_tag&gt;
 </span></code></pre></div>
+<h4 id="customizing-for-your-project">Customizing for Your Project</h4>
+<p>To adapt this for your own project, create a similar Dockerfile structure:</p>
+<div class="language-dockerfile highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="c"># Stage 1: Build</span>
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="k">FROM</span><span class="w"> </span><span class="s">gradle:8.11.1-jdk17</span><span class="w"> </span><span class="k">AS</span><span class="w"> </span><span class="s">builder</span>
+</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="k">WORKDIR</span><span class="w"> </span><span class="s">/build</span>
+</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>
+</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="c"># Copy build configuration</span>
+</span><span id="__span-1-6"><a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a><span class="k">COPY</span><span class="w"> </span>gradle<span class="w"> </span>./gradle
+</span><span id="__span-1-7"><a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="k">COPY</span><span class="w"> </span>gradlew<span class="w"> </span>gradlew.bat<span class="w"> </span>build.gradle.kts<span class="w"> </span>settings.gradle.kts*<span class="w"> </span>./
+</span><span id="__span-1-8"><a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a><span class="k">COPY</span><span class="w"> </span>buildSrc<span class="w"> </span>./buildSrc
+</span><span id="__span-1-9"><a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a>
+</span><span id="__span-1-10"><a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a><span class="c"># Download dependencies (cached layer)</span>
+</span><span id="__span-1-11"><a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a><span class="k">RUN</span><span class="w"> </span>./gradlew<span class="w"> </span>dependencies<span class="w"> </span>--no-daemon<span class="w"> </span><span class="o">||</span><span class="w"> </span>true
+</span><span id="__span-1-12"><a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a>
+</span><span id="__span-1-13"><a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a><span class="c"># Copy source and build</span>
+</span><span id="__span-1-14"><a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a><span class="k">COPY</span><span class="w"> </span>src<span class="w"> </span>./src
+</span><span id="__span-1-15"><a id="__codelineno-1-15" name="__codelineno-1-15" href="#__codelineno-1-15"></a><span class="k">RUN</span><span class="w"> </span>./gradlew<span class="w"> </span>clean<span class="w"> </span>build<span class="w"> </span>--no-daemon
+</span><span id="__span-1-16"><a id="__codelineno-1-16" name="__codelineno-1-16" href="#__codelineno-1-16"></a>
+</span><span id="__span-1-17"><a id="__codelineno-1-17" name="__codelineno-1-17" href="#__codelineno-1-17"></a><span class="c"># Stage 2: Runtime</span>
+</span><span id="__span-1-18"><a id="__codelineno-1-18" name="__codelineno-1-18" href="#__codelineno-1-18"></a><span class="k">ARG</span><span class="w"> </span><span class="nv">DATA_CATERER_VERSION</span><span class="o">=</span><span class="m">0</span>.17.0
+</span><span id="__span-1-19"><a id="__codelineno-1-19" name="__codelineno-1-19" href="#__codelineno-1-19"></a><span class="k">FROM</span><span class="w"> </span><span class="s">datacatering/data-caterer:${DATA_CATERER_VERSION}</span>
+</span><span id="__span-1-20"><a id="__codelineno-1-20" name="__codelineno-1-20" href="#__codelineno-1-20"></a>
+</span><span id="__span-1-21"><a id="__codelineno-1-21" name="__codelineno-1-21" href="#__codelineno-1-21"></a><span class="c"># Copy your JAR (adjust path if needed)</span>
+</span><span id="__span-1-22"><a id="__codelineno-1-22" name="__codelineno-1-22" href="#__codelineno-1-22"></a><span class="k">COPY</span><span class="w"> </span>--from<span class="o">=</span>builder<span class="w"> </span>--chown<span class="o">=</span>app:app<span class="w"> </span>/build/build/libs/your-project.jar<span class="w"> </span>/opt/app/job.jar
+</span></code></pre></div>
+<h4 id="running-with-javascala-locally">Running with Java/Scala Locally</h4>
+<p>If you prefer to run locally without Docker, you can build and execute the JAR directly:</p>
+<div class="language-shell highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="c1"># Build the JAR</span>
+</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>./gradlew<span class="w"> </span>clean<span class="w"> </span>build
+</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>
+</span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="c1"># Run with Spark submit (requires Spark installation)</span>
+</span><span id="__span-2-5"><a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>spark-submit<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-2-6"><a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a><span class="w">  </span>--class<span class="w"> </span>io.github.datacatering.plan.YourPlanClass<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-2-7"><a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a><span class="w">  </span>--master<span class="w"> </span>local<span class="o">[</span>*<span class="o">]</span><span class="w"> </span><span class="se">\</span>
+</span><span id="__span-2-8"><a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a><span class="w">  </span>build/libs/your-project.jar
+</span><span id="__span-2-9"><a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a>
+</span><span id="__span-2-10"><a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a><span class="c1"># Or run via Gradle</span>
+</span><span id="__span-2-11"><a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a>./gradlew<span class="w"> </span>run<span class="w"> </span>--args<span class="o">=</span><span class="s2">&quot;YourPlanClass&quot;</span>
+</span></code></pre></div>
+<h4 id="build-configuration-tips">Build Configuration Tips</h4>
+<ul>
+<li><strong>Gradle Version</strong>: The example uses Gradle 8.11.1 with JDK 17. Adjust based on your project needs.</li>
+<li><strong>Dependencies</strong>: The <code>buildSrc</code> directory contains custom Gradle build logic - include it if present in your project.</li>
+<li><strong>JAR Name</strong>: Update the <code>COPY</code> command in Stage 2 to match your JAR name from <code>build.gradle.kts</code>.</li>
+<li><strong>Data Caterer Version</strong>: Change <code>DATA_CATERER_VERSION</code> to match your required version.</li>
+</ul>
 <h3 id="docker-pre-and-post-processing-scripts">Docker Pre and Post Processing Scripts</h3>
 <p>Data Caterer supports running custom scripts before and after the main data generation process when deployed via Docker. This is useful for setup tasks, cleanup operations, notifications, or integrating with external systems.</p>
 <h4 id="configuration">Configuration</h4>
@@ -3340,12 +3477,12 @@ the <a href="https://github.com/data-catering/data-caterer/blob/main/example/Doc
 </tbody>
 </table>
 <h4 id="usage-example">Usage Example</h4>
-<div class="language-shell highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>docker<span class="w"> </span>run<span class="w"> </span>-d<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="w">  </span>-e<span class="w"> </span><span class="nv">PRE_PROCESSOR_SCRIPT</span><span class="o">=</span><span class="s2">&quot;/opt/app/scripts/setup.sh&quot;</span><span class="w"> </span><span class="se">\</span>
-</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="w">  </span>-e<span class="w"> </span><span class="nv">POST_PROCESSOR_SCRIPT</span><span class="o">=</span><span class="s2">&quot;/opt/app/scripts/cleanup.sh&quot;</span><span class="w"> </span><span class="se">\</span>
-</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="w">  </span>-e<span class="w"> </span><span class="nv">POST_PROCESSOR_CONDITION</span><span class="o">=</span><span class="s2">&quot;always&quot;</span><span class="w"> </span><span class="se">\</span>
-</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="w">  </span>-v<span class="w"> </span>/path/to/scripts:/opt/app/scripts<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-1-6"><a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a><span class="w">  </span>datacatering/data-caterer:0.17.0
+<div class="language-shell highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>docker<span class="w"> </span>run<span class="w"> </span>-d<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="w">  </span>-e<span class="w"> </span><span class="nv">PRE_PROCESSOR_SCRIPT</span><span class="o">=</span><span class="s2">&quot;/opt/app/scripts/setup.sh&quot;</span><span class="w"> </span><span class="se">\</span>
+</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="w">  </span>-e<span class="w"> </span><span class="nv">POST_PROCESSOR_SCRIPT</span><span class="o">=</span><span class="s2">&quot;/opt/app/scripts/cleanup.sh&quot;</span><span class="w"> </span><span class="se">\</span>
+</span><span id="__span-3-4"><a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="w">  </span>-e<span class="w"> </span><span class="nv">POST_PROCESSOR_CONDITION</span><span class="o">=</span><span class="s2">&quot;always&quot;</span><span class="w"> </span><span class="se">\</span>
+</span><span id="__span-3-5"><a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a><span class="w">  </span>-v<span class="w"> </span>/path/to/scripts:/opt/app/scripts<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-3-6"><a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a><span class="w">  </span>datacatering/data-caterer:0.17.0
 </span></code></pre></div>
 <h4 id="script-execution-behavior">Script Execution Behavior</h4>
 <ul>
@@ -3370,9 +3507,9 @@ the <a href="https://github.com/data-catering/data-caterer/blob/main/example/Doc
 <p>Update
 the <a href="https://github.com/data-catering/data-caterer/blob/main/example/helm/data-caterer/templates/configuration.yaml">configuration</a>
 to your own data connections and configuration or own image created from above.</p>
-<div class="language-shell highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>git<span class="w"> </span>clone<span class="w"> </span>git@github.com:data-catering/data-caterer.git
-</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="w">    </span><span class="nb">cd</span><span class="w"> </span>data-caterer/example
-</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>helm<span class="w"> </span>install<span class="w"> </span>data-caterer<span class="w"> </span>./data-caterer/example/helm/data-caterer
+<div class="language-shell highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>git<span class="w"> </span>clone<span class="w"> </span>git@github.com:data-catering/data-caterer.git
+</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="w">    </span><span class="nb">cd</span><span class="w"> </span>data-caterer/example
+</span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>helm<span class="w"> </span>install<span class="w"> </span>data-caterer<span class="w"> </span>./data-caterer/example/helm/data-caterer
 </span></code></pre></div>
 
 

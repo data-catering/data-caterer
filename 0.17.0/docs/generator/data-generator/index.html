@@ -2142,6 +2142,66 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#regex-patterns" class="md-nav__link">
+    <span class="md-ellipsis">
+      Regex Patterns
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Regex Patterns">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#default-behavior-always-enabled" class="md-nav__link">
+    <span class="md-ellipsis">
+      Default Behavior (Always Enabled)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#supported-patterns-sql-generation" class="md-nav__link">
+    <span class="md-ellipsis">
+      Supported Patterns (SQL Generation)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#examples" class="md-nav__link">
+    <span class="md-ellipsis">
+      Examples
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#unsupported-patterns-udf-fallback" class="md-nav__link">
+    <span class="md-ellipsis">
+      Unsupported Patterns (UDF Fallback)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#performance-comparison" class="md-nav__link">
+    <span class="md-ellipsis">
+      Performance Comparison
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -2900,6 +2960,29 @@
             Changelog
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../use-case/changelog/0.17.1/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    0.17.1
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
             
               
                 
@@ -3684,8 +3767,8 @@ descriptions:</p>
 <tr>
 <td><code>regex</code></td>
 <td><empty></td>
-<td><code>regex: "ACC[0-9]{10}"</code></td>
-<td>Regular expression to define pattern generated data should follow</td>
+<td><code>regex: "ACC[0-9]{8}"</code></td>
+<td>Regular expression to define pattern generated data should follow. The system automatically uses SQL generation for supported patterns with fallback to UDF. See <a href="#regex-patterns">Regex Patterns</a> for details on supported patterns</td>
 </tr>
 <tr>
 <td><code>seed</code></td>
@@ -3784,7 +3867,7 @@ Förlåt", "你好吗", "Nhà vệ sinh ở đâu", "こんにちは", "नम�
 </span><span id="__span-0-13"><a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a><span class="w">    </span><span class="n">field</span><span class="p">()</span>
 </span><span id="__span-0-14"><a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a><span class="w">      </span><span class="p">.</span><span class="na">name</span><span class="p">(</span><span class="s">&quot;account_id&quot;</span><span class="p">)</span>
 </span><span id="__span-0-15"><a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a><span class="w">      </span><span class="p">.</span><span class="na">type</span><span class="p">(</span><span class="n">StringType</span><span class="p">.</span><span class="na">instance</span><span class="p">())</span>
-</span><span id="__span-0-16"><a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a><span class="w">      </span><span class="p">.</span><span class="na">regex</span><span class="p">(</span><span class="s">&quot;ACC[0-9]{10}&quot;</span><span class="p">)</span>
+</span><span id="__span-0-16"><a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a><span class="w">      </span><span class="p">.</span><span class="na">regex</span><span class="p">(</span><span class="s">&quot;ACC[0-9]{8}&quot;</span><span class="p">)</span>
 </span><span id="__span-0-17"><a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a><span class="w">      </span><span class="p">.</span><span class="na">isUnique</span><span class="p">(</span><span class="kc">true</span><span class="p">)</span>
 </span><span id="__span-0-18"><a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a><span class="w">      </span><span class="p">.</span><span class="na">enableEdgeCase</span><span class="p">(</span><span class="kc">true</span><span class="p">)</span>
 </span><span id="__span-0-19"><a id="__codelineno-0-19" name="__codelineno-0-19" href="#__codelineno-0-19"></a><span class="w">      </span><span class="p">.</span><span class="na">edgeCaseProbability</span><span class="p">(</span><span class="mf">0.05</span><span class="p">),</span>
@@ -3837,7 +3920,7 @@ Förlåt", "你好吗", "Nhà vệ sinh ở đâu", "こんにちは", "नम�
 </span><span id="__span-1-11"><a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a><span class="w">    </span><span class="n">field</span>
 </span><span id="__span-1-12"><a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a><span class="w">      </span><span class="p">.</span><span class="n">name</span><span class="p">(</span><span class="s">&quot;account_id&quot;</span><span class="p">)</span>
 </span><span id="__span-1-13"><a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a><span class="w">      </span><span class="p">.</span><span class="n">`type`</span><span class="p">(</span><span class="nc">StringType</span><span class="p">)</span>
-</span><span id="__span-1-14"><a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a><span class="w">      </span><span class="p">.</span><span class="n">regex</span><span class="p">(</span><span class="s">&quot;ACC[0-9]{10}&quot;</span><span class="p">)</span>
+</span><span id="__span-1-14"><a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a><span class="w">      </span><span class="p">.</span><span class="n">regex</span><span class="p">(</span><span class="s">&quot;ACC[0-9]{8}&quot;</span><span class="p">)</span>
 </span><span id="__span-1-15"><a id="__codelineno-1-15" name="__codelineno-1-15" href="#__codelineno-1-15"></a><span class="w">      </span><span class="p">.</span><span class="n">isUnique</span><span class="p">(</span><span class="kc">true</span><span class="p">)</span>
 </span><span id="__span-1-16"><a id="__codelineno-1-16" name="__codelineno-1-16" href="#__codelineno-1-16"></a><span class="w">      </span><span class="p">.</span><span class="n">enableEdgeCase</span><span class="p">(</span><span class="kc">true</span><span class="p">)</span>
 </span><span id="__span-1-17"><a id="__codelineno-1-17" name="__codelineno-1-17" href="#__codelineno-1-17"></a><span class="w">      </span><span class="p">.</span><span class="n">edgeCaseProbability</span><span class="p">(</span><span class="mf">0.05</span><span class="p">),</span>
@@ -3885,7 +3968,7 @@ Förlåt", "你好吗", "Nhà vệ sinh ở đâu", "こんにちは", "नम�
 </span><span id="__span-2-16"><a id="__codelineno-2-16" name="__codelineno-2-16" href="#__codelineno-2-16"></a><span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;account_id&quot;</span>
 </span><span id="__span-2-17"><a id="__codelineno-2-17" name="__codelineno-2-17" href="#__codelineno-2-17"></a><span class="w">        </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;string&quot;</span>
 </span><span id="__span-2-18"><a id="__codelineno-2-18" name="__codelineno-2-18" href="#__codelineno-2-18"></a><span class="w">        </span><span class="nt">options</span><span class="p">:</span>
-</span><span id="__span-2-19"><a id="__codelineno-2-19" name="__codelineno-2-19" href="#__codelineno-2-19"></a><span class="w">          </span><span class="nt">regex</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;ACC[0-9]{10}&quot;</span>
+</span><span id="__span-2-19"><a id="__codelineno-2-19" name="__codelineno-2-19" href="#__codelineno-2-19"></a><span class="w">          </span><span class="nt">regex</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;ACC[0-9]{8}&quot;</span>
 </span><span id="__span-2-20"><a id="__codelineno-2-20" name="__codelineno-2-20" href="#__codelineno-2-20"></a><span class="w">          </span><span class="nt">isUnique</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
 </span><span id="__span-2-21"><a id="__codelineno-2-21" name="__codelineno-2-21" href="#__codelineno-2-21"></a><span class="w">          </span><span class="nt">enableEdgeCase</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
 </span><span id="__span-2-22"><a id="__codelineno-2-22" name="__codelineno-2-22" href="#__codelineno-2-22"></a><span class="w">          </span><span class="nt">edgeCaseProb</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.05</span>
@@ -4529,7 +4612,7 @@ NaN)<br />
 </span></code></pre></div>
 </div>
 <div class="tabbed-block">
-<div class="language-yaml highlight"><pre><span></span><code><span id="__span-18-1"><a id="__codelineno-18-1" name="__codelineno-18-1" href="#__codelineno-18-1"></a><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;csv_accounts_task&quot;</span><span class="w"> </span>
+<div class="language-yaml highlight"><pre><span></span><code><span id="__span-18-1"><a id="__codelineno-18-1" name="__codelineno-18-1" href="#__codelineno-18-1"></a><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;csv_accounts_task&quot;</span>
 </span><span id="__span-18-2"><a id="__codelineno-18-2" name="__codelineno-18-2" href="#__codelineno-18-2"></a><span class="nt">steps</span><span class="p">:</span>
 </span><span id="__span-18-3"><a id="__codelineno-18-3" name="__codelineno-18-3" href="#__codelineno-18-3"></a><span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;accounts&quot;</span>
 </span><span id="__span-18-4"><a id="__codelineno-18-4" name="__codelineno-18-4" href="#__codelineno-18-4"></a><span class="w">    </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;csv&quot;</span>
@@ -4645,19 +4728,19 @@ NaN)<br />
 <p>Data Caterer uses Apache Spark as its underlying data generation engine. This means you can use any Spark data source options in your step configuration to control how data is written.</p>
 <div class="admonition info">
 <p class="admonition-title">Spark Data Source Options</p>
-<p>Step options can include any options supported by the corresponding Spark data source. These options are passed directly to Spark's DataFrameWriter.</p>
-<p><strong>Common data source option references:</strong></p>
-<ul>
-<li><strong>CSV</strong>: <a href="https://spark.apache.org/docs/latest/sql-data-sources-csv.html#data-source-option">Spark CSV Options</a></li>
-<li><strong>JSON</strong>: <a href="https://spark.apache.org/docs/latest/sql-data-sources-json.html#data-source-option">Spark JSON Options</a></li>
-<li><strong>Parquet</strong>: <a href="https://spark.apache.org/docs/latest/sql-data-sources-parquet.html#data-source-option">Spark Parquet Options</a></li>
-<li><strong>ORC</strong>: <a href="https://spark.apache.org/docs/latest/sql-data-sources-orc.html#configuration">Spark ORC Options</a></li>
-<li><strong>JDBC</strong>: <a href="https://spark.apache.org/docs/latest/sql-data-sources-jdbc.html#data-source-option">Spark JDBC Options</a></li>
-<li><strong>Kafka</strong>: <a href="https://spark.apache.org/docs/latest/structured-streaming-kafka-integration.html#writing-data-to-kafka">Spark Kafka Options</a></li>
-<li><strong>Delta Lake</strong>: <a href="https://docs.delta.io/latest/delta-batch.html#write-to-a-table">Delta Lake Options</a></li>
-<li><strong>Iceberg</strong>: <a href="https://iceberg.apache.org/docs/latest/spark-writes/">Iceberg Spark Options</a></li>
-</ul>
 </div>
+<p>Step options can include any options supported by the corresponding Spark data source. These options are passed directly to Spark's DataFrameWriter.</p>
+<div class="language-text highlight"><pre><span></span><code>**Common data source option references:**
+
+- **CSV**: [Spark CSV Options](https://spark.apache.org/docs/latest/sql-data-sources-csv.html#data-source-option)
+- **JSON**: [Spark JSON Options](https://spark.apache.org/docs/latest/sql-data-sources-json.html#data-source-option)
+- **Parquet**: [Spark Parquet Options](https://spark.apache.org/docs/latest/sql-data-sources-parquet.html#data-source-option)
+- **ORC**: [Spark ORC Options](https://spark.apache.org/docs/latest/sql-data-sources-orc.html#configuration)
+- **JDBC**: [Spark JDBC Options](https://spark.apache.org/docs/latest/sql-data-sources-jdbc.html#data-source-option)
+- **Kafka**: [Spark Kafka Options](https://spark.apache.org/docs/latest/structured-streaming-kafka-integration.html#writing-data-to-kafka)
+- **Delta Lake**: [Delta Lake Options](https://docs.delta.io/latest/delta-batch.html#write-to-a-table)
+- **Iceberg**: [Iceberg Spark Options](https://iceberg.apache.org/docs/latest/spark-writes/)
+</code></pre></div>
 <p>Examples of commonly used Spark options:</p>
 <div class="tabbed-set tabbed-alternate" data-tabs="8:3"><input checked="checked" id="__tabbed_8_1" name="__tabbed_8" type="radio" /><input id="__tabbed_8_2" name="__tabbed_8" type="radio" /><input id="__tabbed_8_3" name="__tabbed_8" type="radio" /><div class="tabbed-labels"><label for="__tabbed_8_1">Java</label><label for="__tabbed_8_2">Scala</label><label for="__tabbed_8_3">YAML</label></div>
 <div class="tabbed-content">
@@ -4872,7 +4955,7 @@ NaN)<br />
 </span><span id="__span-31-2"><a id="__codelineno-31-2" name="__codelineno-31-2" href="#__codelineno-31-2"></a><span class="n">field</span><span class="p">().</span><span class="na">name</span><span class="p">(</span><span class="s">&quot;current_status&quot;</span><span class="p">)</span>
 </span><span id="__span-31-3"><a id="__codelineno-31-3" name="__codelineno-31-3" href="#__codelineno-31-3"></a><span class="w">    </span><span class="p">.</span><span class="na">sql</span><span class="p">(</span><span class="s">&quot;element_at(sort_array(update_history.status, false), 1)&quot;</span><span class="p">),</span>
 </span><span id="__span-31-4"><a id="__codelineno-31-4" name="__codelineno-31-4" href="#__codelineno-31-4"></a>
-</span><span id="__span-31-5"><a id="__codelineno-31-5" name="__codelineno-31-5" href="#__codelineno-31-5"></a><span class="c1">// Calculate year from date field    </span>
+</span><span id="__span-31-5"><a id="__codelineno-31-5" name="__codelineno-31-5" href="#__codelineno-31-5"></a><span class="c1">// Calculate year from date field</span>
 </span><span id="__span-31-6"><a id="__codelineno-31-6" name="__codelineno-31-6" href="#__codelineno-31-6"></a><span class="n">field</span><span class="p">().</span><span class="na">name</span><span class="p">(</span><span class="s">&quot;year&quot;</span><span class="p">).</span><span class="na">type</span><span class="p">(</span><span class="n">IntegerType</span><span class="p">.</span><span class="na">instance</span><span class="p">())</span>
 </span><span id="__span-31-7"><a id="__codelineno-31-7" name="__codelineno-31-7" href="#__codelineno-31-7"></a><span class="w">    </span><span class="p">.</span><span class="na">sql</span><span class="p">(</span><span class="s">&quot;YEAR(date)&quot;</span><span class="p">),</span>
 </span><span id="__span-31-8"><a id="__codelineno-31-8" name="__codelineno-31-8" href="#__codelineno-31-8"></a>
@@ -4890,7 +4973,7 @@ NaN)<br />
 </span><span id="__span-32-6"><a id="__codelineno-32-6" name="__codelineno-32-6" href="#__codelineno-32-6"></a><span class="n">field</span><span class="p">.</span><span class="n">name</span><span class="p">(</span><span class="s">&quot;year&quot;</span><span class="p">).</span><span class="n">`type`</span><span class="p">(</span><span class="nc">IntegerType</span><span class="p">)</span>
 </span><span id="__span-32-7"><a id="__codelineno-32-7" name="__codelineno-32-7" href="#__codelineno-32-7"></a><span class="w">  </span><span class="p">.</span><span class="n">sql</span><span class="p">(</span><span class="s">&quot;YEAR(date)&quot;</span><span class="p">),</span>
 </span><span id="__span-32-8"><a id="__codelineno-32-8" name="__codelineno-32-8" href="#__codelineno-32-8"></a>
-</span><span id="__span-32-9"><a id="__codelineno-32-9" name="__codelineno-32-9" href="#__codelineno-32-9"></a><span class="c1">// Get first transaction date from sorted array  </span>
+</span><span id="__span-32-9"><a id="__codelineno-32-9" name="__codelineno-32-9" href="#__codelineno-32-9"></a><span class="c1">// Get first transaction date from sorted array</span>
 </span><span id="__span-32-10"><a id="__codelineno-32-10" name="__codelineno-32-10" href="#__codelineno-32-10"></a><span class="n">field</span><span class="p">.</span><span class="n">name</span><span class="p">(</span><span class="s">&quot;first_transaction_date&quot;</span><span class="p">).</span><span class="n">`type`</span><span class="p">(</span><span class="nc">DateType</span><span class="p">)</span>
 </span><span id="__span-32-11"><a id="__codelineno-32-11" name="__codelineno-32-11" href="#__codelineno-32-11"></a><span class="w">  </span><span class="p">.</span><span class="n">sql</span><span class="p">(</span><span class="s">&quot;element_at(sort_array(transactions.transaction_date), 1)&quot;</span><span class="p">)</span>
 </span></code></pre></div>
@@ -4900,7 +4983,7 @@ NaN)<br />
 </span><span id="__span-33-2"><a id="__codelineno-33-2" name="__codelineno-33-2" href="#__codelineno-33-2"></a><span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;current_status&quot;</span>
 </span><span id="__span-33-3"><a id="__codelineno-33-3" name="__codelineno-33-3" href="#__codelineno-33-3"></a><span class="w">    </span><span class="nt">options</span><span class="p">:</span>
 </span><span id="__span-33-4"><a id="__codelineno-33-4" name="__codelineno-33-4" href="#__codelineno-33-4"></a><span class="w">      </span><span class="nt">sql</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;element_at(sort_array(update_history.status,</span><span class="nv"> </span><span class="s">false),</span><span class="nv"> </span><span class="s">1)&quot;</span>
-</span><span id="__span-33-5"><a id="__codelineno-33-5" name="__codelineno-33-5" href="#__codelineno-33-5"></a><span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;year&quot;</span><span class="w"> </span>
+</span><span id="__span-33-5"><a id="__codelineno-33-5" name="__codelineno-33-5" href="#__codelineno-33-5"></a><span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;year&quot;</span>
 </span><span id="__span-33-6"><a id="__codelineno-33-6" name="__codelineno-33-6" href="#__codelineno-33-6"></a><span class="w">    </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;integer&quot;</span>
 </span><span id="__span-33-7"><a id="__codelineno-33-7" name="__codelineno-33-7" href="#__codelineno-33-7"></a><span class="w">    </span><span class="nt">options</span><span class="p">:</span>
 </span><span id="__span-33-8"><a id="__codelineno-33-8" name="__codelineno-33-8" href="#__codelineno-33-8"></a><span class="w">      </span><span class="nt">sql</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;YEAR(date)&quot;</span>
@@ -4926,7 +5009,7 @@ NaN)<br />
 </span><span id="__span-34-7"><a id="__codelineno-34-7" name="__codelineno-34-7" href="#__codelineno-34-7"></a><span class="w">    </span><span class="p">.</span><span class="na">sql</span><span class="p">(</span><span class="s">&quot;CASE WHEN account_details.account_type = &#39;premium&#39; THEN balance * 1.05 ELSE balance * 1.02 END&quot;</span><span class="p">),</span>
 </span><span id="__span-34-8"><a id="__codelineno-34-8" name="__codelineno-34-8" href="#__codelineno-34-8"></a>
 </span><span id="__span-34-9"><a id="__codelineno-34-9" name="__codelineno-34-9" href="#__codelineno-34-9"></a><span class="c1">// Aggregate transaction amounts</span>
-</span><span id="__span-34-10"><a id="__codelineno-34-10" name="__codelineno-34-10" href="#__codelineno-34-10"></a><span class="n">field</span><span class="p">().</span><span class="na">name</span><span class="p">(</span><span class="s">&quot;total_transaction_amount&quot;</span><span class="p">).</span><span class="na">type</span><span class="p">(</span><span class="n">DoubleType</span><span class="p">.</span><span class="na">instance</span><span class="p">())</span><span class="w"> </span>
+</span><span id="__span-34-10"><a id="__codelineno-34-10" name="__codelineno-34-10" href="#__codelineno-34-10"></a><span class="n">field</span><span class="p">().</span><span class="na">name</span><span class="p">(</span><span class="s">&quot;total_transaction_amount&quot;</span><span class="p">).</span><span class="na">type</span><span class="p">(</span><span class="n">DoubleType</span><span class="p">.</span><span class="na">instance</span><span class="p">())</span>
 </span><span id="__span-34-11"><a id="__codelineno-34-11" name="__codelineno-34-11" href="#__codelineno-34-11"></a><span class="w">    </span><span class="p">.</span><span class="na">sql</span><span class="p">(</span><span class="s">&quot;aggregate(transactions.amount, 0.0, (acc, x) -&gt; acc + x)&quot;</span><span class="p">)</span>
 </span></code></pre></div>
 </div>
@@ -4935,7 +5018,7 @@ NaN)<br />
 </span><span id="__span-35-2"><a id="__codelineno-35-2" name="__codelineno-35-2" href="#__codelineno-35-2"></a><span class="n">field</span><span class="p">.</span><span class="n">name</span><span class="p">(</span><span class="s">&quot;customer_name&quot;</span><span class="p">)</span>
 </span><span id="__span-35-3"><a id="__codelineno-35-3" name="__codelineno-35-3" href="#__codelineno-35-3"></a><span class="w">  </span><span class="p">.</span><span class="n">sql</span><span class="p">(</span><span class="s">&quot;customer_details.name&quot;</span><span class="p">),</span>
 </span><span id="__span-35-4"><a id="__codelineno-35-4" name="__codelineno-35-4" href="#__codelineno-35-4"></a>
-</span><span id="__span-35-5"><a id="__codelineno-35-5" name="__codelineno-35-5" href="#__codelineno-35-5"></a><span class="c1">// Calculate balance with interest based on account type  </span>
+</span><span id="__span-35-5"><a id="__codelineno-35-5" name="__codelineno-35-5" href="#__codelineno-35-5"></a><span class="c1">// Calculate balance with interest based on account type</span>
 </span><span id="__span-35-6"><a id="__codelineno-35-6" name="__codelineno-35-6" href="#__codelineno-35-6"></a><span class="n">field</span><span class="p">.</span><span class="n">name</span><span class="p">(</span><span class="s">&quot;balance_with_interest&quot;</span><span class="p">).</span><span class="n">`type`</span><span class="p">(</span><span class="nc">DoubleType</span><span class="p">)</span>
 </span><span id="__span-35-7"><a id="__codelineno-35-7" name="__codelineno-35-7" href="#__codelineno-35-7"></a><span class="w">  </span><span class="p">.</span><span class="n">sql</span><span class="p">(</span><span class="s">&quot;CASE WHEN account_details.account_type = &#39;premium&#39; THEN balance * 1.05 ELSE balance * 1.02 END&quot;</span><span class="p">),</span>
 </span><span id="__span-35-8"><a id="__codelineno-35-8" name="__codelineno-35-8" href="#__codelineno-35-8"></a>
@@ -4954,7 +5037,7 @@ NaN)<br />
 </span><span id="__span-36-7"><a id="__codelineno-36-7" name="__codelineno-36-7" href="#__codelineno-36-7"></a><span class="w">    </span><span class="nt">options</span><span class="p">:</span>
 </span><span id="__span-36-8"><a id="__codelineno-36-8" name="__codelineno-36-8" href="#__codelineno-36-8"></a><span class="w">      </span><span class="nt">sql</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;CASE</span><span class="nv"> </span><span class="s">WHEN</span><span class="nv"> </span><span class="s">account_details.account_type</span><span class="nv"> </span><span class="s">=</span><span class="nv"> </span><span class="s">&#39;premium&#39;</span><span class="nv"> </span><span class="s">THEN</span><span class="nv"> </span><span class="s">balance</span><span class="nv"> </span><span class="s">*</span><span class="nv"> </span><span class="s">1.05</span><span class="nv"> </span><span class="s">ELSE</span><span class="nv"> </span><span class="s">balance</span><span class="nv"> </span><span class="s">*</span><span class="nv"> </span><span class="s">1.02</span><span class="nv"> </span><span class="s">END&quot;</span>
 </span><span id="__span-36-9"><a id="__codelineno-36-9" name="__codelineno-36-9" href="#__codelineno-36-9"></a><span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;total_transaction_amount&quot;</span>
-</span><span id="__span-36-10"><a id="__codelineno-36-10" name="__codelineno-36-10" href="#__codelineno-36-10"></a><span class="w">    </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;double&quot;</span><span class="w"> </span>
+</span><span id="__span-36-10"><a id="__codelineno-36-10" name="__codelineno-36-10" href="#__codelineno-36-10"></a><span class="w">    </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;double&quot;</span>
 </span><span id="__span-36-11"><a id="__codelineno-36-11" name="__codelineno-36-11" href="#__codelineno-36-11"></a><span class="w">    </span><span class="nt">options</span><span class="p">:</span>
 </span><span id="__span-36-12"><a id="__codelineno-36-12" name="__codelineno-36-12" href="#__codelineno-36-12"></a><span class="w">      </span><span class="nt">sql</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;aggregate(transactions.amount,</span><span class="nv"> </span><span class="s">0.0,</span><span class="nv"> </span><span class="s">(acc,</span><span class="nv"> </span><span class="s">x)</span><span class="nv"> </span><span class="s">-&gt;</span><span class="nv"> </span><span class="s">acc</span><span class="nv"> </span><span class="s">+</span><span class="nv"> </span><span class="s">x)&quot;</span>
 </span></code></pre></div>
@@ -4975,12 +5058,12 @@ NaN)<br />
 </span><span id="__span-37-7"><a id="__codelineno-37-7" name="__codelineno-37-7" href="#__codelineno-37-7"></a><span class="w">    </span><span class="p">.</span><span class="na">sql</span><span class="p">(</span><span class="s">&quot;SUBSTRING_INDEX(customer_details.email, &#39;@&#39;, -1)&quot;</span><span class="p">),</span>
 </span><span id="__span-37-8"><a id="__codelineno-37-8" name="__codelineno-37-8" href="#__codelineno-37-8"></a>
 </span><span id="__span-37-9"><a id="__codelineno-37-9" name="__codelineno-37-9" href="#__codelineno-37-9"></a><span class="c1">// Generate formatted account number</span>
-</span><span id="__span-37-10"><a id="__codelineno-37-10" name="__codelineno-37-10" href="#__codelineno-37-10"></a><span class="n">field</span><span class="p">().</span><span class="na">name</span><span class="p">(</span><span class="s">&quot;formatted_account_number&quot;</span><span class="p">)</span><span class="w"> </span>
+</span><span id="__span-37-10"><a id="__codelineno-37-10" name="__codelineno-37-10" href="#__codelineno-37-10"></a><span class="n">field</span><span class="p">().</span><span class="na">name</span><span class="p">(</span><span class="s">&quot;formatted_account_number&quot;</span><span class="p">)</span>
 </span><span id="__span-37-11"><a id="__codelineno-37-11" name="__codelineno-37-11" href="#__codelineno-37-11"></a><span class="w">    </span><span class="p">.</span><span class="na">sql</span><span class="p">(</span><span class="s">&quot;CONCAT(&#39;ACC-&#39;, LPAD(account_number, 8, &#39;0&#39;))&quot;</span><span class="p">)</span>
 </span></code></pre></div>
 </div>
 <div class="tabbed-block">
-<div class="language-scala highlight"><pre><span></span><code><span id="__span-38-1"><a id="__codelineno-38-1" name="__codelineno-38-1" href="#__codelineno-38-1"></a><span class="c1">// Concatenate multiple fields with formatting  </span>
+<div class="language-scala highlight"><pre><span></span><code><span id="__span-38-1"><a id="__codelineno-38-1" name="__codelineno-38-1" href="#__codelineno-38-1"></a><span class="c1">// Concatenate multiple fields with formatting</span>
 </span><span id="__span-38-2"><a id="__codelineno-38-2" name="__codelineno-38-2" href="#__codelineno-38-2"></a><span class="n">field</span><span class="p">.</span><span class="n">name</span><span class="p">(</span><span class="s">&quot;account_display_name&quot;</span><span class="p">)</span>
 </span><span id="__span-38-3"><a id="__codelineno-38-3" name="__codelineno-38-3" href="#__codelineno-38-3"></a><span class="w">  </span><span class="p">.</span><span class="n">sql</span><span class="p">(</span><span class="s">&quot;CONCAT(customer_details.name, &#39; - &#39;, account_type, &#39; (&#39;, account_id, &#39;)&#39;)&quot;</span><span class="p">),</span>
 </span><span id="__span-38-4"><a id="__codelineno-38-4" name="__codelineno-38-4" href="#__codelineno-38-4"></a>
@@ -5032,7 +5115,7 @@ NaN)<br />
 </span><span id="__span-41-3"><a id="__codelineno-41-3" name="__codelineno-41-3" href="#__codelineno-41-3"></a><span class="w">  </span><span class="p">.</span><span class="n">sql</span><span class="p">(</span><span class="s">&quot;DATEDIFF(CURRENT_DATE(), birth_date) / 365&quot;</span><span class="p">),</span>
 </span><span id="__span-41-4"><a id="__codelineno-41-4" name="__codelineno-41-4" href="#__codelineno-41-4"></a>
 </span><span id="__span-41-5"><a id="__codelineno-41-5" name="__codelineno-41-5" href="#__codelineno-41-5"></a><span class="c1">// Extract quarter from date</span>
-</span><span id="__span-41-6"><a id="__codelineno-41-6" name="__codelineno-41-6" href="#__codelineno-41-6"></a><span class="n">field</span><span class="p">.</span><span class="n">name</span><span class="p">(</span><span class="s">&quot;quarter&quot;</span><span class="p">).</span><span class="n">`type`</span><span class="p">(</span><span class="nc">IntegerType</span><span class="p">)</span><span class="w"> </span>
+</span><span id="__span-41-6"><a id="__codelineno-41-6" name="__codelineno-41-6" href="#__codelineno-41-6"></a><span class="n">field</span><span class="p">.</span><span class="n">name</span><span class="p">(</span><span class="s">&quot;quarter&quot;</span><span class="p">).</span><span class="n">`type`</span><span class="p">(</span><span class="nc">IntegerType</span><span class="p">)</span>
 </span><span id="__span-41-7"><a id="__codelineno-41-7" name="__codelineno-41-7" href="#__codelineno-41-7"></a><span class="w">  </span><span class="p">.</span><span class="n">sql</span><span class="p">(</span><span class="s">&quot;QUARTER(transaction_date)&quot;</span><span class="p">),</span>
 </span><span id="__span-41-8"><a id="__codelineno-41-8" name="__codelineno-41-8" href="#__codelineno-41-8"></a>
 </span><span id="__span-41-9"><a id="__codelineno-41-9" name="__codelineno-41-9" href="#__codelineno-41-9"></a><span class="c1">// Calculate business days between dates</span>
@@ -5071,7 +5154,7 @@ NaN)<br />
 </span><span id="__span-43-6"><a id="__codelineno-43-6" name="__codelineno-43-6" href="#__codelineno-43-6"></a><span class="n">field</span><span class="p">().</span><span class="na">name</span><span class="p">(</span><span class="s">&quot;running_total&quot;</span><span class="p">).</span><span class="na">type</span><span class="p">(</span><span class="n">DoubleType</span><span class="p">.</span><span class="na">instance</span><span class="p">())</span>
 </span><span id="__span-43-7"><a id="__codelineno-43-7" name="__codelineno-43-7" href="#__codelineno-43-7"></a><span class="w">    </span><span class="p">.</span><span class="na">sql</span><span class="p">(</span><span class="s">&quot;SUM(transaction_amount) OVER (PARTITION BY account_id ORDER BY transaction_date ROWS UNBOUNDED PRECEDING)&quot;</span><span class="p">),</span>
 </span><span id="__span-43-8"><a id="__codelineno-43-8" name="__codelineno-43-8" href="#__codelineno-43-8"></a>
-</span><span id="__span-43-9"><a id="__codelineno-43-9" name="__codelineno-43-9" href="#__codelineno-43-9"></a><span class="c1">// Calculate percentage of total within group  </span>
+</span><span id="__span-43-9"><a id="__codelineno-43-9" name="__codelineno-43-9" href="#__codelineno-43-9"></a><span class="c1">// Calculate percentage of total within group</span>
 </span><span id="__span-43-10"><a id="__codelineno-43-10" name="__codelineno-43-10" href="#__codelineno-43-10"></a><span class="n">field</span><span class="p">().</span><span class="na">name</span><span class="p">(</span><span class="s">&quot;balance_percentage&quot;</span><span class="p">).</span><span class="na">type</span><span class="p">(</span><span class="n">DoubleType</span><span class="p">.</span><span class="na">instance</span><span class="p">())</span>
 </span><span id="__span-43-11"><a id="__codelineno-43-11" name="__codelineno-43-11" href="#__codelineno-43-11"></a><span class="w">    </span><span class="p">.</span><span class="na">sql</span><span class="p">(</span><span class="s">&quot;(balance / SUM(balance) OVER (PARTITION BY account_type)) * 100&quot;</span><span class="p">)</span>
 </span></code></pre></div>
@@ -5086,14 +5169,14 @@ NaN)<br />
 </span><span id="__span-44-7"><a id="__codelineno-44-7" name="__codelineno-44-7" href="#__codelineno-44-7"></a><span class="w">  </span><span class="p">.</span><span class="n">sql</span><span class="p">(</span><span class="s">&quot;SUM(transaction_amount) OVER (PARTITION BY account_id ORDER BY transaction_date ROWS UNBOUNDED PRECEDING)&quot;</span><span class="p">),</span>
 </span><span id="__span-44-8"><a id="__codelineno-44-8" name="__codelineno-44-8" href="#__codelineno-44-8"></a>
 </span><span id="__span-44-9"><a id="__codelineno-44-9" name="__codelineno-44-9" href="#__codelineno-44-9"></a><span class="c1">// Calculate percentage of total within group</span>
-</span><span id="__span-44-10"><a id="__codelineno-44-10" name="__codelineno-44-10" href="#__codelineno-44-10"></a><span class="n">field</span><span class="p">.</span><span class="n">name</span><span class="p">(</span><span class="s">&quot;balance_percentage&quot;</span><span class="p">).</span><span class="n">`type`</span><span class="p">(</span><span class="nc">DoubleType</span><span class="p">)</span><span class="w"> </span>
+</span><span id="__span-44-10"><a id="__codelineno-44-10" name="__codelineno-44-10" href="#__codelineno-44-10"></a><span class="n">field</span><span class="p">.</span><span class="n">name</span><span class="p">(</span><span class="s">&quot;balance_percentage&quot;</span><span class="p">).</span><span class="n">`type`</span><span class="p">(</span><span class="nc">DoubleType</span><span class="p">)</span>
 </span><span id="__span-44-11"><a id="__codelineno-44-11" name="__codelineno-44-11" href="#__codelineno-44-11"></a><span class="w">  </span><span class="p">.</span><span class="n">sql</span><span class="p">(</span><span class="s">&quot;(balance / SUM(balance) OVER (PARTITION BY account_type)) * 100&quot;</span><span class="p">)</span>
 </span></code></pre></div>
 </div>
 <div class="tabbed-block">
 <div class="language-yaml highlight"><pre><span></span><code><span id="__span-45-1"><a id="__codelineno-45-1" name="__codelineno-45-1" href="#__codelineno-45-1"></a><span class="nt">fields</span><span class="p">:</span>
 </span><span id="__span-45-2"><a id="__codelineno-45-2" name="__codelineno-45-2" href="#__codelineno-45-2"></a><span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;balance_rank&quot;</span>
-</span><span id="__span-45-3"><a id="__codelineno-45-3" name="__codelineno-45-3" href="#__codelineno-45-3"></a><span class="w">    </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;integer&quot;</span><span class="w">  </span>
+</span><span id="__span-45-3"><a id="__codelineno-45-3" name="__codelineno-45-3" href="#__codelineno-45-3"></a><span class="w">    </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;integer&quot;</span>
 </span><span id="__span-45-4"><a id="__codelineno-45-4" name="__codelineno-45-4" href="#__codelineno-45-4"></a><span class="w">    </span><span class="nt">options</span><span class="p">:</span>
 </span><span id="__span-45-5"><a id="__codelineno-45-5" name="__codelineno-45-5" href="#__codelineno-45-5"></a><span class="w">      </span><span class="nt">sql</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;ROW_NUMBER()</span><span class="nv"> </span><span class="s">OVER</span><span class="nv"> </span><span class="s">(PARTITION</span><span class="nv"> </span><span class="s">BY</span><span class="nv"> </span><span class="s">region</span><span class="nv"> </span><span class="s">ORDER</span><span class="nv"> </span><span class="s">BY</span><span class="nv"> </span><span class="s">balance</span><span class="nv"> </span><span class="s">DESC)&quot;</span>
 </span><span id="__span-45-6"><a id="__codelineno-45-6" name="__codelineno-45-6" href="#__codelineno-45-6"></a><span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;running_total&quot;</span>
@@ -5668,6 +5751,200 @@ NaN)<br />
 </div>
 </div>
 </div>
+<h2 id="regex-patterns">Regex Patterns</h2>
+<p>Fields can use regex patterns via the <code>regex</code> option for pattern-based data generation. The system <strong>automatically</strong> uses an intelligent SQL-based approach with fallback to UDF when needed.</p>
+<h3 id="default-behavior-always-enabled">Default Behavior (Always Enabled)</h3>
+<p>By default, Data Caterer automatically optimizes regex generation:</p>
+<ul>
+<li><strong>Parses common regex patterns into pure SQL expressions</strong> (fast, no UDFs)</li>
+<li><strong>Automatically falls back to DataFaker UDF</strong> for unsupported patterns (e.g., lookaheads, backreferences)</li>
+<li><strong>No configuration required</strong> - just use <code>.regex()</code> and the system chooses the best approach</li>
+<li>Significantly faster for large datasets with supported patterns</li>
+<li>Always correct regardless of pattern complexity</li>
+</ul>
+<h3 id="supported-patterns-sql-generation">Supported Patterns (SQL Generation)</h3>
+<p>The following patterns are converted to efficient SQL expressions automatically:</p>
+<table>
+<thead>
+<tr>
+<th>Pattern Type</th>
+<th>Examples</th>
+<th>SQL Output</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Character classes</strong></td>
+<td><code>\d</code>, <code>[0-9]</code>, <code>[A-Z]</code>, <code>[a-z]</code>, <code>[A-Za-z]</code></td>
+<td><code>CHAR()</code>, <code>SUBSTRING()</code></td>
+</tr>
+<tr>
+<td><strong>Alphanumeric</strong></td>
+<td><code>[A-Z0-9]</code>, <code>[A-Za-z0-9]</code></td>
+<td><code>SUBSTRING()</code> from charset</td>
+</tr>
+<tr>
+<td><strong>Custom sets</strong></td>
+<td><code>[ACGT]</code>, <code>[abc123]</code></td>
+<td><code>SUBSTRING()</code> from custom chars</td>
+</tr>
+<tr>
+<td><strong>Exact quantifiers</strong></td>
+<td><code>{n}</code> (e.g., <code>\d{8}</code>)</td>
+<td>Fixed-length generation</td>
+</tr>
+<tr>
+<td><strong>Range quantifiers</strong></td>
+<td><code>{m,n}</code> (e.g., <code>[A-Z]{3,8}</code>)</td>
+<td>Variable-length generation</td>
+</tr>
+<tr>
+<td><strong>Bounded quantifiers</strong></td>
+<td><code>+</code>, <code>*</code>, <code>?</code></td>
+<td>Bounded repetition (e.g., <code>+</code> → 1-5)</td>
+</tr>
+<tr>
+<td><strong>Alternation</strong></td>
+<td><code>(opt1\|opt2\|opt3)</code></td>
+<td><code>ELEMENT_AT(ARRAY(...))</code></td>
+</tr>
+<tr>
+<td><strong>Grouping</strong></td>
+<td><code>(...)</code>, <code>(?:...)</code></td>
+<td>Nested concatenation</td>
+</tr>
+<tr>
+<td><strong>Literals</strong></td>
+<td><code>ACC</code>, <code>-</code>, <code>_</code></td>
+<td>Direct string literals</td>
+</tr>
+</tbody>
+</table>
+<h3 id="examples">Examples</h3>
+<div class="tabbed-set tabbed-alternate" data-tabs="20:3"><input checked="checked" id="__tabbed_20_1" name="__tabbed_20" type="radio" /><input id="__tabbed_20_2" name="__tabbed_20" type="radio" /><input id="__tabbed_20_3" name="__tabbed_20" type="radio" /><div class="tabbed-labels"><label for="__tabbed_20_1">Java</label><label for="__tabbed_20_2">Scala</label><label for="__tabbed_20_3">YAML</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
+<div class="language-java highlight"><pre><span></span><code><span id="__span-58-1"><a id="__codelineno-58-1" name="__codelineno-58-1" href="#__codelineno-58-1"></a><span class="n">csv</span><span class="p">(</span><span class="s">&quot;transactions&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;app/src/test/resources/sample/csv/transactions&quot;</span><span class="p">)</span>
+</span><span id="__span-58-2"><a id="__codelineno-58-2" name="__codelineno-58-2" href="#__codelineno-58-2"></a><span class="w">  </span><span class="p">.</span><span class="na">fields</span><span class="p">(</span>
+</span><span id="__span-58-3"><a id="__codelineno-58-3" name="__codelineno-58-3" href="#__codelineno-58-3"></a><span class="w">    </span><span class="c1">// Account IDs: prefix + 8 digits</span>
+</span><span id="__span-58-4"><a id="__codelineno-58-4" name="__codelineno-58-4" href="#__codelineno-58-4"></a><span class="w">    </span><span class="n">field</span><span class="p">().</span><span class="na">name</span><span class="p">(</span><span class="s">&quot;account_id&quot;</span><span class="p">).</span><span class="na">regex</span><span class="p">(</span><span class="s">&quot;ACC[0-9]{8}&quot;</span><span class="p">),</span>
+</span><span id="__span-58-5"><a id="__codelineno-58-5" name="__codelineno-58-5" href="#__codelineno-58-5"></a>
+</span><span id="__span-58-6"><a id="__codelineno-58-6" name="__codelineno-58-6" href="#__codelineno-58-6"></a><span class="w">    </span><span class="c1">// Product codes: 3 letters + dash + 2 digits</span>
+</span><span id="__span-58-7"><a id="__codelineno-58-7" name="__codelineno-58-7" href="#__codelineno-58-7"></a><span class="w">    </span><span class="n">field</span><span class="p">().</span><span class="na">name</span><span class="p">(</span><span class="s">&quot;product_code&quot;</span><span class="p">).</span><span class="na">regex</span><span class="p">(</span><span class="s">&quot;[A-Z]{3}-[0-9]{2}&quot;</span><span class="p">),</span>
+</span><span id="__span-58-8"><a id="__codelineno-58-8" name="__codelineno-58-8" href="#__codelineno-58-8"></a>
+</span><span id="__span-58-9"><a id="__codelineno-58-9" name="__codelineno-58-9" href="#__codelineno-58-9"></a><span class="w">    </span><span class="c1">// Status enum with alternation</span>
+</span><span id="__span-58-10"><a id="__codelineno-58-10" name="__codelineno-58-10" href="#__codelineno-58-10"></a><span class="w">    </span><span class="n">field</span><span class="p">().</span><span class="na">name</span><span class="p">(</span><span class="s">&quot;status&quot;</span><span class="p">).</span><span class="na">regex</span><span class="p">(</span><span class="s">&quot;(ACTIVE|INACTIVE|PENDING)&quot;</span><span class="p">),</span>
+</span><span id="__span-58-11"><a id="__codelineno-58-11" name="__codelineno-58-11" href="#__codelineno-58-11"></a>
+</span><span id="__span-58-12"><a id="__codelineno-58-12" name="__codelineno-58-12" href="#__codelineno-58-12"></a><span class="w">    </span><span class="c1">// Serial numbers: 16 alphanumeric characters</span>
+</span><span id="__span-58-13"><a id="__codelineno-58-13" name="__codelineno-58-13" href="#__codelineno-58-13"></a><span class="w">    </span><span class="n">field</span><span class="p">().</span><span class="na">name</span><span class="p">(</span><span class="s">&quot;serial&quot;</span><span class="p">).</span><span class="na">regex</span><span class="p">(</span><span class="s">&quot;[A-Z0-9]{16}&quot;</span><span class="p">),</span>
+</span><span id="__span-58-14"><a id="__codelineno-58-14" name="__codelineno-58-14" href="#__codelineno-58-14"></a>
+</span><span id="__span-58-15"><a id="__codelineno-58-15" name="__codelineno-58-15" href="#__codelineno-58-15"></a><span class="w">    </span><span class="c1">// Transaction IDs: prefix + variable length digits</span>
+</span><span id="__span-58-16"><a id="__codelineno-58-16" name="__codelineno-58-16" href="#__codelineno-58-16"></a><span class="w">    </span><span class="n">field</span><span class="p">().</span><span class="na">name</span><span class="p">(</span><span class="s">&quot;txn_id&quot;</span><span class="p">).</span><span class="na">regex</span><span class="p">(</span><span class="s">&quot;TXN-[0-9]{5,10}&quot;</span><span class="p">),</span>
+</span><span id="__span-58-17"><a id="__codelineno-58-17" name="__codelineno-58-17" href="#__codelineno-58-17"></a>
+</span><span id="__span-58-18"><a id="__codelineno-58-18" name="__codelineno-58-18" href="#__codelineno-58-18"></a><span class="w">    </span><span class="c1">// DNA sequences: custom character set</span>
+</span><span id="__span-58-19"><a id="__codelineno-58-19" name="__codelineno-58-19" href="#__codelineno-58-19"></a><span class="w">    </span><span class="n">field</span><span class="p">().</span><span class="na">name</span><span class="p">(</span><span class="s">&quot;dna&quot;</span><span class="p">).</span><span class="na">regex</span><span class="p">(</span><span class="s">&quot;[ACGT]{20}&quot;</span><span class="p">)</span>
+</span><span id="__span-58-20"><a id="__codelineno-58-20" name="__codelineno-58-20" href="#__codelineno-58-20"></a><span class="w">  </span><span class="p">);</span>
+</span></code></pre></div>
+</div>
+<div class="tabbed-block">
+<div class="language-scala highlight"><pre><span></span><code><span id="__span-59-1"><a id="__codelineno-59-1" name="__codelineno-59-1" href="#__codelineno-59-1"></a><span class="n">csv</span><span class="p">(</span><span class="s">&quot;transactions&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;app/src/test/resources/sample/csv/transactions&quot;</span><span class="p">)</span>
+</span><span id="__span-59-2"><a id="__codelineno-59-2" name="__codelineno-59-2" href="#__codelineno-59-2"></a><span class="w">  </span><span class="p">.</span><span class="n">fields</span><span class="p">(</span>
+</span><span id="__span-59-3"><a id="__codelineno-59-3" name="__codelineno-59-3" href="#__codelineno-59-3"></a><span class="w">    </span><span class="c1">// Account IDs: prefix + 8 digits</span>
+</span><span id="__span-59-4"><a id="__codelineno-59-4" name="__codelineno-59-4" href="#__codelineno-59-4"></a><span class="w">    </span><span class="n">field</span><span class="p">.</span><span class="n">name</span><span class="p">(</span><span class="s">&quot;account_id&quot;</span><span class="p">).</span><span class="n">regex</span><span class="p">(</span><span class="s">&quot;ACC[0-9]{8}&quot;</span><span class="p">),</span>
+</span><span id="__span-59-5"><a id="__codelineno-59-5" name="__codelineno-59-5" href="#__codelineno-59-5"></a>
+</span><span id="__span-59-6"><a id="__codelineno-59-6" name="__codelineno-59-6" href="#__codelineno-59-6"></a><span class="w">    </span><span class="c1">// Product codes: 3 letters + dash + 2 digits</span>
+</span><span id="__span-59-7"><a id="__codelineno-59-7" name="__codelineno-59-7" href="#__codelineno-59-7"></a><span class="w">    </span><span class="n">field</span><span class="p">.</span><span class="n">name</span><span class="p">(</span><span class="s">&quot;product_code&quot;</span><span class="p">).</span><span class="n">regex</span><span class="p">(</span><span class="s">&quot;[A-Z]{3}-[0-9]{2}&quot;</span><span class="p">),</span>
+</span><span id="__span-59-8"><a id="__codelineno-59-8" name="__codelineno-59-8" href="#__codelineno-59-8"></a>
+</span><span id="__span-59-9"><a id="__codelineno-59-9" name="__codelineno-59-9" href="#__codelineno-59-9"></a><span class="w">    </span><span class="c1">// Status enum with alternation</span>
+</span><span id="__span-59-10"><a id="__codelineno-59-10" name="__codelineno-59-10" href="#__codelineno-59-10"></a><span class="w">    </span><span class="n">field</span><span class="p">.</span><span class="n">name</span><span class="p">(</span><span class="s">&quot;status&quot;</span><span class="p">).</span><span class="n">regex</span><span class="p">(</span><span class="s">&quot;(ACTIVE|INACTIVE|PENDING)&quot;</span><span class="p">),</span>
+</span><span id="__span-59-11"><a id="__codelineno-59-11" name="__codelineno-59-11" href="#__codelineno-59-11"></a>
+</span><span id="__span-59-12"><a id="__codelineno-59-12" name="__codelineno-59-12" href="#__codelineno-59-12"></a><span class="w">    </span><span class="c1">// Serial numbers: 16 alphanumeric characters</span>
+</span><span id="__span-59-13"><a id="__codelineno-59-13" name="__codelineno-59-13" href="#__codelineno-59-13"></a><span class="w">    </span><span class="n">field</span><span class="p">.</span><span class="n">name</span><span class="p">(</span><span class="s">&quot;serial&quot;</span><span class="p">).</span><span class="n">regex</span><span class="p">(</span><span class="s">&quot;[A-Z0-9]{16}&quot;</span><span class="p">),</span>
+</span><span id="__span-59-14"><a id="__codelineno-59-14" name="__codelineno-59-14" href="#__codelineno-59-14"></a>
+</span><span id="__span-59-15"><a id="__codelineno-59-15" name="__codelineno-59-15" href="#__codelineno-59-15"></a><span class="w">    </span><span class="c1">// Transaction IDs: prefix + variable length digits</span>
+</span><span id="__span-59-16"><a id="__codelineno-59-16" name="__codelineno-59-16" href="#__codelineno-59-16"></a><span class="w">    </span><span class="n">field</span><span class="p">.</span><span class="n">name</span><span class="p">(</span><span class="s">&quot;txn_id&quot;</span><span class="p">).</span><span class="n">regex</span><span class="p">(</span><span class="s">&quot;TXN-[0-9]{5,10}&quot;</span><span class="p">),</span>
+</span><span id="__span-59-17"><a id="__codelineno-59-17" name="__codelineno-59-17" href="#__codelineno-59-17"></a>
+</span><span id="__span-59-18"><a id="__codelineno-59-18" name="__codelineno-59-18" href="#__codelineno-59-18"></a><span class="w">    </span><span class="c1">// DNA sequences: custom character set</span>
+</span><span id="__span-59-19"><a id="__codelineno-59-19" name="__codelineno-59-19" href="#__codelineno-59-19"></a><span class="w">    </span><span class="n">field</span><span class="p">.</span><span class="n">name</span><span class="p">(</span><span class="s">&quot;dna&quot;</span><span class="p">).</span><span class="n">regex</span><span class="p">(</span><span class="s">&quot;[ACGT]{20}&quot;</span><span class="p">)</span>
+</span><span id="__span-59-20"><a id="__codelineno-59-20" name="__codelineno-59-20" href="#__codelineno-59-20"></a><span class="w">  </span><span class="p">)</span>
+</span></code></pre></div>
+</div>
+<div class="tabbed-block">
+<div class="language-yaml highlight"><pre><span></span><code><span id="__span-60-1"><a id="__codelineno-60-1" name="__codelineno-60-1" href="#__codelineno-60-1"></a><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;csv_file&quot;</span>
+</span><span id="__span-60-2"><a id="__codelineno-60-2" name="__codelineno-60-2" href="#__codelineno-60-2"></a><span class="nt">steps</span><span class="p">:</span>
+</span><span id="__span-60-3"><a id="__codelineno-60-3" name="__codelineno-60-3" href="#__codelineno-60-3"></a><span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;transactions&quot;</span>
+</span><span id="__span-60-4"><a id="__codelineno-60-4" name="__codelineno-60-4" href="#__codelineno-60-4"></a><span class="w">    </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;csv&quot;</span>
+</span><span id="__span-60-5"><a id="__codelineno-60-5" name="__codelineno-60-5" href="#__codelineno-60-5"></a><span class="w">    </span><span class="nt">options</span><span class="p">:</span>
+</span><span id="__span-60-6"><a id="__codelineno-60-6" name="__codelineno-60-6" href="#__codelineno-60-6"></a><span class="w">      </span><span class="nt">path</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;app/src/test/resources/sample/csv/transactions&quot;</span>
+</span><span id="__span-60-7"><a id="__codelineno-60-7" name="__codelineno-60-7" href="#__codelineno-60-7"></a><span class="w">    </span><span class="nt">fields</span><span class="p">:</span>
+</span><span id="__span-60-8"><a id="__codelineno-60-8" name="__codelineno-60-8" href="#__codelineno-60-8"></a><span class="w">      </span><span class="c1"># Account IDs: prefix + 8 digits</span>
+</span><span id="__span-60-9"><a id="__codelineno-60-9" name="__codelineno-60-9" href="#__codelineno-60-9"></a><span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;account_id&quot;</span>
+</span><span id="__span-60-10"><a id="__codelineno-60-10" name="__codelineno-60-10" href="#__codelineno-60-10"></a><span class="w">        </span><span class="nt">options</span><span class="p">:</span>
+</span><span id="__span-60-11"><a id="__codelineno-60-11" name="__codelineno-60-11" href="#__codelineno-60-11"></a><span class="w">          </span><span class="nt">regex</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;ACC[0-9]{8}&quot;</span>
+</span><span id="__span-60-12"><a id="__codelineno-60-12" name="__codelineno-60-12" href="#__codelineno-60-12"></a>
+</span><span id="__span-60-13"><a id="__codelineno-60-13" name="__codelineno-60-13" href="#__codelineno-60-13"></a><span class="w">      </span><span class="c1"># Product codes: 3 letters + dash + 2 digits</span>
+</span><span id="__span-60-14"><a id="__codelineno-60-14" name="__codelineno-60-14" href="#__codelineno-60-14"></a><span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;product_code&quot;</span>
+</span><span id="__span-60-15"><a id="__codelineno-60-15" name="__codelineno-60-15" href="#__codelineno-60-15"></a><span class="w">        </span><span class="nt">options</span><span class="p">:</span>
+</span><span id="__span-60-16"><a id="__codelineno-60-16" name="__codelineno-60-16" href="#__codelineno-60-16"></a><span class="w">          </span><span class="nt">regex</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;[A-Z]{3}-[0-9]{2}&quot;</span>
+</span><span id="__span-60-17"><a id="__codelineno-60-17" name="__codelineno-60-17" href="#__codelineno-60-17"></a>
+</span><span id="__span-60-18"><a id="__codelineno-60-18" name="__codelineno-60-18" href="#__codelineno-60-18"></a><span class="w">      </span><span class="c1"># Status enum with alternation</span>
+</span><span id="__span-60-19"><a id="__codelineno-60-19" name="__codelineno-60-19" href="#__codelineno-60-19"></a><span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;status&quot;</span>
+</span><span id="__span-60-20"><a id="__codelineno-60-20" name="__codelineno-60-20" href="#__codelineno-60-20"></a><span class="w">        </span><span class="nt">options</span><span class="p">:</span>
+</span><span id="__span-60-21"><a id="__codelineno-60-21" name="__codelineno-60-21" href="#__codelineno-60-21"></a><span class="w">          </span><span class="nt">regex</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;(ACTIVE|INACTIVE|PENDING)&quot;</span>
+</span><span id="__span-60-22"><a id="__codelineno-60-22" name="__codelineno-60-22" href="#__codelineno-60-22"></a>
+</span><span id="__span-60-23"><a id="__codelineno-60-23" name="__codelineno-60-23" href="#__codelineno-60-23"></a><span class="w">      </span><span class="c1"># Serial numbers: 16 alphanumeric characters</span>
+</span><span id="__span-60-24"><a id="__codelineno-60-24" name="__codelineno-60-24" href="#__codelineno-60-24"></a><span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;serial&quot;</span>
+</span><span id="__span-60-25"><a id="__codelineno-60-25" name="__codelineno-60-25" href="#__codelineno-60-25"></a><span class="w">        </span><span class="nt">options</span><span class="p">:</span>
+</span><span id="__span-60-26"><a id="__codelineno-60-26" name="__codelineno-60-26" href="#__codelineno-60-26"></a><span class="w">          </span><span class="nt">regex</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;[A-Z0-9]{16}&quot;</span>
+</span><span id="__span-60-27"><a id="__codelineno-60-27" name="__codelineno-60-27" href="#__codelineno-60-27"></a>
+</span><span id="__span-60-28"><a id="__codelineno-60-28" name="__codelineno-60-28" href="#__codelineno-60-28"></a><span class="w">      </span><span class="c1"># Transaction IDs: prefix + variable length digits</span>
+</span><span id="__span-60-29"><a id="__codelineno-60-29" name="__codelineno-60-29" href="#__codelineno-60-29"></a><span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;txn_id&quot;</span>
+</span><span id="__span-60-30"><a id="__codelineno-60-30" name="__codelineno-60-30" href="#__codelineno-60-30"></a><span class="w">        </span><span class="nt">options</span><span class="p">:</span>
+</span><span id="__span-60-31"><a id="__codelineno-60-31" name="__codelineno-60-31" href="#__codelineno-60-31"></a><span class="w">          </span><span class="nt">regex</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;TXN-[0-9]{5,10}&quot;</span>
+</span><span id="__span-60-32"><a id="__codelineno-60-32" name="__codelineno-60-32" href="#__codelineno-60-32"></a>
+</span><span id="__span-60-33"><a id="__codelineno-60-33" name="__codelineno-60-33" href="#__codelineno-60-33"></a><span class="w">      </span><span class="c1"># DNA sequences: custom character set</span>
+</span><span id="__span-60-34"><a id="__codelineno-60-34" name="__codelineno-60-34" href="#__codelineno-60-34"></a><span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;dna&quot;</span>
+</span><span id="__span-60-35"><a id="__codelineno-60-35" name="__codelineno-60-35" href="#__codelineno-60-35"></a><span class="w">        </span><span class="nt">options</span><span class="p">:</span>
+</span><span id="__span-60-36"><a id="__codelineno-60-36" name="__codelineno-60-36" href="#__codelineno-60-36"></a><span class="w">          </span><span class="nt">regex</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;[ACGT]{20}&quot;</span>
+</span></code></pre></div>
+</div>
+</div>
+</div>
+<h3 id="unsupported-patterns-udf-fallback">Unsupported Patterns (UDF Fallback)</h3>
+<p>These patterns automatically fall back to UDF-based generation:</p>
+<ul>
+<li><strong>Backreferences</strong>: <code>([A-Z])\1</code> (repeat captured group)</li>
+<li><strong>Lookaheads/Lookbehinds</strong>: <code>(?=...)</code>, <code>(?!...)</code>, <code>(?&lt;=...)</code>, <code>(?&lt;!...)</code></li>
+<li><strong>Word boundaries</strong>: <code>\b</code>, <code>\B</code></li>
+<li><strong>Possessive quantifiers</strong>: <code>*+</code>, <code>++</code></li>
+<li><strong>Atomic groups</strong>: <code>(?&gt;...)</code></li>
+<li><strong>Unicode categories</strong>: <code>\p{L}</code>, <code>\p{N}</code></li>
+</ul>
+<p><strong>Note</strong>: Patterns that fall back to UDF still work correctly - they just won't benefit from the performance optimization of fast mode.</p>
+<h3 id="performance-comparison">Performance Comparison</h3>
+<p>For a dataset with 1 million records using pattern <code>ACC[0-9]{8}</code>:</p>
+<table>
+<thead>
+<tr>
+<th>Mode</th>
+<th>Execution Time</th>
+<th>Method</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Standard</td>
+<td>~45 seconds</td>
+<td>UDF calls to DataFaker</td>
+</tr>
+<tr>
+<td>Fast</td>
+<td>~8 seconds</td>
+<td>Pure SQL generation</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Recommendation</strong>: Use fast mode for production workloads with large datasets (&gt;100k records) and common business patterns.</p>
 
 
 
