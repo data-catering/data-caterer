@@ -37,10 +37,13 @@ class ConnectionRepositoryTest extends AnyFunSuiteLike with BeforeAndAfterAll wi
 
   test("saveConnection should save connection details correctly") {
     val connection = Connection("testConnection", "csv", Some(CONNECTION_GROUP_DATA_SOURCE), Map("key" -> "value"))
+    val probe = testKit.createTestProbe[ConnectionRepository.ConnectionResponse]()
 
-    connectionRepository ! ConnectionRepository.SaveConnections(SaveConnectionsRequest(List(connection)))
+    connectionRepository ! ConnectionRepository.SaveConnections(SaveConnectionsRequest(List(connection)), Some(probe.ref))
 
-    Thread.sleep(10)
+    // Wait for acknowledgment that save completed
+    probe.expectMessage(ConnectionRepository.ConnectionsSaved(1))
+
     val connectionFile = Path.of(s"$tempTestDirectory/connection/testConnection.csv")
     Files.exists(connectionFile) shouldBe true
   }
@@ -48,9 +51,11 @@ class ConnectionRepositoryTest extends AnyFunSuiteLike with BeforeAndAfterAll wi
   test("getConnection should return correct connection details") {
     cleanFolder()
     val connection = Connection("testConnection", "csv", Some(CONNECTION_GROUP_DATA_SOURCE), Map("key" -> "value"))
-    connectionRepository ! ConnectionRepository.SaveConnections(SaveConnectionsRequest(List(connection)))
+    val probe = testKit.createTestProbe[ConnectionRepository.ConnectionResponse]()
 
-    Thread.sleep(50) // Wait for async save to complete
+    connectionRepository ! ConnectionRepository.SaveConnections(SaveConnectionsRequest(List(connection)), Some(probe.ref))
+    probe.expectMessage(ConnectionRepository.ConnectionsSaved(1))
+
     val connectionSaveFolder = s"$tempTestDirectory/connection"
     val retrievedConnection = ConnectionRepository.getConnection("testConnection", connectionSaveFolder)
     retrievedConnection shouldEqual connection
@@ -65,40 +70,53 @@ class ConnectionRepositoryTest extends AnyFunSuiteLike with BeforeAndAfterAll wi
     cleanFolder()
     val connection1 = Connection("testConnection1", "csv", Some(CONNECTION_GROUP_DATA_SOURCE), Map("key" -> "value"))
     val connection2 = Connection("testConnection2", "csv", Some(CONNECTION_GROUP_DATA_SOURCE), Map("key" -> "value"))
-    connectionRepository ! ConnectionRepository.SaveConnections(SaveConnectionsRequest(List(connection1, connection2)))
-    val probe = testKit.createTestProbe[GetConnectionsResponse]()
+    val saveProbe = testKit.createTestProbe[ConnectionRepository.ConnectionResponse]()
 
-    connectionRepository ! ConnectionRepository.GetConnections(Some(CONNECTION_GROUP_DATA_SOURCE), probe.ref)
+    connectionRepository ! ConnectionRepository.SaveConnections(SaveConnectionsRequest(List(connection1, connection2)), Some(saveProbe.ref))
+    saveProbe.expectMessage(ConnectionRepository.ConnectionsSaved(2))
 
-    probe.receiveMessage() shouldEqual GetConnectionsResponse(List(connection1, connection2))
+    val getProbe = testKit.createTestProbe[GetConnectionsResponse]()
+    connectionRepository ! ConnectionRepository.GetConnections(Some(CONNECTION_GROUP_DATA_SOURCE), getProbe.ref)
+
+    getProbe.receiveMessage() shouldEqual GetConnectionsResponse(List(connection1, connection2))
   }
 
   test("getAllConnections should filter connections by group type") {
     cleanFolder()
     val connection1 = Connection("testConnection1", "csv", Some(CONNECTION_GROUP_DATA_SOURCE), Map("key" -> "value"))
     val connection2 = Connection("testConnection2", "csv", Some(CONNECTION_GROUP_METADATA_SOURCE), Map("key" -> "value"))
-    connectionRepository ! ConnectionRepository.SaveConnections(SaveConnectionsRequest(List(connection1, connection2)))
-    val probe = testKit.createTestProbe[GetConnectionsResponse]()
+    val saveProbe = testKit.createTestProbe[ConnectionRepository.ConnectionResponse]()
 
-    connectionRepository ! ConnectionRepository.GetConnections(Some(CONNECTION_GROUP_DATA_SOURCE), probe.ref)
+    connectionRepository ! ConnectionRepository.SaveConnections(SaveConnectionsRequest(List(connection1, connection2)), Some(saveProbe.ref))
+    saveProbe.expectMessage(ConnectionRepository.ConnectionsSaved(2))
 
-    probe.receiveMessage().connections should contain only connection1
+    val getProbe = testKit.createTestProbe[GetConnectionsResponse]()
+    connectionRepository ! ConnectionRepository.GetConnections(Some(CONNECTION_GROUP_DATA_SOURCE), getProbe.ref)
+
+    getProbe.receiveMessage().connections should contain only connection1
   }
 
   test("removeConnection should delete the specified connection") {
     cleanFolder()
     val connection = Connection("testConnection", "type", Some("group"), Map("key" -> "value"))
-    connectionRepository ! ConnectionRepository.SaveConnections(SaveConnectionsRequest(List(connection)))
+    val probe = testKit.createTestProbe[ConnectionRepository.ConnectionResponse]()
 
-    connectionRepository ! ConnectionRepository.RemoveConnection("testConnection")
-    Thread.sleep(10)
+    connectionRepository ! ConnectionRepository.SaveConnections(SaveConnectionsRequest(List(connection)), Some(probe.ref))
+    probe.expectMessage(ConnectionRepository.ConnectionsSaved(1))
+
+    connectionRepository ! ConnectionRepository.RemoveConnection("testConnection", Some(probe.ref))
+    probe.expectMessage(ConnectionRepository.ConnectionRemoved("testConnection", true))
+
     val connectionFile = Path.of(s"$tempTestDirectory/connection/testConnection.csv")
     Files.exists(connectionFile) shouldBe false
   }
 
   test("removeConnection should handle non-existent connection gracefully") {
     cleanFolder()
-    connectionRepository ! ConnectionRepository.RemoveConnection("nonExistentConnection")
+    val probe = testKit.createTestProbe[ConnectionRepository.ConnectionResponse]()
+
+    connectionRepository ! ConnectionRepository.RemoveConnection("nonExistentConnection", Some(probe.ref))
+    probe.expectMessage(ConnectionRepository.ConnectionRemoved("nonExistentConnection", false))
   }
 
   private def cleanFolder(folder: String = "connection"): Unit = {

@@ -22,20 +22,26 @@ object ConnectionRepository {
    */
   sealed trait ConnectionCommand
 
-  final case class SaveConnections(saveConnectionsRequest: SaveConnectionsRequest) extends ConnectionCommand
+  // Response messages
+  sealed trait ConnectionResponse
+  final case class ConnectionsSaved(count: Int) extends ConnectionResponse
+  final case class ConnectionRemoved(name: String, success: Boolean) extends ConnectionResponse
+
+  final case class SaveConnections(saveConnectionsRequest: SaveConnectionsRequest, replyTo: Option[ActorRef[ConnectionResponse]] = None) extends ConnectionCommand
 
   final case class GetConnection(name: String, replyTo: ActorRef[Connection]) extends ConnectionCommand
 
   final case class GetConnections(optConnectionGroupType: Option[String], replyTo: ActorRef[GetConnectionsResponse]) extends ConnectionCommand
 
-  final case class RemoveConnection(name: String) extends ConnectionCommand
+  final case class RemoveConnection(name: String, replyTo: Option[ActorRef[ConnectionResponse]] = None) extends ConnectionCommand
 
   def apply(baseDirectory: String = INSTALL_DIRECTORY): Behavior[ConnectionCommand] = {
     val connectionSaveFolder = s"$baseDirectory/connection"
     Behaviors.supervise[ConnectionCommand] {
       Behaviors.receiveMessage {
-        case SaveConnections(saveConnectionsRequest) =>
+        case SaveConnections(saveConnectionsRequest, replyTo) =>
           saveConnectionsRequest.connections.foreach(conn => saveConnection(conn, connectionSaveFolder))
+          replyTo.foreach(_ ! ConnectionsSaved(saveConnectionsRequest.connections.size))
           Behaviors.same
         case GetConnection(name, replyTo) =>
           replyTo ! getConnection(name, connectionSaveFolder)
@@ -43,8 +49,9 @@ object ConnectionRepository {
         case GetConnections(optConnectionGroupType, replyTo) =>
           replyTo ! getAllConnections(optConnectionGroupType, connectionSaveFolder)
           Behaviors.same
-        case RemoveConnection(name) =>
-          removeConnection(name, connectionSaveFolder)
+        case RemoveConnection(name, replyTo) =>
+          val success = removeConnection(name, connectionSaveFolder)
+          replyTo.foreach(_ ! ConnectionRemoved(name, success))
           Behaviors.same
       }
     }.onFailure(SupervisorStrategy.restart)

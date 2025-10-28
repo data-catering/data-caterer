@@ -52,13 +52,18 @@ object PlanRepository {
 
   sealed trait PlanCommand
 
+  // Response messages
+  sealed trait PlanResponse
+  final case class PlanSaved(name: String) extends PlanResponse
+  final case class PlanRemoved(name: String, success: Boolean) extends PlanResponse
+
   final case class RunPlan(planRunRequest: PlanRunRequest, replyTo: ActorRef[Response]) extends PlanCommand
 
   final case class RunPlanDeleteData(planRunRequest: PlanRunRequest, replyTo: ActorRef[Response]) extends PlanCommand
 
   final case class RunEnhancedPlan(request: EnhancedPlanRunRequest, replyTo: ActorRef[Response]) extends PlanCommand
 
-  final case class SavePlan(planRunRequest: PlanRunRequest) extends PlanCommand
+  final case class SavePlan(planRunRequest: PlanRunRequest, replyTo: Option[ActorRef[PlanResponse]] = None) extends PlanCommand
 
   final case class GetPlans(replyTo: ActorRef[PlanRunRequests]) extends PlanCommand
 
@@ -70,7 +75,7 @@ object PlanRepository {
 
   final case class GetPlanRunReportPath(id: String, replyTo: ActorRef[String]) extends PlanCommand
 
-  final case class RemovePlan(name: String) extends PlanCommand
+  final case class RemovePlan(name: String, replyTo: Option[ActorRef[PlanResponse]] = None) extends PlanCommand
 
   final case class StartupSpark() extends PlanCommand
 
@@ -92,8 +97,9 @@ object PlanRepository {
         case RunEnhancedPlan(request, replyTo) =>
           runEnhancedPlan(request, replyTo, executionSaveFolder, planSaveFolder)
           Behaviors.same
-        case SavePlan(planRunRequest) =>
+        case SavePlan(planRunRequest, replyTo) =>
           savePlan(planRunRequest, planSaveFolder)
+          replyTo.foreach(_ ! PlanSaved(planRunRequest.plan.name))
           Behaviors.same
         case GetPlans(replyTo) =>
           replyTo ! getPlans(planSaveFolder)
@@ -107,8 +113,9 @@ object PlanRepository {
         case GetPlanRunReportPath(id, replyTo) =>
           replyTo ! getPlanRunReportPath(id, executionSaveFolder)
           Behaviors.same
-        case RemovePlan(name) =>
-          removePlan(name, planSaveFolder)
+        case RemovePlan(name, replyTo) =>
+          val success = removePlan(name, planSaveFolder)
+          replyTo.foreach(_ ! PlanRemoved(name, success))
           Behaviors.same
         case GetPlanRuns(replyTo) =>
           replyTo ! getAllPlanExecutions(executionSaveFolder)
@@ -395,13 +402,14 @@ object PlanRepository {
     PlanRunExecutionDetails(groupedExecutions)
   }
 
-  private def removePlan(name: String, planSaveFolder: String): Unit = {
+  private def removePlan(name: String, planSaveFolder: String): Boolean = {
     LOGGER.debug(s"Removing plan, plan-name=$name")
     val planFile = Path.of(s"$planSaveFolder/$name.json").toFile
     if (planFile.exists()) {
       planFile.delete()
     } else {
       LOGGER.warn(s"Plan file does not exist, unable to delete, plan-name=$name")
+      false
     }
   }
 

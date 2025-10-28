@@ -44,12 +44,14 @@ class PlanRepositoryTest extends AnyFunSuiteLike with BeforeAndAfterAll with Moc
       plan = Plan(name = "test-plan"),
       tasks = List()
     )
+    val probe = testKit.createTestProbe[PlanRepository.PlanResponse]()
 
-    planRepository ! PlanRepository.SavePlan(planRunRequest)
+    planRepository ! PlanRepository.SavePlan(planRunRequest, Some(probe.ref))
+
+    // Wait for acknowledgment that save completed
+    probe.expectMessage(PlanRepository.PlanSaved("test-plan"))
 
     val planFile = Path.of(s"$tempTestDirectory/plan/test-plan.json")
-    // Wait for file to exist with timeout
-    waitForFileToExist(planFile, timeoutMs = 5000)
     Files.exists(planFile) shouldBe true
   }
 
@@ -57,16 +59,18 @@ class PlanRepositoryTest extends AnyFunSuiteLike with BeforeAndAfterAll with Moc
     cleanFolder()
     val plan1 = PlanRunRequest(id = "plan-001", plan = Plan(name = "plan1"))
     val plan2 = PlanRunRequest(id = "plan-002", plan = Plan(name = "plan2"))
+    val saveProbe = testKit.createTestProbe[PlanRepository.PlanResponse]()
 
-    planRepository ! PlanRepository.SavePlan(plan1)
-    planRepository ! PlanRepository.SavePlan(plan2)
+    planRepository ! PlanRepository.SavePlan(plan1, Some(saveProbe.ref))
+    saveProbe.expectMessage(PlanRepository.PlanSaved("plan1"))
 
-    Thread.sleep(1000)  // Increased from 150ms to 1000ms
+    planRepository ! PlanRepository.SavePlan(plan2, Some(saveProbe.ref))
+    saveProbe.expectMessage(PlanRepository.PlanSaved("plan2"))
 
-    val probe = testKit.createTestProbe[PlanRunRequests]()
-    planRepository ! PlanRepository.GetPlans(probe.ref)
+    val getProbe = testKit.createTestProbe[PlanRunRequests]()
+    planRepository ! PlanRepository.GetPlans(getProbe.ref)
 
-    val plans = probe.receiveMessage()
+    val plans = getProbe.receiveMessage()
     plans.plans.map(_.plan.name) should contain allOf ("plan1", "plan2")
   }
 
@@ -76,34 +80,39 @@ class PlanRepositoryTest extends AnyFunSuiteLike with BeforeAndAfterAll with Moc
       id = "get-test-001",
       plan = Plan(name = "test-plan-get")
     )
-    planRepository ! PlanRepository.SavePlan(planRunRequest)
+    val saveProbe = testKit.createTestProbe[PlanRepository.PlanResponse]()
 
-    Thread.sleep(500)  // Increased from 100ms to 500ms
+    planRepository ! PlanRepository.SavePlan(planRunRequest, Some(saveProbe.ref))
+    saveProbe.expectMessage(PlanRepository.PlanSaved("test-plan-get"))
 
-    val probe = testKit.createTestProbe[PlanRunRequest]()
-    planRepository ! PlanRepository.GetPlan("test-plan-get", probe.ref)
+    val getProbe = testKit.createTestProbe[PlanRunRequest]()
+    planRepository ! PlanRepository.GetPlan("test-plan-get", getProbe.ref)
 
-    val retrievedPlan = probe.receiveMessage()
+    val retrievedPlan = getProbe.receiveMessage()
     retrievedPlan.plan.name shouldEqual "test-plan-get"
   }
 
   test("removePlan should delete the specified plan") {
     cleanFolder()
     val plan = PlanRunRequest(id = "remove-test-001", plan = Plan(name = "test-plan-remove"))
-    planRepository ! PlanRepository.SavePlan(plan)
+    val probe = testKit.createTestProbe[PlanRepository.PlanResponse]()
 
-    Thread.sleep(500)  // Increased from 100ms to 500ms
+    planRepository ! PlanRepository.SavePlan(plan, Some(probe.ref))
+    probe.expectMessage(PlanRepository.PlanSaved("test-plan-remove"))
 
-    planRepository ! PlanRepository.RemovePlan("test-plan-remove")
-    Thread.sleep(500)  // Increased from 100ms to 500ms
+    planRepository ! PlanRepository.RemovePlan("test-plan-remove", Some(probe.ref))
+    probe.expectMessage(PlanRepository.PlanRemoved("test-plan-remove", true))
+
     val planFile = Path.of(s"$tempTestDirectory/plan/test-plan-remove.json")
     Files.exists(planFile) shouldBe false
   }
 
   test("removePlan should handle non-existent plan gracefully") {
     cleanFolder()
-    planRepository ! PlanRepository.RemovePlan("nonExistentPlan")
-    // Should not throw exception
+    val probe = testKit.createTestProbe[PlanRepository.PlanResponse]()
+
+    planRepository ! PlanRepository.RemovePlan("nonExistentPlan", Some(probe.ref))
+    probe.expectMessage(PlanRepository.PlanRemoved("nonExistentPlan", false))
   }
 
   test("getPlanRunStatus should handle non-existent execution") {
@@ -129,17 +138,18 @@ class PlanRepositoryTest extends AnyFunSuiteLike with BeforeAndAfterAll with Moc
     cleanFolder()
     val plan1 = PlanRunRequest(id = "overwrite-001", plan = Plan(name = "overwrite-test", description = "version1"))
     val plan2 = PlanRunRequest(id = "overwrite-002", plan = Plan(name = "overwrite-test", description = "version2"))
+    val saveProbe = testKit.createTestProbe[PlanRepository.PlanResponse]()
 
-    planRepository ! PlanRepository.SavePlan(plan1)
-    Thread.sleep(500)  // Increased from 100ms to 500ms
+    planRepository ! PlanRepository.SavePlan(plan1, Some(saveProbe.ref))
+    saveProbe.expectMessage(PlanRepository.PlanSaved("overwrite-test"))
 
-    planRepository ! PlanRepository.SavePlan(plan2)
-    Thread.sleep(500)  // Increased from 100ms to 500ms
+    planRepository ! PlanRepository.SavePlan(plan2, Some(saveProbe.ref))
+    saveProbe.expectMessage(PlanRepository.PlanSaved("overwrite-test"))
 
-    val probe = testKit.createTestProbe[PlanRunRequest]()
-    planRepository ! PlanRepository.GetPlan("overwrite-test", probe.ref)
+    val getProbe = testKit.createTestProbe[PlanRunRequest]()
+    planRepository ! PlanRepository.GetPlan("overwrite-test", getProbe.ref)
 
-    val retrievedPlan = probe.receiveMessage()
+    val retrievedPlan = getProbe.receiveMessage()
     retrievedPlan.plan.description shouldBe "version2"
   }
 
@@ -147,13 +157,6 @@ class PlanRepositoryTest extends AnyFunSuiteLike with BeforeAndAfterAll with Moc
     val path = Paths.get(s"$tempTestDirectory/$folder").toFile
     if (path.exists()) {
       path.listFiles().foreach(_.delete())
-    }
-  }
-
-  private def waitForFileToExist(file: Path, timeoutMs: Long): Unit = {
-    val startTime = System.currentTimeMillis()
-    while (!Files.exists(file) && (System.currentTimeMillis() - startTime) < timeoutMs) {
-      Thread.sleep(100)
     }
   }
 }
