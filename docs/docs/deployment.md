@@ -18,15 +18,89 @@ Run the OS native application from [downloading the specific OS application here
 
 ## Docker
 
-To package up your class along with the Data Caterer base image, you can follow
-the [Dockerfile that is created for you here](https://github.com/data-catering/data-caterer/blob/main/example/Dockerfile).
+### Building Your Own Docker Image
 
-Then you can run the following:
+Data Caterer provides a multi-stage Dockerfile that automatically builds your custom Scala/Java project and packages it with the Data Caterer runtime. You can use this as a template for your own projects.
+
+The [example Dockerfile](https://github.com/data-catering/data-caterer/blob/main/example/Dockerfile) demonstrates a two-stage build:
+
+1. **Build Stage**: Uses Gradle to compile your Scala/Java code and create a JAR
+2. **Runtime Stage**: Copies the JAR into the Data Caterer base image
+
+#### Using the Multi-Stage Dockerfile
+
+The multi-stage approach offers several advantages:
+- No need to pre-build the JAR locally
+- Consistent build environment across different machines
+- Optimized Docker layer caching for faster rebuilds
+- Smaller final image size (build tools not included)
+
+To build your own image:
 
 ```shell
-./gradlew clean build
+# Build the Docker image (no pre-build needed)
 docker build -t <my_image_name>:<my_image_tag> .
+
+# Run your custom image
+docker run -d \
+  -e PLAN_CLASS=io.github.datacatering.plan.YourPlanClass \
+  -e DEPLOY_MODE=client \
+  <my_image_name>:<my_image_tag>
 ```
+
+#### Customizing for Your Project
+
+To adapt this for your own project, create a similar Dockerfile structure:
+
+```dockerfile
+# Stage 1: Build
+FROM gradle:8.11.1-jdk17 AS builder
+WORKDIR /build
+
+# Copy build configuration
+COPY gradle ./gradle
+COPY gradlew gradlew.bat build.gradle.kts settings.gradle.kts* ./
+COPY buildSrc ./buildSrc
+
+# Download dependencies (cached layer)
+RUN ./gradlew dependencies --no-daemon || true
+
+# Copy source and build
+COPY src ./src
+RUN ./gradlew clean build --no-daemon
+
+# Stage 2: Runtime
+ARG DATA_CATERER_VERSION=0.17.0
+FROM datacatering/data-caterer:${DATA_CATERER_VERSION}
+
+# Copy your JAR (adjust path if needed)
+COPY --from=builder --chown=app:app /build/build/libs/your-project.jar /opt/app/job.jar
+```
+
+#### Running with Java/Scala Locally
+
+If you prefer to run locally without Docker, you can build and execute the JAR directly:
+
+```shell
+# Build the JAR
+./gradlew clean build
+
+# Run with Spark submit (requires Spark installation)
+spark-submit \
+  --class io.github.datacatering.plan.YourPlanClass \
+  --master local[*] \
+  build/libs/your-project.jar
+
+# Or run via Gradle
+./gradlew run --args="YourPlanClass"
+```
+
+#### Build Configuration Tips
+
+- **Gradle Version**: The example uses Gradle 8.11.1 with JDK 17. Adjust based on your project needs.
+- **Dependencies**: The `buildSrc` directory contains custom Gradle build logic - include it if present in your project.
+- **JAR Name**: Update the `COPY` command in Stage 2 to match your JAR name from `build.gradle.kts`.
+- **Data Caterer Version**: Change `DATA_CATERER_VERSION` to match your required version.
 
 ### Docker Pre and Post Processing Scripts
 

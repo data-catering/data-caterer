@@ -22,6 +22,7 @@ site
 .venv
 .python-version
 
+app/docs
 app/out
 app/src/test/resources/sample/parquet
 app/src/test/resources/sample/json

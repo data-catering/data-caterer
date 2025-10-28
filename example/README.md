@@ -65,13 +65,44 @@ Requires:
 
 ## Docker
 
+### Multi-Stage Build (Recommended)
+
+The Dockerfile uses a multi-stage build that automatically compiles your Java/Scala code and packages it with Data Caterer. This means you don't need to pre-build the JAR locally.
+
+**Advantages:**
+- No local build required - Docker handles everything
+- Consistent build environment across machines
+- Optimized layer caching for faster rebuilds
+- Smaller final image (build tools excluded)
+
 Create your own Docker image via:
+
+```shell
+# Build the image (no ./gradlew build needed!)
+docker build -t <my_image_name>:<my_image_tag> .
+
+# Run your custom image
+docker run \
+  -e PLAN_CLASS=io.github.datacatering.plan.DocumentationPlanRun \
+  -v ${PWD}/docs/run:/opt/app/data \
+  <my_image_name>:<my_image_tag>
+
+# Check results under docs/run folder
+```
+
+To test the build, you can use the provided test script:
+
+```shell
+./test-docker-build.sh data-caterer-example:latest
+```
+
+### Traditional Build (Alternative)
+
+If you prefer to build the JAR locally first:
 
 ```shell
 ./gradlew clean build
 docker build -t <my_image_name>:<my_image_tag> .
-docker run -e PLAN_CLASS=io.github.datacatering.plan.DocumentationPlanRun -v ${PWD}/docs/run:/opt/app/data <my_image_name>:<my_image_tag>
-#check results under docs/run folder
 ```
 
 ## Docker Compose

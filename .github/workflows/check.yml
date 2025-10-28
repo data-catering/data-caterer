@@ -20,7 +20,10 @@ jobs:
         uses: burrunan/gradle-cache-action@v1
         with:
           arguments: ":app:shadowJar"
-      - name: Run integration tests
+      - name: Run gradle integration tests
+        run: |
+          ./gradlew :app:integrationTest --info
+      - name: Run intsa-integration tests
         id: tests
         uses: data-catering/insta-integration@v4
       - name: Print results
@@ -30,3 +33,7 @@ jobs:
           echo "Failed validations:        ${{ steps.tests.outputs.num_failed_validations }}"
           echo "Number of validations:     ${{ steps.tests.outputs.num_validations }}"
           echo "Validation success rate:   ${{ steps.tests.outputs.validation_success_rate }}"
+
+          if [ "${{ steps.tests.outputs.num_failed_validations }}" -gt 0 ]; then
+            exit 1
+          fi

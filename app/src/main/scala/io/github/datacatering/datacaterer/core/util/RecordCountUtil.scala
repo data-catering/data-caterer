@@ -19,34 +19,38 @@ object RecordCountUtil {
 
     val numBatches = Math.max(Math.ceil(totalRecordsToGenerate / generationConfig.numRecordsPerBatch.toDouble).toInt, 1)
     LOGGER.info(s"Number of batches for data generation, num-batches=$numBatches, num-records-per-batch=${generationConfig.numRecordsPerBatch}, total-records=$totalRecordsToGenerate")
-    val trackRecordsPerStep = stepToRecordCountMap(tasks, generationConfig, numBatches)
+    val trackRecordsPerStep = stepToRecordCountMap(tasks, generationConfig, numBatches, countPerStep)
     (numBatches, trackRecordsPerStep)
   }
 
-  private def stepToRecordCountMap(tasks: List[Task], generationConfig: GenerationConfig, numBatches: Long): Map[String, StepRecordCount] = {
+  private def stepToRecordCountMap(tasks: List[Task], generationConfig: GenerationConfig, numBatches: Long, countPerStep: Map[String, Long]): Map[String, StepRecordCount] = {
     tasks.flatMap(task =>
       task.steps
         .map(step => {
-          val stepRecords = if (generationConfig.numRecordsPerStep.isDefined) {
-            val numRecordsPerStep = generationConfig.numRecordsPerStep.get
-            step.count.copy(records = Some(numRecordsPerStep)).numRecords
-          } else step.count.numRecords
+          val stepName = s"${task.name}_${step.name}"
+          // Use the pre-calculated count from countPerStep (which accounts for foreign keys)
+          val stepRecords = countPerStep.getOrElse(stepName, {
+            if (generationConfig.numRecordsPerStep.isDefined) {
+              val numRecordsPerStep = generationConfig.numRecordsPerStep.get
+              step.count.copy(records = Some(numRecordsPerStep)).numRecords
+            } else step.count.numRecords
+          })
           val averagePerCol = step.count.perField.map(_.averageCountPerField).getOrElse(1L)
           val adjustedStepRecords = stepRecords / averagePerCol
-          
+
           // Calculate base records per batch and remainder for proper distribution
           val baseRecordsPerBatch = adjustedStepRecords / numBatches
           val remainder = adjustedStepRecords % numBatches
-          
+
           // For now, use base + 1 for early batches to handle remainder
           // The actual distribution will be handled in BatchDataProcessor
           val recordsPerBatch = if (remainder > 0) baseRecordsPerBatch + 1 else baseRecordsPerBatch
-          
+
           LOGGER.debug(s"Step record distribution: step=${step.name}, total-records=$adjustedStepRecords, " +
             s"base-per-batch=$baseRecordsPerBatch, remainder=$remainder, records-per-batch=$recordsPerBatch")
-          
+
           (
-            s"${task.name}_${step.name}",
+            stepName,
             StepRecordCount(0L, recordsPerBatch, stepRecords, baseRecordsPerBatch, remainder, averagePerCol)
           )
         })).toMap
@@ -59,6 +63,12 @@ object RecordCountUtil {
 
     def getCountForStep(task: (TaskSummary, Task), step: Step): (String, Long) = {
       val stepName = s"${task._2.name}_${step.name}"
+
+      // Check if this step is in reference mode
+      val isReferenceMode = step.options.get(io.github.datacatering.datacaterer.api.model.Constants.ENABLE_REFERENCE_MODE)
+        .map(_.toBoolean)
+        .getOrElse(io.github.datacatering.datacaterer.api.model.Constants.DEFAULT_ENABLE_REFERENCE_MODE)
+
       //find if step is used in any foreign key generation
       val optGenerationForeignKey = foreignKeys.find(fk => fk.generate.exists(fkr => fkr.dataSource == task._1.dataSourceName && fkr.step == step.name))
 
@@ -67,6 +77,13 @@ object RecordCountUtil {
         LOGGER.debug(s"Step count total is defined in generation config, overriding count total defined in step, " +
           s"data-source-name=${task._1.dataSourceName}, task-name=${task._2.name}, step-name=${step.name}, records-per-step=$numRecordsPerStep")
         step.count.copy(records = Some(numRecordsPerStep))
+      } else if (isReferenceMode) {
+        // Reference mode: DO NOT override based on FK source, keep the step's configured count
+        // The target step should maintain its explicitly set count even when it's in a FK relationship
+        // The actual count for reference mode sources will be determined when data is read
+        LOGGER.debug(s"Step has reference mode enabled, using step's configured count (not deriving from FK source), " +
+          s"data-source-name=${task._1.dataSourceName}, task-name=${task._2.name}, step-name=${step.name}, step-count=${step.count.numRecords}")
+        step.count
       } else if (optGenerationForeignKey.isDefined) {
         //then get the source of the foreign key
         val sourceFk = optGenerationForeignKey.get.source
@@ -74,8 +91,26 @@ object RecordCountUtil {
         val optSourceFkStep = allStepsWithDataSource.find(s => s._1._1.dataSourceName == sourceFk.dataSource && s._2.name == sourceFk.step)
         //then pass via recursion
         optSourceFkStep.map(sourceFkStep => {
-          val sourceFkRecords = getCountForStep(sourceFkStep._1, sourceFkStep._2)._2
-          step.count.copy(records = Some(sourceFkRecords))
+          // Check if the source step is in reference mode
+          val isSourceReferenceMode = sourceFkStep._2.options.get(io.github.datacatering.datacaterer.api.model.Constants.ENABLE_REFERENCE_MODE)
+            .map(_.toBoolean)
+            .getOrElse(io.github.datacatering.datacaterer.api.model.Constants.DEFAULT_ENABLE_REFERENCE_MODE)
+
+          if (isSourceReferenceMode) {
+            // Source is in reference mode: DO NOT override target's count based on source's default count
+            // Instead, keep the target's explicitly configured count
+            LOGGER.debug(s"FK source step has reference mode enabled, NOT overriding target count, " +
+              s"source-data-source=${sourceFk.dataSource}, source-step=${sourceFk.step}, " +
+              s"target-data-source=${task._1.dataSourceName}, target-step=${step.name}, target-count=${step.count.numRecords}")
+            step.count
+          } else {
+            // Normal FK generation: derive count from source
+            val sourceFkRecords = getCountForStep(sourceFkStep._1, sourceFkStep._2)._2
+            LOGGER.debug(s"Deriving target count from FK source, " +
+              s"source-data-source=${sourceFk.dataSource}, source-step=${sourceFk.step}, source-count=$sourceFkRecords, " +
+              s"target-data-source=${task._1.dataSourceName}, target-step=${step.name}")
+            step.count.copy(records = Some(sourceFkRecords))
+          }
         }).getOrElse(step.count)
       } else {
         step.count

@@ -50,29 +50,24 @@ class DataGeneratorFactory(faker: Faker, enableFastGeneration: Boolean = false)(
       val genSqlExpression = dataGenerators.map(dg => s"${dg.generateSqlExpressionWrapper} AS `${dg.structField.name}`")
       val df = indexedDf.selectExpr(genSqlExpression: _*)
 
-      if (!df.storageLevel.useMemory) df.cache()
-      val dfWithCount = step.count.perField
+      step.count.perField
         .map(perCol => generateRecordsPerField(dataGenerators, step, perCol, df))
         .getOrElse(df)
-      df.unpersist()
-      dfWithCount
     }
 
-    if (!allRecordsDf.storageLevel.useMemory) allRecordsDf.cache()
     val dfWithMetadata = attachMetadata(allRecordsDf, structType)
-    
+
     // Apply SQL expressions while all fields (including omitted helper fields) are still available
     val dfWithSqlExpressions = applySqlExpressions(dfWithMetadata)
-    
+
     // Attach final metadata after SQL expressions
     val dfAllFields = attachMetadata(dfWithSqlExpressions, structType)
-    if (!dfAllFields.storageLevel.useMemory) dfAllFields.cache()
-    allRecordsDf.unpersist()
-    
+
     // Only remove the index field here, leave other omitted fields for SinkFactory
     val finalDf = dfAllFields.drop(INDEX_INC_FIELD)
+
+    // Single cache point - only cache final result
     if (!finalDf.storageLevel.useMemory) finalDf.cache()
-    dfAllFields.unpersist()
     finalDf
   }
 
@@ -373,7 +368,6 @@ class DataGeneratorFactory(faker: Faker, enableFastGeneration: Boolean = false)(
     sparkSession.udf.register(GENERATE_REGEX_UDF, UDFHelperFunctions.regex(faker))
     sparkSession.udf.register(GENERATE_FAKER_EXPRESSION_UDF, UDFHelperFunctions.expression(faker))
     sparkSession.udf.register(GENERATE_RANDOM_ALPHANUMERIC_STRING_UDF, UDFHelperFunctions.alphaNumeric(faker))
-    defineRandomLengthView()
   }
 
   private def attachMetadata(df: DataFrame, structType: StructType): DataFrame = {
@@ -394,12 +388,12 @@ class DataGeneratorFactory(faker: Faker, enableFastGeneration: Boolean = false)(
             }
           }
           StructType(updatedFields)
-        
+
         case (ArrayType(originalElementType, nullable), ArrayType(targetElementType, _)) =>
           // For array types, recursively update the element type
           val updatedElementType = updateNestedMetadata(originalElementType, targetElementType)
           ArrayType(updatedElementType, nullable)
-        
+
         case (_, _) =>
           // For primitive types, just return the original type (metadata will be handled at field level)
           originalType
@@ -426,80 +420,15 @@ class DataGeneratorFactory(faker: Faker, enableFastGeneration: Boolean = false)(
     val rdd = df.rdd
     sparkSession.createDataFrame(rdd, updatedSchema)
   }
-
-  private def defineRandomLengthView(): Unit = {
-    sparkSession.sql(
-        s"""WITH lengths AS (
-           |  SELECT sequence(1, $DATA_CATERER_RANDOM_LENGTH_MAX_VALUE) AS length_list
-           |),
-           |
-           |-- Explode the sequence into individual length values
-           |exploded_lengths AS (
-           |  SELECT explode(length_list) AS length
-           |  FROM lengths
-           |),
-           |
-           |-- Create the heuristic cumulative distribution dynamically
-           |length_distribution AS (
-           |  SELECT
-           |    length,
-           |    CASE
-           |      WHEN length <= 5 THEN 0.001 * POWER(2, length - 1)
-           |      WHEN length <= 10 THEN 0.01 * POWER(2, length - 6)
-           |      ELSE 0.1 * POWER(2, length - 11)
-           |    END AS weight,
-           |    SUM(CASE
-           |          WHEN length <= 5 THEN 0.001 * POWER(2, length - 1)
-           |          WHEN length <= 10 THEN 0.01 * POWER(2, length - 6)
-           |          ELSE 0.1 * POWER(2, length - 11)
-           |        END) OVER (ORDER BY length) AS cumulative_weight,
-           |    SUM(CASE
-           |          WHEN length <= 5 THEN 0.001 * POWER(2, length - 1)
-           |          WHEN length <= 10 THEN 0.01 * POWER(2, length - 6)
-           |          ELSE 0.1 * POWER(2, length - 11)
-           |        END) OVER () AS total_weight
-           |  FROM exploded_lengths
-           |),
-           |
-           |-- Calculate cumulative probabilities
-           |length_probabilities AS (
-           |  SELECT
-           |    length,
-           |    cumulative_weight / total_weight AS cumulative_prob
-           |  FROM length_distribution
-           |),
-           |
-           |-- Select a single random length based on the heuristic distribution
-           |random_length AS (
-           |  SELECT
-           |    length
-           |  FROM length_probabilities
-           |  WHERE cumulative_prob >= rand()
-           |  ORDER BY cumulative_prob
-           |  LIMIT 1
-           |)
-           |
-           |-- Final query to get the single random length
-           |SELECT * FROM random_length;""".stripMargin)
-      .createOrReplaceTempView(DATA_CATERER_RANDOM_LENGTH)
-  }
 }
 
 object UDFHelperFunctions extends Serializable {
 
   private val RANDOM = new Random()
 
-  def regex(faker: Faker): UserDefinedFunction = udf((s: String) => {
-    // Create a new Faker instance inside the UDF to avoid serialization issues
-    val localFaker = new Faker()
-    localFaker.regexify(s)
-  }).asNondeterministic()
+  def regex(faker: Faker): UserDefinedFunction = udf((s: String) => faker.regexify(s)).asNondeterministic()
 
-  def expression(faker: Faker): UserDefinedFunction = udf((s: String) => {
-    // Create a new Faker instance inside the UDF to avoid serialization issues
-    val localFaker = new Faker()
-    localFaker.expression(s)
-  }).asNondeterministic()
+  def expression(faker: Faker): UserDefinedFunction = udf((s: String) => faker.expression(s)).asNondeterministic()
 
   def alphaNumeric(faker: Faker): UserDefinedFunction = udf((minLength: Int, maxLength: Int) => {
     val length = RANDOM.nextInt(maxLength + 1) + minLength

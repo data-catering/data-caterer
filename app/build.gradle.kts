@@ -256,16 +256,16 @@ tasks.test {
 tasks.register<Test>("integrationTest") {
     description = "Runs integration tests including PlanApiEndToEndTest"
     group = "verification"
-    
+
     testClassesDirs = sourceSets["integrationTest"].output.classesDirs
     classpath = sourceSets["integrationTest"].runtimeClasspath
-    
+
     // Same JVM settings as regular tests but allow more memory for integration tests
     minHeapSize = "1024m"
     maxHeapSize = "4096m"
-    
+
     jvmArgs("-Djava.security.manager=allow", "-Djdk.module.illegalAccess=deny", "--add-opens=java.base/java.lang=ALL-UNNAMED", "--add-opens=java.base/java.lang.invoke=ALL-UNNAMED", "--add-opens=java.base/java.lang.reflect=ALL-UNNAMED", "--add-opens=java.base/java.io=ALL-UNNAMED", "--add-opens=java.base/java.net=ALL-UNNAMED", "--add-opens=java.base/java.nio=ALL-UNNAMED", "--add-opens=java.base/java.util=ALL-UNNAMED", "--add-opens=java.base/java.util.concurrent=ALL-UNNAMED", "--add-opens=java.base/java.util.concurrent.atomic=ALL-UNNAMED", "--add-opens=java.base/sun.nio.ch=ALL-UNNAMED", "--add-opens=java.base/sun.nio.cs=ALL-UNNAMED", "--add-opens=java.base/sun.security.action=ALL-UNNAMED", "--add-opens=java.base/sun.util.calendar=ALL-UNNAMED", "--add-opens=java.security.jgss/sun.security.krb5=ALL-UNNAMED")
-    
+
     useJUnitPlatform {
         includeEngines("scalatest")
         testLogging {
@@ -273,15 +273,52 @@ tasks.register<Test>("integrationTest") {
             showStandardStreams = true // Show output for integration tests
         }
     }
-    
+
     // Integration tests should run sequentially to avoid conflicts
     maxParallelForks = 1
-    
+
+    // Fork a new JVM for each test class to isolate state (actors, system properties, Spark sessions)
+    // This is necessary because integration tests like PlanApiEndToEndTest modify global state
+    forkEvery = 1
+
     // Enable proper test filtering
     filter {
         setFailOnNoMatchingTests(false)
     }
-    
+
+    mustRunAfter("test")
+}
+
+// Performance test task
+tasks.register<Test>("performanceTest") {
+    description = "Runs performance tests (DataGeneratorFactoryPerformanceTest, ForeignKeyUtilPerformanceTest)"
+    group = "verification"
+
+    testClassesDirs = sourceSets["performanceTest"].output.classesDirs
+    classpath = sourceSets["performanceTest"].runtimeClasspath
+
+    // Allow more memory and time for performance tests
+    minHeapSize = "2048m"
+    maxHeapSize = "8192m"
+
+    jvmArgs("-Djava.security.manager=allow", "-Djdk.module.illegalAccess=deny", "--add-opens=java.base/java.lang=ALL-UNNAMED", "--add-opens=java.base/java.lang.invoke=ALL-UNNAMED", "--add-opens=java.base/java.lang.reflect=ALL-UNNAMED", "--add-opens=java.base/java.io=ALL-UNNAMED", "--add-opens=java.base/java.net=ALL-UNNAMED", "--add-opens=java.base/java.nio=ALL-UNNAMED", "--add-opens=java.base/java.util=ALL-UNNAMED", "--add-opens=java.base/java.util.concurrent=ALL-UNNAMED", "--add-opens=java.base/java.util.concurrent.atomic=ALL-UNNAMED", "--add-opens=java.base/sun.nio.ch=ALL-UNNAMED", "--add-opens=java.base/sun.nio.cs=ALL-UNNAMED", "--add-opens=java.base/sun.security.action=ALL-UNNAMED", "--add-opens=java.base/sun.util.calendar=ALL-UNNAMED", "--add-opens=java.security.jgss/sun.security.krb5=ALL-UNNAMED")
+
+    useJUnitPlatform {
+        includeEngines("scalatest")
+        testLogging {
+            events("passed", "failed", "skipped")
+            showStandardStreams = true // Show output for performance tests
+        }
+    }
+
+    // Performance tests should run sequentially to get accurate measurements
+    maxParallelForks = 1
+
+    // Enable proper test filtering
+    filter {
+        setFailOnNoMatchingTests(false)
+    }
+
     mustRunAfter("test")
 }
 
@@ -365,9 +402,20 @@ sourceSets {
             setSrcDirs(listOf("src/test/resources"))
         }
     }
-    
+
     // Integration test source set
     create("integrationTest") {
+        compileClasspath += sourceSets.main.get().output
+        runtimeClasspath += sourceSets.main.get().output
+        compileClasspath += sourceSets.test.get().output
+        runtimeClasspath += sourceSets.test.get().output
+        resources {
+            setSrcDirs(listOf("src/test/resources")) // Reuse test resources
+        }
+    }
+
+    // Performance test source set
+    create("performanceTest") {
         compileClasspath += sourceSets.main.get().output
         runtimeClasspath += sourceSets.main.get().output
         compileClasspath += sourceSets.test.get().output
@@ -384,6 +432,12 @@ configurations {
         extendsFrom(testImplementation.get())
     }
     named("integrationTestRuntimeOnly") {
+        extendsFrom(testRuntimeOnly.get())
+    }
+    named("performanceTestImplementation") {
+        extendsFrom(testImplementation.get())
+    }
+    named("performanceTestRuntimeOnly") {
         extendsFrom(testRuntimeOnly.get())
     }
 }

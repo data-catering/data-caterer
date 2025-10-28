@@ -1,9 +1,11 @@
 package io.github.datacatering.datacaterer.core.ui.plan
 
+import io.github.datacatering.datacaterer.core.ui.config.UiConfiguration
 import org.apache.pekko.actor.typed.scaladsl.Behaviors
 import org.apache.pekko.actor.typed.{ActorSystem, Behavior, PostStop}
 import org.apache.pekko.http.scaladsl.Http
 import org.apache.pekko.http.scaladsl.Http.ServerBinding
+import org.apache.log4j.Logger
 
 import java.awt.Desktop
 import java.net.URI
@@ -20,12 +22,18 @@ object PlanServer {
   case object Stop extends Message
 
 
-  def apply(): Behavior[Message] = Behaviors.setup { ctx =>
+  private val LOGGER = Logger.getLogger(getClass.getName)
+
+  def apply(installDir: String = UiConfiguration.INSTALL_DIRECTORY, openBrowser: Boolean = true): Behavior[Message] = Behaviors.setup { ctx =>
     implicit val system: ActorSystem[Nothing] = ctx.system
 
-    val planRepository = ctx.spawn(PlanRepository(), "PlanRepository")
-    val planResponseHandler = ctx.spawn(PlanResponseHandler(), "PlanResponseHandler")
-    val connectionRepository = ctx.spawn(ConnectionRepository(), "ConnectionRepository")
+    LOGGER.info(s"Starting server with install directory: $installDir")
+
+    // Use unique actor names to avoid conflicts when multiple tests run concurrently
+    val uniqueSuffix = java.util.UUID.randomUUID().toString.take(8)
+    val planRepository = ctx.spawn(PlanRepository(installDir), s"PlanRepository-$uniqueSuffix")
+    val planResponseHandler = ctx.spawn(PlanResponseHandler(), s"PlanResponseHandler-$uniqueSuffix")
+    val connectionRepository = ctx.spawn(ConnectionRepository(installDir), s"ConnectionRepository-$uniqueSuffix")
     val routes = new PlanRoutes(planRepository, planResponseHandler, connectionRepository)
 
     // Use configurable port with fallback to 9898
@@ -59,7 +67,7 @@ object PlanServer {
         case Started(binding) =>
           val server = s"http://localhost:${binding.localAddress.getPort}/"
           ctx.log.info("Server online at {}", server)
-          if (Desktop.isDesktopSupported && Desktop.getDesktop.isSupported(Desktop.Action.BROWSE)) {
+          if (openBrowser && Desktop.isDesktopSupported && Desktop.getDesktop.isSupported(Desktop.Action.BROWSE)) {
             Desktop.getDesktop.browse(new URI(server))
           }
           if (wasStopped) ctx.self ! Stop

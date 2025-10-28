@@ -36,90 +36,96 @@ class FastDataGeneratorTest extends AnyFunSuite with SparkSuite {
     val generator = new FastStringDataGenerator(structField, new Faker())
 
     val sqlExpression = generator.generateSqlExpression
-    
+
     // Validate no UDF calls are present
-    assert(!sqlExpression.contains("GENERATE_FAKER_EXPRESSION_UDF"), 
+    assert(!sqlExpression.contains("GENERATE_FAKER_EXPRESSION_UDF"),
       "SQL expression should not contain UDF calls")
-    assert(!sqlExpression.contains("GENERATE_REGEX_UDF"), 
+    assert(!sqlExpression.contains("GENERATE_REGEX_UDF"),
       "SQL expression should not contain UDF calls")
-    assert(!sqlExpression.contains("GENERATE_RANDOM_ALPHANUMERIC_STRING_UDF"), 
+    assert(!sqlExpression.contains("GENERATE_RANDOM_ALPHANUMERIC_STRING_UDF"),
       "SQL expression should not contain UDF calls")
-    
-    // Validate SQL uses standard functions
-    assert(sqlExpression.contains("CONCAT_WS"), 
-      "SQL expression should use CONCAT_WS for string construction")
-    assert(sqlExpression.contains("TRANSFORM"), 
-      "SQL expression should use TRANSFORM for array operations")
-    assert(sqlExpression.contains("SEQUENCE"), 
-      "SQL expression should use SEQUENCE for repetition")
-    
+
+    // Validate SQL uses MD5-based generation for performance
+    assert(sqlExpression.contains("MD5"),
+      "SQL expression should use MD5 for fast string generation")
+    assert(sqlExpression.contains("SUBSTRING"),
+      "SQL expression should use SUBSTRING for length control")
+    assert(sqlExpression.contains("CONCAT"),
+      "SQL expression should use CONCAT for seed generation")
+
     println(s"FastStringDataGenerator SQL: $sqlExpression")
   }
 
-  test("FastRegexDataGenerator should handle common email patterns") {
+  test("FastRegexDataGenerator should handle account ID patterns") {
     val metadata = new MetadataBuilder()
-      .putString(REGEX_GENERATOR, "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$")
+      .putString(REGEX_GENERATOR, "ACC[0-9]{8}")
       .build()
-    val structField = StructField("email", StringType, false, metadata)
+    val structField = StructField("account_id", StringType, false, metadata)
     val generator = new FastRegexDataGenerator(structField, new Faker())
 
-    // Test generation
+    // Test generation (uses faker.regexify for accuracy)
     val generated = generator.generate
-    assert(generated.contains("@"), "Generated email should contain @")
-    assert(generated.endsWith("example.com"), "Generated email should end with example.com")
-    println(s"Generated email: $generated")
+    assert(generated.startsWith("ACC"), s"Generated account ID should start with ACC: $generated")
+    assert(generated.matches("ACC[0-9]{8}"), s"Generated account ID should match pattern: $generated")
+    println(s"Generated account ID: $generated")
 
-    // Test SQL expression
+    // Test SQL expression (uses parser for pure SQL)
     val sqlExpression = generator.generateSqlExpression
-    assert(!sqlExpression.contains("GENERATE_REGEX_UDF"), 
-      "SQL expression should not contain regex UDF")
-    assert(sqlExpression.contains("CONCAT"), 
-      "SQL expression should use CONCAT for email construction")
-    println(s"Email SQL: $sqlExpression")
+    assert(!sqlExpression.contains("GENERATE_REGEX_UDF"),
+      "SQL expression should not contain regex UDF for parseable pattern")
+    assert(sqlExpression.contains("CONCAT"),
+      "SQL expression should use CONCAT")
+    assert(sqlExpression.contains("'ACC'"),
+      "SQL expression should include ACC literal")
+    assert(sqlExpression.contains("LPAD"),
+      "SQL expression should use LPAD for digits")
+    println(s"Account ID SQL: $sqlExpression")
   }
 
-  test("FastRegexDataGenerator should handle phone number patterns") {
+  test("FastRegexDataGenerator should handle simple digit patterns") {
     val metadata = new MetadataBuilder()
-      .putString(REGEX_GENERATOR, "\\d{3}-\\d{3}-\\d{4}")
+      .putString(REGEX_GENERATOR, "\\d{6}")
       .build()
-    val structField = StructField("phone", StringType, false, metadata)
+    val structField = StructField("code", StringType, false, metadata)
     val generator = new FastRegexDataGenerator(structField, new Faker())
 
     // Test generation
     val generated = generator.generate
-    assert(generated.matches("\\d{3}-\\d{3}-\\d{4}"), 
-      s"Generated phone should match pattern: $generated")
-    println(s"Generated phone: $generated")
+    assert(generated.matches("\\d{6}"),
+      s"Generated code should match pattern: $generated")
+    println(s"Generated code: $generated")
 
     // Test SQL expression
     val sqlExpression = generator.generateSqlExpression
-    assert(!sqlExpression.contains("GENERATE_REGEX_UDF"), 
-      "SQL expression should not contain regex UDF")
-    assert(sqlExpression.contains("LPAD"), 
-      "SQL expression should use LPAD for number formatting")
-    println(s"Phone SQL: $sqlExpression")
+    assert(!sqlExpression.contains("GENERATE_REGEX_UDF"),
+      "SQL expression should not contain regex UDF for parseable pattern")
+    assert(sqlExpression.contains("LPAD"),
+      "SQL expression should use LPAD for digit formatting")
+    println(s"Code SQL: $sqlExpression")
   }
 
-  test("FastRegexDataGenerator should handle UUID patterns") {
+  test("FastRegexDataGenerator should handle mixed patterns") {
     val metadata = new MetadataBuilder()
-      .putString(REGEX_GENERATOR, "uuid")
+      .putString(REGEX_GENERATOR, "[A-Z]{3}-[0-9]{2}")
       .build()
-    val structField = StructField("uuid", StringType, false, metadata)
+    val structField = StructField("code", StringType, false, metadata)
     val generator = new FastRegexDataGenerator(structField, new Faker())
 
     // Test generation
     val generated = generator.generate
-    assert(generated.contains("-"), "Generated UUID should contain dashes")
-    assert(generated.length == 36, s"Generated UUID should be 36 characters: $generated")
-    println(s"Generated UUID: $generated")
+    assert(generated.matches("[A-Z]{3}-[0-9]{2}"),
+      s"Generated code should match pattern: $generated")
+    println(s"Generated mixed code: $generated")
 
     // Test SQL expression
     val sqlExpression = generator.generateSqlExpression
-    assert(!sqlExpression.contains("GENERATE_REGEX_UDF"), 
-      "SQL expression should not contain regex UDF")
-    assert(sqlExpression.contains("HEX"), 
-      "SQL expression should use HEX for UUID generation")
-    println(s"UUID SQL: $sqlExpression")
+    assert(!sqlExpression.contains("GENERATE_REGEX_UDF"),
+      "SQL expression should not contain regex UDF for parseable pattern")
+    assert(sqlExpression.contains("CONCAT"),
+      "SQL expression should use CONCAT")
+    assert(sqlExpression.contains("'-'"),
+      "SQL expression should include dash literal")
+    println(s"Mixed code SQL: $sqlExpression")
   }
 
   test("FastRegexDataGenerator should handle alphanumeric patterns with length") {
@@ -132,63 +138,79 @@ class FastDataGeneratorTest extends AnyFunSuite with SparkSuite {
     // Test generation
     val generated = generator.generate
     assert(generated.length == 8, s"Generated code should be 8 characters: $generated")
-    assert(generated.matches("[A-Z0-9]+"), 
+    assert(generated.matches("[A-Z0-9]+"),
       s"Generated code should be alphanumeric uppercase: $generated")
     println(s"Generated code: $generated")
 
     // Test SQL expression
     val sqlExpression = generator.generateSqlExpression
-    assert(!sqlExpression.contains("GENERATE_REGEX_UDF"), 
-      "SQL expression should not contain regex UDF")
-    assert(sqlExpression.contains("SUBSTR"), 
-      "SQL expression should use SUBSTR for character selection")
+    assert(!sqlExpression.contains("GENERATE_REGEX_UDF"),
+      "SQL expression should not contain regex UDF for parseable pattern")
+    assert(sqlExpression.contains("SUBSTRING") || sqlExpression.contains("CONCAT_WS"),
+      "SQL expression should use SUBSTRING or CONCAT_WS for character selection")
     println(s"Code SQL: $sqlExpression")
   }
 
-  test("FastRegexDataGenerator should handle number patterns") {
+  test("FastRegexDataGenerator should handle alternation patterns") {
     val metadata = new MetadataBuilder()
-      .putString(REGEX_GENERATOR, "\\d{6}")
+      .putString(REGEX_GENERATOR, "(ACTIVE|INACTIVE|PENDING)")
       .build()
-    val structField = StructField("number", StringType, false, metadata)
+    val structField = StructField("status", StringType, false, metadata)
     val generator = new FastRegexDataGenerator(structField, new Faker())
 
     // Test generation
     val generated = generator.generate
-    assert(generated.length == 6, s"Generated number should be 6 digits: $generated")
-    assert(generated.matches("\\d{6}"), 
-      s"Generated number should be all digits: $generated")
-    println(s"Generated number: $generated")
+    assert(List("ACTIVE", "INACTIVE", "PENDING").contains(generated),
+      s"Generated status should be one of the options: $generated")
+    println(s"Generated status: $generated")
 
     // Test SQL expression
     val sqlExpression = generator.generateSqlExpression
-    assert(!sqlExpression.contains("GENERATE_REGEX_UDF"), 
-      "SQL expression should not contain regex UDF")
-    assert(sqlExpression.contains("LPAD"), 
-      "SQL expression should use LPAD for number formatting")
-    println(s"Number SQL: $sqlExpression")
+    assert(!sqlExpression.contains("GENERATE_REGEX_UDF"),
+      "SQL expression should not contain regex UDF for parseable pattern")
+    assert(sqlExpression.contains("ELEMENT_AT") && sqlExpression.contains("ARRAY"),
+      "SQL expression should use ELEMENT_AT and ARRAY for alternation")
+    println(s"Status SQL: $sqlExpression")
   }
 
-  test("FastRegexDataGenerator should extract length from patterns correctly") {
+  test("FastRegexDataGenerator should parse quantifiers correctly") {
     val metadata1 = new MetadataBuilder().putString(REGEX_GENERATOR, "[A-Z]{5}").build()
     val generator1 = new FastRegexDataGenerator(StructField("test1", StringType, false, metadata1), new Faker())
-    
+
     val metadata2 = new MetadataBuilder().putString(REGEX_GENERATOR, "[A-Z]{3,8}").build()
     val generator2 = new FastRegexDataGenerator(StructField("test2", StringType, false, metadata2), new Faker())
-    
-    val metadata3 = new MetadataBuilder().putString(REGEX_GENERATOR, "[A-Z]+").build()
+
+    val metadata3 = new MetadataBuilder().putString(REGEX_GENERATOR, "\\d+").build()
     val generator3 = new FastRegexDataGenerator(StructField("test3", StringType, false, metadata3), new Faker())
 
-    // Test length extraction through generation
+    // Test exact quantifier
     val gen1 = generator1.generate
     assert(gen1.length == 5, s"Should generate exactly 5 characters: $gen1")
-    
+
+    // Test range quantifier
     val gen2 = generator2.generate
     assert(gen2.length >= 3 && gen2.length <= 8, s"Should generate 3-8 characters: $gen2")
-    
+
+    // Test plus quantifier (bounded to 1-5 in parser)
     val gen3 = generator3.generate
-    assert(gen3.length >= 1, s"Should generate at least 1 character: $gen3")
-    
-    println(s"Length pattern tests: $gen1, $gen2, $gen3")
+    assert(gen3.length >= 1, s"Should generate at least 1 digit: $gen3")
+
+    println(s"Quantifier pattern tests: $gen1, $gen2, $gen3")
+  }
+
+  test("FastRegexDataGenerator should fall back to UDF for unsupported patterns") {
+    // Lookahead is not supported by parser
+    val metadata = new MetadataBuilder()
+      .putString(REGEX_GENERATOR, "(?=complex)pattern")
+      .build()
+    val structField = StructField("complex", StringType, false, metadata)
+    val generator = new FastRegexDataGenerator(structField, new Faker())
+
+    // SQL should fall back to UDF
+    val sqlExpression = generator.generateSqlExpression
+    assert(sqlExpression.contains("GENERATE_REGEX"),
+      s"SQL expression should fall back to UDF for unsupported pattern: $sqlExpression")
+    println(s"Fallback SQL: $sqlExpression")
   }
 
   test("FastDataGenerators should handle edge cases gracefully") {

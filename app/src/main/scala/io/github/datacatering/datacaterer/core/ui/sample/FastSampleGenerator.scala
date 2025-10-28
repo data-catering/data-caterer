@@ -5,6 +5,8 @@ import io.github.datacatering.datacaterer.core.config.ConfigParser
 import io.github.datacatering.datacaterer.core.generator.DataGeneratorFactory
 import io.github.datacatering.datacaterer.core.parser.PlanParser
 import io.github.datacatering.datacaterer.core.ui.model._
+import io.github.datacatering.datacaterer.core.ui.resource.YamlResourceCache
+import io.github.datacatering.datacaterer.core.ui.service.{DataFrameManager, PlanLoaderService, TaskLoaderService}
 import io.github.datacatering.datacaterer.core.util.{ForeignKeyUtil, ObjectMapperUtil}
 import net.datafaker.Faker
 import org.apache.log4j.Logger
@@ -285,7 +287,8 @@ object FastSampleGenerator {
                                                 sampleSize: Int,
                                                 fastMode: Boolean,
                                                 enableRelationships: Boolean,
-                                                taskDirectory: Option[String] = None
+                                                taskDirectory: Option[String] = None,
+                                                useV2: Boolean = true
                                               )(implicit sparkSession: SparkSession): Map[String, (Step, SampleResponseWithDataFrame)] = {
 
     if (!enableRelationships || plan.isEmpty) {
@@ -320,7 +323,7 @@ object FastSampleGenerator {
         LOGGER.debug(s"Requested steps: ${requestedSteps.size} steps: ${requestedSteps.map { case (step, ds) => s"${ds}.${step.name}" }.mkString(", ")}")
 
         // Generate DataFrames for all plan steps
-        val factory = new DataGeneratorFactory(new Faker(Locale.ENGLISH), enableFastGeneration = fastMode)
+        val factory = new DataGeneratorFactory(new Faker(Locale.ENGLISH) with Serializable, enableFastGeneration = fastMode)
         val allGeneratedData = allPlanSteps.map { case (step, dataSourceName) =>
           val recordCount = step.count.records.getOrElse(sampleSize.toLong)
           LOGGER.debug(s"Generating step ${step.name} with recordCount=$recordCount (step.count.records=${step.count.records}, sampleSize=$sampleSize)")
@@ -328,34 +331,44 @@ object FastSampleGenerator {
           val stepKey = s"$dataSourceName.${step.name}"
           LOGGER.debug(s"Generated step ${step.name}: ${df.count()} records")
           df.show(false)
-          df.cache()
-          (stepKey, df)
+          // Use DataFrameManager to track cached DataFrames for proper cleanup
+          val cachedDf = DataFrameManager.cacheDataFrame(stepKey, df)
+          (stepKey, cachedDf)
         }.toMap
 
         LOGGER.info(s"Generated ${allGeneratedData.size} DataFrames, applying foreign key relationships")
 
         // Apply foreign key relationships
-        val dataFramesWithForeignKeys = ForeignKeyUtil.getDataFramesWithForeignKeys(plan.get, allGeneratedData.toList)
+        val dataFramesWithForeignKeys = ForeignKeyUtil.getDataFramesWithForeignKeys(plan.get, allGeneratedData.toList, useV2)
         val updatedDataMap = dataFramesWithForeignKeys.toMap
 
-        // Convert requested steps to response format using relationship-aware data
-        requestedSteps.map { case (step, dataSourceName) =>
-          val stepKey = s"$dataSourceName.${step.name}"
-          LOGGER.debug(s"Looking for step key: $stepKey in updatedDataMap with keys: ${updatedDataMap.keys.mkString(", ")}")
-          val df = updatedDataMap.getOrElse(stepKey, {
-            LOGGER.warn(s"Step $stepKey not found in relationship-processed data, falling back to individual generation")
-            val factory = new DataGeneratorFactory(new Faker(Locale.ENGLISH), enableFastGeneration = fastMode)
-            // Use step's configured record count, fallback to sampleSize if not configured
-            val recordCount = step.count.records.getOrElse(sampleSize.toLong)
-            factory.generateDataForStep(step, dataSourceName, 0L, recordCount)
-          })
-          LOGGER.debug(s"Using dataframe for step $stepKey with ${df.count()} records")
+        try {
+          // Convert requested steps to response format using relationship-aware data
+          val results = requestedSteps.map { case (step, dataSourceName) =>
+            val stepKey = s"$dataSourceName.${step.name}"
+            LOGGER.debug(s"Looking for step key: $stepKey in updatedDataMap with keys: ${updatedDataMap.keys.mkString(", ")}")
+            val df = updatedDataMap.getOrElse(stepKey, {
+              LOGGER.warn(s"Step $stepKey not found in relationship-processed data, falling back to individual generation")
+              val factory = new DataGeneratorFactory(new Faker(Locale.ENGLISH) with Serializable, enableFastGeneration = fastMode)
+              // Use step's configured record count, fallback to sampleSize if not configured
+              val recordCount = step.count.records.getOrElse(sampleSize.toLong)
+              factory.generateDataForStep(step, dataSourceName, 0L, recordCount)
+            })
+            LOGGER.debug(s"Using dataframe for step $stepKey with ${df.count()} records")
 
-          val format = step.options.getOrElse("format", "json")
-          val responseWithDf = convertDataFrameToSampleResponse(df, sampleSize, fastMode, format, enableRelationships)
-          val responseKey = s"$dataSourceName/${step.name}"
-          (responseKey, (step, responseWithDf))
-        }.toMap
+            val format = step.options.getOrElse("format", "json")
+            val responseWithDf = convertDataFrameToSampleResponse(df, sampleSize, fastMode, format, enableRelationships)
+            val responseKey = s"$dataSourceName/${step.name}"
+            (responseKey, (step, responseWithDf))
+          }.toMap
+
+          results
+        } finally {
+          // Clean up cached DataFrames to prevent memory leaks
+          LOGGER.debug(s"Cleaning up ${allGeneratedData.size} cached DataFrames")
+          val unpersisted = DataFrameManager.unpersistMultiple(allGeneratedData.keys.toList)
+          LOGGER.debug(s"Unpersisted $unpersisted DataFrames")
+        }
 
       } catch {
         case ex: Exception =>
@@ -390,7 +403,7 @@ object FastSampleGenerator {
       fields = fields
     )
 
-    val factory = new DataGeneratorFactory(new Faker(Locale.ENGLISH), enableFastGeneration = fastMode)
+    val factory = new DataGeneratorFactory(new Faker(Locale.ENGLISH) with Serializable, enableFastGeneration = fastMode)
     val df = factory.generateDataForStep(sampleStep, "sample", 0L, validatedSampleSize.toLong)
 
     convertDataFrameToSampleResponse(df, validatedSampleSize, fastMode, format, enableRelationships = false)
@@ -484,7 +497,8 @@ object FastSampleGenerator {
                             fastMode: Boolean = true,
                             enableRelationships: Boolean = false,
                             planDirectory: Option[String] = None,
-                            taskDirectory: Option[String] = None
+                            taskDirectory: Option[String] = None,
+                            useV2: Boolean = true
                           )(implicit sparkSession: SparkSession): Either[SampleError, Map[String, (Step, SampleResponseWithDataFrame)]] = {
     LOGGER.info(s"Generating samples from plan task: plan=$planName, task=$taskName, enableRelationships=$enableRelationships")
 
@@ -518,7 +532,8 @@ object FastSampleGenerator {
         sampleSize = sampleSize,
         fastMode = fastMode,
         enableRelationships = enableRelationships,
-        taskDirectory = taskDirectory
+        taskDirectory = taskDirectory,
+        useV2 = useV2
       )
 
       // Convert key format from "dataSource/stepName" to "planName/stepName" for backward compatibility
@@ -538,7 +553,7 @@ object FastSampleGenerator {
    * Generate sample data from all tasks in a plan
    * Note: In PlanRunRequest, "tasks" is actually List[Step] where each Step represents a task definition
    */
-  def generateFromPlan(planName: String, sampleSize: Int = 10, fastMode: Boolean = true, enableRelationships: Boolean = false, planDirectory: Option[String] = None, taskDirectory: Option[String] = None)(implicit sparkSession: SparkSession): Either[SampleError, Map[String, (Step, SampleResponseWithDataFrame)]] = {
+  def generateFromPlan(planName: String, sampleSize: Int = 10, fastMode: Boolean = true, enableRelationships: Boolean = false, planDirectory: Option[String] = None, taskDirectory: Option[String] = None, useV2: Boolean = true)(implicit sparkSession: SparkSession): Either[SampleError, Map[String, (Step, SampleResponseWithDataFrame)]] = {
     LOGGER.info(s"Generating samples from plan: plan=$planName, enableRelationships=$enableRelationships")
 
     Try {
@@ -576,7 +591,8 @@ object FastSampleGenerator {
         sampleSize = sampleSize,
         fastMode = fastMode,
         enableRelationships = enableRelationships,
-        taskDirectory = taskDirectory
+        taskDirectory = taskDirectory,
+        useV2 = useV2
       )
 
       // Convert key format from "dataSource/stepName" to "planName/stepName" for backward compatibility  
@@ -592,176 +608,8 @@ object FastSampleGenerator {
     }
   }
 
-  private def loadPlan(planName: String, planDirectory: Option[String] = None, taskDirectory: Option[String] = None): io.github.datacatering.datacaterer.core.ui.model.PlanRunRequest = {
-    import io.github.datacatering.datacaterer.core.ui.config.UiConfiguration.INSTALL_DIRECTORY
-    val planSaveFolder = planDirectory.getOrElse(s"$INSTALL_DIRECTORY/plan")
-
-    // Try JSON first
-    val jsonFile = java.nio.file.Paths.get(s"$planSaveFolder/$planName.json")
-    if (Files.exists(jsonFile)) {
-      val fileContent = Files.readString(jsonFile)
-      return ObjectMapperUtil.jsonObjectMapper.readValue(fileContent, classOf[io.github.datacatering.datacaterer.core.ui.model.PlanRunRequest])
-    }
-
-    // Try YAML plans using enhanced resolution
-    val yamlPlanRequest = loadYamlPlanByNameWithEnhancedResolution(planName)
-    if (yamlPlanRequest.isDefined) {
-      return yamlPlanRequest.get
-    }
-
-    throw new java.io.FileNotFoundException(s"Plan not found: $planName (searched in JSON and YAML sources)")
-  }
-
-  /**
-   * Load YAML plan by plan name using enhanced resolution logic from PlanRepository
-   */
-  private def loadYamlPlanByNameWithEnhancedResolution(planName: String): Option[io.github.datacatering.datacaterer.core.ui.model.PlanRunRequest] = {
-    // First try finding a specific YAML plan file by name
-    val planFilePath = ConfigParser.foldersConfig.planFilePath
-    val yamlPlanFilePath = findYamlPlanFile(planFilePath, planName)
-
-    yamlPlanFilePath match {
-      case Some(planPath) =>
-        // Parse the specific plan file
-        scala.util.Try {
-          val parsedPlan = PlanParser.parsePlanFile(planPath)
-          convertYamlPlanToPlanRunRequest(parsedPlan, planName)
-        }.toOption
-      case None =>
-        // Fallback to searching all YAML plans
-        val allYamlPlans = getYamlPlansAsPlanRunRequests
-        allYamlPlans.find(_.plan.name == planName)
-    }
-  }
-
-  /**
-   * Find YAML plan file by name, similar to PlanRepository logic
-   */
-  private def findYamlPlanFile(planFilePath: String, planName: String): Option[String] = {
-    val planDir = new java.io.File(planFilePath).getParent
-    if (planDir != null) {
-      val planDirectory = getPlanDirectory(planDir)
-      planDirectory match {
-        case Some(dir) if dir.exists() && dir.isDirectory =>
-          val yamlFiles = dir.listFiles()
-          if (yamlFiles != null) {
-            yamlFiles.find(f => f.isFile && f.getName.endsWith(".yaml") &&
-                (f.getName == s"$planName.yaml" || f.getName.replaceAll("\\.yaml$", "") == planName))
-              .map(_.getAbsolutePath)
-          } else None
-        case _ => None
-      }
-    } else None
-  }
-
-  /**
-   * Load YAML plan by plan name, reusing logic from PlanRepository
-   */
-  private def loadYamlPlanByName(planName: String): Option[io.github.datacatering.datacaterer.core.ui.model.PlanRunRequest] = {
-    val allYamlPlans = getYamlPlansAsPlanRunRequests
-    allYamlPlans.find(_.plan.name == planName)
-  }
-
-  /**
-   * Get all YAML plan files and convert them to PlanRunRequest format
-   * Reuses logic from PlanRepository.getYamlPlansAsPlanRunRequests
-   */
-  private def getYamlPlansAsPlanRunRequests: List[io.github.datacatering.datacaterer.core.ui.model.PlanRunRequest] = {
-    val yamlPlanFiles = getYamlPlanFiles
-    yamlPlanFiles.flatMap(planFile => {
-      val tryParse = scala.util.Try {
-        val parsedPlan = PlanParser.parsePlanFile(planFile.getAbsolutePath)
-        // Convert YAML Plan to PlanRunRequest format
-        convertYamlPlanToPlanRunRequest(parsedPlan, planFile.getName.replaceAll("\\.yaml$", ""))
-      }
-      tryParse match {
-        case scala.util.Failure(exception) =>
-          LOGGER.error(s"Failed to parse YAML plan file, file=${planFile.getAbsolutePath}, exception=${exception.getMessage}")
-          None
-        case scala.util.Success(value) => Some(value)
-      }
-    })
-  }
-
-  /**
-   * Get all YAML plan files from configured folders
-   * Reuses logic from PlanRepository.getYamlPlanFiles
-   */
-  private def getYamlPlanFiles: List[java.io.File] = {
-    import io.github.datacatering.datacaterer.core.ui.config.UiConfiguration.INSTALL_DIRECTORY
-
-    // First, check the plan save folder (where UI stores plans)
-    val planSaveFolder = s"$INSTALL_DIRECTORY/plan"
-    val planFolder = new java.io.File(planSaveFolder)
-    val planFolderYamlFiles = if (planFolder.exists() && planFolder.isDirectory) {
-      LOGGER.debug(s"Scanning for YAML plan files in plan save folder: ${planFolder.getAbsolutePath}")
-      val files = planFolder.listFiles()
-      if (files != null) {
-        files.filter(f => f.isFile && f.getName.endsWith(".yaml")).toList
-      } else {
-        List()
-      }
-    } else {
-      List()
-    }
-
-    // Also check the directory from the configured planFilePath
-    val planFilePath = ConfigParser.foldersConfig.planFilePath
-    val planDirPath = new java.io.File(planFilePath).getParent
-
-    val configuredYamlFiles = if (planDirPath != null) {
-      // Try multiple approaches to find the directory (direct, classpath, classloader)
-      val tryPlanDir = getPlanDirectory(planDirPath)
-
-      tryPlanDir match {
-        case Some(planDir) if planDir.exists() && planDir.isDirectory =>
-          LOGGER.debug(s"Scanning for YAML plan files in configured path: ${planDir.getAbsolutePath}")
-          val files = planDir.listFiles()
-          if (files != null) {
-            files.filter(f => f.isFile && f.getName.endsWith(".yaml")).toList
-          } else {
-            LOGGER.warn(s"Could not list files in directory: ${planDir.getAbsolutePath}")
-            List()
-          }
-        case Some(planDir) =>
-          LOGGER.warn(s"Plan directory does not exist or is not a directory: ${planDir.getAbsolutePath}")
-          List()
-        case None =>
-          LOGGER.warn(s"Could not find plan directory: $planDirPath")
-          List()
-      }
-    } else {
-      LOGGER.warn(s"Could not determine parent directory from planFilePath: $planFilePath")
-      List()
-    }
-
-    // Combine and deduplicate based on file name
-    val allFiles = planFolderYamlFiles ++ configuredYamlFiles
-    allFiles.groupBy(_.getName).values.map(_.head).toList
-  }
-
-  /**
-   * Get plan directory using consolidated method from PlanParser
-   */
-  private def getPlanDirectory(dirPath: String): Option[java.io.File] = {
-    PlanParser.findDirectory(dirPath)
-  }
-
-  /**
-   * Convert a YAML Plan to PlanRunRequest format for API consistency
-   * Reuses logic from PlanRepository.convertYamlPlanToPlanRunRequest
-   */
-  private def convertYamlPlanToPlanRunRequest(plan: Plan, planName: String): io.github.datacatering.datacaterer.core.ui.model.PlanRunRequest = {
-    // Create an empty PlanRunRequest with the YAML plan details
-    // Tasks and other details will be loaded when the plan is executed
-    // The Plan type is from api.model.Plan which is what PlanRunRequest expects
-    io.github.datacatering.datacaterer.core.ui.model.PlanRunRequest(
-      id = java.util.UUID.randomUUID().toString,
-      plan = plan,
-      tasks = List(), // Tasks will be loaded from YAML task files when executed
-      validation = List(),
-      configuration = None
-    )
+  private def loadPlan(planName: String, planDirectory: Option[String] = None, taskDirectory: Option[String] = None)(implicit sparkSession: SparkSession): io.github.datacatering.datacaterer.core.ui.model.PlanRunRequest = {
+    PlanLoaderService.loadPlan(planName, planDirectory)
   }
 
   private def findStepsInPlan(planRequest: io.github.datacatering.datacaterer.core.ui.model.PlanRunRequest, taskName: String, taskDirectory: Option[String] = None)(implicit sparkSession: SparkSession): List[io.github.datacatering.datacaterer.api.model.Step] = {
@@ -791,21 +639,10 @@ object FastSampleGenerator {
   }
 
   /**
-   * Find a task by name by parsing all task files in the configured task folder
-   * This uses the consolidated parsing logic from PlanParser
+   * Find a task by name using TaskLoaderService
    */
   private def findTaskByName(taskName: String, taskDirectory: Option[String] = None)(implicit sparkSession: SparkSession): Task = {
-    val taskFolderPath = taskDirectory.getOrElse(ConfigParser.foldersConfig.taskFolderPath)
-    val allTasks = PlanParser.parseTasksFromFolder(taskFolderPath)
-
-    allTasks.find(_.name == taskName) match {
-      case Some(task) => task
-      case None =>
-        throw new IllegalArgumentException(
-          s"Task '$taskName' not found in task folder: $taskFolderPath. " +
-            s"Available tasks: ${allTasks.map(_.name).mkString(", ")}"
-        )
-    }
+    TaskLoaderService.findTaskByName(taskName, taskDirectory)
   }
 
   /**
@@ -819,7 +656,7 @@ object FastSampleGenerator {
 
       // Try to find a plan that contains this task for relationship processing
       val planOption = if (enableRelationships) {
-        val allYamlPlans = getYamlPlansAsPlanRunRequests
+        val allYamlPlans = PlanLoaderService.getAllYamlPlansAsPlanRunRequests()
         allYamlPlans.find(_.plan.tasks.exists(_.name == taskName)).map(_.plan)
       } else {
         None

@@ -32,14 +32,11 @@ class PlanApiEndToEndTest extends AnyFunSuite with Matchers with BeforeAndAfterA
   private val client = HttpClient.newBuilder().build()
   private val objectMapper: ObjectMapper = ObjectMapperUtil.jsonObjectMapper
   private val testDirectory = "sample/e2e"
-  private val baseTestDirectory = getClass.getClassLoader.getResource(testDirectory).getPath
-  private var originalConfigPath: Option[String] = None
-  private var originalPortProperty: Option[String] = None
-  private var originalPlanFilePath: Option[String] = None
-  private var originalTaskFolderPath: Option[String] = None
+  private val sourceTestDirectory = getClass.getClassLoader.getResource(testDirectory).getPath
   private var tempTestDirectory: Path = _
-  private var tempPlanFile: Path = _
-  private var tempTaskDirectory: Path = _
+
+  // Save original system properties to restore after tests
+  private var originalSystemProperties: Map[String, String] = Map.empty
 
   // Helper method to find an available port
   private def findAvailablePort(): Int = {
@@ -52,20 +49,17 @@ class PlanApiEndToEndTest extends AnyFunSuite with Matchers with BeforeAndAfterA
   // Helper methods to create unique names per test
   private def getUniqueId: String = java.util.UUID.randomUUID().toString.take(8)
 
-  private def getUniqueTestPath(subPath: String): String = s"$baseTestDirectory/$subPath"
+  private def getUniqueTestPath(subPath: String): String = s"$tempTestDirectory/$subPath"
 
   override def beforeAll(): Unit = {
     super.beforeAll()
 
-    // Store original properties and environment variables to restore later
-    originalConfigPath = Option(System.getProperty("APPLICATION_CONFIG_PATH"))
-    originalPortProperty = Option(System.getProperty("datacaterer.ui.port"))
-    originalPlanFilePath = Option(System.getProperty("PLAN_FILE_PATH"))
-    originalTaskFolderPath = Option(System.getProperty("TASK_FOLDER_PATH"))
-    
-    // Create temporary directories for test isolation
+    // Save original system properties before modifying them
+    saveOriginalSystemProperties()
+
+    // Create temporary test directory and copy all test data
     setupTemporaryTestDirectories()
-    
+
     println(s"Starting Data Caterer UI server on port $serverPort...")
     try {
       // Start server in a separate thread to avoid blocking
@@ -73,9 +67,10 @@ class PlanApiEndToEndTest extends AnyFunSuite with Matchers with BeforeAndAfterA
         // Set unique test config and paths
         System.setProperty("APPLICATION_CONFIG_PATH", "application-e2e.conf")
         System.setProperty("datacaterer.ui.port", serverPort.toString)
-        System.setProperty("PLAN_FILE_PATH", tempPlanFile.toString)
-        System.setProperty("TASK_FOLDER_PATH", tempTaskDirectory.toString)
-        DataCatererUI.main(Array.empty)
+        System.setProperty("PLAN_FILE_PATH", s"$tempTestDirectory/plan")
+        System.setProperty("TASK_FOLDER_PATH", s"$tempTestDirectory/task")
+        // Pass install directory and disable browser opening via command-line arguments
+        DataCatererUI.main(Array("--install-dir", tempTestDirectory.toString, "--no-browser"))
       })
       serverThread.setDaemon(true)
       serverThread.start()
@@ -93,37 +88,45 @@ class PlanApiEndToEndTest extends AnyFunSuite with Matchers with BeforeAndAfterA
 
   override def afterAll(): Unit = {
     try {
-      // Restore original properties
-      originalConfigPath match {
-        case Some(path) => System.setProperty("APPLICATION_CONFIG_PATH", path)
-        case None => System.clearProperty("APPLICATION_CONFIG_PATH")
-      }
-      
-      originalPortProperty match {
-        case Some(port) => System.setProperty("datacaterer.ui.port", port)
-        case None => System.clearProperty("datacaterer.ui.port")
-      }
-      
-      originalPlanFilePath match {
-        case Some(path) => System.setProperty("PLAN_FILE_PATH", path)
-        case None => System.clearProperty("PLAN_FILE_PATH")
-      }
-      
-      originalTaskFolderPath match {
-        case Some(path) => System.setProperty("TASK_FOLDER_PATH", path)
-        case None => System.clearProperty("TASK_FOLDER_PATH")
-      }
-      
       // Clean up temporary test directories
       cleanupTemporaryTestDirectories()
-      
+
+      // Restore original system properties
+      restoreOriginalSystemProperties()
+
       println("Cleaned up test configuration")
     } catch {
       case e: Exception =>
         println(s"Error during cleanup: ${e.getMessage}")
     }
-    
+
     super.afterAll()
+  }
+
+  /**
+   * Save original system properties that we'll modify during tests
+   */
+  private def saveOriginalSystemProperties(): Unit = {
+    val propertiesToSave = List(
+      "APPLICATION_CONFIG_PATH",
+      "datacaterer.ui.port",
+      "PLAN_FILE_PATH",
+      "TASK_FOLDER_PATH"
+    )
+
+    originalSystemProperties = propertiesToSave.map { key =>
+      key -> Option(System.getProperty(key)).getOrElse("")
+    }.toMap
+  }
+
+  /**
+   * Restore original system properties after tests complete
+   */
+  private def restoreOriginalSystemProperties(): Unit = {
+    originalSystemProperties.foreach {
+      case (key, value) if value.nonEmpty => System.setProperty(key, value)
+      case (key, _) => System.clearProperty(key)
+    }
   }
 
   /**
@@ -171,69 +174,46 @@ class PlanApiEndToEndTest extends AnyFunSuite with Matchers with BeforeAndAfterA
   }
   
   /**
-   * Set up temporary directories and copy test files for test isolation
+   * Set up temporary directories and copy all test files for test isolation
    */
   private def setupTemporaryTestDirectories(): Unit = {
     // Create temporary test directory
     tempTestDirectory = Files.createTempDirectory("datacaterer-integration-test")
     println(s"Created temporary test directory: $tempTestDirectory")
-    
-    // Create plan and task subdirectories
-    val tempPlanDirectory = tempTestDirectory.resolve("plan")
-    tempTaskDirectory = tempTestDirectory.resolve("task")
-    Files.createDirectories(tempPlanDirectory)
-    Files.createDirectories(tempTaskDirectory)
-    
-    // Copy test plan files from resources to temp directory
-    val resourcePlanDirectory = Paths.get(baseTestDirectory, "plan")
-    if (Files.exists(resourcePlanDirectory)) {
-      val planStream = Files.list(resourcePlanDirectory)
+
+    // Copy entire source test directory structure to temp directory
+    val sourcePath = Paths.get(sourceTestDirectory)
+    copyDirectory(sourcePath, tempTestDirectory)
+
+    println(s"Temporary directory setup complete: $tempTestDirectory")
+    println(s"  Plan directory: $tempTestDirectory/plan")
+    println(s"  Task directory: $tempTestDirectory/task")
+  }
+
+  /**
+   * Recursively copy a directory and all its contents
+   */
+  private def copyDirectory(source: Path, target: Path): Unit = {
+    if (!Files.exists(source)) {
+      println(s"Source directory does not exist: $source")
+      return
+    }
+
+    Files.walk(source).forEach { sourcePath =>
       try {
-        val planFiles = planStream.collect(Collectors.toList())
-        planFiles.asScala.foreach { planFile =>
-          if (Files.isRegularFile(planFile) && planFile.toString.endsWith(".yaml")) {
-            val targetFile = tempPlanDirectory.resolve(planFile.getFileName)
-            Files.copy(planFile, targetFile)
-            println(s"Copied plan file: ${planFile.getFileName} -> $targetFile")
-            
-            // Set the first plan file as the default plan file path
-            if (tempPlanFile == null) {
-              tempPlanFile = targetFile
-            }
+        val targetPath = target.resolve(source.relativize(sourcePath))
+        if (Files.isDirectory(sourcePath)) {
+          if (!Files.exists(targetPath)) {
+            Files.createDirectories(targetPath)
           }
+        } else {
+          Files.copy(sourcePath, targetPath)
         }
-      } finally {
-        planStream.close()
+      } catch {
+        case e: Exception =>
+          println(s"Failed to copy ${sourcePath}: ${e.getMessage}")
       }
     }
-    
-    // Copy test task files from resources to temp directory
-    val resourceTaskDirectory = Paths.get(baseTestDirectory, "task")
-    if (Files.exists(resourceTaskDirectory)) {
-      val taskStream = Files.list(resourceTaskDirectory)
-      try {
-        val taskFiles = taskStream.collect(Collectors.toList())
-        taskFiles.asScala.foreach { taskFile =>
-          if (Files.isRegularFile(taskFile) && taskFile.toString.endsWith(".yaml")) {
-            val targetFile = tempTaskDirectory.resolve(taskFile.getFileName)
-            Files.copy(taskFile, targetFile)
-            println(s"Copied task file: ${taskFile.getFileName} -> $targetFile")
-          }
-        }
-      } finally {
-        taskStream.close()
-      }
-    }
-    
-    // If no plan file was found, create a default one
-    if (tempPlanFile == null) {
-      tempPlanFile = tempPlanDirectory.resolve("e2e_test_plan.yaml")
-      println(s"No plan files found, will use default: $tempPlanFile")
-    }
-    
-    println(s"Temporary directories setup complete:")
-    println(s"  Plan file: $tempPlanFile")
-    println(s"  Task directory: $tempTaskDirectory")
   }
   
   /**

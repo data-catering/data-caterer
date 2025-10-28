@@ -28,6 +28,41 @@ object ForeignKeyUtil {
    * @return map of <dataSourceName>.<stepName> => dataframe
    */
   def getDataFramesWithForeignKeys(plan: Plan, generatedDataForeachTask: List[(String, DataFrame)]): List[(String, DataFrame)] = {
+    getDataFramesWithForeignKeys(plan, generatedDataForeachTask, useV2 = true)
+  }
+
+  /**
+   * Apply same values from source data frame fields to target foreign key fields
+   *
+   * @param plan                     where foreign key definitions are defined
+   * @param generatedDataForeachTask list of <dataSourceName>.<stepName> => generated data as dataframe
+   * @param useV2                    if true, use ForeignKeyUtilV2 implementation; if false, use V1 implementation
+   * @param executableTasks          optional list of (TaskSummary, Task) for accessing step configurations
+   * @return map of <dataSourceName>.<stepName> => dataframe
+   */
+  def getDataFramesWithForeignKeys(
+    plan: Plan,
+    generatedDataForeachTask: List[(String, DataFrame)],
+    useV2: Boolean,
+    executableTasks: Option[List[(io.github.datacatering.datacaterer.api.model.TaskSummary, io.github.datacatering.datacaterer.api.model.Task)]] = None
+  ): List[(String, DataFrame)] = {
+    if (useV2) {
+      LOGGER.info("Using ForeignKeyUtilV2 implementation")
+      getDataFramesWithForeignKeysV2(plan, generatedDataForeachTask, executableTasks)
+    } else {
+      LOGGER.info("Using ForeignKeyUtil V1 implementation")
+      getDataFramesWithForeignKeysV1(plan, generatedDataForeachTask)
+    }
+  }
+
+  /**
+   * V2 implementation using ForeignKeyUtilV2 for improved performance
+   */
+  private def getDataFramesWithForeignKeysV2(
+    plan: Plan,
+    generatedDataForeachTask: List[(String, DataFrame)],
+    executableTasks: Option[List[(io.github.datacatering.datacaterer.api.model.TaskSummary, io.github.datacatering.datacaterer.api.model.Task)]]
+  ): List[(String, DataFrame)] = {
     val generatedDataForeachTaskMap = generatedDataForeachTask.toMap
     val enabledSources = plan.tasks.filter(_.enabled).map(_.dataSourceName)
     val sinkOptions = plan.sinkOptions.get
@@ -56,7 +91,82 @@ object ForeignKeyUtil {
 
         val targetDf = optTargetDf.get._2
         if (target.fields.forall(field => hasDfContainField(field, targetDf.schema.fields))) {
-          LOGGER.info(s"Applying foreign key values to target data source, source-data=${foreignKeyDetails.source.dataSource}, target-data=${target.dataSource}")
+          LOGGER.info(s"Applying foreign key values to target data source using V2, source-data=${foreignKeyDetails.source.dataSource}, target-data=${target.dataSource}")
+
+          // Look up target step from executableTasks to check for perField count
+          val optTargetStep = executableTasks.flatMap(tasks =>
+            tasks
+              .find(_._1.dataSourceName == target.dataSource)
+              .flatMap(_._2.steps.find(_.name == target.step))
+          )
+
+          // Check if target has perField count defined
+          val targetPerFieldCount = optTargetStep.flatMap(step => step.count.perField)
+
+          // Use ForeignKeyUtilV2 with perField information
+          val dfWithForeignKeys = ForeignKeyUtilV2.applyForeignKeysToTargetDf(
+            sourceDf,
+            targetDf,
+            foreignKeyDetails.source.fields,
+            target.fields,
+            ForeignKeyUtilV2.ForeignKeyConfig(),
+            targetPerFieldCount
+          )
+          if (!dfWithForeignKeys.storageLevel.useMemory) dfWithForeignKeys.cache()
+          (targetDfName, dfWithForeignKeys)
+        } else {
+          LOGGER.warn(s"Foreign key data source does not contain all foreign key(s) defined in plan, defaulting to base generated data, " +
+            s"target-foreign-key-fields=${target.fields.mkString(",")}, target-columns=${targetDf.columns.mkString(",")}")
+          (targetDfName, targetDf)
+        }
+      })
+      taskDfs ++= sourceDfsWithForeignKey.toMap
+      sourceDfsWithForeignKey
+    })
+
+    val insertOrder = getInsertOrder(foreignKeyRelations.map(f => (f.source.dataFrameName, f.generationLinks.map(_.dataFrameName))))
+    val insertOrderDfs = insertOrder
+      .map(s => {
+        foreignKeyAppliedDfs.find(f => f._1.equalsIgnoreCase(s))
+          .getOrElse(s -> taskDfs.find(t => t._1.equalsIgnoreCase(s)).get._2)
+      })
+    val nonForeignKeyTasks = taskDfs.filter(t => !insertOrderDfs.exists(_._1.equalsIgnoreCase(t._1)))
+    insertOrderDfs ++ nonForeignKeyTasks
+  }
+
+  /**
+   * V1 implementation (original logic)
+   */
+  private def getDataFramesWithForeignKeysV1(plan: Plan, generatedDataForeachTask: List[(String, DataFrame)]): List[(String, DataFrame)] = {
+    val generatedDataForeachTaskMap = generatedDataForeachTask.toMap
+    val enabledSources = plan.tasks.filter(_.enabled).map(_.dataSourceName)
+    val sinkOptions = plan.sinkOptions.get
+    val foreignKeyRelations = sinkOptions.foreignKeys
+      .map(fk => sinkOptions.gatherForeignKeyRelations(fk.source))
+    val enabledForeignKeys = foreignKeyRelations
+      .filter(fkr => isValidForeignKeyRelation(generatedDataForeachTaskMap, enabledSources, fkr))
+    var taskDfs = generatedDataForeachTask
+
+    val foreignKeyAppliedDfs = enabledForeignKeys.flatMap(foreignKeyDetails => {
+      val sourceDfName = foreignKeyDetails.source.dataFrameName
+      LOGGER.debug(s"Getting source dataframe, source=$sourceDfName")
+      val optSourceDf = taskDfs.find(task => task._1.equalsIgnoreCase(sourceDfName))
+      if (optSourceDf.isEmpty) {
+        throw MissingDataSourceFromForeignKeyException(sourceDfName)
+      }
+      val sourceDf = optSourceDf.get._2
+
+      val sourceDfsWithForeignKey = foreignKeyDetails.generationLinks.map(target => {
+        val targetDfName = target.dataFrameName
+        LOGGER.debug(s"Getting target dataframe, source=$targetDfName")
+        val optTargetDf = taskDfs.find(task => task._1.equalsIgnoreCase(targetDfName))
+        if (optTargetDf.isEmpty) {
+          throw MissingDataSourceFromForeignKeyException(targetDfName)
+        }
+
+        val targetDf = optTargetDf.get._2
+        if (target.fields.forall(field => hasDfContainField(field, targetDf.schema.fields))) {
+          LOGGER.info(s"Applying foreign key values to target data source using V1, source-data=${foreignKeyDetails.source.dataSource}, target-data=${target.dataSource}")
           val dfWithForeignKeys = applyForeignKeysToTargetDf(sourceDf, targetDf, foreignKeyDetails.source.fields, target.fields)
           if (!dfWithForeignKeys.storageLevel.useMemory) dfWithForeignKeys.cache()
           (targetDfName, dfWithForeignKeys)
@@ -128,8 +238,19 @@ object ForeignKeyUtil {
   }
 
   private def applyForeignKeysToTargetDf(sourceDf: DataFrame, targetDf: DataFrame, sourceFields: List[String], targetFields: List[String]): DataFrame = {
-    if (!sourceDf.storageLevel.useMemory) sourceDf.cache() //TODO do we checkpoint instead of cache? checkpoint based on total number of records?
-    if (!targetDf.storageLevel.useMemory) targetDf.cache()
+    // Smart caching: only cache if beneficial (small enough to fit in memory efficiently)
+    val CACHE_SIZE_THRESHOLD_MB = 200 // Cache only if estimated size < 200MB
+    val shouldCacheSource = estimateDataFrameSize(sourceDf) < CACHE_SIZE_THRESHOLD_MB * 1024 * 1024
+    val shouldCacheTarget = estimateDataFrameSize(targetDf) < CACHE_SIZE_THRESHOLD_MB * 1024 * 1024
+
+    if (shouldCacheSource && !sourceDf.storageLevel.useMemory) {
+      LOGGER.debug(s"Caching source DataFrame (size within threshold)")
+      sourceDf.cache()
+    }
+    if (shouldCacheTarget && !targetDf.storageLevel.useMemory) {
+      LOGGER.debug(s"Caching target DataFrame (size within threshold)")
+      targetDf.cache()
+    }
     
     // Separate nested and flat fields
     val nestedFields = targetFields.zip(sourceFields).filter(_._1.contains("."))
@@ -145,7 +266,7 @@ object ForeignKeyUtil {
       // Pure flat fields case - use original join approach
       val flatSourceFields = flatFields.map(_._2)
       val flatTargetFields = flatFields.map(_._1)
-      
+
       val sourceColRename = flatSourceFields.map(c => {
         if (c.contains(".")) {
           val lastCol = c.split("\\.").last
@@ -506,6 +627,30 @@ object ForeignKeyUtil {
       case StructType(nestedFields) => getMetadata(spt.tail.mkString("."), nestedFields)
       case ArrayType(elementType, _) => checkNestedForMetadata(spt, elementType)
       case _ => Metadata.empty
+    }
+  }
+
+  /**
+   * Estimate DataFrame size for smart caching decisions.
+   * Returns estimated size in bytes.
+   */
+  private def estimateDataFrameSize(df: DataFrame): Long = {
+    try {
+      // Use Spark's statistics if available
+      val stats = df.queryExecution.analyzed.stats
+      if (stats.sizeInBytes.isValidLong) {
+        stats.sizeInBytes.toLong
+      } else {
+        // Fallback: estimate based on row count
+        // Assume average 100 bytes per row if we can't get accurate size
+        val rowCount = df.count()
+        rowCount * 100
+      }
+    } catch {
+      case _: Exception =>
+        // If we can't estimate, assume large (don't cache)
+        LOGGER.debug(s"Unable to estimate DataFrame size, defaulting to no-cache")
+        Long.MaxValue
     }
   }
 }

@@ -14,16 +14,19 @@ import java.nio.file.{Files, Path, StandardOpenOption}
 class YamlPlanIntegrationTest extends SparkSuite with BeforeAndAfterAll with MockitoSugar with Matchers {
 
   private val testKit: ActorTestKit = ActorTestKit()
-  private val tempTestDirectory = "/tmp/data-caterer-yaml-plan-test"
+  // Use unique directory for this test to avoid conflicts with other tests
+  private val tempTestDirectory = s"/tmp/data-caterer-test-${java.util.UUID.randomUUID().toString.take(8)}"
   var planRepository: ActorRef[PlanRepository.PlanCommand] = _
   var connectionRepository: ActorRef[ConnectionRepository.ConnectionCommand] = _
 
   override def beforeAll(): Unit = {
     super.beforeAll()
-    System.setProperty("data-caterer-install-dir", tempTestDirectory)
     setupTestYamlFiles()
-    planRepository = testKit.spawn(PlanRepository(), "plan-repository")
-    connectionRepository = testKit.spawn(ConnectionRepository(), "connection-repository")
+    // Use unique actor names to avoid conflicts with other tests
+    val uniquePlanName = s"plan-repository-${java.util.UUID.randomUUID().toString.take(8)}"
+    val uniqueConnName = s"connection-repository-${java.util.UUID.randomUUID().toString.take(8)}"
+    planRepository = testKit.spawn(PlanRepository(tempTestDirectory), uniquePlanName)
+    connectionRepository = testKit.spawn(ConnectionRepository(tempTestDirectory), uniqueConnName)
   }
 
   override def afterAll(): Unit = {
@@ -80,10 +83,13 @@ class YamlPlanIntegrationTest extends SparkSuite with BeforeAndAfterAll with Moc
   }
 
   private def setupTestYamlFiles(): Unit = {
-    // Use the configured plan path from application.conf
-    // For testing, we'll place files in the default test resources location
-    val planDir = new File("app/src/test/resources/sample/plan")
+    // Create YAML plans and tasks in the standard integration test structure
+    // This avoids setting PLAN_FILE_PATH and TASK_FOLDER_PATH which would affect other tests
+    val planDir = new File(s"$tempTestDirectory/plan")
     if (!planDir.exists()) planDir.mkdirs()
+
+    val taskDir = new File(s"$tempTestDirectory/task")
+    if (!taskDir.exists()) taskDir.mkdirs()
 
     val testPlanContent =
       """name: "test_yaml_plan"
@@ -100,9 +106,21 @@ class YamlPlanIntegrationTest extends SparkSuite with BeforeAndAfterAll with Moc
       StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING
     )
 
-    // Use the configured task path from application.conf
-    val taskDir = new File("app/src/test/resources/sample/task")
-    if (!taskDir.exists()) taskDir.mkdirs()
+    // Create kafka_plan for the test that expects it
+    val kafkaPlanContent =
+      """name: "kafka_plan"
+        |description: "Test Kafka plan"
+        |tasks:
+        |  - name: "kafka_task"
+        |    dataSourceName: "test_kafka"
+        |    enabled: true
+        |""".stripMargin
+
+    Files.writeString(
+      Path.of(s"${planDir.getAbsolutePath}/kafka_plan.yaml"),
+      kafkaPlanContent,
+      StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING
+    )
 
     val testTaskContent =
       """name: "test_task"
@@ -132,17 +150,6 @@ class YamlPlanIntegrationTest extends SparkSuite with BeforeAndAfterAll with Moc
     val tempDir = new File(tempTestDirectory)
     if (tempDir.exists()) {
       deleteRecursively(tempDir)
-    }
-    
-    // Clean up the test YAML file we created
-    val testPlanFile = new File("app/src/test/resources/sample/plan/test_yaml_plan.yaml")
-    if (testPlanFile.exists()) {
-      testPlanFile.delete()
-    }
-    
-    val testTaskFile = new File("app/src/test/resources/sample/task/test_task.yaml")
-    if (testTaskFile.exists()) {
-      testTaskFile.delete()
     }
   }
 

@@ -96,8 +96,7 @@ class FastSampleGeneratorTest extends SparkSuite with Matchers with BeforeAndAft
       record should contain key "year"
       record should contain key "amount"
 
-      // In fast mode, regex is not used
-      record("account_id").toString shouldNot fullyMatch regex "ACC[0-9]{10}"
+      record("account_id").toString should fullyMatch regex "ACC[0-9]{10}"
       record("year").toString.toInt should (be >= 2021 and be <= 2023)
       record("amount").toString.toDouble should (be >= 10.0 and be <= 100.0)
     }

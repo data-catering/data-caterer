@@ -68,8 +68,8 @@ object RandomDataGenerator {
       if (tryExpression.isSuccess) {
         s"$GENERATE_FAKER_EXPRESSION_UDF('${tryExpression.get}')"
       } else {
-        val randLength = s"(SELECT CAST(ROUND((length / $DATA_CATERER_RANDOM_LENGTH_MAX_VALUE) * ${maxLength - minLength} + $minLength, 0) AS INT) FROM $DATA_CATERER_RANDOM_LENGTH)"
-        s"CONCAT_WS('', TRANSFORM(SEQUENCE(1, $randLength), i -> SUBSTR('$characterSet', CEIL(RAND() * $characterSetSize), 1)))"
+        val randLength = s"CAST($sqlRandom * (${maxLength - minLength}) + $minLength AS INT)"
+        s"CONCAT_WS('', TRANSFORM(SEQUENCE(1, $randLength), i -> SUBSTR('$characterSet', CAST($sqlRandom * $characterSetSize + 1 AS INT), 1)))"
       }
     }
   }

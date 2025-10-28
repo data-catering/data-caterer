@@ -3,6 +3,7 @@ title: "Data Generation"
 description: "Data Caterer can generate all kinds of data structures including simple fields, nested fields, reference other fields in calculating values. It can also connect to metadata sources such as OpenMetadata or OpenAPI/Swagger to retrieve schema information to generate data."
 image: "https://data.catering/diagrams/logo/data_catering_logo.svg"
 ---
+
 # Data Generators
 
 ## Data Types
@@ -10,7 +11,7 @@ image: "https://data.catering/diagrams/logo/data_catering_logo.svg"
 Below is a list of all supported data types for generating data:
 
 | Data Type                              | Options                              |
-|----------------------------------------|--------------------------------------|
+| -------------------------------------- | ------------------------------------ |
 | string, StringType                     | [String options](#string)            |
 | integer, IntegerType                   | [Integer options](#integerlongshort) |
 | long, LongType                         | [Long options](#integerlongshort)    |
@@ -33,21 +34,21 @@ Below is a list of all supported data types for generating data:
 Some options are available to use for all types of data generators. Below is the list along with example and
 descriptions:
 
-| Option                | Default | Example                                                                                             | Description                                                                                                                                                                                                                                                                                     |
-|-----------------------|---------|-----------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `enableEdgeCase`      | false   | `enableEdgeCase: "true"`                                                                            | Enable/disable generated data to contain edge cases based on the data type. For example, integer data type has edge cases of (Int.MaxValue, Int.MinValue and 0)                                                                                                                                 |
-| `edgeCaseProbability` | 0.0     | `edgeCaseProb: "0.1"`                                                                               | Probability of generating a random edge case value if `enableEdgeCase` is true                                                                                                                                                                                                                  |
-| `isUnique`            | false   | `isUnique: "true"`                                                                                  | Enable/disable generated data to be unique for that field. Errors will be thrown when it is unable to generate unique data                                                                                                                                                                      |
-| `regex`               | <empty> | `regex: "ACC[0-9]{10}"`                                                                             | Regular expression to define pattern generated data should follow                                                                                                                                                                                                                               |
-| `seed`                | <empty> | `seed: "1"`                                                                                         | Defines the random seed for generating data for that particular field. It will override any seed defined at a global level                                                                                                                                                                      |
+| Option                | Default | Example                                                                                             | Description                                                                                                                                                                                                                                                                                                                                                                |
+| --------------------- | ------- | --------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `enableEdgeCase`      | false   | `enableEdgeCase: "true"`                                                                            | Enable/disable generated data to contain edge cases based on the data type. For example, integer data type has edge cases of (Int.MaxValue, Int.MinValue and 0)                                                                                                                                                                                                            |
+| `edgeCaseProbability` | 0.0     | `edgeCaseProb: "0.1"`                                                                               | Probability of generating a random edge case value if `enableEdgeCase` is true                                                                                                                                                                                                                                                                                             |
+| `isUnique`            | false   | `isUnique: "true"`                                                                                  | Enable/disable generated data to be unique for that field. Errors will be thrown when it is unable to generate unique data                                                                                                                                                                                                                                                 |
+| `regex`               | <empty> | `regex: "ACC[0-9]{8}"`                                                                              | Regular expression to define pattern generated data should follow. The system automatically uses SQL generation for supported patterns with fallback to UDF. See [Regex Patterns](#regex-patterns) for details on supported patterns                                                                                                                                                                                                            |
+| `seed`                | <empty> | `seed: "1"`                                                                                         | Defines the random seed for generating data for that particular field. It will override any seed defined at a global level                                                                                                                                                                                                                                                 |
 | `sql`                 | <empty> | `sql: "CASE WHEN amount < 10 THEN true ELSE false END"`                                             | Define any SQL statement for generating that fields value. Computation occurs after all non-SQL fields are generated. This means any fields used in the SQL cannot be based on other SQL generated fields. Data type of generated value from SQL needs to match data type defined for the field. See [Advanced SQL Generation](#advanced-sql-generation) for more examples |
-| `oneOf`               | <empty> | `oneOf: ["open", "closed", "suspended"]` or `oneOf: ["open->0.8", "closed->0.1", "suspended->0.1"]` | Field can only take one of the prescribed values. Chance of value being chosen is based on the weight assigned to it. Weight can be any double value. **Java API also supports `WeightedValue` for better type safety.**                                                                                                                                           |
-| `omit`                | false   | `omit: "true"`                                                                                      | If true, field will not be included in final data generated. Useful for intermediate transformations that are not included in final outcome                                                                                                                                                     |
+| `oneOf`               | <empty> | `oneOf: ["open", "closed", "suspended"]` or `oneOf: ["open->0.8", "closed->0.1", "suspended->0.1"]` | Field can only take one of the prescribed values. Chance of value being chosen is based on the weight assigned to it. Weight can be any double value. **Java API also supports `WeightedValue` for better type safety.**                                                                                                                                                   |
+| `omit`                | false   | `omit: "true"`                                                                                      | If true, field will not be included in final data generated. Useful for intermediate transformations that are not included in final outcome                                                                                                                                                                                                                                |
 
 ### String
 
 | Option            | Default | Example                                                                                      | Description                                                                                                                                                                                                                    |
-|-------------------|---------|----------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| ----------------- | ------- | -------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `minLen`          | 1       | `minLen: "2"`                                                                                | Ensures that all generated strings have at least length `minLen`                                                                                                                                                               |
 | `maxLen`          | 10      | `maxLen: "15"`                                                                               | Ensures that all generated strings have at most length `maxLen`                                                                                                                                                                |
 | `expression`      | <empty> | `expression: "#{Name.name}"`<br/>`expression:"#{Address.city}/#{Demographic.maritalStatus}"` | Will generate a string based on the faker expression provided. All possible faker expressions can be found [**here**](../../sample/datafaker/expressions.txt)<br/> Expression has to be in format `#{<faker expression name>}` |
@@ -66,7 +67,7 @@ Förlåt", "你好吗", "Nhà vệ sinh ở đâu", "こんにちは", "नम�
 
     ```java
     import io.github.datacatering.datacaterer.javaapi.api.WeightedValue;
-    
+
     csv("transactions", "app/src/test/resources/sample/csv/transactions")
       .fields(
         field()
@@ -80,7 +81,7 @@ Förlåt", "你好吗", "Nhà vệ sinh ở đâu", "こんにちは", "नम�
         field()
           .name("account_id")
           .type(StringType.instance())
-          .regex("ACC[0-9]{10}")
+          .regex("ACC[0-9]{8}")
           .isUnique(true)
           .enableEdgeCase(true)
           .edgeCaseProbability(0.05),
@@ -135,7 +136,7 @@ Förlåt", "你好吗", "Nhà vệ sinh ở đâu", "こんにちは", "नम�
         field
           .name("account_id")
           .`type`(StringType)
-          .regex("ACC[0-9]{10}")
+          .regex("ACC[0-9]{8}")
           .isUnique(true)
           .enableEdgeCase(true)
           .edgeCaseProbability(0.05),
@@ -185,7 +186,7 @@ Förlåt", "你好吗", "Nhà vệ sinh ở đâu", "こんにちは", "नम�
           - name: "account_id"
             type: "string"
             options:
-              regex: "ACC[0-9]{10}"
+              regex: "ACC[0-9]{8}"
               isUnique: true
               enableEdgeCase: true
               edgeCaseProb: 0.05
@@ -224,7 +225,7 @@ as defined by the data source (i.e. max value as per database type).
 #### Integer/Long/Short
 
 | Option                  | Default     | Example                        | Description                                                                         |
-|-------------------------|-------------|--------------------------------|-------------------------------------------------------------------------------------|
+| ----------------------- | ----------- | ------------------------------ | ----------------------------------------------------------------------------------- |
 | `min`                   | 0           | `min: "2"`                     | Ensures that all generated values are greater than or equal to `min`                |
 | `max`                   | 1000        | `max: "25"`                    | Ensures that all generated values are less than or equal to `max`                   |
 | `stddev`                | 1.0         | `stddev: "2.0"`                | Standard deviation for normal distributed data                                      |
@@ -358,9 +359,8 @@ as defined by the data source (i.e. max value as per database type).
 
 #### Decimal
 
-
 | Option                  | Default     | Example                        | Description                                                                                             |
-|-------------------------|-------------|--------------------------------|---------------------------------------------------------------------------------------------------------|
+| ----------------------- | ----------- | ------------------------------ | ------------------------------------------------------------------------------------------------------- |
 | `min`                   | 0           | `min: "2"`                     | Ensures that all generated values are greater than or equal to `min`                                    |
 | `max`                   | 1000        | `max: "25"`                    | Ensures that all generated values are less than or equal to `max`                                       |
 | `stddev`                | 1.0         | `stddev: "2.0"`                | Standard deviation for normal distributed data                                                          |
@@ -501,7 +501,7 @@ as defined by the data source (i.e. max value as per database type).
 #### Double/Float
 
 | Option                  | Default     | Example                        | Description                                                                         |
-|-------------------------|-------------|--------------------------------|-------------------------------------------------------------------------------------|
+| ----------------------- | ----------- | ------------------------------ | ----------------------------------------------------------------------------------- |
 | `min`                   | 0.0         | `min: "2.1"`                   | Ensures that all generated values are greater than or equal to `min`                |
 | `max`                   | 1000.0      | `max: "25.9"`                  | Ensures that all generated values are less than or equal to `max`                   |
 | `round`                 | N/A         | `round: "2"`                   | Round to particular number of decimal places                                        |
@@ -674,7 +674,7 @@ Disable data generation for specific steps when you want to use them only for re
 === "YAML"
 
     In `plan.yaml`:
-    
+
     ```yaml
     name: "my_plan"
     tasks:
@@ -682,9 +682,9 @@ Disable data generation for specific steps when you want to use them only for re
         dataSourceName: "csv_accounts"
         enabled: false  # disable generation for this task
     ```
-    
+
     In task file:
-    
+
     ```yaml
     name: "csv_accounts_task"
     steps:
@@ -721,7 +721,7 @@ Control data partitioning and parallelism for improved performance with large da
 === "YAML"
 
     ```yaml
-    name: "csv_accounts_task" 
+    name: "csv_accounts_task"
     steps:
       - name: "accounts"
         type: "csv"
@@ -843,7 +843,7 @@ By default, Spark writes data to a directory containing multiple part files (e.g
 Data Caterer uses Apache Spark as its underlying data generation engine. This means you can use any Spark data source options in your step configuration to control how data is written.
 
 !!! info "Spark Data Source Options"
-    Step options can include any options supported by the corresponding Spark data source. These options are passed directly to Spark's DataFrameWriter.
+Step options can include any options supported by the corresponding Spark data source. These options are passed directly to Spark's DataFrameWriter.
 
     **Common data source option references:**
 
@@ -1087,28 +1087,28 @@ Extract data from arrays, perform aggregations, and create complex nested data s
     // Extract latest status from array of updates
     field().name("current_status")
         .sql("element_at(sort_array(update_history.status, false), 1)"),
-    
-    // Calculate year from date field    
+
+    // Calculate year from date field
     field().name("year").type(IntegerType.instance())
         .sql("YEAR(date)"),
-        
+
     // Get first transaction date from sorted array
     field().name("first_transaction_date").type(DateType.instance())
         .sql("element_at(sort_array(transactions.transaction_date), 1)")
     ```
 
-=== "Scala" 
+=== "Scala"
 
     ```scala
     // Extract latest status from array of updates
     field.name("current_status")
       .sql("element_at(sort_array(update_history.status, false), 1)"),
-    
+
     // Calculate year from date field
     field.name("year").`type`(IntegerType)
       .sql("YEAR(date)"),
-      
-    // Get first transaction date from sorted array  
+
+    // Get first transaction date from sorted array
     field.name("first_transaction_date").`type`(DateType)
       .sql("element_at(sort_array(transactions.transaction_date), 1)")
     ```
@@ -1120,7 +1120,7 @@ Extract data from arrays, perform aggregations, and create complex nested data s
       - name: "current_status"
         options:
           sql: "element_at(sort_array(update_history.status, false), 1)"
-      - name: "year" 
+      - name: "year"
         type: "integer"
         options:
           sql: "YEAR(date)"
@@ -1140,13 +1140,13 @@ Access nested fields and perform complex calculations across multiple data level
     // Reference nested field value
     field().name("customer_name")
         .sql("customer_details.name"),
-        
+
     // Calculate balance with interest based on account type
     field().name("balance_with_interest").type(DoubleType.instance())
         .sql("CASE WHEN account_details.account_type = 'premium' THEN balance * 1.05 ELSE balance * 1.02 END"),
-        
+
     // Aggregate transaction amounts
-    field().name("total_transaction_amount").type(DoubleType.instance()) 
+    field().name("total_transaction_amount").type(DoubleType.instance())
         .sql("aggregate(transactions.amount, 0.0, (acc, x) -> acc + x)")
     ```
 
@@ -1156,11 +1156,11 @@ Access nested fields and perform complex calculations across multiple data level
     // Reference nested field value
     field.name("customer_name")
       .sql("customer_details.name"),
-      
-    // Calculate balance with interest based on account type  
+
+    // Calculate balance with interest based on account type
     field.name("balance_with_interest").`type`(DoubleType)
       .sql("CASE WHEN account_details.account_type = 'premium' THEN balance * 1.05 ELSE balance * 1.02 END"),
-      
+
     // Aggregate transaction amounts
     field.name("total_transaction_amount").`type`(DoubleType)
       .sql("aggregate(transactions.amount, 0.0, (acc, x) -> acc + x)")
@@ -1178,7 +1178,7 @@ Access nested fields and perform complex calculations across multiple data level
         options:
           sql: "CASE WHEN account_details.account_type = 'premium' THEN balance * 1.05 ELSE balance * 1.02 END"
       - name: "total_transaction_amount"
-        type: "double" 
+        type: "double"
         options:
           sql: "aggregate(transactions.amount, 0.0, (acc, x) -> acc + x)"
     ```
@@ -1193,27 +1193,27 @@ Manipulate strings, extract patterns, and create formatted outputs.
     // Concatenate multiple fields with formatting
     field().name("account_display_name")
         .sql("CONCAT(customer_details.name, ' - ', account_type, ' (', account_id, ')')"),
-        
+
     // Extract domain from email addresses
     field().name("email_domain")
         .sql("SUBSTRING_INDEX(customer_details.email, '@', -1)"),
-        
+
     // Generate formatted account number
-    field().name("formatted_account_number") 
+    field().name("formatted_account_number")
         .sql("CONCAT('ACC-', LPAD(account_number, 8, '0'))")
     ```
 
 === "Scala"
 
     ```scala
-    // Concatenate multiple fields with formatting  
+    // Concatenate multiple fields with formatting
     field.name("account_display_name")
       .sql("CONCAT(customer_details.name, ' - ', account_type, ' (', account_id, ')')"),
-      
+
     // Extract domain from email addresses
     field.name("email_domain")
       .sql("SUBSTRING_INDEX(customer_details.email, '@', -1)"),
-      
+
     // Generate formatted account number
     field.name("formatted_account_number")
       .sql("CONCAT('ACC-', LPAD(account_number, 8, '0'))")
@@ -1244,11 +1244,11 @@ Perform complex date calculations, extract date parts, and handle time zones.
     // Calculate age from birth date
     field().name("age").type(IntegerType.instance())
         .sql("DATEDIFF(CURRENT_DATE(), birth_date) / 365"),
-        
+
     // Extract quarter from date
     field().name("quarter").type(IntegerType.instance())
         .sql("QUARTER(transaction_date)"),
-        
+
     // Calculate business days between dates
     field().name("business_days_since_opening").type(IntegerType.instance())
         .sql("CASE WHEN DAYOFWEEK(open_date) IN (1, 7) THEN 0 ELSE DATEDIFF(CURRENT_DATE(), open_date) - (DATEDIFF(CURRENT_DATE(), open_date) / 7 * 2) END")
@@ -1260,11 +1260,11 @@ Perform complex date calculations, extract date parts, and handle time zones.
     // Calculate age from birth date
     field.name("age").`type`(IntegerType)
       .sql("DATEDIFF(CURRENT_DATE(), birth_date) / 365"),
-      
+
     // Extract quarter from date
-    field.name("quarter").`type`(IntegerType) 
+    field.name("quarter").`type`(IntegerType)
       .sql("QUARTER(transaction_date)"),
-      
+
     // Calculate business days between dates
     field.name("business_days_since_opening").`type`(IntegerType)
       .sql("CASE WHEN DAYOFWEEK(open_date) IN (1, 7) THEN 0 ELSE DATEDIFF(CURRENT_DATE(), open_date) - (DATEDIFF(CURRENT_DATE(), open_date) / 7 * 2) END")
@@ -1298,29 +1298,29 @@ Use window functions for ranking, running totals, and analytical calculations.
     // Rank customers by balance within each region
     field().name("balance_rank").type(IntegerType.instance())
         .sql("ROW_NUMBER() OVER (PARTITION BY region ORDER BY balance DESC)"),
-        
+
     // Calculate running total of transactions
     field().name("running_total").type(DoubleType.instance())
         .sql("SUM(transaction_amount) OVER (PARTITION BY account_id ORDER BY transaction_date ROWS UNBOUNDED PRECEDING)"),
-        
-    // Calculate percentage of total within group  
+
+    // Calculate percentage of total within group
     field().name("balance_percentage").type(DoubleType.instance())
         .sql("(balance / SUM(balance) OVER (PARTITION BY account_type)) * 100")
     ```
 
 === "Scala"
 
-    ```scala  
+    ```scala
     // Rank customers by balance within each region
     field.name("balance_rank").`type`(IntegerType)
       .sql("ROW_NUMBER() OVER (PARTITION BY region ORDER BY balance DESC)"),
-      
+
     // Calculate running total of transactions
     field.name("running_total").`type`(DoubleType)
       .sql("SUM(transaction_amount) OVER (PARTITION BY account_id ORDER BY transaction_date ROWS UNBOUNDED PRECEDING)"),
-      
+
     // Calculate percentage of total within group
-    field.name("balance_percentage").`type`(DoubleType) 
+    field.name("balance_percentage").`type`(DoubleType)
       .sql("(balance / SUM(balance) OVER (PARTITION BY account_type)) * 100")
     ```
 
@@ -1329,7 +1329,7 @@ Use window functions for ranking, running totals, and analytical calculations.
     ```yaml
     fields:
       - name: "balance_rank"
-        type: "integer"  
+        type: "integer"
         options:
           sql: "ROW_NUMBER() OVER (PARTITION BY region ORDER BY balance DESC)"
       - name: "running_total"
@@ -1345,7 +1345,7 @@ Use window functions for ranking, running totals, and analytical calculations.
 ### Date
 
 | Option            | Default          | Example              | Description                                                          |
-|-------------------|------------------|----------------------|----------------------------------------------------------------------|
+| ----------------- | ---------------- | -------------------- | -------------------------------------------------------------------- |
 | `min`             | now() - 365 days | `min: "2023-01-31"`  | Ensures that all generated values are greater than or equal to `min` |
 | `max`             | now()            | `max: "2023-12-31"`  | Ensures that all generated values are less than or equal to `max`    |
 | `enableNull`      | false            | `enableNull: "true"` | Enable/disable null values being generated                           |
@@ -1462,7 +1462,7 @@ Use window functions for ranking, running totals, and analytical calculations.
 ### Timestamp
 
 | Option            | Default          | Example                      | Description                                                          |
-|-------------------|------------------|------------------------------|----------------------------------------------------------------------|
+| ----------------- | ---------------- | ---------------------------- | -------------------------------------------------------------------- |
 | `min`             | now() - 365 days | `min: "2023-01-31 23:10:10"` | Ensures that all generated values are greater than or equal to `min` |
 | `max`             | now()            | `max: "2023-12-31 23:10:10"` | Ensures that all generated values are less than or equal to `max`    |
 | `enableNull`      | false            | `enableNull: "true"`         | Enable/disable null values being generated                           |
@@ -1578,7 +1578,7 @@ Use window functions for ranking, running totals, and analytical calculations.
 ### Binary
 
 | Option            | Default | Example              | Description                                                             |
-|-------------------|---------|----------------------|-------------------------------------------------------------------------|
+| ----------------- | ------- | -------------------- | ----------------------------------------------------------------------- |
 | `minLen`          | 1       | `minLen: "2"`        | Ensures that all generated array of bytes have at least length `minLen` |
 | `maxLen`          | 20      | `maxLen: "15"`       | Ensures that all generated array of bytes have at most length `maxLen`  |
 | `enableNull`      | false   | `enableNull: "true"` | Enable/disable null values being generated                              |
@@ -1686,7 +1686,7 @@ Use window functions for ranking, running totals, and analytical calculations.
 ### Array
 
 | Option            | Default | Example               | Description                                                                                                              |
-|-------------------|---------|-----------------------|--------------------------------------------------------------------------------------------------------------------------|
+| ----------------- | ------- | --------------------- | ------------------------------------------------------------------------------------------------------------------------ |
 | `arrayMinLen`     | 0       | `arrayMinLen: "2"`    | Ensures that all generated arrays have at least length `arrayMinLen`                                                     |
 | `arrayMaxLen`     | 5       | `arrayMaxLen: "15"`   | Ensures that all generated arrays have at most length `arrayMaxLen`                                                      |
 | `arrayType`       | <empty> | `arrayType: "double"` | Inner data type of the array. Optional when using Java/Scala API. Allows for nested data types to be defined like struct |
@@ -1799,3 +1799,150 @@ Use window functions for ranking, running totals, and analytical calculations.
             options:
               sql: "CASE WHEN SIZE(transaction_amounts) > 3 THEN ARRAY(1.0, 2.0, 3.0) ELSE ARRAY(0.5, 1.0) END"
     ```
+
+## Regex Patterns
+
+Fields can use regex patterns via the `regex` option for pattern-based data generation. The system **automatically** uses an intelligent SQL-based approach with fallback to UDF when needed.
+
+### Default Behavior (Always Enabled)
+
+By default, Data Caterer automatically optimizes regex generation:
+
+- **Parses common regex patterns into pure SQL expressions** (fast, no UDFs)
+- **Automatically falls back to DataFaker UDF** for unsupported patterns (e.g., lookaheads, backreferences)
+- **No configuration required** - just use `.regex()` and the system chooses the best approach
+- Significantly faster for large datasets with supported patterns
+- Always correct regardless of pattern complexity
+
+### Supported Patterns (SQL Generation)
+
+The following patterns are converted to efficient SQL expressions automatically:
+
+| Pattern Type            | Examples                                    | SQL Output                           |
+| ----------------------- | ------------------------------------------- | ------------------------------------ |
+| **Character classes**   | `\d`, `[0-9]`, `[A-Z]`, `[a-z]`, `[A-Za-z]` | `CHAR()`, `SUBSTRING()`              |
+| **Alphanumeric**        | `[A-Z0-9]`, `[A-Za-z0-9]`                   | `SUBSTRING()` from charset           |
+| **Custom sets**         | `[ACGT]`, `[abc123]`                        | `SUBSTRING()` from custom chars      |
+| **Exact quantifiers**   | `{n}` (e.g., `\d{8}`)                       | Fixed-length generation              |
+| **Range quantifiers**   | `{m,n}` (e.g., `[A-Z]{3,8}`)                | Variable-length generation           |
+| **Bounded quantifiers** | `+`, `*`, `?`                               | Bounded repetition (e.g., `+` → 1-5) |
+| **Alternation**         | `(opt1\|opt2\|opt3)`                        | `ELEMENT_AT(ARRAY(...))`             |
+| **Grouping**            | `(...)`, `(?:...)`                          | Nested concatenation                 |
+| **Literals**            | `ACC`, `-`, `_`                             | Direct string literals               |
+
+### Examples
+
+=== "Java"
+
+    ```java
+    csv("transactions", "app/src/test/resources/sample/csv/transactions")
+      .fields(
+        // Account IDs: prefix + 8 digits
+        field().name("account_id").regex("ACC[0-9]{8}"),
+
+        // Product codes: 3 letters + dash + 2 digits
+        field().name("product_code").regex("[A-Z]{3}-[0-9]{2}"),
+
+        // Status enum with alternation
+        field().name("status").regex("(ACTIVE|INACTIVE|PENDING)"),
+
+        // Serial numbers: 16 alphanumeric characters
+        field().name("serial").regex("[A-Z0-9]{16}"),
+
+        // Transaction IDs: prefix + variable length digits
+        field().name("txn_id").regex("TXN-[0-9]{5,10}"),
+
+        // DNA sequences: custom character set
+        field().name("dna").regex("[ACGT]{20}")
+      );
+    ```
+
+=== "Scala"
+
+    ```scala
+    csv("transactions", "app/src/test/resources/sample/csv/transactions")
+      .fields(
+        // Account IDs: prefix + 8 digits
+        field.name("account_id").regex("ACC[0-9]{8}"),
+
+        // Product codes: 3 letters + dash + 2 digits
+        field.name("product_code").regex("[A-Z]{3}-[0-9]{2}"),
+
+        // Status enum with alternation
+        field.name("status").regex("(ACTIVE|INACTIVE|PENDING)"),
+
+        // Serial numbers: 16 alphanumeric characters
+        field.name("serial").regex("[A-Z0-9]{16}"),
+
+        // Transaction IDs: prefix + variable length digits
+        field.name("txn_id").regex("TXN-[0-9]{5,10}"),
+
+        // DNA sequences: custom character set
+        field.name("dna").regex("[ACGT]{20}")
+      )
+    ```
+
+=== "YAML"
+
+    ```yaml
+    name: "csv_file"
+    steps:
+      - name: "transactions"
+        type: "csv"
+        options:
+          path: "app/src/test/resources/sample/csv/transactions"
+        fields:
+          # Account IDs: prefix + 8 digits
+          - name: "account_id"
+            options:
+              regex: "ACC[0-9]{8}"
+
+          # Product codes: 3 letters + dash + 2 digits
+          - name: "product_code"
+            options:
+              regex: "[A-Z]{3}-[0-9]{2}"
+
+          # Status enum with alternation
+          - name: "status"
+            options:
+              regex: "(ACTIVE|INACTIVE|PENDING)"
+
+          # Serial numbers: 16 alphanumeric characters
+          - name: "serial"
+            options:
+              regex: "[A-Z0-9]{16}"
+
+          # Transaction IDs: prefix + variable length digits
+          - name: "txn_id"
+            options:
+              regex: "TXN-[0-9]{5,10}"
+
+          # DNA sequences: custom character set
+          - name: "dna"
+            options:
+              regex: "[ACGT]{20}"
+    ```
+
+### Unsupported Patterns (UDF Fallback)
+
+These patterns automatically fall back to UDF-based generation:
+
+- **Backreferences**: `([A-Z])\1` (repeat captured group)
+- **Lookaheads/Lookbehinds**: `(?=...)`, `(?!...)`, `(?<=...)`, `(?<!...)`
+- **Word boundaries**: `\b`, `\B`
+- **Possessive quantifiers**: `*+`, `++`
+- **Atomic groups**: `(?>...)`
+- **Unicode categories**: `\p{L}`, `\p{N}`
+
+**Note**: Patterns that fall back to UDF still work correctly - they just won't benefit from the performance optimization of fast mode.
+
+### Performance Comparison
+
+For a dataset with 1 million records using pattern `ACC[0-9]{8}`:
+
+| Mode     | Execution Time | Method                 |
+| -------- | -------------- | ---------------------- |
+| Standard | ~45 seconds    | UDF calls to DataFaker |
+| Fast     | ~8 seconds     | Pure SQL generation    |
+
+**Recommendation**: Use fast mode for production workloads with large datasets (>100k records) and common business patterns.
