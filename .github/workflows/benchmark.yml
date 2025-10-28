@@ -26,11 +26,8 @@ jobs:
     # 2. Build workflow completed successfully after a tag push
     if: |
       github.event_name == 'workflow_dispatch' ||
-      (github.event.workflow_run.conclusion == 'success' && 
+      (github.event.workflow_run.conclusion == 'success' &&
        github.event.workflow_run.event == 'push')
-    defaults:
-      run:
-        working-directory: example
     steps:
       - name: Get branch name
         id: branch
@@ -48,6 +45,7 @@ jobs:
           fetch-depth: 2
       - name: Determine version to benchmark
         id: benchmark_version
+        working-directory: example
         run: |
           if [ "${{ github.event_name }}" == "workflow_dispatch" ] && [ -n "${{ inputs.version }}" ]; then
             echo "value=${{ inputs.version }}" >> $GITHUB_OUTPUT
@@ -58,6 +56,7 @@ jobs:
             echo "Using version from gradle.properties: ${version}"
           fi
       - name: Check if benchmark has already run
+        working-directory: example
         run: |
           skip_check="${{ inputs.skip_existence_check }}"
           version="${{ steps.benchmark_version.outputs.value }}"
@@ -75,6 +74,7 @@ jobs:
               exit 1
           fi
       - name: Wait for Docker image to be available
+        working-directory: example
         run: |
           version="${{ steps.benchmark_version.outputs.value }}"
           echo "Waiting for Docker image datacatering/data-caterer:${version} to be available..."
@@ -102,8 +102,10 @@ jobs:
           repository: apache/datafusion-comet
           path: example/benchmark/build/datafusion-comet
       - name: Get Spark query engine jars
+        working-directory: example
         run: bash benchmark/setup_query_engine_jars.sh
       - name: Run benchmark script
+        working-directory: example
         env:
           BENCHMARK_VERSION: ${{ steps.benchmark_version.outputs.value }}
         run: |
