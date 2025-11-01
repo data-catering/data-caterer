@@ -1784,6 +1784,29 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../generator/transformation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Transformations
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -2270,6 +2293,39 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#including-custom-transformers" class="md-nav__link">
+    <span class="md-ellipsis">
+      Including Custom Transformers
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Including Custom Transformers">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#option-1-volume-mount-custom-jars" class="md-nav__link">
+    <span class="md-ellipsis">
+      Option 1: Volume Mount Custom JARs
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#option-2-build-image-with-transformers" class="md-nav__link">
+    <span class="md-ellipsis">
+      Option 2: Build Image with Transformers
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#docker-pre-and-post-processing-scripts" class="md-nav__link">
     <span class="md-ellipsis">
       Docker Pre and Post Processing Scripts
@@ -2664,6 +2720,29 @@
             Changelog
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../use-case/changelog/0.17.2/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    0.17.2
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
             
               
                 
@@ -3446,6 +3525,32 @@
 <li><strong>JAR Name</strong>: Update the <code>COPY</code> command in Stage 2 to match your JAR name from <code>build.gradle.kts</code>.</li>
 <li><strong>Data Caterer Version</strong>: Change <code>DATA_CATERER_VERSION</code> to match your required version.</li>
 </ul>
+<h3 id="including-custom-transformers">Including Custom Transformers</h3>
+<p>If you have custom transformations (see <a href="../generator/transformation/">Transformations documentation</a>), you can include them in your deployment:</p>
+<h4 id="option-1-volume-mount-custom-jars">Option 1: Volume Mount Custom JARs</h4>
+<p>Mount your transformer JAR(s) into the <code>/opt/app/custom</code> directory:</p>
+<div class="language-shell highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>docker<span class="w"> </span>run<span class="w"> </span>-d<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="w">  </span>-v<span class="w"> </span>/path/to/transformers.jar:/opt/app/custom/transformers.jar<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="w">  </span>-v<span class="w"> </span>/path/to/plan:/opt/DataCaterer/plan<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-3-4"><a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="w">  </span>datacatering/data-caterer:0.17.0
+</span></code></pre></div>
+<h4 id="option-2-build-image-with-transformers">Option 2: Build Image with Transformers</h4>
+<p>Include transformers in your custom Docker image:</p>
+<div class="language-dockerfile highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="c"># Stage 1: Build transformers</span>
+</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="k">FROM</span><span class="w"> </span><span class="s">gradle:8.11.1-jdk17</span><span class="w"> </span><span class="k">AS</span><span class="w"> </span><span class="s">builder</span>
+</span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="k">WORKDIR</span><span class="w"> </span><span class="s">/build</span>
+</span><span id="__span-4-4"><a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="k">COPY</span><span class="w"> </span>.<span class="w"> </span>.
+</span><span id="__span-4-5"><a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a><span class="k">RUN</span><span class="w"> </span>./gradlew<span class="w"> </span>clean<span class="w"> </span>build<span class="w"> </span>--no-daemon
+</span><span id="__span-4-6"><a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>
+</span><span id="__span-4-7"><a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a><span class="c"># Stage 2: Add to Data Caterer</span>
+</span><span id="__span-4-8"><a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a><span class="k">ARG</span><span class="w"> </span><span class="nv">DATA_CATERER_VERSION</span><span class="o">=</span><span class="m">0</span>.17.0
+</span><span id="__span-4-9"><a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a><span class="k">FROM</span><span class="w"> </span><span class="s">datacatering/data-caterer:${DATA_CATERER_VERSION}</span>
+</span><span id="__span-4-10"><a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a>
+</span><span id="__span-4-11"><a id="__codelineno-4-11" name="__codelineno-4-11" href="#__codelineno-4-11"></a><span class="c"># Copy transformer JAR to custom directory (automatically in classpath)</span>
+</span><span id="__span-4-12"><a id="__codelineno-4-12" name="__codelineno-4-12" href="#__codelineno-4-12"></a><span class="k">COPY</span><span class="w"> </span>--from<span class="o">=</span>builder<span class="w"> </span>--chown<span class="o">=</span>app:app<span class="w"> </span>/build/build/libs/transformers.jar<span class="w"> </span>/opt/app/custom/
+</span></code></pre></div>
+<p>The <code>/opt/app/custom</code> directory is automatically included in the classpath, so any JARs placed there will be available to Data Caterer.</p>
+<p>For detailed deployment instructions with transformers, see the <a href="../generator/transformation/#deployment-with-custom-transformers">Transformations documentation</a>.</p>
 <h3 id="docker-pre-and-post-processing-scripts">Docker Pre and Post Processing Scripts</h3>
 <p>Data Caterer supports running custom scripts before and after the main data generation process when deployed via Docker. This is useful for setup tasks, cleanup operations, notifications, or integrating with external systems.</p>
 <h4 id="configuration">Configuration</h4>
@@ -3477,12 +3582,12 @@
 </tbody>
 </table>
 <h4 id="usage-example">Usage Example</h4>
-<div class="language-shell highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>docker<span class="w"> </span>run<span class="w"> </span>-d<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="w">  </span>-e<span class="w"> </span><span class="nv">PRE_PROCESSOR_SCRIPT</span><span class="o">=</span><span class="s2">&quot;/opt/app/scripts/setup.sh&quot;</span><span class="w"> </span><span class="se">\</span>
-</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="w">  </span>-e<span class="w"> </span><span class="nv">POST_PROCESSOR_SCRIPT</span><span class="o">=</span><span class="s2">&quot;/opt/app/scripts/cleanup.sh&quot;</span><span class="w"> </span><span class="se">\</span>
-</span><span id="__span-3-4"><a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="w">  </span>-e<span class="w"> </span><span class="nv">POST_PROCESSOR_CONDITION</span><span class="o">=</span><span class="s2">&quot;always&quot;</span><span class="w"> </span><span class="se">\</span>
-</span><span id="__span-3-5"><a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a><span class="w">  </span>-v<span class="w"> </span>/path/to/scripts:/opt/app/scripts<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-3-6"><a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a><span class="w">  </span>datacatering/data-caterer:0.17.0
+<div class="language-shell highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>docker<span class="w"> </span>run<span class="w"> </span>-d<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="w">  </span>-e<span class="w"> </span><span class="nv">PRE_PROCESSOR_SCRIPT</span><span class="o">=</span><span class="s2">&quot;/opt/app/scripts/setup.sh&quot;</span><span class="w"> </span><span class="se">\</span>
+</span><span id="__span-5-3"><a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="w">  </span>-e<span class="w"> </span><span class="nv">POST_PROCESSOR_SCRIPT</span><span class="o">=</span><span class="s2">&quot;/opt/app/scripts/cleanup.sh&quot;</span><span class="w"> </span><span class="se">\</span>
+</span><span id="__span-5-4"><a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="w">  </span>-e<span class="w"> </span><span class="nv">POST_PROCESSOR_CONDITION</span><span class="o">=</span><span class="s2">&quot;always&quot;</span><span class="w"> </span><span class="se">\</span>
+</span><span id="__span-5-5"><a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a><span class="w">  </span>-v<span class="w"> </span>/path/to/scripts:/opt/app/scripts<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-5-6"><a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a><span class="w">  </span>datacatering/data-caterer:0.17.0
 </span></code></pre></div>
 <h4 id="script-execution-behavior">Script Execution Behavior</h4>
 <ul>
@@ -3507,9 +3612,9 @@
 <p>Update
 the <a href="https://github.com/data-catering/data-caterer/blob/main/example/helm/data-caterer/templates/configuration.yaml">configuration</a>
 to your own data connections and configuration or own image created from above.</p>
-<div class="language-shell highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>git<span class="w"> </span>clone<span class="w"> </span>git@github.com:data-catering/data-caterer.git
-</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="w">    </span><span class="nb">cd</span><span class="w"> </span>data-caterer/example
-</span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>helm<span class="w"> </span>install<span class="w"> </span>data-caterer<span class="w"> </span>./data-caterer/example/helm/data-caterer
+<div class="language-shell highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>git<span class="w"> </span>clone<span class="w"> </span>git@github.com:data-catering/data-caterer.git
+</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="w">    </span><span class="nb">cd</span><span class="w"> </span>data-caterer/example
+</span><span id="__span-6-3"><a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>helm<span class="w"> </span>install<span class="w"> </span>data-caterer<span class="w"> </span>./data-caterer/example/helm/data-caterer
 </span></code></pre></div>
 
 

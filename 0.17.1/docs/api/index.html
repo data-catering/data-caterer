@@ -1782,6 +1782,29 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../generator/transformation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Transformations
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -2683,6 +2706,29 @@
             Changelog
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../use-case/changelog/0.17.2/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    0.17.2
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
             
               
                 
@@ -4390,6 +4436,18 @@
 </span><span id="__span-63-4"><a id="__codelineno-63-4" name="__codelineno-63-4" href="#__codelineno-63-4"></a><span class="w">  </span><span class="nt">&quot;details&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;IllegalArgumentException&quot;</span>
 </span><span id="__span-63-5"><a id="__codelineno-63-5" name="__codelineno-63-5" href="#__codelineno-63-5"></a><span class="p">}</span>
 </span></code></pre></div>
+<div class="admonition note">
+<p class="admonition-title">Transformation Support</p>
+<p>If the step has a <a href="../generator/transformation/">transformation</a> configured, it will be automatically applied to the sample data before returning. This allows you to preview transformed output through the API.</p>
+<div class="language-yaml highlight"><pre><span></span><code><span id="__span-64-1"><a id="__codelineno-64-1" name="__codelineno-64-1" href="#__codelineno-64-1"></a><span class="c1"># Example step with transformation</span>
+</span><span id="__span-64-2"><a id="__codelineno-64-2" name="__codelineno-64-2" href="#__codelineno-64-2"></a><span class="nt">steps</span><span class="p">:</span>
+</span><span id="__span-64-3"><a id="__codelineno-64-3" name="__codelineno-64-3" href="#__codelineno-64-3"></a><span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;transactions&quot;</span>
+</span><span id="__span-64-4"><a id="__codelineno-64-4" name="__codelineno-64-4" href="#__codelineno-64-4"></a><span class="w">    </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;json&quot;</span>
+</span><span id="__span-64-5"><a id="__codelineno-64-5" name="__codelineno-64-5" href="#__codelineno-64-5"></a><span class="w">    </span><span class="nt">transformation</span><span class="p">:</span>
+</span><span id="__span-64-6"><a id="__codelineno-64-6" name="__codelineno-64-6" href="#__codelineno-64-6"></a><span class="w">      </span><span class="nt">className</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;com.example.JsonArrayWrapperTransformer&quot;</span>
+</span><span id="__span-64-7"><a id="__codelineno-64-7" name="__codelineno-64-7" href="#__codelineno-64-7"></a><span class="w">      </span><span class="nt">mode</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;whole-file&quot;</span>
+</span></code></pre></div>
+</div>
 <div class="admonition tip">
 <p class="admonition-title">Direct Step Access</p>
 <p>This endpoint is perfect for:</p>
@@ -4405,28 +4463,28 @@
 <div class="tabbed-set tabbed-alternate" data-tabs="18:2"><input checked="checked" id="__tabbed_18_1" name="__tabbed_18" type="radio" /><input id="__tabbed_18_2" name="__tabbed_18" type="radio" /><div class="tabbed-labels"><label for="__tabbed_18_1">curl</label><label for="__tabbed_18_2">wget</label></div>
 <div class="tabbed-content">
 <div class="tabbed-block">
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-64-1"><a id="__codelineno-64-1" name="__codelineno-64-1" href="#__codelineno-64-1"></a><span class="c1"># Generate sample from step with default parameters</span>
-</span><span id="__span-64-2"><a id="__codelineno-64-2" name="__codelineno-64-2" href="#__codelineno-64-2"></a>curl<span class="w"> </span>-X<span class="w"> </span>GET<span class="w"> </span>http://localhost:9898/sample/steps/customer_details
-</span><span id="__span-64-3"><a id="__codelineno-64-3" name="__codelineno-64-3" href="#__codelineno-64-3"></a>
-</span><span id="__span-64-4"><a id="__codelineno-64-4" name="__codelineno-64-4" href="#__codelineno-64-4"></a><span class="c1"># Generate with custom sample size and fast mode disabled </span>
-</span><span id="__span-64-5"><a id="__codelineno-64-5" name="__codelineno-64-5" href="#__codelineno-64-5"></a>curl<span class="w"> </span>-X<span class="w"> </span>GET<span class="w"> </span><span class="s2">&quot;http://localhost:9898/sample/steps/customer_details?sampleSize=15&amp;fastMode=false&quot;</span>
-</span><span id="__span-64-6"><a id="__codelineno-64-6" name="__codelineno-64-6" href="#__codelineno-64-6"></a>
-</span><span id="__span-64-7"><a id="__codelineno-64-7" name="__codelineno-64-7" href="#__codelineno-64-7"></a><span class="c1"># Generate CSV data from step</span>
-</span><span id="__span-64-8"><a id="__codelineno-64-8" name="__codelineno-64-8" href="#__codelineno-64-8"></a>curl<span class="w"> </span>-X<span class="w"> </span>GET<span class="w"> </span><span class="s2">&quot;http://localhost:9898/sample/steps/customer_csv_step?sampleSize=20&quot;</span><span class="w"> </span>-o<span class="w"> </span>customers.csv
-</span><span id="__span-64-9"><a id="__codelineno-64-9" name="__codelineno-64-9" href="#__codelineno-64-9"></a>
-</span><span id="__span-64-10"><a id="__codelineno-64-10" name="__codelineno-64-10" href="#__codelineno-64-10"></a><span class="c1"># Generate large JSON sample</span>
-</span><span id="__span-64-11"><a id="__codelineno-64-11" name="__codelineno-64-11" href="#__codelineno-64-11"></a>curl<span class="w"> </span>-X<span class="w"> </span>GET<span class="w"> </span><span class="s2">&quot;http://localhost:9898/sample/steps/transaction_data?sampleSize=100&quot;</span><span class="w"> </span>-o<span class="w"> </span>transactions.json
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-65-1"><a id="__codelineno-65-1" name="__codelineno-65-1" href="#__codelineno-65-1"></a><span class="c1"># Generate sample from step with default parameters</span>
+</span><span id="__span-65-2"><a id="__codelineno-65-2" name="__codelineno-65-2" href="#__codelineno-65-2"></a>curl<span class="w"> </span>-X<span class="w"> </span>GET<span class="w"> </span>http://localhost:9898/sample/steps/customer_details
+</span><span id="__span-65-3"><a id="__codelineno-65-3" name="__codelineno-65-3" href="#__codelineno-65-3"></a>
+</span><span id="__span-65-4"><a id="__codelineno-65-4" name="__codelineno-65-4" href="#__codelineno-65-4"></a><span class="c1"># Generate with custom sample size and fast mode disabled </span>
+</span><span id="__span-65-5"><a id="__codelineno-65-5" name="__codelineno-65-5" href="#__codelineno-65-5"></a>curl<span class="w"> </span>-X<span class="w"> </span>GET<span class="w"> </span><span class="s2">&quot;http://localhost:9898/sample/steps/customer_details?sampleSize=15&amp;fastMode=false&quot;</span>
+</span><span id="__span-65-6"><a id="__codelineno-65-6" name="__codelineno-65-6" href="#__codelineno-65-6"></a>
+</span><span id="__span-65-7"><a id="__codelineno-65-7" name="__codelineno-65-7" href="#__codelineno-65-7"></a><span class="c1"># Generate CSV data from step</span>
+</span><span id="__span-65-8"><a id="__codelineno-65-8" name="__codelineno-65-8" href="#__codelineno-65-8"></a>curl<span class="w"> </span>-X<span class="w"> </span>GET<span class="w"> </span><span class="s2">&quot;http://localhost:9898/sample/steps/customer_csv_step?sampleSize=20&quot;</span><span class="w"> </span>-o<span class="w"> </span>customers.csv
+</span><span id="__span-65-9"><a id="__codelineno-65-9" name="__codelineno-65-9" href="#__codelineno-65-9"></a>
+</span><span id="__span-65-10"><a id="__codelineno-65-10" name="__codelineno-65-10" href="#__codelineno-65-10"></a><span class="c1"># Generate large JSON sample</span>
+</span><span id="__span-65-11"><a id="__codelineno-65-11" name="__codelineno-65-11" href="#__codelineno-65-11"></a>curl<span class="w"> </span>-X<span class="w"> </span>GET<span class="w"> </span><span class="s2">&quot;http://localhost:9898/sample/steps/transaction_data?sampleSize=100&quot;</span><span class="w"> </span>-o<span class="w"> </span>transactions.json
 </span></code></pre></div>
 </div>
 <div class="tabbed-block">
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-65-1"><a id="__codelineno-65-1" name="__codelineno-65-1" href="#__codelineno-65-1"></a><span class="c1"># Generate sample from step with default parameters</span>
-</span><span id="__span-65-2"><a id="__codelineno-65-2" name="__codelineno-65-2" href="#__codelineno-65-2"></a>wget<span class="w"> </span>-O<span class="w"> </span>-<span class="w"> </span>http://localhost:9898/sample/steps/customer_details
-</span><span id="__span-65-3"><a id="__codelineno-65-3" name="__codelineno-65-3" href="#__codelineno-65-3"></a>
-</span><span id="__span-65-4"><a id="__codelineno-65-4" name="__codelineno-65-4" href="#__codelineno-65-4"></a><span class="c1"># Generate with custom parameters and save to file</span>
-</span><span id="__span-65-5"><a id="__codelineno-65-5" name="__codelineno-65-5" href="#__codelineno-65-5"></a>wget<span class="w"> </span>-O<span class="w"> </span>customer_sample.json<span class="w"> </span><span class="s2">&quot;http://localhost:9898/sample/steps/customer_details?sampleSize=15&quot;</span>
-</span><span id="__span-65-6"><a id="__codelineno-65-6" name="__codelineno-65-6" href="#__codelineno-65-6"></a>
-</span><span id="__span-65-7"><a id="__codelineno-65-7" name="__codelineno-65-7" href="#__codelineno-65-7"></a><span class="c1"># Generate CSV data</span>
-</span><span id="__span-65-8"><a id="__codelineno-65-8" name="__codelineno-65-8" href="#__codelineno-65-8"></a>wget<span class="w"> </span>-O<span class="w"> </span>customers.csv<span class="w"> </span><span class="s2">&quot;http://localhost:9898/sample/steps/customer_csv_step?sampleSize=50&quot;</span>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-66-1"><a id="__codelineno-66-1" name="__codelineno-66-1" href="#__codelineno-66-1"></a><span class="c1"># Generate sample from step with default parameters</span>
+</span><span id="__span-66-2"><a id="__codelineno-66-2" name="__codelineno-66-2" href="#__codelineno-66-2"></a>wget<span class="w"> </span>-O<span class="w"> </span>-<span class="w"> </span>http://localhost:9898/sample/steps/customer_details
+</span><span id="__span-66-3"><a id="__codelineno-66-3" name="__codelineno-66-3" href="#__codelineno-66-3"></a>
+</span><span id="__span-66-4"><a id="__codelineno-66-4" name="__codelineno-66-4" href="#__codelineno-66-4"></a><span class="c1"># Generate with custom parameters and save to file</span>
+</span><span id="__span-66-5"><a id="__codelineno-66-5" name="__codelineno-66-5" href="#__codelineno-66-5"></a>wget<span class="w"> </span>-O<span class="w"> </span>customer_sample.json<span class="w"> </span><span class="s2">&quot;http://localhost:9898/sample/steps/customer_details?sampleSize=15&quot;</span>
+</span><span id="__span-66-6"><a id="__codelineno-66-6" name="__codelineno-66-6" href="#__codelineno-66-6"></a>
+</span><span id="__span-66-7"><a id="__codelineno-66-7" name="__codelineno-66-7" href="#__codelineno-66-7"></a><span class="c1"># Generate CSV data</span>
+</span><span id="__span-66-8"><a id="__codelineno-66-8" name="__codelineno-66-8" href="#__codelineno-66-8"></a>wget<span class="w"> </span>-O<span class="w"> </span>customers.csv<span class="w"> </span><span class="s2">&quot;http://localhost:9898/sample/steps/customer_csv_step?sampleSize=50&quot;</span>
 </span></code></pre></div>
 </div>
 </div>
@@ -4447,74 +4505,74 @@
 </ul>
 <p><strong>Response:</strong> <code>200 OK</code> (MultiSchemaSampleResponse)</p>
 <p>Returns a JSON object with samples for all steps within the specified task.</p>
-<div class="language-json highlight"><pre><span></span><code><span id="__span-66-1"><a id="__codelineno-66-1" name="__codelineno-66-1" href="#__codelineno-66-1"></a><span class="p">{</span>
-</span><span id="__span-66-2"><a id="__codelineno-66-2" name="__codelineno-66-2" href="#__codelineno-66-2"></a><span class="w">  </span><span class="nt">&quot;success&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
-</span><span id="__span-66-3"><a id="__codelineno-66-3" name="__codelineno-66-3" href="#__codelineno-66-3"></a><span class="w">  </span><span class="nt">&quot;executionId&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;f2a8b1c4&quot;</span><span class="p">,</span>
-</span><span id="__span-66-4"><a id="__codelineno-66-4" name="__codelineno-66-4" href="#__codelineno-66-4"></a><span class="w">  </span><span class="nt">&quot;samples&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
-</span><span id="__span-66-5"><a id="__codelineno-66-5" name="__codelineno-66-5" href="#__codelineno-66-5"></a><span class="w">    </span><span class="nt">&quot;customer-plan/accounts_step&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
-</span><span id="__span-66-6"><a id="__codelineno-66-6" name="__codelineno-66-6" href="#__codelineno-66-6"></a><span class="w">      </span><span class="p">{</span>
-</span><span id="__span-66-7"><a id="__codelineno-66-7" name="__codelineno-66-7" href="#__codelineno-66-7"></a><span class="w">        </span><span class="nt">&quot;account_id&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ACC1234567890&quot;</span><span class="p">,</span>
-</span><span id="__span-66-8"><a id="__codelineno-66-8" name="__codelineno-66-8" href="#__codelineno-66-8"></a><span class="w">        </span><span class="nt">&quot;customer_id&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;CUST000123&quot;</span><span class="p">,</span>
-</span><span id="__span-66-9"><a id="__codelineno-66-9" name="__codelineno-66-9" href="#__codelineno-66-9"></a><span class="w">        </span><span class="nt">&quot;balance&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">5432.10</span><span class="p">,</span>
-</span><span id="__span-66-10"><a id="__codelineno-66-10" name="__codelineno-66-10" href="#__codelineno-66-10"></a><span class="w">        </span><span class="nt">&quot;status&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;active&quot;</span><span class="p">,</span>
-</span><span id="__span-66-11"><a id="__codelineno-66-11" name="__codelineno-66-11" href="#__codelineno-66-11"></a><span class="w">        </span><span class="nt">&quot;opened_date&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;2023-05-15&quot;</span>
-</span><span id="__span-66-12"><a id="__codelineno-66-12" name="__codelineno-66-12" href="#__codelineno-66-12"></a><span class="w">      </span><span class="p">},</span>
-</span><span id="__span-66-13"><a id="__codelineno-66-13" name="__codelineno-66-13" href="#__codelineno-66-13"></a><span class="w">      </span><span class="p">{</span>
-</span><span id="__span-66-14"><a id="__codelineno-66-14" name="__codelineno-66-14" href="#__codelineno-66-14"></a><span class="w">        </span><span class="nt">&quot;account_id&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ACC9876543210&quot;</span><span class="p">,</span>
-</span><span id="__span-66-15"><a id="__codelineno-66-15" name="__codelineno-66-15" href="#__codelineno-66-15"></a><span class="w">        </span><span class="nt">&quot;customer_id&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;CUST000456&quot;</span><span class="p">,</span>
-</span><span id="__span-66-16"><a id="__codelineno-66-16" name="__codelineno-66-16" href="#__codelineno-66-16"></a><span class="w">        </span><span class="nt">&quot;balance&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">12500.50</span><span class="p">,</span>
-</span><span id="__span-66-17"><a id="__codelineno-66-17" name="__codelineno-66-17" href="#__codelineno-66-17"></a><span class="w">        </span><span class="nt">&quot;status&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;active&quot;</span><span class="p">,</span>
-</span><span id="__span-66-18"><a id="__codelineno-66-18" name="__codelineno-66-18" href="#__codelineno-66-18"></a><span class="w">        </span><span class="nt">&quot;opened_date&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;2023-08-22&quot;</span>
-</span><span id="__span-66-19"><a id="__codelineno-66-19" name="__codelineno-66-19" href="#__codelineno-66-19"></a><span class="w">      </span><span class="p">},</span>
-</span><span id="__span-66-20"><a id="__codelineno-66-20" name="__codelineno-66-20" href="#__codelineno-66-20"></a><span class="w">      </span><span class="p">{</span>
-</span><span id="__span-66-21"><a id="__codelineno-66-21" name="__codelineno-66-21" href="#__codelineno-66-21"></a><span class="w">        </span><span class="nt">&quot;account_id&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ACC5555555555&quot;</span><span class="p">,</span>
-</span><span id="__span-66-22"><a id="__codelineno-66-22" name="__codelineno-66-22" href="#__codelineno-66-22"></a><span class="w">        </span><span class="nt">&quot;customer_id&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;CUST000789&quot;</span><span class="p">,</span>
-</span><span id="__span-66-23"><a id="__codelineno-66-23" name="__codelineno-66-23" href="#__codelineno-66-23"></a><span class="w">        </span><span class="nt">&quot;balance&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">825.75</span><span class="p">,</span>
-</span><span id="__span-66-24"><a id="__codelineno-66-24" name="__codelineno-66-24" href="#__codelineno-66-24"></a><span class="w">        </span><span class="nt">&quot;status&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;frozen&quot;</span><span class="p">,</span>
-</span><span id="__span-66-25"><a id="__codelineno-66-25" name="__codelineno-66-25" href="#__codelineno-66-25"></a><span class="w">        </span><span class="nt">&quot;opened_date&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;2024-01-10&quot;</span>
-</span><span id="__span-66-26"><a id="__codelineno-66-26" name="__codelineno-66-26" href="#__codelineno-66-26"></a><span class="w">      </span><span class="p">}</span>
-</span><span id="__span-66-27"><a id="__codelineno-66-27" name="__codelineno-66-27" href="#__codelineno-66-27"></a><span class="w">    </span><span class="p">],</span>
-</span><span id="__span-66-28"><a id="__codelineno-66-28" name="__codelineno-66-28" href="#__codelineno-66-28"></a><span class="w">    </span><span class="nt">&quot;customer-plan/transactions_step&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
-</span><span id="__span-66-29"><a id="__codelineno-66-29" name="__codelineno-66-29" href="#__codelineno-66-29"></a><span class="w">      </span><span class="p">{</span>
-</span><span id="__span-66-30"><a id="__codelineno-66-30" name="__codelineno-66-30" href="#__codelineno-66-30"></a><span class="w">        </span><span class="nt">&quot;transaction_id&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;TXN001&quot;</span><span class="p">,</span>
-</span><span id="__span-66-31"><a id="__codelineno-66-31" name="__codelineno-66-31" href="#__codelineno-66-31"></a><span class="w">        </span><span class="nt">&quot;account_id&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ACC1234567890&quot;</span><span class="p">,</span>
-</span><span id="__span-66-32"><a id="__codelineno-66-32" name="__codelineno-66-32" href="#__codelineno-66-32"></a><span class="w">        </span><span class="nt">&quot;amount&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">150.00</span><span class="p">,</span>
-</span><span id="__span-66-33"><a id="__codelineno-66-33" name="__codelineno-66-33" href="#__codelineno-66-33"></a><span class="w">        </span><span class="nt">&quot;type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;debit&quot;</span><span class="p">,</span>
-</span><span id="__span-66-34"><a id="__codelineno-66-34" name="__codelineno-66-34" href="#__codelineno-66-34"></a><span class="w">        </span><span class="nt">&quot;timestamp&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;2024-01-15T14:30:00Z&quot;</span>
-</span><span id="__span-66-35"><a id="__codelineno-66-35" name="__codelineno-66-35" href="#__codelineno-66-35"></a><span class="w">      </span><span class="p">},</span>
-</span><span id="__span-66-36"><a id="__codelineno-66-36" name="__codelineno-66-36" href="#__codelineno-66-36"></a><span class="w">      </span><span class="p">{</span>
-</span><span id="__span-66-37"><a id="__codelineno-66-37" name="__codelineno-66-37" href="#__codelineno-66-37"></a><span class="w">        </span><span class="nt">&quot;transaction_id&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;TXN002&quot;</span><span class="p">,</span>
-</span><span id="__span-66-38"><a id="__codelineno-66-38" name="__codelineno-66-38" href="#__codelineno-66-38"></a><span class="w">        </span><span class="nt">&quot;account_id&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ACC9876543210&quot;</span><span class="p">,</span>
-</span><span id="__span-66-39"><a id="__codelineno-66-39" name="__codelineno-66-39" href="#__codelineno-66-39"></a><span class="w">        </span><span class="nt">&quot;amount&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">2500.00</span><span class="p">,</span>
-</span><span id="__span-66-40"><a id="__codelineno-66-40" name="__codelineno-66-40" href="#__codelineno-66-40"></a><span class="w">        </span><span class="nt">&quot;type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;credit&quot;</span><span class="p">,</span>
-</span><span id="__span-66-41"><a id="__codelineno-66-41" name="__codelineno-66-41" href="#__codelineno-66-41"></a><span class="w">        </span><span class="nt">&quot;timestamp&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;2024-01-15T15:45:00Z&quot;</span>
-</span><span id="__span-66-42"><a id="__codelineno-66-42" name="__codelineno-66-42" href="#__codelineno-66-42"></a><span class="w">      </span><span class="p">}</span>
-</span><span id="__span-66-43"><a id="__codelineno-66-43" name="__codelineno-66-43" href="#__codelineno-66-43"></a><span class="w">    </span><span class="p">]</span>
-</span><span id="__span-66-44"><a id="__codelineno-66-44" name="__codelineno-66-44" href="#__codelineno-66-44"></a><span class="w">  </span><span class="p">},</span>
-</span><span id="__span-66-45"><a id="__codelineno-66-45" name="__codelineno-66-45" href="#__codelineno-66-45"></a><span class="w">  </span><span class="nt">&quot;metadata&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
-</span><span id="__span-66-46"><a id="__codelineno-66-46" name="__codelineno-66-46" href="#__codelineno-66-46"></a><span class="w">    </span><span class="nt">&quot;sampleSize&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">3</span><span class="p">,</span>
-</span><span id="__span-66-47"><a id="__codelineno-66-47" name="__codelineno-66-47" href="#__codelineno-66-47"></a><span class="w">    </span><span class="nt">&quot;actualRecords&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">5</span><span class="p">,</span>
-</span><span id="__span-66-48"><a id="__codelineno-66-48" name="__codelineno-66-48" href="#__codelineno-66-48"></a><span class="w">    </span><span class="nt">&quot;generatedInMs&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">180</span><span class="p">,</span>
-</span><span id="__span-66-49"><a id="__codelineno-66-49" name="__codelineno-66-49" href="#__codelineno-66-49"></a><span class="w">    </span><span class="nt">&quot;fastModeEnabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span>
-</span><span id="__span-66-50"><a id="__codelineno-66-50" name="__codelineno-66-50" href="#__codelineno-66-50"></a><span class="w">  </span><span class="p">}</span>
-</span><span id="__span-66-51"><a id="__codelineno-66-51" name="__codelineno-66-51" href="#__codelineno-66-51"></a><span class="p">}</span>
+<div class="language-json highlight"><pre><span></span><code><span id="__span-67-1"><a id="__codelineno-67-1" name="__codelineno-67-1" href="#__codelineno-67-1"></a><span class="p">{</span>
+</span><span id="__span-67-2"><a id="__codelineno-67-2" name="__codelineno-67-2" href="#__codelineno-67-2"></a><span class="w">  </span><span class="nt">&quot;success&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+</span><span id="__span-67-3"><a id="__codelineno-67-3" name="__codelineno-67-3" href="#__codelineno-67-3"></a><span class="w">  </span><span class="nt">&quot;executionId&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;f2a8b1c4&quot;</span><span class="p">,</span>
+</span><span id="__span-67-4"><a id="__codelineno-67-4" name="__codelineno-67-4" href="#__codelineno-67-4"></a><span class="w">  </span><span class="nt">&quot;samples&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-67-5"><a id="__codelineno-67-5" name="__codelineno-67-5" href="#__codelineno-67-5"></a><span class="w">    </span><span class="nt">&quot;customer-plan/accounts_step&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+</span><span id="__span-67-6"><a id="__codelineno-67-6" name="__codelineno-67-6" href="#__codelineno-67-6"></a><span class="w">      </span><span class="p">{</span>
+</span><span id="__span-67-7"><a id="__codelineno-67-7" name="__codelineno-67-7" href="#__codelineno-67-7"></a><span class="w">        </span><span class="nt">&quot;account_id&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ACC1234567890&quot;</span><span class="p">,</span>
+</span><span id="__span-67-8"><a id="__codelineno-67-8" name="__codelineno-67-8" href="#__codelineno-67-8"></a><span class="w">        </span><span class="nt">&quot;customer_id&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;CUST000123&quot;</span><span class="p">,</span>
+</span><span id="__span-67-9"><a id="__codelineno-67-9" name="__codelineno-67-9" href="#__codelineno-67-9"></a><span class="w">        </span><span class="nt">&quot;balance&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">5432.10</span><span class="p">,</span>
+</span><span id="__span-67-10"><a id="__codelineno-67-10" name="__codelineno-67-10" href="#__codelineno-67-10"></a><span class="w">        </span><span class="nt">&quot;status&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;active&quot;</span><span class="p">,</span>
+</span><span id="__span-67-11"><a id="__codelineno-67-11" name="__codelineno-67-11" href="#__codelineno-67-11"></a><span class="w">        </span><span class="nt">&quot;opened_date&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;2023-05-15&quot;</span>
+</span><span id="__span-67-12"><a id="__codelineno-67-12" name="__codelineno-67-12" href="#__codelineno-67-12"></a><span class="w">      </span><span class="p">},</span>
+</span><span id="__span-67-13"><a id="__codelineno-67-13" name="__codelineno-67-13" href="#__codelineno-67-13"></a><span class="w">      </span><span class="p">{</span>
+</span><span id="__span-67-14"><a id="__codelineno-67-14" name="__codelineno-67-14" href="#__codelineno-67-14"></a><span class="w">        </span><span class="nt">&quot;account_id&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ACC9876543210&quot;</span><span class="p">,</span>
+</span><span id="__span-67-15"><a id="__codelineno-67-15" name="__codelineno-67-15" href="#__codelineno-67-15"></a><span class="w">        </span><span class="nt">&quot;customer_id&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;CUST000456&quot;</span><span class="p">,</span>
+</span><span id="__span-67-16"><a id="__codelineno-67-16" name="__codelineno-67-16" href="#__codelineno-67-16"></a><span class="w">        </span><span class="nt">&quot;balance&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">12500.50</span><span class="p">,</span>
+</span><span id="__span-67-17"><a id="__codelineno-67-17" name="__codelineno-67-17" href="#__codelineno-67-17"></a><span class="w">        </span><span class="nt">&quot;status&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;active&quot;</span><span class="p">,</span>
+</span><span id="__span-67-18"><a id="__codelineno-67-18" name="__codelineno-67-18" href="#__codelineno-67-18"></a><span class="w">        </span><span class="nt">&quot;opened_date&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;2023-08-22&quot;</span>
+</span><span id="__span-67-19"><a id="__codelineno-67-19" name="__codelineno-67-19" href="#__codelineno-67-19"></a><span class="w">      </span><span class="p">},</span>
+</span><span id="__span-67-20"><a id="__codelineno-67-20" name="__codelineno-67-20" href="#__codelineno-67-20"></a><span class="w">      </span><span class="p">{</span>
+</span><span id="__span-67-21"><a id="__codelineno-67-21" name="__codelineno-67-21" href="#__codelineno-67-21"></a><span class="w">        </span><span class="nt">&quot;account_id&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ACC5555555555&quot;</span><span class="p">,</span>
+</span><span id="__span-67-22"><a id="__codelineno-67-22" name="__codelineno-67-22" href="#__codelineno-67-22"></a><span class="w">        </span><span class="nt">&quot;customer_id&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;CUST000789&quot;</span><span class="p">,</span>
+</span><span id="__span-67-23"><a id="__codelineno-67-23" name="__codelineno-67-23" href="#__codelineno-67-23"></a><span class="w">        </span><span class="nt">&quot;balance&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">825.75</span><span class="p">,</span>
+</span><span id="__span-67-24"><a id="__codelineno-67-24" name="__codelineno-67-24" href="#__codelineno-67-24"></a><span class="w">        </span><span class="nt">&quot;status&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;frozen&quot;</span><span class="p">,</span>
+</span><span id="__span-67-25"><a id="__codelineno-67-25" name="__codelineno-67-25" href="#__codelineno-67-25"></a><span class="w">        </span><span class="nt">&quot;opened_date&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;2024-01-10&quot;</span>
+</span><span id="__span-67-26"><a id="__codelineno-67-26" name="__codelineno-67-26" href="#__codelineno-67-26"></a><span class="w">      </span><span class="p">}</span>
+</span><span id="__span-67-27"><a id="__codelineno-67-27" name="__codelineno-67-27" href="#__codelineno-67-27"></a><span class="w">    </span><span class="p">],</span>
+</span><span id="__span-67-28"><a id="__codelineno-67-28" name="__codelineno-67-28" href="#__codelineno-67-28"></a><span class="w">    </span><span class="nt">&quot;customer-plan/transactions_step&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+</span><span id="__span-67-29"><a id="__codelineno-67-29" name="__codelineno-67-29" href="#__codelineno-67-29"></a><span class="w">      </span><span class="p">{</span>
+</span><span id="__span-67-30"><a id="__codelineno-67-30" name="__codelineno-67-30" href="#__codelineno-67-30"></a><span class="w">        </span><span class="nt">&quot;transaction_id&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;TXN001&quot;</span><span class="p">,</span>
+</span><span id="__span-67-31"><a id="__codelineno-67-31" name="__codelineno-67-31" href="#__codelineno-67-31"></a><span class="w">        </span><span class="nt">&quot;account_id&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ACC1234567890&quot;</span><span class="p">,</span>
+</span><span id="__span-67-32"><a id="__codelineno-67-32" name="__codelineno-67-32" href="#__codelineno-67-32"></a><span class="w">        </span><span class="nt">&quot;amount&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">150.00</span><span class="p">,</span>
+</span><span id="__span-67-33"><a id="__codelineno-67-33" name="__codelineno-67-33" href="#__codelineno-67-33"></a><span class="w">        </span><span class="nt">&quot;type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;debit&quot;</span><span class="p">,</span>
+</span><span id="__span-67-34"><a id="__codelineno-67-34" name="__codelineno-67-34" href="#__codelineno-67-34"></a><span class="w">        </span><span class="nt">&quot;timestamp&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;2024-01-15T14:30:00Z&quot;</span>
+</span><span id="__span-67-35"><a id="__codelineno-67-35" name="__codelineno-67-35" href="#__codelineno-67-35"></a><span class="w">      </span><span class="p">},</span>
+</span><span id="__span-67-36"><a id="__codelineno-67-36" name="__codelineno-67-36" href="#__codelineno-67-36"></a><span class="w">      </span><span class="p">{</span>
+</span><span id="__span-67-37"><a id="__codelineno-67-37" name="__codelineno-67-37" href="#__codelineno-67-37"></a><span class="w">        </span><span class="nt">&quot;transaction_id&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;TXN002&quot;</span><span class="p">,</span>
+</span><span id="__span-67-38"><a id="__codelineno-67-38" name="__codelineno-67-38" href="#__codelineno-67-38"></a><span class="w">        </span><span class="nt">&quot;account_id&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ACC9876543210&quot;</span><span class="p">,</span>
+</span><span id="__span-67-39"><a id="__codelineno-67-39" name="__codelineno-67-39" href="#__codelineno-67-39"></a><span class="w">        </span><span class="nt">&quot;amount&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">2500.00</span><span class="p">,</span>
+</span><span id="__span-67-40"><a id="__codelineno-67-40" name="__codelineno-67-40" href="#__codelineno-67-40"></a><span class="w">        </span><span class="nt">&quot;type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;credit&quot;</span><span class="p">,</span>
+</span><span id="__span-67-41"><a id="__codelineno-67-41" name="__codelineno-67-41" href="#__codelineno-67-41"></a><span class="w">        </span><span class="nt">&quot;timestamp&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;2024-01-15T15:45:00Z&quot;</span>
+</span><span id="__span-67-42"><a id="__codelineno-67-42" name="__codelineno-67-42" href="#__codelineno-67-42"></a><span class="w">      </span><span class="p">}</span>
+</span><span id="__span-67-43"><a id="__codelineno-67-43" name="__codelineno-67-43" href="#__codelineno-67-43"></a><span class="w">    </span><span class="p">]</span>
+</span><span id="__span-67-44"><a id="__codelineno-67-44" name="__codelineno-67-44" href="#__codelineno-67-44"></a><span class="w">  </span><span class="p">},</span>
+</span><span id="__span-67-45"><a id="__codelineno-67-45" name="__codelineno-67-45" href="#__codelineno-67-45"></a><span class="w">  </span><span class="nt">&quot;metadata&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-67-46"><a id="__codelineno-67-46" name="__codelineno-67-46" href="#__codelineno-67-46"></a><span class="w">    </span><span class="nt">&quot;sampleSize&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">3</span><span class="p">,</span>
+</span><span id="__span-67-47"><a id="__codelineno-67-47" name="__codelineno-67-47" href="#__codelineno-67-47"></a><span class="w">    </span><span class="nt">&quot;actualRecords&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">5</span><span class="p">,</span>
+</span><span id="__span-67-48"><a id="__codelineno-67-48" name="__codelineno-67-48" href="#__codelineno-67-48"></a><span class="w">    </span><span class="nt">&quot;generatedInMs&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">180</span><span class="p">,</span>
+</span><span id="__span-67-49"><a id="__codelineno-67-49" name="__codelineno-67-49" href="#__codelineno-67-49"></a><span class="w">    </span><span class="nt">&quot;fastModeEnabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span>
+</span><span id="__span-67-50"><a id="__codelineno-67-50" name="__codelineno-67-50" href="#__codelineno-67-50"></a><span class="w">  </span><span class="p">}</span>
+</span><span id="__span-67-51"><a id="__codelineno-67-51" name="__codelineno-67-51" href="#__codelineno-67-51"></a><span class="p">}</span>
 </span></code></pre></div>
 <p><strong>Error Response:</strong> <code>400 Bad Request</code></p>
-<div class="language-json highlight"><pre><span></span><code><span id="__span-67-1"><a id="__codelineno-67-1" name="__codelineno-67-1" href="#__codelineno-67-1"></a><span class="p">{</span>
-</span><span id="__span-67-2"><a id="__codelineno-67-2" name="__codelineno-67-2" href="#__codelineno-67-2"></a><span class="w">  </span><span class="nt">&quot;code&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;GENERATION_ERROR&quot;</span><span class="p">,</span>
-</span><span id="__span-67-3"><a id="__codelineno-67-3" name="__codelineno-67-3" href="#__codelineno-67-3"></a><span class="w">  </span><span class="nt">&quot;message&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Step/Task &#39;invalid_task&#39; not found in plan. Available: json_account_file, csv_customer_file&quot;</span><span class="p">,</span>
-</span><span id="__span-67-4"><a id="__codelineno-67-4" name="__codelineno-67-4" href="#__codelineno-67-4"></a><span class="w">  </span><span class="nt">&quot;details&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;IllegalArgumentException&quot;</span>
-</span><span id="__span-67-5"><a id="__codelineno-67-5" name="__codelineno-67-5" href="#__codelineno-67-5"></a><span class="p">}</span>
+<div class="language-json highlight"><pre><span></span><code><span id="__span-68-1"><a id="__codelineno-68-1" name="__codelineno-68-1" href="#__codelineno-68-1"></a><span class="p">{</span>
+</span><span id="__span-68-2"><a id="__codelineno-68-2" name="__codelineno-68-2" href="#__codelineno-68-2"></a><span class="w">  </span><span class="nt">&quot;code&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;GENERATION_ERROR&quot;</span><span class="p">,</span>
+</span><span id="__span-68-3"><a id="__codelineno-68-3" name="__codelineno-68-3" href="#__codelineno-68-3"></a><span class="w">  </span><span class="nt">&quot;message&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Step/Task &#39;invalid_task&#39; not found in plan. Available: json_account_file, csv_customer_file&quot;</span><span class="p">,</span>
+</span><span id="__span-68-4"><a id="__codelineno-68-4" name="__codelineno-68-4" href="#__codelineno-68-4"></a><span class="w">  </span><span class="nt">&quot;details&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;IllegalArgumentException&quot;</span>
+</span><span id="__span-68-5"><a id="__codelineno-68-5" name="__codelineno-68-5" href="#__codelineno-68-5"></a><span class="p">}</span>
 </span></code></pre></div>
 <p><strong>Example:</strong></p>
 <div class="tabbed-set tabbed-alternate" data-tabs="19:2"><input checked="checked" id="__tabbed_19_1" name="__tabbed_19" type="radio" /><input id="__tabbed_19_2" name="__tabbed_19" type="radio" /><div class="tabbed-labels"><label for="__tabbed_19_1">curl</label><label for="__tabbed_19_2">wget</label></div>
 <div class="tabbed-content">
 <div class="tabbed-block">
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-68-1"><a id="__codelineno-68-1" name="__codelineno-68-1" href="#__codelineno-68-1"></a>curl<span class="w"> </span>-X<span class="w"> </span>GET<span class="w"> </span><span class="s2">&quot;http://localhost:9898/sample/plans/customer-plan/tasks/json_account_file?sampleSize=5&quot;</span>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-69-1"><a id="__codelineno-69-1" name="__codelineno-69-1" href="#__codelineno-69-1"></a>curl<span class="w"> </span>-X<span class="w"> </span>GET<span class="w"> </span><span class="s2">&quot;http://localhost:9898/sample/plans/customer-plan/tasks/json_account_file?sampleSize=5&quot;</span>
 </span></code></pre></div>
 </div>
 <div class="tabbed-block">
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-69-1"><a id="__codelineno-69-1" name="__codelineno-69-1" href="#__codelineno-69-1"></a>wget<span class="w"> </span>-O<span class="w"> </span>-<span class="w"> </span><span class="s2">&quot;http://localhost:9898/sample/plans/customer-plan/tasks/json_account_file?sampleSize=5&quot;</span>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-70-1"><a id="__codelineno-70-1" name="__codelineno-70-1" href="#__codelineno-70-1"></a>wget<span class="w"> </span>-O<span class="w"> </span>-<span class="w"> </span><span class="s2">&quot;http://localhost:9898/sample/plans/customer-plan/tasks/json_account_file?sampleSize=5&quot;</span>
 </span></code></pre></div>
 </div>
 </div>
@@ -4539,29 +4597,33 @@
 <p>The response format depends on the step configuration:</p>
 <p><strong>JSON Format</strong> (<code>Content-Type: application/json</code>):</p>
 <p>Returns newline-delimited JSON (each line is a valid JSON object):</p>
-<div class="language-json highlight"><pre><span></span><code><span id="__span-70-1"><a id="__codelineno-70-1" name="__codelineno-70-1" href="#__codelineno-70-1"></a><span class="p">{</span><span class="nt">&quot;account_id&quot;</span><span class="p">:</span><span class="s2">&quot;ACC1234567890&quot;</span><span class="p">,</span><span class="nt">&quot;balance&quot;</span><span class="p">:</span><span class="mf">5432.10</span><span class="p">,</span><span class="nt">&quot;status&quot;</span><span class="p">:</span><span class="s2">&quot;active&quot;</span><span class="p">,</span><span class="nt">&quot;opened_date&quot;</span><span class="p">:</span><span class="s2">&quot;2023-05-15&quot;</span><span class="p">}</span>
-</span><span id="__span-70-2"><a id="__codelineno-70-2" name="__codelineno-70-2" href="#__codelineno-70-2"></a><span class="p">{</span><span class="nt">&quot;account_id&quot;</span><span class="p">:</span><span class="s2">&quot;ACC9876543210&quot;</span><span class="p">,</span><span class="nt">&quot;balance&quot;</span><span class="p">:</span><span class="mf">12500.50</span><span class="p">,</span><span class="nt">&quot;status&quot;</span><span class="p">:</span><span class="s2">&quot;active&quot;</span><span class="p">,</span><span class="nt">&quot;opened_date&quot;</span><span class="p">:</span><span class="s2">&quot;2023-08-22&quot;</span><span class="p">}</span>
-</span><span id="__span-70-3"><a id="__codelineno-70-3" name="__codelineno-70-3" href="#__codelineno-70-3"></a><span class="p">{</span><span class="nt">&quot;account_id&quot;</span><span class="p">:</span><span class="s2">&quot;ACC5555555555&quot;</span><span class="p">,</span><span class="nt">&quot;balance&quot;</span><span class="p">:</span><span class="mf">825.75</span><span class="p">,</span><span class="nt">&quot;status&quot;</span><span class="p">:</span><span class="s2">&quot;frozen&quot;</span><span class="p">,</span><span class="nt">&quot;opened_date&quot;</span><span class="p">:</span><span class="s2">&quot;2024-01-10&quot;</span><span class="p">}</span>
+<div class="language-json highlight"><pre><span></span><code><span id="__span-71-1"><a id="__codelineno-71-1" name="__codelineno-71-1" href="#__codelineno-71-1"></a><span class="p">{</span><span class="nt">&quot;account_id&quot;</span><span class="p">:</span><span class="s2">&quot;ACC1234567890&quot;</span><span class="p">,</span><span class="nt">&quot;balance&quot;</span><span class="p">:</span><span class="mf">5432.10</span><span class="p">,</span><span class="nt">&quot;status&quot;</span><span class="p">:</span><span class="s2">&quot;active&quot;</span><span class="p">,</span><span class="nt">&quot;opened_date&quot;</span><span class="p">:</span><span class="s2">&quot;2023-05-15&quot;</span><span class="p">}</span>
+</span><span id="__span-71-2"><a id="__codelineno-71-2" name="__codelineno-71-2" href="#__codelineno-71-2"></a><span class="p">{</span><span class="nt">&quot;account_id&quot;</span><span class="p">:</span><span class="s2">&quot;ACC9876543210&quot;</span><span class="p">,</span><span class="nt">&quot;balance&quot;</span><span class="p">:</span><span class="mf">12500.50</span><span class="p">,</span><span class="nt">&quot;status&quot;</span><span class="p">:</span><span class="s2">&quot;active&quot;</span><span class="p">,</span><span class="nt">&quot;opened_date&quot;</span><span class="p">:</span><span class="s2">&quot;2023-08-22&quot;</span><span class="p">}</span>
+</span><span id="__span-71-3"><a id="__codelineno-71-3" name="__codelineno-71-3" href="#__codelineno-71-3"></a><span class="p">{</span><span class="nt">&quot;account_id&quot;</span><span class="p">:</span><span class="s2">&quot;ACC5555555555&quot;</span><span class="p">,</span><span class="nt">&quot;balance&quot;</span><span class="p">:</span><span class="mf">825.75</span><span class="p">,</span><span class="nt">&quot;status&quot;</span><span class="p">:</span><span class="s2">&quot;frozen&quot;</span><span class="p">,</span><span class="nt">&quot;opened_date&quot;</span><span class="p">:</span><span class="s2">&quot;2024-01-10&quot;</span><span class="p">}</span>
 </span></code></pre></div>
 <p><strong>CSV Format</strong> (<code>Content-Type: text/csv; charset=UTF-8</code>):</p>
 <p>Returns CSV data with headers:</p>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-71-1"><a id="__codelineno-71-1" name="__codelineno-71-1" href="#__codelineno-71-1"></a>account_id,balance,status,opened_date
-</span><span id="__span-71-2"><a id="__codelineno-71-2" name="__codelineno-71-2" href="#__codelineno-71-2"></a>ACC1234567890,5432.10,active,2023-05-15
-</span><span id="__span-71-3"><a id="__codelineno-71-3" name="__codelineno-71-3" href="#__codelineno-71-3"></a>ACC9876543210,12500.50,active,2023-08-22
-</span><span id="__span-71-4"><a id="__codelineno-71-4" name="__codelineno-71-4" href="#__codelineno-71-4"></a>ACC5555555555,825.75,frozen,2024-01-10
+<div class="language-text highlight"><pre><span></span><code><span id="__span-72-1"><a id="__codelineno-72-1" name="__codelineno-72-1" href="#__codelineno-72-1"></a>account_id,balance,status,opened_date
+</span><span id="__span-72-2"><a id="__codelineno-72-2" name="__codelineno-72-2" href="#__codelineno-72-2"></a>ACC1234567890,5432.10,active,2023-05-15
+</span><span id="__span-72-3"><a id="__codelineno-72-3" name="__codelineno-72-3" href="#__codelineno-72-3"></a>ACC9876543210,12500.50,active,2023-08-22
+</span><span id="__span-72-4"><a id="__codelineno-72-4" name="__codelineno-72-4" href="#__codelineno-72-4"></a>ACC5555555555,825.75,frozen,2024-01-10
 </span></code></pre></div>
 <p><strong>Parquet/ORC Format</strong> (<code>Content-Type: application/octet-stream</code>):</p>
 <p>Returns binary data that can be written to a file and read by Spark/other tools.</p>
+<div class="admonition note">
+<p class="admonition-title">Transformation Support</p>
+<p>All sample endpoints support <a href="../generator/transformation/">transformations</a>. If a step has a transformation configured, it will be automatically applied before returning the sample data.</p>
+</div>
 <p><strong>Error Response:</strong> <code>400 Bad Request</code></p>
-<div class="language-json highlight"><pre><span></span><code><span id="__span-72-1"><a id="__codelineno-72-1" name="__codelineno-72-1" href="#__codelineno-72-1"></a><span class="p">{</span>
-</span><span id="__span-72-2"><a id="__codelineno-72-2" name="__codelineno-72-2" href="#__codelineno-72-2"></a><span class="w">  </span><span class="nt">&quot;success&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
-</span><span id="__span-72-3"><a id="__codelineno-72-3" name="__codelineno-72-3" href="#__codelineno-72-3"></a><span class="w">  </span><span class="nt">&quot;executionId&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;err12345&quot;</span><span class="p">,</span>
-</span><span id="__span-72-4"><a id="__codelineno-72-4" name="__codelineno-72-4" href="#__codelineno-72-4"></a><span class="w">  </span><span class="nt">&quot;error&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
-</span><span id="__span-72-5"><a id="__codelineno-72-5" name="__codelineno-72-5" href="#__codelineno-72-5"></a><span class="w">    </span><span class="nt">&quot;code&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;GENERATION_ERROR&quot;</span><span class="p">,</span>
-</span><span id="__span-72-6"><a id="__codelineno-72-6" name="__codelineno-72-6" href="#__codelineno-72-6"></a><span class="w">    </span><span class="nt">&quot;message&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Step &#39;invalid_step&#39; not found in task &#39;json_account&#39;. Available steps: file_account, validation_step&quot;</span><span class="p">,</span>
-</span><span id="__span-72-7"><a id="__codelineno-72-7" name="__codelineno-72-7" href="#__codelineno-72-7"></a><span class="w">    </span><span class="nt">&quot;details&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;IllegalArgumentException&quot;</span>
-</span><span id="__span-72-8"><a id="__codelineno-72-8" name="__codelineno-72-8" href="#__codelineno-72-8"></a><span class="w">  </span><span class="p">}</span>
-</span><span id="__span-72-9"><a id="__codelineno-72-9" name="__codelineno-72-9" href="#__codelineno-72-9"></a><span class="p">}</span>
+<div class="language-json highlight"><pre><span></span><code><span id="__span-73-1"><a id="__codelineno-73-1" name="__codelineno-73-1" href="#__codelineno-73-1"></a><span class="p">{</span>
+</span><span id="__span-73-2"><a id="__codelineno-73-2" name="__codelineno-73-2" href="#__codelineno-73-2"></a><span class="w">  </span><span class="nt">&quot;success&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
+</span><span id="__span-73-3"><a id="__codelineno-73-3" name="__codelineno-73-3" href="#__codelineno-73-3"></a><span class="w">  </span><span class="nt">&quot;executionId&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;err12345&quot;</span><span class="p">,</span>
+</span><span id="__span-73-4"><a id="__codelineno-73-4" name="__codelineno-73-4" href="#__codelineno-73-4"></a><span class="w">  </span><span class="nt">&quot;error&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-73-5"><a id="__codelineno-73-5" name="__codelineno-73-5" href="#__codelineno-73-5"></a><span class="w">    </span><span class="nt">&quot;code&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;GENERATION_ERROR&quot;</span><span class="p">,</span>
+</span><span id="__span-73-6"><a id="__codelineno-73-6" name="__codelineno-73-6" href="#__codelineno-73-6"></a><span class="w">    </span><span class="nt">&quot;message&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Step &#39;invalid_step&#39; not found in task &#39;json_account&#39;. Available steps: file_account, validation_step&quot;</span><span class="p">,</span>
+</span><span id="__span-73-7"><a id="__codelineno-73-7" name="__codelineno-73-7" href="#__codelineno-73-7"></a><span class="w">    </span><span class="nt">&quot;details&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;IllegalArgumentException&quot;</span>
+</span><span id="__span-73-8"><a id="__codelineno-73-8" name="__codelineno-73-8" href="#__codelineno-73-8"></a><span class="w">  </span><span class="p">}</span>
+</span><span id="__span-73-9"><a id="__codelineno-73-9" name="__codelineno-73-9" href="#__codelineno-73-9"></a><span class="p">}</span>
 </span></code></pre></div>
 <div class="admonition tip">
 <p class="admonition-title">Working with Raw Data</p>
@@ -4578,27 +4640,27 @@
 <div class="tabbed-set tabbed-alternate" data-tabs="20:2"><input checked="checked" id="__tabbed_20_1" name="__tabbed_20" type="radio" /><input id="__tabbed_20_2" name="__tabbed_20" type="radio" /><div class="tabbed-labels"><label for="__tabbed_20_1">curl</label><label for="__tabbed_20_2">wget</label></div>
 <div class="tabbed-content">
 <div class="tabbed-block">
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-73-1"><a id="__codelineno-73-1" name="__codelineno-73-1" href="#__codelineno-73-1"></a><span class="c1"># Get JSON sample data (newline-delimited JSON)</span>
-</span><span id="__span-73-2"><a id="__codelineno-73-2" name="__codelineno-73-2" href="#__codelineno-73-2"></a>curl<span class="w"> </span>-X<span class="w"> </span>GET<span class="w"> </span><span class="s2">&quot;http://localhost:9898/sample/plans/account-plan/tasks/json_account/steps/file_account?sampleSize=3&quot;</span>
-</span><span id="__span-73-3"><a id="__codelineno-73-3" name="__codelineno-73-3" href="#__codelineno-73-3"></a>
-</span><span id="__span-73-4"><a id="__codelineno-73-4" name="__codelineno-73-4" href="#__codelineno-73-4"></a><span class="c1"># Get CSV sample data with fast mode disabled</span>
-</span><span id="__span-73-5"><a id="__codelineno-73-5" name="__codelineno-73-5" href="#__codelineno-73-5"></a>curl<span class="w"> </span>-X<span class="w"> </span>GET<span class="w"> </span><span class="s2">&quot;http://localhost:9898/sample/plans/csv-plan/tasks/csv_task/steps/csv_step?sampleSize=10&amp;fastMode=false&quot;</span>
-</span><span id="__span-73-6"><a id="__codelineno-73-6" name="__codelineno-73-6" href="#__codelineno-73-6"></a>
-</span><span id="__span-73-7"><a id="__codelineno-73-7" name="__codelineno-73-7" href="#__codelineno-73-7"></a><span class="c1"># Save JSON sample to file</span>
-</span><span id="__span-73-8"><a id="__codelineno-73-8" name="__codelineno-73-8" href="#__codelineno-73-8"></a>curl<span class="w"> </span>-X<span class="w"> </span>GET<span class="w"> </span><span class="s2">&quot;http://localhost:9898/sample/plans/account-plan/tasks/json_account/steps/file_account?sampleSize=100&quot;</span><span class="w"> </span><span class="se">\</span>
-</span><span id="__span-73-9"><a id="__codelineno-73-9" name="__codelineno-73-9" href="#__codelineno-73-9"></a><span class="w">  </span>-o<span class="w"> </span>sample_accounts.json
-</span><span id="__span-73-10"><a id="__codelineno-73-10" name="__codelineno-73-10" href="#__codelineno-73-10"></a>
-</span><span id="__span-73-11"><a id="__codelineno-73-11" name="__codelineno-73-11" href="#__codelineno-73-11"></a><span class="c1"># Save CSV sample to file</span>
-</span><span id="__span-73-12"><a id="__codelineno-73-12" name="__codelineno-73-12" href="#__codelineno-73-12"></a>curl<span class="w"> </span>-X<span class="w"> </span>GET<span class="w"> </span><span class="s2">&quot;http://localhost:9898/sample/plans/customer-plan/tasks/csv_task/steps/customer_step?sampleSize=50&quot;</span><span class="w"> </span><span class="se">\</span>
-</span><span id="__span-73-13"><a id="__codelineno-73-13" name="__codelineno-73-13" href="#__codelineno-73-13"></a><span class="w">  </span>-o<span class="w"> </span>sample_customers.csv
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-74-1"><a id="__codelineno-74-1" name="__codelineno-74-1" href="#__codelineno-74-1"></a><span class="c1"># Get JSON sample data (newline-delimited JSON)</span>
+</span><span id="__span-74-2"><a id="__codelineno-74-2" name="__codelineno-74-2" href="#__codelineno-74-2"></a>curl<span class="w"> </span>-X<span class="w"> </span>GET<span class="w"> </span><span class="s2">&quot;http://localhost:9898/sample/plans/account-plan/tasks/json_account/steps/file_account?sampleSize=3&quot;</span>
+</span><span id="__span-74-3"><a id="__codelineno-74-3" name="__codelineno-74-3" href="#__codelineno-74-3"></a>
+</span><span id="__span-74-4"><a id="__codelineno-74-4" name="__codelineno-74-4" href="#__codelineno-74-4"></a><span class="c1"># Get CSV sample data with fast mode disabled</span>
+</span><span id="__span-74-5"><a id="__codelineno-74-5" name="__codelineno-74-5" href="#__codelineno-74-5"></a>curl<span class="w"> </span>-X<span class="w"> </span>GET<span class="w"> </span><span class="s2">&quot;http://localhost:9898/sample/plans/csv-plan/tasks/csv_task/steps/csv_step?sampleSize=10&amp;fastMode=false&quot;</span>
+</span><span id="__span-74-6"><a id="__codelineno-74-6" name="__codelineno-74-6" href="#__codelineno-74-6"></a>
+</span><span id="__span-74-7"><a id="__codelineno-74-7" name="__codelineno-74-7" href="#__codelineno-74-7"></a><span class="c1"># Save JSON sample to file</span>
+</span><span id="__span-74-8"><a id="__codelineno-74-8" name="__codelineno-74-8" href="#__codelineno-74-8"></a>curl<span class="w"> </span>-X<span class="w"> </span>GET<span class="w"> </span><span class="s2">&quot;http://localhost:9898/sample/plans/account-plan/tasks/json_account/steps/file_account?sampleSize=100&quot;</span><span class="w"> </span><span class="se">\</span>
+</span><span id="__span-74-9"><a id="__codelineno-74-9" name="__codelineno-74-9" href="#__codelineno-74-9"></a><span class="w">  </span>-o<span class="w"> </span>sample_accounts.json
+</span><span id="__span-74-10"><a id="__codelineno-74-10" name="__codelineno-74-10" href="#__codelineno-74-10"></a>
+</span><span id="__span-74-11"><a id="__codelineno-74-11" name="__codelineno-74-11" href="#__codelineno-74-11"></a><span class="c1"># Save CSV sample to file</span>
+</span><span id="__span-74-12"><a id="__codelineno-74-12" name="__codelineno-74-12" href="#__codelineno-74-12"></a>curl<span class="w"> </span>-X<span class="w"> </span>GET<span class="w"> </span><span class="s2">&quot;http://localhost:9898/sample/plans/customer-plan/tasks/csv_task/steps/customer_step?sampleSize=50&quot;</span><span class="w"> </span><span class="se">\</span>
+</span><span id="__span-74-13"><a id="__codelineno-74-13" name="__codelineno-74-13" href="#__codelineno-74-13"></a><span class="w">  </span>-o<span class="w"> </span>sample_customers.csv
 </span></code></pre></div>
 </div>
 <div class="tabbed-block">
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-74-1"><a id="__codelineno-74-1" name="__codelineno-74-1" href="#__codelineno-74-1"></a><span class="c1"># Get sample data and save to file</span>
-</span><span id="__span-74-2"><a id="__codelineno-74-2" name="__codelineno-74-2" href="#__codelineno-74-2"></a>wget<span class="w"> </span>-O<span class="w"> </span>sample.json<span class="w"> </span><span class="s2">&quot;http://localhost:9898/sample/plans/account-plan/tasks/json_account/steps/file_account?sampleSize=3&quot;</span>
-</span><span id="__span-74-3"><a id="__codelineno-74-3" name="__codelineno-74-3" href="#__codelineno-74-3"></a>
-</span><span id="__span-74-4"><a id="__codelineno-74-4" name="__codelineno-74-4" href="#__codelineno-74-4"></a><span class="c1"># Get CSV data and save</span>
-</span><span id="__span-74-5"><a id="__codelineno-74-5" name="__codelineno-74-5" href="#__codelineno-74-5"></a>wget<span class="w"> </span>-O<span class="w"> </span>customers.csv<span class="w"> </span><span class="s2">&quot;http://localhost:9898/sample/plans/customer-plan/tasks/csv_task/steps/customer_step?sampleSize=20&quot;</span>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-75-1"><a id="__codelineno-75-1" name="__codelineno-75-1" href="#__codelineno-75-1"></a><span class="c1"># Get sample data and save to file</span>
+</span><span id="__span-75-2"><a id="__codelineno-75-2" name="__codelineno-75-2" href="#__codelineno-75-2"></a>wget<span class="w"> </span>-O<span class="w"> </span>sample.json<span class="w"> </span><span class="s2">&quot;http://localhost:9898/sample/plans/account-plan/tasks/json_account/steps/file_account?sampleSize=3&quot;</span>
+</span><span id="__span-75-3"><a id="__codelineno-75-3" name="__codelineno-75-3" href="#__codelineno-75-3"></a>
+</span><span id="__span-75-4"><a id="__codelineno-75-4" name="__codelineno-75-4" href="#__codelineno-75-4"></a><span class="c1"># Get CSV data and save</span>
+</span><span id="__span-75-5"><a id="__codelineno-75-5" name="__codelineno-75-5" href="#__codelineno-75-5"></a>wget<span class="w"> </span>-O<span class="w"> </span>customers.csv<span class="w"> </span><span class="s2">&quot;http://localhost:9898/sample/plans/customer-plan/tasks/csv_task/steps/customer_step?sampleSize=20&quot;</span>
 </span></code></pre></div>
 </div>
 </div>
@@ -4608,38 +4670,38 @@
 <summary>Generate Sample from Schema - <code>POST /sample/schema</code></summary>
 <p>Generate sample data based on inline field definitions. This endpoint is ideal for ad-hoc testing, prototyping schemas, or generating sample data without creating task/plan files.</p>
 <p><strong>Request Body:</strong></p>
-<div class="language-json highlight"><pre><span></span><code><span id="__span-75-1"><a id="__codelineno-75-1" name="__codelineno-75-1" href="#__codelineno-75-1"></a><span class="p">{</span>
-</span><span id="__span-75-2"><a id="__codelineno-75-2" name="__codelineno-75-2" href="#__codelineno-75-2"></a><span class="w">  </span><span class="nt">&quot;fields&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
-</span><span id="__span-75-3"><a id="__codelineno-75-3" name="__codelineno-75-3" href="#__codelineno-75-3"></a><span class="w">    </span><span class="p">{</span>
-</span><span id="__span-75-4"><a id="__codelineno-75-4" name="__codelineno-75-4" href="#__codelineno-75-4"></a><span class="w">      </span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;account_id&quot;</span><span class="p">,</span>
-</span><span id="__span-75-5"><a id="__codelineno-75-5" name="__codelineno-75-5" href="#__codelineno-75-5"></a><span class="w">      </span><span class="nt">&quot;type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;string&quot;</span><span class="p">,</span>
-</span><span id="__span-75-6"><a id="__codelineno-75-6" name="__codelineno-75-6" href="#__codelineno-75-6"></a><span class="w">      </span><span class="nt">&quot;options&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
-</span><span id="__span-75-7"><a id="__codelineno-75-7" name="__codelineno-75-7" href="#__codelineno-75-7"></a><span class="w">        </span><span class="nt">&quot;regex&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ACC[0-9]{10}&quot;</span>
-</span><span id="__span-75-8"><a id="__codelineno-75-8" name="__codelineno-75-8" href="#__codelineno-75-8"></a><span class="w">      </span><span class="p">},</span>
-</span><span id="__span-75-9"><a id="__codelineno-75-9" name="__codelineno-75-9" href="#__codelineno-75-9"></a><span class="w">      </span><span class="nt">&quot;nullable&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span>
-</span><span id="__span-75-10"><a id="__codelineno-75-10" name="__codelineno-75-10" href="#__codelineno-75-10"></a><span class="w">    </span><span class="p">},</span>
-</span><span id="__span-75-11"><a id="__codelineno-75-11" name="__codelineno-75-11" href="#__codelineno-75-11"></a><span class="w">    </span><span class="p">{</span>
-</span><span id="__span-75-12"><a id="__codelineno-75-12" name="__codelineno-75-12" href="#__codelineno-75-12"></a><span class="w">      </span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;balance&quot;</span><span class="p">,</span>
-</span><span id="__span-75-13"><a id="__codelineno-75-13" name="__codelineno-75-13" href="#__codelineno-75-13"></a><span class="w">      </span><span class="nt">&quot;type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;double&quot;</span><span class="p">,</span>
-</span><span id="__span-75-14"><a id="__codelineno-75-14" name="__codelineno-75-14" href="#__codelineno-75-14"></a><span class="w">      </span><span class="nt">&quot;options&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
-</span><span id="__span-75-15"><a id="__codelineno-75-15" name="__codelineno-75-15" href="#__codelineno-75-15"></a><span class="w">        </span><span class="nt">&quot;min&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">100.0</span><span class="p">,</span>
-</span><span id="__span-75-16"><a id="__codelineno-75-16" name="__codelineno-75-16" href="#__codelineno-75-16"></a><span class="w">        </span><span class="nt">&quot;max&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">10000.0</span>
-</span><span id="__span-75-17"><a id="__codelineno-75-17" name="__codelineno-75-17" href="#__codelineno-75-17"></a><span class="w">      </span><span class="p">},</span>
-</span><span id="__span-75-18"><a id="__codelineno-75-18" name="__codelineno-75-18" href="#__codelineno-75-18"></a><span class="w">      </span><span class="nt">&quot;nullable&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span>
-</span><span id="__span-75-19"><a id="__codelineno-75-19" name="__codelineno-75-19" href="#__codelineno-75-19"></a><span class="w">    </span><span class="p">},</span>
-</span><span id="__span-75-20"><a id="__codelineno-75-20" name="__codelineno-75-20" href="#__codelineno-75-20"></a><span class="w">    </span><span class="p">{</span>
-</span><span id="__span-75-21"><a id="__codelineno-75-21" name="__codelineno-75-21" href="#__codelineno-75-21"></a><span class="w">      </span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;customer_name&quot;</span><span class="p">,</span>
-</span><span id="__span-75-22"><a id="__codelineno-75-22" name="__codelineno-75-22" href="#__codelineno-75-22"></a><span class="w">      </span><span class="nt">&quot;type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;string&quot;</span><span class="p">,</span>
-</span><span id="__span-75-23"><a id="__codelineno-75-23" name="__codelineno-75-23" href="#__codelineno-75-23"></a><span class="w">      </span><span class="nt">&quot;options&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
-</span><span id="__span-75-24"><a id="__codelineno-75-24" name="__codelineno-75-24" href="#__codelineno-75-24"></a><span class="w">        </span><span class="nt">&quot;expression&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;#{Name.fullName}&quot;</span>
-</span><span id="__span-75-25"><a id="__codelineno-75-25" name="__codelineno-75-25" href="#__codelineno-75-25"></a><span class="w">      </span><span class="p">},</span>
-</span><span id="__span-75-26"><a id="__codelineno-75-26" name="__codelineno-75-26" href="#__codelineno-75-26"></a><span class="w">      </span><span class="nt">&quot;nullable&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span>
-</span><span id="__span-75-27"><a id="__codelineno-75-27" name="__codelineno-75-27" href="#__codelineno-75-27"></a><span class="w">    </span><span class="p">}</span>
-</span><span id="__span-75-28"><a id="__codelineno-75-28" name="__codelineno-75-28" href="#__codelineno-75-28"></a><span class="w">  </span><span class="p">],</span>
-</span><span id="__span-75-29"><a id="__codelineno-75-29" name="__codelineno-75-29" href="#__codelineno-75-29"></a><span class="w">  </span><span class="nt">&quot;format&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;json&quot;</span><span class="p">,</span>
-</span><span id="__span-75-30"><a id="__codelineno-75-30" name="__codelineno-75-30" href="#__codelineno-75-30"></a><span class="w">  </span><span class="nt">&quot;sampleSize&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">5</span><span class="p">,</span>
-</span><span id="__span-75-31"><a id="__codelineno-75-31" name="__codelineno-75-31" href="#__codelineno-75-31"></a><span class="w">  </span><span class="nt">&quot;fastMode&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span>
-</span><span id="__span-75-32"><a id="__codelineno-75-32" name="__codelineno-75-32" href="#__codelineno-75-32"></a><span class="p">}</span>
+<div class="language-json highlight"><pre><span></span><code><span id="__span-76-1"><a id="__codelineno-76-1" name="__codelineno-76-1" href="#__codelineno-76-1"></a><span class="p">{</span>
+</span><span id="__span-76-2"><a id="__codelineno-76-2" name="__codelineno-76-2" href="#__codelineno-76-2"></a><span class="w">  </span><span class="nt">&quot;fields&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+</span><span id="__span-76-3"><a id="__codelineno-76-3" name="__codelineno-76-3" href="#__codelineno-76-3"></a><span class="w">    </span><span class="p">{</span>
+</span><span id="__span-76-4"><a id="__codelineno-76-4" name="__codelineno-76-4" href="#__codelineno-76-4"></a><span class="w">      </span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;account_id&quot;</span><span class="p">,</span>
+</span><span id="__span-76-5"><a id="__codelineno-76-5" name="__codelineno-76-5" href="#__codelineno-76-5"></a><span class="w">      </span><span class="nt">&quot;type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;string&quot;</span><span class="p">,</span>
+</span><span id="__span-76-6"><a id="__codelineno-76-6" name="__codelineno-76-6" href="#__codelineno-76-6"></a><span class="w">      </span><span class="nt">&quot;options&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-76-7"><a id="__codelineno-76-7" name="__codelineno-76-7" href="#__codelineno-76-7"></a><span class="w">        </span><span class="nt">&quot;regex&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ACC[0-9]{10}&quot;</span>
+</span><span id="__span-76-8"><a id="__codelineno-76-8" name="__codelineno-76-8" href="#__codelineno-76-8"></a><span class="w">      </span><span class="p">},</span>
+</span><span id="__span-76-9"><a id="__codelineno-76-9" name="__codelineno-76-9" href="#__codelineno-76-9"></a><span class="w">      </span><span class="nt">&quot;nullable&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span>
+</span><span id="__span-76-10"><a id="__codelineno-76-10" name="__codelineno-76-10" href="#__codelineno-76-10"></a><span class="w">    </span><span class="p">},</span>
+</span><span id="__span-76-11"><a id="__codelineno-76-11" name="__codelineno-76-11" href="#__codelineno-76-11"></a><span class="w">    </span><span class="p">{</span>
+</span><span id="__span-76-12"><a id="__codelineno-76-12" name="__codelineno-76-12" href="#__codelineno-76-12"></a><span class="w">      </span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;balance&quot;</span><span class="p">,</span>
+</span><span id="__span-76-13"><a id="__codelineno-76-13" name="__codelineno-76-13" href="#__codelineno-76-13"></a><span class="w">      </span><span class="nt">&quot;type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;double&quot;</span><span class="p">,</span>
+</span><span id="__span-76-14"><a id="__codelineno-76-14" name="__codelineno-76-14" href="#__codelineno-76-14"></a><span class="w">      </span><span class="nt">&quot;options&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-76-15"><a id="__codelineno-76-15" name="__codelineno-76-15" href="#__codelineno-76-15"></a><span class="w">        </span><span class="nt">&quot;min&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">100.0</span><span class="p">,</span>
+</span><span id="__span-76-16"><a id="__codelineno-76-16" name="__codelineno-76-16" href="#__codelineno-76-16"></a><span class="w">        </span><span class="nt">&quot;max&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">10000.0</span>
+</span><span id="__span-76-17"><a id="__codelineno-76-17" name="__codelineno-76-17" href="#__codelineno-76-17"></a><span class="w">      </span><span class="p">},</span>
+</span><span id="__span-76-18"><a id="__codelineno-76-18" name="__codelineno-76-18" href="#__codelineno-76-18"></a><span class="w">      </span><span class="nt">&quot;nullable&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span>
+</span><span id="__span-76-19"><a id="__codelineno-76-19" name="__codelineno-76-19" href="#__codelineno-76-19"></a><span class="w">    </span><span class="p">},</span>
+</span><span id="__span-76-20"><a id="__codelineno-76-20" name="__codelineno-76-20" href="#__codelineno-76-20"></a><span class="w">    </span><span class="p">{</span>
+</span><span id="__span-76-21"><a id="__codelineno-76-21" name="__codelineno-76-21" href="#__codelineno-76-21"></a><span class="w">      </span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;customer_name&quot;</span><span class="p">,</span>
+</span><span id="__span-76-22"><a id="__codelineno-76-22" name="__codelineno-76-22" href="#__codelineno-76-22"></a><span class="w">      </span><span class="nt">&quot;type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;string&quot;</span><span class="p">,</span>
+</span><span id="__span-76-23"><a id="__codelineno-76-23" name="__codelineno-76-23" href="#__codelineno-76-23"></a><span class="w">      </span><span class="nt">&quot;options&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-76-24"><a id="__codelineno-76-24" name="__codelineno-76-24" href="#__codelineno-76-24"></a><span class="w">        </span><span class="nt">&quot;expression&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;#{Name.fullName}&quot;</span>
+</span><span id="__span-76-25"><a id="__codelineno-76-25" name="__codelineno-76-25" href="#__codelineno-76-25"></a><span class="w">      </span><span class="p">},</span>
+</span><span id="__span-76-26"><a id="__codelineno-76-26" name="__codelineno-76-26" href="#__codelineno-76-26"></a><span class="w">      </span><span class="nt">&quot;nullable&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span>
+</span><span id="__span-76-27"><a id="__codelineno-76-27" name="__codelineno-76-27" href="#__codelineno-76-27"></a><span class="w">    </span><span class="p">}</span>
+</span><span id="__span-76-28"><a id="__codelineno-76-28" name="__codelineno-76-28" href="#__codelineno-76-28"></a><span class="w">  </span><span class="p">],</span>
+</span><span id="__span-76-29"><a id="__codelineno-76-29" name="__codelineno-76-29" href="#__codelineno-76-29"></a><span class="w">  </span><span class="nt">&quot;format&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;json&quot;</span><span class="p">,</span>
+</span><span id="__span-76-30"><a id="__codelineno-76-30" name="__codelineno-76-30" href="#__codelineno-76-30"></a><span class="w">  </span><span class="nt">&quot;sampleSize&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">5</span><span class="p">,</span>
+</span><span id="__span-76-31"><a id="__codelineno-76-31" name="__codelineno-76-31" href="#__codelineno-76-31"></a><span class="w">  </span><span class="nt">&quot;fastMode&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span>
+</span><span id="__span-76-32"><a id="__codelineno-76-32" name="__codelineno-76-32" href="#__codelineno-76-32"></a><span class="p">}</span>
 </span></code></pre></div>
 <p><strong>Parameters:</strong></p>
 <ul>
@@ -4650,30 +4712,30 @@
 </ul>
 <p><strong>Response:</strong> <code>200 OK</code> - Returns <strong>raw data</strong> in the specified format</p>
 <p><strong>JSON Format Response:</strong></p>
-<div class="language-json highlight"><pre><span></span><code><span id="__span-76-1"><a id="__codelineno-76-1" name="__codelineno-76-1" href="#__codelineno-76-1"></a><span class="p">{</span><span class="nt">&quot;account_id&quot;</span><span class="p">:</span><span class="s2">&quot;ACC1234567890&quot;</span><span class="p">,</span><span class="nt">&quot;balance&quot;</span><span class="p">:</span><span class="mf">5432.10</span><span class="p">,</span><span class="nt">&quot;customer_name&quot;</span><span class="p">:</span><span class="s2">&quot;John Smith&quot;</span><span class="p">}</span>
-</span><span id="__span-76-2"><a id="__codelineno-76-2" name="__codelineno-76-2" href="#__codelineno-76-2"></a><span class="p">{</span><span class="nt">&quot;account_id&quot;</span><span class="p">:</span><span class="s2">&quot;ACC9876543210&quot;</span><span class="p">,</span><span class="nt">&quot;balance&quot;</span><span class="p">:</span><span class="mf">7821.45</span><span class="p">,</span><span class="nt">&quot;customer_name&quot;</span><span class="p">:</span><span class="s2">&quot;Jane Doe&quot;</span><span class="p">}</span>
-</span><span id="__span-76-3"><a id="__codelineno-76-3" name="__codelineno-76-3" href="#__codelineno-76-3"></a><span class="p">{</span><span class="nt">&quot;account_id&quot;</span><span class="p">:</span><span class="s2">&quot;ACC5555555555&quot;</span><span class="p">,</span><span class="nt">&quot;balance&quot;</span><span class="p">:</span><span class="mf">9234.67</span><span class="p">,</span><span class="nt">&quot;customer_name&quot;</span><span class="p">:</span><span class="s2">&quot;Bob Johnson&quot;</span><span class="p">}</span>
-</span><span id="__span-76-4"><a id="__codelineno-76-4" name="__codelineno-76-4" href="#__codelineno-76-4"></a><span class="p">{</span><span class="nt">&quot;account_id&quot;</span><span class="p">:</span><span class="s2">&quot;ACC7777777777&quot;</span><span class="p">,</span><span class="nt">&quot;balance&quot;</span><span class="p">:</span><span class="mf">3456.89</span><span class="p">,</span><span class="nt">&quot;customer_name&quot;</span><span class="p">:</span><span class="s2">&quot;Alice Williams&quot;</span><span class="p">}</span>
-</span><span id="__span-76-5"><a id="__codelineno-76-5" name="__codelineno-76-5" href="#__codelineno-76-5"></a><span class="p">{</span><span class="nt">&quot;account_id&quot;</span><span class="p">:</span><span class="s2">&quot;ACC3333333333&quot;</span><span class="p">,</span><span class="nt">&quot;balance&quot;</span><span class="p">:</span><span class="mf">6789.12</span><span class="p">,</span><span class="nt">&quot;customer_name&quot;</span><span class="p">:</span><span class="s2">&quot;Charlie Brown&quot;</span><span class="p">}</span>
+<div class="language-json highlight"><pre><span></span><code><span id="__span-77-1"><a id="__codelineno-77-1" name="__codelineno-77-1" href="#__codelineno-77-1"></a><span class="p">{</span><span class="nt">&quot;account_id&quot;</span><span class="p">:</span><span class="s2">&quot;ACC1234567890&quot;</span><span class="p">,</span><span class="nt">&quot;balance&quot;</span><span class="p">:</span><span class="mf">5432.10</span><span class="p">,</span><span class="nt">&quot;customer_name&quot;</span><span class="p">:</span><span class="s2">&quot;John Smith&quot;</span><span class="p">}</span>
+</span><span id="__span-77-2"><a id="__codelineno-77-2" name="__codelineno-77-2" href="#__codelineno-77-2"></a><span class="p">{</span><span class="nt">&quot;account_id&quot;</span><span class="p">:</span><span class="s2">&quot;ACC9876543210&quot;</span><span class="p">,</span><span class="nt">&quot;balance&quot;</span><span class="p">:</span><span class="mf">7821.45</span><span class="p">,</span><span class="nt">&quot;customer_name&quot;</span><span class="p">:</span><span class="s2">&quot;Jane Doe&quot;</span><span class="p">}</span>
+</span><span id="__span-77-3"><a id="__codelineno-77-3" name="__codelineno-77-3" href="#__codelineno-77-3"></a><span class="p">{</span><span class="nt">&quot;account_id&quot;</span><span class="p">:</span><span class="s2">&quot;ACC5555555555&quot;</span><span class="p">,</span><span class="nt">&quot;balance&quot;</span><span class="p">:</span><span class="mf">9234.67</span><span class="p">,</span><span class="nt">&quot;customer_name&quot;</span><span class="p">:</span><span class="s2">&quot;Bob Johnson&quot;</span><span class="p">}</span>
+</span><span id="__span-77-4"><a id="__codelineno-77-4" name="__codelineno-77-4" href="#__codelineno-77-4"></a><span class="p">{</span><span class="nt">&quot;account_id&quot;</span><span class="p">:</span><span class="s2">&quot;ACC7777777777&quot;</span><span class="p">,</span><span class="nt">&quot;balance&quot;</span><span class="p">:</span><span class="mf">3456.89</span><span class="p">,</span><span class="nt">&quot;customer_name&quot;</span><span class="p">:</span><span class="s2">&quot;Alice Williams&quot;</span><span class="p">}</span>
+</span><span id="__span-77-5"><a id="__codelineno-77-5" name="__codelineno-77-5" href="#__codelineno-77-5"></a><span class="p">{</span><span class="nt">&quot;account_id&quot;</span><span class="p">:</span><span class="s2">&quot;ACC3333333333&quot;</span><span class="p">,</span><span class="nt">&quot;balance&quot;</span><span class="p">:</span><span class="mf">6789.12</span><span class="p">,</span><span class="nt">&quot;customer_name&quot;</span><span class="p">:</span><span class="s2">&quot;Charlie Brown&quot;</span><span class="p">}</span>
 </span></code></pre></div>
 <p><strong>CSV Format Response:</strong></p>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-77-1"><a id="__codelineno-77-1" name="__codelineno-77-1" href="#__codelineno-77-1"></a>account_id,balance,customer_name
-</span><span id="__span-77-2"><a id="__codelineno-77-2" name="__codelineno-77-2" href="#__codelineno-77-2"></a>ACC1234567890,5432.10,John Smith
-</span><span id="__span-77-3"><a id="__codelineno-77-3" name="__codelineno-77-3" href="#__codelineno-77-3"></a>ACC9876543210,7821.45,Jane Doe
-</span><span id="__span-77-4"><a id="__codelineno-77-4" name="__codelineno-77-4" href="#__codelineno-77-4"></a>ACC5555555555,9234.67,Bob Johnson
-</span><span id="__span-77-5"><a id="__codelineno-77-5" name="__codelineno-77-5" href="#__codelineno-77-5"></a>ACC7777777777,3456.89,Alice Williams
-</span><span id="__span-77-6"><a id="__codelineno-77-6" name="__codelineno-77-6" href="#__codelineno-77-6"></a>ACC3333333333,6789.12,Charlie Brown
+<div class="language-text highlight"><pre><span></span><code><span id="__span-78-1"><a id="__codelineno-78-1" name="__codelineno-78-1" href="#__codelineno-78-1"></a>account_id,balance,customer_name
+</span><span id="__span-78-2"><a id="__codelineno-78-2" name="__codelineno-78-2" href="#__codelineno-78-2"></a>ACC1234567890,5432.10,John Smith
+</span><span id="__span-78-3"><a id="__codelineno-78-3" name="__codelineno-78-3" href="#__codelineno-78-3"></a>ACC9876543210,7821.45,Jane Doe
+</span><span id="__span-78-4"><a id="__codelineno-78-4" name="__codelineno-78-4" href="#__codelineno-78-4"></a>ACC5555555555,9234.67,Bob Johnson
+</span><span id="__span-78-5"><a id="__codelineno-78-5" name="__codelineno-78-5" href="#__codelineno-78-5"></a>ACC7777777777,3456.89,Alice Williams
+</span><span id="__span-78-6"><a id="__codelineno-78-6" name="__codelineno-78-6" href="#__codelineno-78-6"></a>ACC3333333333,6789.12,Charlie Brown
 </span></code></pre></div>
 <p><strong>Error Response:</strong> <code>400 Bad Request</code></p>
-<div class="language-json highlight"><pre><span></span><code><span id="__span-78-1"><a id="__codelineno-78-1" name="__codelineno-78-1" href="#__codelineno-78-1"></a><span class="p">{</span>
-</span><span id="__span-78-2"><a id="__codelineno-78-2" name="__codelineno-78-2" href="#__codelineno-78-2"></a><span class="w">  </span><span class="nt">&quot;success&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
-</span><span id="__span-78-3"><a id="__codelineno-78-3" name="__codelineno-78-3" href="#__codelineno-78-3"></a><span class="w">  </span><span class="nt">&quot;executionId&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;err98765&quot;</span><span class="p">,</span>
-</span><span id="__span-78-4"><a id="__codelineno-78-4" name="__codelineno-78-4" href="#__codelineno-78-4"></a><span class="w">  </span><span class="nt">&quot;error&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
-</span><span id="__span-78-5"><a id="__codelineno-78-5" name="__codelineno-78-5" href="#__codelineno-78-5"></a><span class="w">    </span><span class="nt">&quot;code&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;INVALID_SCHEMA&quot;</span><span class="p">,</span>
-</span><span id="__span-78-6"><a id="__codelineno-78-6" name="__codelineno-78-6" href="#__codelineno-78-6"></a><span class="w">    </span><span class="nt">&quot;message&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Field type &#39;invalid_type&#39; is not supported. Use: string, int, long, double, boolean, timestamp, date, etc.&quot;</span><span class="p">,</span>
-</span><span id="__span-78-7"><a id="__codelineno-78-7" name="__codelineno-78-7" href="#__codelineno-78-7"></a><span class="w">    </span><span class="nt">&quot;details&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;IllegalArgumentException&quot;</span>
-</span><span id="__span-78-8"><a id="__codelineno-78-8" name="__codelineno-78-8" href="#__codelineno-78-8"></a><span class="w">  </span><span class="p">}</span>
-</span><span id="__span-78-9"><a id="__codelineno-78-9" name="__codelineno-78-9" href="#__codelineno-78-9"></a><span class="p">}</span>
+<div class="language-json highlight"><pre><span></span><code><span id="__span-79-1"><a id="__codelineno-79-1" name="__codelineno-79-1" href="#__codelineno-79-1"></a><span class="p">{</span>
+</span><span id="__span-79-2"><a id="__codelineno-79-2" name="__codelineno-79-2" href="#__codelineno-79-2"></a><span class="w">  </span><span class="nt">&quot;success&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
+</span><span id="__span-79-3"><a id="__codelineno-79-3" name="__codelineno-79-3" href="#__codelineno-79-3"></a><span class="w">  </span><span class="nt">&quot;executionId&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;err98765&quot;</span><span class="p">,</span>
+</span><span id="__span-79-4"><a id="__codelineno-79-4" name="__codelineno-79-4" href="#__codelineno-79-4"></a><span class="w">  </span><span class="nt">&quot;error&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-79-5"><a id="__codelineno-79-5" name="__codelineno-79-5" href="#__codelineno-79-5"></a><span class="w">    </span><span class="nt">&quot;code&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;INVALID_SCHEMA&quot;</span><span class="p">,</span>
+</span><span id="__span-79-6"><a id="__codelineno-79-6" name="__codelineno-79-6" href="#__codelineno-79-6"></a><span class="w">    </span><span class="nt">&quot;message&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Field type &#39;invalid_type&#39; is not supported. Use: string, int, long, double, boolean, timestamp, date, etc.&quot;</span><span class="p">,</span>
+</span><span id="__span-79-7"><a id="__codelineno-79-7" name="__codelineno-79-7" href="#__codelineno-79-7"></a><span class="w">    </span><span class="nt">&quot;details&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;IllegalArgumentException&quot;</span>
+</span><span id="__span-79-8"><a id="__codelineno-79-8" name="__codelineno-79-8" href="#__codelineno-79-8"></a><span class="w">  </span><span class="p">}</span>
+</span><span id="__span-79-9"><a id="__codelineno-79-9" name="__codelineno-79-9" href="#__codelineno-79-9"></a><span class="p">}</span>
 </span></code></pre></div>
 <div class="admonition tip">
 <p class="admonition-title">Use Cases</p>
@@ -4690,71 +4752,10 @@
 <div class="tabbed-set tabbed-alternate" data-tabs="21:2"><input checked="checked" id="__tabbed_21_1" name="__tabbed_21" type="radio" /><input id="__tabbed_21_2" name="__tabbed_21" type="radio" /><div class="tabbed-labels"><label for="__tabbed_21_1">curl</label><label for="__tabbed_21_2">wget</label></div>
 <div class="tabbed-content">
 <div class="tabbed-block">
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-79-1"><a id="__codelineno-79-1" name="__codelineno-79-1" href="#__codelineno-79-1"></a><span class="c1"># Generate JSON sample data</span>
-</span><span id="__span-79-2"><a id="__codelineno-79-2" name="__codelineno-79-2" href="#__codelineno-79-2"></a>curl<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span>http://localhost:9898/sample/schema<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-79-3"><a id="__codelineno-79-3" name="__codelineno-79-3" href="#__codelineno-79-3"></a><span class="w">  </span>-H<span class="w"> </span><span class="s2">&quot;Content-Type: application/json&quot;</span><span class="w"> </span><span class="se">\</span>
-</span><span id="__span-79-4"><a id="__codelineno-79-4" name="__codelineno-79-4" href="#__codelineno-79-4"></a><span class="w">  </span>-d<span class="w"> </span><span class="s1">&#39;{</span>
-</span><span id="__span-79-5"><a id="__codelineno-79-5" name="__codelineno-79-5" href="#__codelineno-79-5"></a><span class="s1">    &quot;fields&quot;: [</span>
-</span><span id="__span-79-6"><a id="__codelineno-79-6" name="__codelineno-79-6" href="#__codelineno-79-6"></a><span class="s1">      {</span>
-</span><span id="__span-79-7"><a id="__codelineno-79-7" name="__codelineno-79-7" href="#__codelineno-79-7"></a><span class="s1">        &quot;name&quot;: &quot;account_id&quot;,</span>
-</span><span id="__span-79-8"><a id="__codelineno-79-8" name="__codelineno-79-8" href="#__codelineno-79-8"></a><span class="s1">        &quot;type&quot;: &quot;string&quot;,</span>
-</span><span id="__span-79-9"><a id="__codelineno-79-9" name="__codelineno-79-9" href="#__codelineno-79-9"></a><span class="s1">        &quot;options&quot;: {</span>
-</span><span id="__span-79-10"><a id="__codelineno-79-10" name="__codelineno-79-10" href="#__codelineno-79-10"></a><span class="s1">          &quot;regex&quot;: &quot;ACC[0-9]{10}&quot;</span>
-</span><span id="__span-79-11"><a id="__codelineno-79-11" name="__codelineno-79-11" href="#__codelineno-79-11"></a><span class="s1">        },</span>
-</span><span id="__span-79-12"><a id="__codelineno-79-12" name="__codelineno-79-12" href="#__codelineno-79-12"></a><span class="s1">        &quot;nullable&quot;: false</span>
-</span><span id="__span-79-13"><a id="__codelineno-79-13" name="__codelineno-79-13" href="#__codelineno-79-13"></a><span class="s1">      },</span>
-</span><span id="__span-79-14"><a id="__codelineno-79-14" name="__codelineno-79-14" href="#__codelineno-79-14"></a><span class="s1">      {</span>
-</span><span id="__span-79-15"><a id="__codelineno-79-15" name="__codelineno-79-15" href="#__codelineno-79-15"></a><span class="s1">        &quot;name&quot;: &quot;balance&quot;,</span>
-</span><span id="__span-79-16"><a id="__codelineno-79-16" name="__codelineno-79-16" href="#__codelineno-79-16"></a><span class="s1">        &quot;type&quot;: &quot;double&quot;,</span>
-</span><span id="__span-79-17"><a id="__codelineno-79-17" name="__codelineno-79-17" href="#__codelineno-79-17"></a><span class="s1">        &quot;options&quot;: {</span>
-</span><span id="__span-79-18"><a id="__codelineno-79-18" name="__codelineno-79-18" href="#__codelineno-79-18"></a><span class="s1">          &quot;min&quot;: 100.0,</span>
-</span><span id="__span-79-19"><a id="__codelineno-79-19" name="__codelineno-79-19" href="#__codelineno-79-19"></a><span class="s1">          &quot;max&quot;: 10000.0</span>
-</span><span id="__span-79-20"><a id="__codelineno-79-20" name="__codelineno-79-20" href="#__codelineno-79-20"></a><span class="s1">        },</span>
-</span><span id="__span-79-21"><a id="__codelineno-79-21" name="__codelineno-79-21" href="#__codelineno-79-21"></a><span class="s1">        &quot;nullable&quot;: false</span>
-</span><span id="__span-79-22"><a id="__codelineno-79-22" name="__codelineno-79-22" href="#__codelineno-79-22"></a><span class="s1">      }</span>
-</span><span id="__span-79-23"><a id="__codelineno-79-23" name="__codelineno-79-23" href="#__codelineno-79-23"></a><span class="s1">    ],</span>
-</span><span id="__span-79-24"><a id="__codelineno-79-24" name="__codelineno-79-24" href="#__codelineno-79-24"></a><span class="s1">    &quot;format&quot;: &quot;json&quot;,</span>
-</span><span id="__span-79-25"><a id="__codelineno-79-25" name="__codelineno-79-25" href="#__codelineno-79-25"></a><span class="s1">    &quot;sampleSize&quot;: 5,</span>
-</span><span id="__span-79-26"><a id="__codelineno-79-26" name="__codelineno-79-26" href="#__codelineno-79-26"></a><span class="s1">    &quot;fastMode&quot;: true</span>
-</span><span id="__span-79-27"><a id="__codelineno-79-27" name="__codelineno-79-27" href="#__codelineno-79-27"></a><span class="s1">  }&#39;</span>
-</span><span id="__span-79-28"><a id="__codelineno-79-28" name="__codelineno-79-28" href="#__codelineno-79-28"></a>
-</span><span id="__span-79-29"><a id="__codelineno-79-29" name="__codelineno-79-29" href="#__codelineno-79-29"></a><span class="c1"># Generate CSV sample data</span>
-</span><span id="__span-79-30"><a id="__codelineno-79-30" name="__codelineno-79-30" href="#__codelineno-79-30"></a>curl<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span>http://localhost:9898/sample/schema<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-79-31"><a id="__codelineno-79-31" name="__codelineno-79-31" href="#__codelineno-79-31"></a><span class="w">  </span>-H<span class="w"> </span><span class="s2">&quot;Content-Type: application/json&quot;</span><span class="w"> </span><span class="se">\</span>
-</span><span id="__span-79-32"><a id="__codelineno-79-32" name="__codelineno-79-32" href="#__codelineno-79-32"></a><span class="w">  </span>-d<span class="w"> </span><span class="s1">&#39;{</span>
-</span><span id="__span-79-33"><a id="__codelineno-79-33" name="__codelineno-79-33" href="#__codelineno-79-33"></a><span class="s1">    &quot;fields&quot;: [</span>
-</span><span id="__span-79-34"><a id="__codelineno-79-34" name="__codelineno-79-34" href="#__codelineno-79-34"></a><span class="s1">      {</span>
-</span><span id="__span-79-35"><a id="__codelineno-79-35" name="__codelineno-79-35" href="#__codelineno-79-35"></a><span class="s1">        &quot;name&quot;: &quot;user_id&quot;,</span>
-</span><span id="__span-79-36"><a id="__codelineno-79-36" name="__codelineno-79-36" href="#__codelineno-79-36"></a><span class="s1">        &quot;type&quot;: &quot;long&quot;</span>
-</span><span id="__span-79-37"><a id="__codelineno-79-37" name="__codelineno-79-37" href="#__codelineno-79-37"></a><span class="s1">      },</span>
-</span><span id="__span-79-38"><a id="__codelineno-79-38" name="__codelineno-79-38" href="#__codelineno-79-38"></a><span class="s1">      {</span>
-</span><span id="__span-79-39"><a id="__codelineno-79-39" name="__codelineno-79-39" href="#__codelineno-79-39"></a><span class="s1">        &quot;name&quot;: &quot;email&quot;,</span>
-</span><span id="__span-79-40"><a id="__codelineno-79-40" name="__codelineno-79-40" href="#__codelineno-79-40"></a><span class="s1">        &quot;type&quot;: &quot;string&quot;,</span>
-</span><span id="__span-79-41"><a id="__codelineno-79-41" name="__codelineno-79-41" href="#__codelineno-79-41"></a><span class="s1">        &quot;options&quot;: {</span>
-</span><span id="__span-79-42"><a id="__codelineno-79-42" name="__codelineno-79-42" href="#__codelineno-79-42"></a><span class="s1">          &quot;expression&quot;: &quot;#{Internet.emailAddress}&quot;</span>
-</span><span id="__span-79-43"><a id="__codelineno-79-43" name="__codelineno-79-43" href="#__codelineno-79-43"></a><span class="s1">        }</span>
-</span><span id="__span-79-44"><a id="__codelineno-79-44" name="__codelineno-79-44" href="#__codelineno-79-44"></a><span class="s1">      },</span>
-</span><span id="__span-79-45"><a id="__codelineno-79-45" name="__codelineno-79-45" href="#__codelineno-79-45"></a><span class="s1">      {</span>
-</span><span id="__span-79-46"><a id="__codelineno-79-46" name="__codelineno-79-46" href="#__codelineno-79-46"></a><span class="s1">        &quot;name&quot;: &quot;age&quot;,</span>
-</span><span id="__span-79-47"><a id="__codelineno-79-47" name="__codelineno-79-47" href="#__codelineno-79-47"></a><span class="s1">        &quot;type&quot;: &quot;int&quot;,</span>
-</span><span id="__span-79-48"><a id="__codelineno-79-48" name="__codelineno-79-48" href="#__codelineno-79-48"></a><span class="s1">        &quot;options&quot;: {</span>
-</span><span id="__span-79-49"><a id="__codelineno-79-49" name="__codelineno-79-49" href="#__codelineno-79-49"></a><span class="s1">          &quot;min&quot;: 18,</span>
-</span><span id="__span-79-50"><a id="__codelineno-79-50" name="__codelineno-79-50" href="#__codelineno-79-50"></a><span class="s1">          &quot;max&quot;: 80</span>
-</span><span id="__span-79-51"><a id="__codelineno-79-51" name="__codelineno-79-51" href="#__codelineno-79-51"></a><span class="s1">        }</span>
-</span><span id="__span-79-52"><a id="__codelineno-79-52" name="__codelineno-79-52" href="#__codelineno-79-52"></a><span class="s1">      }</span>
-</span><span id="__span-79-53"><a id="__codelineno-79-53" name="__codelineno-79-53" href="#__codelineno-79-53"></a><span class="s1">    ],</span>
-</span><span id="__span-79-54"><a id="__codelineno-79-54" name="__codelineno-79-54" href="#__codelineno-79-54"></a><span class="s1">    &quot;format&quot;: &quot;csv&quot;,</span>
-</span><span id="__span-79-55"><a id="__codelineno-79-55" name="__codelineno-79-55" href="#__codelineno-79-55"></a><span class="s1">    &quot;sampleSize&quot;: 10,</span>
-</span><span id="__span-79-56"><a id="__codelineno-79-56" name="__codelineno-79-56" href="#__codelineno-79-56"></a><span class="s1">    &quot;fastMode&quot;: true</span>
-</span><span id="__span-79-57"><a id="__codelineno-79-57" name="__codelineno-79-57" href="#__codelineno-79-57"></a><span class="s1">  }&#39;</span><span class="w"> </span><span class="se">\</span>
-</span><span id="__span-79-58"><a id="__codelineno-79-58" name="__codelineno-79-58" href="#__codelineno-79-58"></a><span class="w">  </span>-o<span class="w"> </span>users.csv
-</span></code></pre></div>
-</div>
-<div class="tabbed-block">
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-80-1"><a id="__codelineno-80-1" name="__codelineno-80-1" href="#__codelineno-80-1"></a><span class="c1"># Generate JSON sample data</span>
-</span><span id="__span-80-2"><a id="__codelineno-80-2" name="__codelineno-80-2" href="#__codelineno-80-2"></a>wget<span class="w"> </span>--method<span class="o">=</span>POST<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-80-3"><a id="__codelineno-80-3" name="__codelineno-80-3" href="#__codelineno-80-3"></a><span class="w">  </span>--header<span class="o">=</span><span class="s2">&quot;Content-Type: application/json&quot;</span><span class="w"> </span><span class="se">\</span>
-</span><span id="__span-80-4"><a id="__codelineno-80-4" name="__codelineno-80-4" href="#__codelineno-80-4"></a><span class="w">  </span>--body-data<span class="o">=</span><span class="s1">&#39;{</span>
+</span><span id="__span-80-2"><a id="__codelineno-80-2" name="__codelineno-80-2" href="#__codelineno-80-2"></a>curl<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span>http://localhost:9898/sample/schema<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-80-3"><a id="__codelineno-80-3" name="__codelineno-80-3" href="#__codelineno-80-3"></a><span class="w">  </span>-H<span class="w"> </span><span class="s2">&quot;Content-Type: application/json&quot;</span><span class="w"> </span><span class="se">\</span>
+</span><span id="__span-80-4"><a id="__codelineno-80-4" name="__codelineno-80-4" href="#__codelineno-80-4"></a><span class="w">  </span>-d<span class="w"> </span><span class="s1">&#39;{</span>
 </span><span id="__span-80-5"><a id="__codelineno-80-5" name="__codelineno-80-5" href="#__codelineno-80-5"></a><span class="s1">    &quot;fields&quot;: [</span>
 </span><span id="__span-80-6"><a id="__codelineno-80-6" name="__codelineno-80-6" href="#__codelineno-80-6"></a><span class="s1">      {</span>
 </span><span id="__span-80-7"><a id="__codelineno-80-7" name="__codelineno-80-7" href="#__codelineno-80-7"></a><span class="s1">        &quot;name&quot;: &quot;account_id&quot;,</span>
@@ -4777,28 +4778,89 @@
 </span><span id="__span-80-24"><a id="__codelineno-80-24" name="__codelineno-80-24" href="#__codelineno-80-24"></a><span class="s1">    &quot;format&quot;: &quot;json&quot;,</span>
 </span><span id="__span-80-25"><a id="__codelineno-80-25" name="__codelineno-80-25" href="#__codelineno-80-25"></a><span class="s1">    &quot;sampleSize&quot;: 5,</span>
 </span><span id="__span-80-26"><a id="__codelineno-80-26" name="__codelineno-80-26" href="#__codelineno-80-26"></a><span class="s1">    &quot;fastMode&quot;: true</span>
-</span><span id="__span-80-27"><a id="__codelineno-80-27" name="__codelineno-80-27" href="#__codelineno-80-27"></a><span class="s1">  }&#39;</span><span class="w"> </span><span class="se">\</span>
-</span><span id="__span-80-28"><a id="__codelineno-80-28" name="__codelineno-80-28" href="#__codelineno-80-28"></a><span class="w">  </span>-O<span class="w"> </span>-<span class="w"> </span>http://localhost:9898/sample/schema
-</span><span id="__span-80-29"><a id="__codelineno-80-29" name="__codelineno-80-29" href="#__codelineno-80-29"></a>
-</span><span id="__span-80-30"><a id="__codelineno-80-30" name="__codelineno-80-30" href="#__codelineno-80-30"></a><span class="c1"># Generate CSV and save to file</span>
-</span><span id="__span-80-31"><a id="__codelineno-80-31" name="__codelineno-80-31" href="#__codelineno-80-31"></a>wget<span class="w"> </span>--method<span class="o">=</span>POST<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-80-32"><a id="__codelineno-80-32" name="__codelineno-80-32" href="#__codelineno-80-32"></a><span class="w">  </span>--header<span class="o">=</span><span class="s2">&quot;Content-Type: application/json&quot;</span><span class="w"> </span><span class="se">\</span>
-</span><span id="__span-80-33"><a id="__codelineno-80-33" name="__codelineno-80-33" href="#__codelineno-80-33"></a><span class="w">  </span>--body-data<span class="o">=</span><span class="s1">&#39;{</span>
-</span><span id="__span-80-34"><a id="__codelineno-80-34" name="__codelineno-80-34" href="#__codelineno-80-34"></a><span class="s1">    &quot;fields&quot;: [</span>
-</span><span id="__span-80-35"><a id="__codelineno-80-35" name="__codelineno-80-35" href="#__codelineno-80-35"></a><span class="s1">      {</span>
-</span><span id="__span-80-36"><a id="__codelineno-80-36" name="__codelineno-80-36" href="#__codelineno-80-36"></a><span class="s1">        &quot;name&quot;: &quot;user_id&quot;,</span>
-</span><span id="__span-80-37"><a id="__codelineno-80-37" name="__codelineno-80-37" href="#__codelineno-80-37"></a><span class="s1">        &quot;type&quot;: &quot;long&quot;</span>
-</span><span id="__span-80-38"><a id="__codelineno-80-38" name="__codelineno-80-38" href="#__codelineno-80-38"></a><span class="s1">      },</span>
-</span><span id="__span-80-39"><a id="__codelineno-80-39" name="__codelineno-80-39" href="#__codelineno-80-39"></a><span class="s1">      {</span>
-</span><span id="__span-80-40"><a id="__codelineno-80-40" name="__codelineno-80-40" href="#__codelineno-80-40"></a><span class="s1">        &quot;name&quot;: &quot;email&quot;,</span>
-</span><span id="__span-80-41"><a id="__codelineno-80-41" name="__codelineno-80-41" href="#__codelineno-80-41"></a><span class="s1">        &quot;type&quot;: &quot;string&quot;</span>
-</span><span id="__span-80-42"><a id="__codelineno-80-42" name="__codelineno-80-42" href="#__codelineno-80-42"></a><span class="s1">      }</span>
-</span><span id="__span-80-43"><a id="__codelineno-80-43" name="__codelineno-80-43" href="#__codelineno-80-43"></a><span class="s1">    ],</span>
-</span><span id="__span-80-44"><a id="__codelineno-80-44" name="__codelineno-80-44" href="#__codelineno-80-44"></a><span class="s1">    &quot;format&quot;: &quot;csv&quot;,</span>
-</span><span id="__span-80-45"><a id="__codelineno-80-45" name="__codelineno-80-45" href="#__codelineno-80-45"></a><span class="s1">    &quot;sampleSize&quot;: 20,</span>
-</span><span id="__span-80-46"><a id="__codelineno-80-46" name="__codelineno-80-46" href="#__codelineno-80-46"></a><span class="s1">    &quot;fastMode&quot;: true</span>
-</span><span id="__span-80-47"><a id="__codelineno-80-47" name="__codelineno-80-47" href="#__codelineno-80-47"></a><span class="s1">  }&#39;</span><span class="w"> </span><span class="se">\</span>
-</span><span id="__span-80-48"><a id="__codelineno-80-48" name="__codelineno-80-48" href="#__codelineno-80-48"></a><span class="w">  </span>-O<span class="w"> </span>users.csv<span class="w"> </span>http://localhost:9898/sample/schema
+</span><span id="__span-80-27"><a id="__codelineno-80-27" name="__codelineno-80-27" href="#__codelineno-80-27"></a><span class="s1">  }&#39;</span>
+</span><span id="__span-80-28"><a id="__codelineno-80-28" name="__codelineno-80-28" href="#__codelineno-80-28"></a>
+</span><span id="__span-80-29"><a id="__codelineno-80-29" name="__codelineno-80-29" href="#__codelineno-80-29"></a><span class="c1"># Generate CSV sample data</span>
+</span><span id="__span-80-30"><a id="__codelineno-80-30" name="__codelineno-80-30" href="#__codelineno-80-30"></a>curl<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span>http://localhost:9898/sample/schema<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-80-31"><a id="__codelineno-80-31" name="__codelineno-80-31" href="#__codelineno-80-31"></a><span class="w">  </span>-H<span class="w"> </span><span class="s2">&quot;Content-Type: application/json&quot;</span><span class="w"> </span><span class="se">\</span>
+</span><span id="__span-80-32"><a id="__codelineno-80-32" name="__codelineno-80-32" href="#__codelineno-80-32"></a><span class="w">  </span>-d<span class="w"> </span><span class="s1">&#39;{</span>
+</span><span id="__span-80-33"><a id="__codelineno-80-33" name="__codelineno-80-33" href="#__codelineno-80-33"></a><span class="s1">    &quot;fields&quot;: [</span>
+</span><span id="__span-80-34"><a id="__codelineno-80-34" name="__codelineno-80-34" href="#__codelineno-80-34"></a><span class="s1">      {</span>
+</span><span id="__span-80-35"><a id="__codelineno-80-35" name="__codelineno-80-35" href="#__codelineno-80-35"></a><span class="s1">        &quot;name&quot;: &quot;user_id&quot;,</span>
+</span><span id="__span-80-36"><a id="__codelineno-80-36" name="__codelineno-80-36" href="#__codelineno-80-36"></a><span class="s1">        &quot;type&quot;: &quot;long&quot;</span>
+</span><span id="__span-80-37"><a id="__codelineno-80-37" name="__codelineno-80-37" href="#__codelineno-80-37"></a><span class="s1">      },</span>
+</span><span id="__span-80-38"><a id="__codelineno-80-38" name="__codelineno-80-38" href="#__codelineno-80-38"></a><span class="s1">      {</span>
+</span><span id="__span-80-39"><a id="__codelineno-80-39" name="__codelineno-80-39" href="#__codelineno-80-39"></a><span class="s1">        &quot;name&quot;: &quot;email&quot;,</span>
+</span><span id="__span-80-40"><a id="__codelineno-80-40" name="__codelineno-80-40" href="#__codelineno-80-40"></a><span class="s1">        &quot;type&quot;: &quot;string&quot;,</span>
+</span><span id="__span-80-41"><a id="__codelineno-80-41" name="__codelineno-80-41" href="#__codelineno-80-41"></a><span class="s1">        &quot;options&quot;: {</span>
+</span><span id="__span-80-42"><a id="__codelineno-80-42" name="__codelineno-80-42" href="#__codelineno-80-42"></a><span class="s1">          &quot;expression&quot;: &quot;#{Internet.emailAddress}&quot;</span>
+</span><span id="__span-80-43"><a id="__codelineno-80-43" name="__codelineno-80-43" href="#__codelineno-80-43"></a><span class="s1">        }</span>
+</span><span id="__span-80-44"><a id="__codelineno-80-44" name="__codelineno-80-44" href="#__codelineno-80-44"></a><span class="s1">      },</span>
+</span><span id="__span-80-45"><a id="__codelineno-80-45" name="__codelineno-80-45" href="#__codelineno-80-45"></a><span class="s1">      {</span>
+</span><span id="__span-80-46"><a id="__codelineno-80-46" name="__codelineno-80-46" href="#__codelineno-80-46"></a><span class="s1">        &quot;name&quot;: &quot;age&quot;,</span>
+</span><span id="__span-80-47"><a id="__codelineno-80-47" name="__codelineno-80-47" href="#__codelineno-80-47"></a><span class="s1">        &quot;type&quot;: &quot;int&quot;,</span>
+</span><span id="__span-80-48"><a id="__codelineno-80-48" name="__codelineno-80-48" href="#__codelineno-80-48"></a><span class="s1">        &quot;options&quot;: {</span>
+</span><span id="__span-80-49"><a id="__codelineno-80-49" name="__codelineno-80-49" href="#__codelineno-80-49"></a><span class="s1">          &quot;min&quot;: 18,</span>
+</span><span id="__span-80-50"><a id="__codelineno-80-50" name="__codelineno-80-50" href="#__codelineno-80-50"></a><span class="s1">          &quot;max&quot;: 80</span>
+</span><span id="__span-80-51"><a id="__codelineno-80-51" name="__codelineno-80-51" href="#__codelineno-80-51"></a><span class="s1">        }</span>
+</span><span id="__span-80-52"><a id="__codelineno-80-52" name="__codelineno-80-52" href="#__codelineno-80-52"></a><span class="s1">      }</span>
+</span><span id="__span-80-53"><a id="__codelineno-80-53" name="__codelineno-80-53" href="#__codelineno-80-53"></a><span class="s1">    ],</span>
+</span><span id="__span-80-54"><a id="__codelineno-80-54" name="__codelineno-80-54" href="#__codelineno-80-54"></a><span class="s1">    &quot;format&quot;: &quot;csv&quot;,</span>
+</span><span id="__span-80-55"><a id="__codelineno-80-55" name="__codelineno-80-55" href="#__codelineno-80-55"></a><span class="s1">    &quot;sampleSize&quot;: 10,</span>
+</span><span id="__span-80-56"><a id="__codelineno-80-56" name="__codelineno-80-56" href="#__codelineno-80-56"></a><span class="s1">    &quot;fastMode&quot;: true</span>
+</span><span id="__span-80-57"><a id="__codelineno-80-57" name="__codelineno-80-57" href="#__codelineno-80-57"></a><span class="s1">  }&#39;</span><span class="w"> </span><span class="se">\</span>
+</span><span id="__span-80-58"><a id="__codelineno-80-58" name="__codelineno-80-58" href="#__codelineno-80-58"></a><span class="w">  </span>-o<span class="w"> </span>users.csv
+</span></code></pre></div>
+</div>
+<div class="tabbed-block">
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-81-1"><a id="__codelineno-81-1" name="__codelineno-81-1" href="#__codelineno-81-1"></a><span class="c1"># Generate JSON sample data</span>
+</span><span id="__span-81-2"><a id="__codelineno-81-2" name="__codelineno-81-2" href="#__codelineno-81-2"></a>wget<span class="w"> </span>--method<span class="o">=</span>POST<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-81-3"><a id="__codelineno-81-3" name="__codelineno-81-3" href="#__codelineno-81-3"></a><span class="w">  </span>--header<span class="o">=</span><span class="s2">&quot;Content-Type: application/json&quot;</span><span class="w"> </span><span class="se">\</span>
+</span><span id="__span-81-4"><a id="__codelineno-81-4" name="__codelineno-81-4" href="#__codelineno-81-4"></a><span class="w">  </span>--body-data<span class="o">=</span><span class="s1">&#39;{</span>
+</span><span id="__span-81-5"><a id="__codelineno-81-5" name="__codelineno-81-5" href="#__codelineno-81-5"></a><span class="s1">    &quot;fields&quot;: [</span>
+</span><span id="__span-81-6"><a id="__codelineno-81-6" name="__codelineno-81-6" href="#__codelineno-81-6"></a><span class="s1">      {</span>
+</span><span id="__span-81-7"><a id="__codelineno-81-7" name="__codelineno-81-7" href="#__codelineno-81-7"></a><span class="s1">        &quot;name&quot;: &quot;account_id&quot;,</span>
+</span><span id="__span-81-8"><a id="__codelineno-81-8" name="__codelineno-81-8" href="#__codelineno-81-8"></a><span class="s1">        &quot;type&quot;: &quot;string&quot;,</span>
+</span><span id="__span-81-9"><a id="__codelineno-81-9" name="__codelineno-81-9" href="#__codelineno-81-9"></a><span class="s1">        &quot;options&quot;: {</span>
+</span><span id="__span-81-10"><a id="__codelineno-81-10" name="__codelineno-81-10" href="#__codelineno-81-10"></a><span class="s1">          &quot;regex&quot;: &quot;ACC[0-9]{10}&quot;</span>
+</span><span id="__span-81-11"><a id="__codelineno-81-11" name="__codelineno-81-11" href="#__codelineno-81-11"></a><span class="s1">        },</span>
+</span><span id="__span-81-12"><a id="__codelineno-81-12" name="__codelineno-81-12" href="#__codelineno-81-12"></a><span class="s1">        &quot;nullable&quot;: false</span>
+</span><span id="__span-81-13"><a id="__codelineno-81-13" name="__codelineno-81-13" href="#__codelineno-81-13"></a><span class="s1">      },</span>
+</span><span id="__span-81-14"><a id="__codelineno-81-14" name="__codelineno-81-14" href="#__codelineno-81-14"></a><span class="s1">      {</span>
+</span><span id="__span-81-15"><a id="__codelineno-81-15" name="__codelineno-81-15" href="#__codelineno-81-15"></a><span class="s1">        &quot;name&quot;: &quot;balance&quot;,</span>
+</span><span id="__span-81-16"><a id="__codelineno-81-16" name="__codelineno-81-16" href="#__codelineno-81-16"></a><span class="s1">        &quot;type&quot;: &quot;double&quot;,</span>
+</span><span id="__span-81-17"><a id="__codelineno-81-17" name="__codelineno-81-17" href="#__codelineno-81-17"></a><span class="s1">        &quot;options&quot;: {</span>
+</span><span id="__span-81-18"><a id="__codelineno-81-18" name="__codelineno-81-18" href="#__codelineno-81-18"></a><span class="s1">          &quot;min&quot;: 100.0,</span>
+</span><span id="__span-81-19"><a id="__codelineno-81-19" name="__codelineno-81-19" href="#__codelineno-81-19"></a><span class="s1">          &quot;max&quot;: 10000.0</span>
+</span><span id="__span-81-20"><a id="__codelineno-81-20" name="__codelineno-81-20" href="#__codelineno-81-20"></a><span class="s1">        },</span>
+</span><span id="__span-81-21"><a id="__codelineno-81-21" name="__codelineno-81-21" href="#__codelineno-81-21"></a><span class="s1">        &quot;nullable&quot;: false</span>
+</span><span id="__span-81-22"><a id="__codelineno-81-22" name="__codelineno-81-22" href="#__codelineno-81-22"></a><span class="s1">      }</span>
+</span><span id="__span-81-23"><a id="__codelineno-81-23" name="__codelineno-81-23" href="#__codelineno-81-23"></a><span class="s1">    ],</span>
+</span><span id="__span-81-24"><a id="__codelineno-81-24" name="__codelineno-81-24" href="#__codelineno-81-24"></a><span class="s1">    &quot;format&quot;: &quot;json&quot;,</span>
+</span><span id="__span-81-25"><a id="__codelineno-81-25" name="__codelineno-81-25" href="#__codelineno-81-25"></a><span class="s1">    &quot;sampleSize&quot;: 5,</span>
+</span><span id="__span-81-26"><a id="__codelineno-81-26" name="__codelineno-81-26" href="#__codelineno-81-26"></a><span class="s1">    &quot;fastMode&quot;: true</span>
+</span><span id="__span-81-27"><a id="__codelineno-81-27" name="__codelineno-81-27" href="#__codelineno-81-27"></a><span class="s1">  }&#39;</span><span class="w"> </span><span class="se">\</span>
+</span><span id="__span-81-28"><a id="__codelineno-81-28" name="__codelineno-81-28" href="#__codelineno-81-28"></a><span class="w">  </span>-O<span class="w"> </span>-<span class="w"> </span>http://localhost:9898/sample/schema
+</span><span id="__span-81-29"><a id="__codelineno-81-29" name="__codelineno-81-29" href="#__codelineno-81-29"></a>
+</span><span id="__span-81-30"><a id="__codelineno-81-30" name="__codelineno-81-30" href="#__codelineno-81-30"></a><span class="c1"># Generate CSV and save to file</span>
+</span><span id="__span-81-31"><a id="__codelineno-81-31" name="__codelineno-81-31" href="#__codelineno-81-31"></a>wget<span class="w"> </span>--method<span class="o">=</span>POST<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-81-32"><a id="__codelineno-81-32" name="__codelineno-81-32" href="#__codelineno-81-32"></a><span class="w">  </span>--header<span class="o">=</span><span class="s2">&quot;Content-Type: application/json&quot;</span><span class="w"> </span><span class="se">\</span>
+</span><span id="__span-81-33"><a id="__codelineno-81-33" name="__codelineno-81-33" href="#__codelineno-81-33"></a><span class="w">  </span>--body-data<span class="o">=</span><span class="s1">&#39;{</span>
+</span><span id="__span-81-34"><a id="__codelineno-81-34" name="__codelineno-81-34" href="#__codelineno-81-34"></a><span class="s1">    &quot;fields&quot;: [</span>
+</span><span id="__span-81-35"><a id="__codelineno-81-35" name="__codelineno-81-35" href="#__codelineno-81-35"></a><span class="s1">      {</span>
+</span><span id="__span-81-36"><a id="__codelineno-81-36" name="__codelineno-81-36" href="#__codelineno-81-36"></a><span class="s1">        &quot;name&quot;: &quot;user_id&quot;,</span>
+</span><span id="__span-81-37"><a id="__codelineno-81-37" name="__codelineno-81-37" href="#__codelineno-81-37"></a><span class="s1">        &quot;type&quot;: &quot;long&quot;</span>
+</span><span id="__span-81-38"><a id="__codelineno-81-38" name="__codelineno-81-38" href="#__codelineno-81-38"></a><span class="s1">      },</span>
+</span><span id="__span-81-39"><a id="__codelineno-81-39" name="__codelineno-81-39" href="#__codelineno-81-39"></a><span class="s1">      {</span>
+</span><span id="__span-81-40"><a id="__codelineno-81-40" name="__codelineno-81-40" href="#__codelineno-81-40"></a><span class="s1">        &quot;name&quot;: &quot;email&quot;,</span>
+</span><span id="__span-81-41"><a id="__codelineno-81-41" name="__codelineno-81-41" href="#__codelineno-81-41"></a><span class="s1">        &quot;type&quot;: &quot;string&quot;</span>
+</span><span id="__span-81-42"><a id="__codelineno-81-42" name="__codelineno-81-42" href="#__codelineno-81-42"></a><span class="s1">      }</span>
+</span><span id="__span-81-43"><a id="__codelineno-81-43" name="__codelineno-81-43" href="#__codelineno-81-43"></a><span class="s1">    ],</span>
+</span><span id="__span-81-44"><a id="__codelineno-81-44" name="__codelineno-81-44" href="#__codelineno-81-44"></a><span class="s1">    &quot;format&quot;: &quot;csv&quot;,</span>
+</span><span id="__span-81-45"><a id="__codelineno-81-45" name="__codelineno-81-45" href="#__codelineno-81-45"></a><span class="s1">    &quot;sampleSize&quot;: 20,</span>
+</span><span id="__span-81-46"><a id="__codelineno-81-46" name="__codelineno-81-46" href="#__codelineno-81-46"></a><span class="s1">    &quot;fastMode&quot;: true</span>
+</span><span id="__span-81-47"><a id="__codelineno-81-47" name="__codelineno-81-47" href="#__codelineno-81-47"></a><span class="s1">  }&#39;</span><span class="w"> </span><span class="se">\</span>
+</span><span id="__span-81-48"><a id="__codelineno-81-48" name="__codelineno-81-48" href="#__codelineno-81-48"></a><span class="w">  </span>-O<span class="w"> </span>users.csv<span class="w"> </span>http://localhost:9898/sample/schema
 </span></code></pre></div>
 </div>
 </div>
@@ -4818,25 +4880,25 @@
 <div class="tabbed-set tabbed-alternate" data-tabs="22:2"><input checked="checked" id="__tabbed_22_1" name="__tabbed_22" type="radio" /><input id="__tabbed_22_2" name="__tabbed_22" type="radio" /><div class="tabbed-labels"><label for="__tabbed_22_1">curl</label><label for="__tabbed_22_2">wget</label></div>
 <div class="tabbed-content">
 <div class="tabbed-block">
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-81-1"><a id="__codelineno-81-1" name="__codelineno-81-1" href="#__codelineno-81-1"></a><span class="c1"># Get HTML report</span>
-</span><span id="__span-81-2"><a id="__codelineno-81-2" name="__codelineno-81-2" href="#__codelineno-81-2"></a>curl<span class="w"> </span>-X<span class="w"> </span>GET<span class="w"> </span>http://localhost:9898/report/12345678-1234-1234-1234-123456789012/index.html
-</span><span id="__span-81-3"><a id="__codelineno-81-3" name="__codelineno-81-3" href="#__codelineno-81-3"></a>
-</span><span id="__span-81-4"><a id="__codelineno-81-4" name="__codelineno-81-4" href="#__codelineno-81-4"></a><span class="c1"># Get JSON data</span>
-</span><span id="__span-81-5"><a id="__codelineno-81-5" name="__codelineno-81-5" href="#__codelineno-81-5"></a>curl<span class="w"> </span>-X<span class="w"> </span>GET<span class="w"> </span>http://localhost:9898/report/12345678-1234-1234-1234-123456789012/data.json
-</span><span id="__span-81-6"><a id="__codelineno-81-6" name="__codelineno-81-6" href="#__codelineno-81-6"></a>
-</span><span id="__span-81-7"><a id="__codelineno-81-7" name="__codelineno-81-7" href="#__codelineno-81-7"></a><span class="c1"># Get CSS file</span>
-</span><span id="__span-81-8"><a id="__codelineno-81-8" name="__codelineno-81-8" href="#__codelineno-81-8"></a>curl<span class="w"> </span>-X<span class="w"> </span>GET<span class="w"> </span>http://localhost:9898/report/12345678-1234-1234-1234-123456789012/styles.css
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-82-1"><a id="__codelineno-82-1" name="__codelineno-82-1" href="#__codelineno-82-1"></a><span class="c1"># Get HTML report</span>
+</span><span id="__span-82-2"><a id="__codelineno-82-2" name="__codelineno-82-2" href="#__codelineno-82-2"></a>curl<span class="w"> </span>-X<span class="w"> </span>GET<span class="w"> </span>http://localhost:9898/report/12345678-1234-1234-1234-123456789012/index.html
+</span><span id="__span-82-3"><a id="__codelineno-82-3" name="__codelineno-82-3" href="#__codelineno-82-3"></a>
+</span><span id="__span-82-4"><a id="__codelineno-82-4" name="__codelineno-82-4" href="#__codelineno-82-4"></a><span class="c1"># Get JSON data</span>
+</span><span id="__span-82-5"><a id="__codelineno-82-5" name="__codelineno-82-5" href="#__codelineno-82-5"></a>curl<span class="w"> </span>-X<span class="w"> </span>GET<span class="w"> </span>http://localhost:9898/report/12345678-1234-1234-1234-123456789012/data.json
+</span><span id="__span-82-6"><a id="__codelineno-82-6" name="__codelineno-82-6" href="#__codelineno-82-6"></a>
+</span><span id="__span-82-7"><a id="__codelineno-82-7" name="__codelineno-82-7" href="#__codelineno-82-7"></a><span class="c1"># Get CSS file</span>
+</span><span id="__span-82-8"><a id="__codelineno-82-8" name="__codelineno-82-8" href="#__codelineno-82-8"></a>curl<span class="w"> </span>-X<span class="w"> </span>GET<span class="w"> </span>http://localhost:9898/report/12345678-1234-1234-1234-123456789012/styles.css
 </span></code></pre></div>
 </div>
 <div class="tabbed-block">
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-82-1"><a id="__codelineno-82-1" name="__codelineno-82-1" href="#__codelineno-82-1"></a><span class="c1"># Get HTML report</span>
-</span><span id="__span-82-2"><a id="__codelineno-82-2" name="__codelineno-82-2" href="#__codelineno-82-2"></a>wget<span class="w"> </span>-O<span class="w"> </span>report.html<span class="w"> </span>http://localhost:9898/report/12345678-1234-1234-1234-123456789012/index.html
-</span><span id="__span-82-3"><a id="__codelineno-82-3" name="__codelineno-82-3" href="#__codelineno-82-3"></a>
-</span><span id="__span-82-4"><a id="__codelineno-82-4" name="__codelineno-82-4" href="#__codelineno-82-4"></a><span class="c1"># Get JSON data</span>
-</span><span id="__span-82-5"><a id="__codelineno-82-5" name="__codelineno-82-5" href="#__codelineno-82-5"></a>wget<span class="w"> </span>-O<span class="w"> </span>data.json<span class="w"> </span>http://localhost:9898/report/12345678-1234-1234-1234-123456789012/data.json
-</span><span id="__span-82-6"><a id="__codelineno-82-6" name="__codelineno-82-6" href="#__codelineno-82-6"></a>
-</span><span id="__span-82-7"><a id="__codelineno-82-7" name="__codelineno-82-7" href="#__codelineno-82-7"></a><span class="c1"># Get CSS file</span>
-</span><span id="__span-82-8"><a id="__codelineno-82-8" name="__codelineno-82-8" href="#__codelineno-82-8"></a>wget<span class="w"> </span>-O<span class="w"> </span>styles.css<span class="w"> </span>http://localhost:9898/report/12345678-1234-1234-1234-123456789012/styles.css
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-83-1"><a id="__codelineno-83-1" name="__codelineno-83-1" href="#__codelineno-83-1"></a><span class="c1"># Get HTML report</span>
+</span><span id="__span-83-2"><a id="__codelineno-83-2" name="__codelineno-83-2" href="#__codelineno-83-2"></a>wget<span class="w"> </span>-O<span class="w"> </span>report.html<span class="w"> </span>http://localhost:9898/report/12345678-1234-1234-1234-123456789012/index.html
+</span><span id="__span-83-3"><a id="__codelineno-83-3" name="__codelineno-83-3" href="#__codelineno-83-3"></a>
+</span><span id="__span-83-4"><a id="__codelineno-83-4" name="__codelineno-83-4" href="#__codelineno-83-4"></a><span class="c1"># Get JSON data</span>
+</span><span id="__span-83-5"><a id="__codelineno-83-5" name="__codelineno-83-5" href="#__codelineno-83-5"></a>wget<span class="w"> </span>-O<span class="w"> </span>data.json<span class="w"> </span>http://localhost:9898/report/12345678-1234-1234-1234-123456789012/data.json
+</span><span id="__span-83-6"><a id="__codelineno-83-6" name="__codelineno-83-6" href="#__codelineno-83-6"></a>
+</span><span id="__span-83-7"><a id="__codelineno-83-7" name="__codelineno-83-7" href="#__codelineno-83-7"></a><span class="c1"># Get CSS file</span>
+</span><span id="__span-83-8"><a id="__codelineno-83-8" name="__codelineno-83-8" href="#__codelineno-83-8"></a>wget<span class="w"> </span>-O<span class="w"> </span>styles.css<span class="w"> </span>http://localhost:9898/report/12345678-1234-1234-1234-123456789012/styles.css
 </span></code></pre></div>
 </div>
 </div>
@@ -4847,21 +4909,21 @@
 <summary>Shutdown Server - <code>POST /shutdown</code></summary>
 <p>Gracefully shutdown the Data Caterer server.</p>
 <p><strong>Response:</strong> <code>200 OK</code></p>
-<div class="language-json highlight"><pre><span></span><code><span id="__span-83-1"><a id="__codelineno-83-1" name="__codelineno-83-1" href="#__codelineno-83-1"></a><span class="p">{</span>
-</span><span id="__span-83-2"><a id="__codelineno-83-2" name="__codelineno-83-2" href="#__codelineno-83-2"></a><span class="w">  </span><span class="nt">&quot;status&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;success&quot;</span><span class="p">,</span>
-</span><span id="__span-83-3"><a id="__codelineno-83-3" name="__codelineno-83-3" href="#__codelineno-83-3"></a><span class="w">  </span><span class="nt">&quot;message&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Data Caterer shutdown completed&quot;</span>
-</span><span id="__span-83-4"><a id="__codelineno-83-4" name="__codelineno-83-4" href="#__codelineno-83-4"></a><span class="p">}</span>
+<div class="language-json highlight"><pre><span></span><code><span id="__span-84-1"><a id="__codelineno-84-1" name="__codelineno-84-1" href="#__codelineno-84-1"></a><span class="p">{</span>
+</span><span id="__span-84-2"><a id="__codelineno-84-2" name="__codelineno-84-2" href="#__codelineno-84-2"></a><span class="w">  </span><span class="nt">&quot;status&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;success&quot;</span><span class="p">,</span>
+</span><span id="__span-84-3"><a id="__codelineno-84-3" name="__codelineno-84-3" href="#__codelineno-84-3"></a><span class="w">  </span><span class="nt">&quot;message&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Data Caterer shutdown completed&quot;</span>
+</span><span id="__span-84-4"><a id="__codelineno-84-4" name="__codelineno-84-4" href="#__codelineno-84-4"></a><span class="p">}</span>
 </span></code></pre></div>
 <p><strong>Note:</strong> This will terminate the server process.</p>
 <p><strong>Example:</strong></p>
 <div class="tabbed-set tabbed-alternate" data-tabs="23:2"><input checked="checked" id="__tabbed_23_1" name="__tabbed_23" type="radio" /><input id="__tabbed_23_2" name="__tabbed_23" type="radio" /><div class="tabbed-labels"><label for="__tabbed_23_1">curl</label><label for="__tabbed_23_2">wget</label></div>
 <div class="tabbed-content">
 <div class="tabbed-block">
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-84-1"><a id="__codelineno-84-1" name="__codelineno-84-1" href="#__codelineno-84-1"></a>curl<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span>http://localhost:9898/shutdown
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-85-1"><a id="__codelineno-85-1" name="__codelineno-85-1" href="#__codelineno-85-1"></a>curl<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span>http://localhost:9898/shutdown
 </span></code></pre></div>
 </div>
 <div class="tabbed-block">
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-85-1"><a id="__codelineno-85-1" name="__codelineno-85-1" href="#__codelineno-85-1"></a>wget<span class="w"> </span>--method<span class="o">=</span>POST<span class="w"> </span>http://localhost:9898/shutdown
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-86-1"><a id="__codelineno-86-1" name="__codelineno-86-1" href="#__codelineno-86-1"></a>wget<span class="w"> </span>--method<span class="o">=</span>POST<span class="w"> </span>http://localhost:9898/shutdown
 </span></code></pre></div>
 </div>
 </div>
@@ -4871,89 +4933,89 @@
 <h2 id="error-responses">Error Responses</h2>
 <p>All endpoints may return error responses in the following format:</p>
 <p><strong>Response:</strong> <code>500 Internal Server Error</code></p>
-<div class="language-json highlight"><pre><span></span><code><span id="__span-86-1"><a id="__codelineno-86-1" name="__codelineno-86-1" href="#__codelineno-86-1"></a><span class="p">{</span>
-</span><span id="__span-86-2"><a id="__codelineno-86-2" name="__codelineno-86-2" href="#__codelineno-86-2"></a><span class="w">  </span><span class="nt">&quot;status&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;error&quot;</span><span class="p">,</span>
-</span><span id="__span-86-3"><a id="__codelineno-86-3" name="__codelineno-86-3" href="#__codelineno-86-3"></a><span class="w">  </span><span class="nt">&quot;message&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Failed to execute request&quot;</span><span class="p">,</span>
-</span><span id="__span-86-4"><a id="__codelineno-86-4" name="__codelineno-86-4" href="#__codelineno-86-4"></a><span class="w">  </span><span class="nt">&quot;uri&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/api/endpoint&quot;</span><span class="p">,</span>
-</span><span id="__span-86-5"><a id="__codelineno-86-5" name="__codelineno-86-5" href="#__codelineno-86-5"></a><span class="w">  </span><span class="nt">&quot;errorMessage&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Error details&quot;</span>
-</span><span id="__span-86-6"><a id="__codelineno-86-6" name="__codelineno-86-6" href="#__codelineno-86-6"></a><span class="p">}</span>
-</span></code></pre></div>
-<p><strong>Response:</strong> <code>400 Bad Request</code></p>
 <div class="language-json highlight"><pre><span></span><code><span id="__span-87-1"><a id="__codelineno-87-1" name="__codelineno-87-1" href="#__codelineno-87-1"></a><span class="p">{</span>
 </span><span id="__span-87-2"><a id="__codelineno-87-2" name="__codelineno-87-2" href="#__codelineno-87-2"></a><span class="w">  </span><span class="nt">&quot;status&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;error&quot;</span><span class="p">,</span>
-</span><span id="__span-87-3"><a id="__codelineno-87-3" name="__codelineno-87-3" href="#__codelineno-87-3"></a><span class="w">  </span><span class="nt">&quot;message&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Unable to fetch resource for request&quot;</span><span class="p">,</span>
-</span><span id="__span-87-4"><a id="__codelineno-87-4" name="__codelineno-87-4" href="#__codelineno-87-4"></a><span class="w">  </span><span class="nt">&quot;details&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Invalid request parameters&quot;</span>
-</span><span id="__span-87-5"><a id="__codelineno-87-5" name="__codelineno-87-5" href="#__codelineno-87-5"></a><span class="p">}</span>
+</span><span id="__span-87-3"><a id="__codelineno-87-3" name="__codelineno-87-3" href="#__codelineno-87-3"></a><span class="w">  </span><span class="nt">&quot;message&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Failed to execute request&quot;</span><span class="p">,</span>
+</span><span id="__span-87-4"><a id="__codelineno-87-4" name="__codelineno-87-4" href="#__codelineno-87-4"></a><span class="w">  </span><span class="nt">&quot;uri&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/api/endpoint&quot;</span><span class="p">,</span>
+</span><span id="__span-87-5"><a id="__codelineno-87-5" name="__codelineno-87-5" href="#__codelineno-87-5"></a><span class="w">  </span><span class="nt">&quot;errorMessage&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Error details&quot;</span>
+</span><span id="__span-87-6"><a id="__codelineno-87-6" name="__codelineno-87-6" href="#__codelineno-87-6"></a><span class="p">}</span>
+</span></code></pre></div>
+<p><strong>Response:</strong> <code>400 Bad Request</code></p>
+<div class="language-json highlight"><pre><span></span><code><span id="__span-88-1"><a id="__codelineno-88-1" name="__codelineno-88-1" href="#__codelineno-88-1"></a><span class="p">{</span>
+</span><span id="__span-88-2"><a id="__codelineno-88-2" name="__codelineno-88-2" href="#__codelineno-88-2"></a><span class="w">  </span><span class="nt">&quot;status&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;error&quot;</span><span class="p">,</span>
+</span><span id="__span-88-3"><a id="__codelineno-88-3" name="__codelineno-88-3" href="#__codelineno-88-3"></a><span class="w">  </span><span class="nt">&quot;message&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Unable to fetch resource for request&quot;</span><span class="p">,</span>
+</span><span id="__span-88-4"><a id="__codelineno-88-4" name="__codelineno-88-4" href="#__codelineno-88-4"></a><span class="w">  </span><span class="nt">&quot;details&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Invalid request parameters&quot;</span>
+</span><span id="__span-88-5"><a id="__codelineno-88-5" name="__codelineno-88-5" href="#__codelineno-88-5"></a><span class="p">}</span>
 </span></code></pre></div>
 <hr />
 <h2 id="requestresponse-models">Request/Response Models</h2>
 <h3 id="planrunrequest">PlanRunRequest</h3>
-<div class="language-json highlight"><pre><span></span><code><span id="__span-88-1"><a id="__codelineno-88-1" name="__codelineno-88-1" href="#__codelineno-88-1"></a><span class="p">{</span>
-</span><span id="__span-88-2"><a id="__codelineno-88-2" name="__codelineno-88-2" href="#__codelineno-88-2"></a><span class="w">  </span><span class="nt">&quot;id&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;string&quot;</span><span class="p">,</span>
-</span><span id="__span-88-3"><a id="__codelineno-88-3" name="__codelineno-88-3" href="#__codelineno-88-3"></a><span class="w">  </span><span class="nt">&quot;plan&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
-</span><span id="__span-88-4"><a id="__codelineno-88-4" name="__codelineno-88-4" href="#__codelineno-88-4"></a><span class="w">    </span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;string&quot;</span><span class="p">,</span>
-</span><span id="__span-88-5"><a id="__codelineno-88-5" name="__codelineno-88-5" href="#__codelineno-88-5"></a><span class="w">    </span><span class="nt">&quot;description&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;string&quot;</span>
-</span><span id="__span-88-6"><a id="__codelineno-88-6" name="__codelineno-88-6" href="#__codelineno-88-6"></a><span class="w">  </span><span class="p">},</span>
-</span><span id="__span-88-7"><a id="__codelineno-88-7" name="__codelineno-88-7" href="#__codelineno-88-7"></a><span class="w">  </span><span class="nt">&quot;tasks&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
-</span><span id="__span-88-8"><a id="__codelineno-88-8" name="__codelineno-88-8" href="#__codelineno-88-8"></a><span class="w">    </span><span class="p">{</span>
-</span><span id="__span-88-9"><a id="__codelineno-88-9" name="__codelineno-88-9" href="#__codelineno-88-9"></a><span class="w">      </span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;string&quot;</span><span class="p">,</span>
-</span><span id="__span-88-10"><a id="__codelineno-88-10" name="__codelineno-88-10" href="#__codelineno-88-10"></a><span class="w">      </span><span class="nt">&quot;dataSourceName&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;string&quot;</span><span class="p">,</span>
-</span><span id="__span-88-11"><a id="__codelineno-88-11" name="__codelineno-88-11" href="#__codelineno-88-11"></a><span class="w">      </span><span class="nt">&quot;enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span>
-</span><span id="__span-88-12"><a id="__codelineno-88-12" name="__codelineno-88-12" href="#__codelineno-88-12"></a><span class="w">    </span><span class="p">}</span>
-</span><span id="__span-88-13"><a id="__codelineno-88-13" name="__codelineno-88-13" href="#__codelineno-88-13"></a><span class="w">  </span><span class="p">],</span>
-</span><span id="__span-88-14"><a id="__codelineno-88-14" name="__codelineno-88-14" href="#__codelineno-88-14"></a><span class="w">  </span><span class="nt">&quot;validation&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[],</span>
-</span><span id="__span-88-15"><a id="__codelineno-88-15" name="__codelineno-88-15" href="#__codelineno-88-15"></a><span class="w">  </span><span class="nt">&quot;configuration&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
-</span><span id="__span-88-16"><a id="__codelineno-88-16" name="__codelineno-88-16" href="#__codelineno-88-16"></a><span class="w">    </span><span class="nt">&quot;flag&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{},</span>
-</span><span id="__span-88-17"><a id="__codelineno-88-17" name="__codelineno-88-17" href="#__codelineno-88-17"></a><span class="w">    </span><span class="nt">&quot;folder&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{},</span>
-</span><span id="__span-88-18"><a id="__codelineno-88-18" name="__codelineno-88-18" href="#__codelineno-88-18"></a><span class="w">    </span><span class="nt">&quot;metadata&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{},</span>
-</span><span id="__span-88-19"><a id="__codelineno-88-19" name="__codelineno-88-19" href="#__codelineno-88-19"></a><span class="w">    </span><span class="nt">&quot;generation&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{},</span>
-</span><span id="__span-88-20"><a id="__codelineno-88-20" name="__codelineno-88-20" href="#__codelineno-88-20"></a><span class="w">    </span><span class="nt">&quot;validation&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{},</span>
-</span><span id="__span-88-21"><a id="__codelineno-88-21" name="__codelineno-88-21" href="#__codelineno-88-21"></a><span class="w">    </span><span class="nt">&quot;alert&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{}</span>
-</span><span id="__span-88-22"><a id="__codelineno-88-22" name="__codelineno-88-22" href="#__codelineno-88-22"></a><span class="w">  </span><span class="p">}</span>
-</span><span id="__span-88-23"><a id="__codelineno-88-23" name="__codelineno-88-23" href="#__codelineno-88-23"></a><span class="p">}</span>
+<div class="language-json highlight"><pre><span></span><code><span id="__span-89-1"><a id="__codelineno-89-1" name="__codelineno-89-1" href="#__codelineno-89-1"></a><span class="p">{</span>
+</span><span id="__span-89-2"><a id="__codelineno-89-2" name="__codelineno-89-2" href="#__codelineno-89-2"></a><span class="w">  </span><span class="nt">&quot;id&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;string&quot;</span><span class="p">,</span>
+</span><span id="__span-89-3"><a id="__codelineno-89-3" name="__codelineno-89-3" href="#__codelineno-89-3"></a><span class="w">  </span><span class="nt">&quot;plan&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-89-4"><a id="__codelineno-89-4" name="__codelineno-89-4" href="#__codelineno-89-4"></a><span class="w">    </span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;string&quot;</span><span class="p">,</span>
+</span><span id="__span-89-5"><a id="__codelineno-89-5" name="__codelineno-89-5" href="#__codelineno-89-5"></a><span class="w">    </span><span class="nt">&quot;description&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;string&quot;</span>
+</span><span id="__span-89-6"><a id="__codelineno-89-6" name="__codelineno-89-6" href="#__codelineno-89-6"></a><span class="w">  </span><span class="p">},</span>
+</span><span id="__span-89-7"><a id="__codelineno-89-7" name="__codelineno-89-7" href="#__codelineno-89-7"></a><span class="w">  </span><span class="nt">&quot;tasks&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+</span><span id="__span-89-8"><a id="__codelineno-89-8" name="__codelineno-89-8" href="#__codelineno-89-8"></a><span class="w">    </span><span class="p">{</span>
+</span><span id="__span-89-9"><a id="__codelineno-89-9" name="__codelineno-89-9" href="#__codelineno-89-9"></a><span class="w">      </span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;string&quot;</span><span class="p">,</span>
+</span><span id="__span-89-10"><a id="__codelineno-89-10" name="__codelineno-89-10" href="#__codelineno-89-10"></a><span class="w">      </span><span class="nt">&quot;dataSourceName&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;string&quot;</span><span class="p">,</span>
+</span><span id="__span-89-11"><a id="__codelineno-89-11" name="__codelineno-89-11" href="#__codelineno-89-11"></a><span class="w">      </span><span class="nt">&quot;enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span>
+</span><span id="__span-89-12"><a id="__codelineno-89-12" name="__codelineno-89-12" href="#__codelineno-89-12"></a><span class="w">    </span><span class="p">}</span>
+</span><span id="__span-89-13"><a id="__codelineno-89-13" name="__codelineno-89-13" href="#__codelineno-89-13"></a><span class="w">  </span><span class="p">],</span>
+</span><span id="__span-89-14"><a id="__codelineno-89-14" name="__codelineno-89-14" href="#__codelineno-89-14"></a><span class="w">  </span><span class="nt">&quot;validation&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[],</span>
+</span><span id="__span-89-15"><a id="__codelineno-89-15" name="__codelineno-89-15" href="#__codelineno-89-15"></a><span class="w">  </span><span class="nt">&quot;configuration&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-89-16"><a id="__codelineno-89-16" name="__codelineno-89-16" href="#__codelineno-89-16"></a><span class="w">    </span><span class="nt">&quot;flag&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{},</span>
+</span><span id="__span-89-17"><a id="__codelineno-89-17" name="__codelineno-89-17" href="#__codelineno-89-17"></a><span class="w">    </span><span class="nt">&quot;folder&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{},</span>
+</span><span id="__span-89-18"><a id="__codelineno-89-18" name="__codelineno-89-18" href="#__codelineno-89-18"></a><span class="w">    </span><span class="nt">&quot;metadata&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{},</span>
+</span><span id="__span-89-19"><a id="__codelineno-89-19" name="__codelineno-89-19" href="#__codelineno-89-19"></a><span class="w">    </span><span class="nt">&quot;generation&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{},</span>
+</span><span id="__span-89-20"><a id="__codelineno-89-20" name="__codelineno-89-20" href="#__codelineno-89-20"></a><span class="w">    </span><span class="nt">&quot;validation&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{},</span>
+</span><span id="__span-89-21"><a id="__codelineno-89-21" name="__codelineno-89-21" href="#__codelineno-89-21"></a><span class="w">    </span><span class="nt">&quot;alert&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{}</span>
+</span><span id="__span-89-22"><a id="__codelineno-89-22" name="__codelineno-89-22" href="#__codelineno-89-22"></a><span class="w">  </span><span class="p">}</span>
+</span><span id="__span-89-23"><a id="__codelineno-89-23" name="__codelineno-89-23" href="#__codelineno-89-23"></a><span class="p">}</span>
 </span></code></pre></div>
 <h3 id="connection">Connection</h3>
-<div class="language-json highlight"><pre><span></span><code><span id="__span-89-1"><a id="__codelineno-89-1" name="__codelineno-89-1" href="#__codelineno-89-1"></a><span class="p">{</span>
-</span><span id="__span-89-2"><a id="__codelineno-89-2" name="__codelineno-89-2" href="#__codelineno-89-2"></a><span class="w">  </span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;string&quot;</span><span class="p">,</span>
-</span><span id="__span-89-3"><a id="__codelineno-89-3" name="__codelineno-89-3" href="#__codelineno-89-3"></a><span class="w">  </span><span class="nt">&quot;type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;string&quot;</span><span class="p">,</span>
-</span><span id="__span-89-4"><a id="__codelineno-89-4" name="__codelineno-89-4" href="#__codelineno-89-4"></a><span class="w">  </span><span class="nt">&quot;groupType&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;string&quot;</span><span class="p">,</span>
-</span><span id="__span-89-5"><a id="__codelineno-89-5" name="__codelineno-89-5" href="#__codelineno-89-5"></a><span class="w">  </span><span class="nt">&quot;options&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
-</span><span id="__span-89-6"><a id="__codelineno-89-6" name="__codelineno-89-6" href="#__codelineno-89-6"></a><span class="w">    </span><span class="nt">&quot;key&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;value&quot;</span>
-</span><span id="__span-89-7"><a id="__codelineno-89-7" name="__codelineno-89-7" href="#__codelineno-89-7"></a><span class="w">  </span><span class="p">}</span>
-</span><span id="__span-89-8"><a id="__codelineno-89-8" name="__codelineno-89-8" href="#__codelineno-89-8"></a><span class="p">}</span>
+<div class="language-json highlight"><pre><span></span><code><span id="__span-90-1"><a id="__codelineno-90-1" name="__codelineno-90-1" href="#__codelineno-90-1"></a><span class="p">{</span>
+</span><span id="__span-90-2"><a id="__codelineno-90-2" name="__codelineno-90-2" href="#__codelineno-90-2"></a><span class="w">  </span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;string&quot;</span><span class="p">,</span>
+</span><span id="__span-90-3"><a id="__codelineno-90-3" name="__codelineno-90-3" href="#__codelineno-90-3"></a><span class="w">  </span><span class="nt">&quot;type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;string&quot;</span><span class="p">,</span>
+</span><span id="__span-90-4"><a id="__codelineno-90-4" name="__codelineno-90-4" href="#__codelineno-90-4"></a><span class="w">  </span><span class="nt">&quot;groupType&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;string&quot;</span><span class="p">,</span>
+</span><span id="__span-90-5"><a id="__codelineno-90-5" name="__codelineno-90-5" href="#__codelineno-90-5"></a><span class="w">  </span><span class="nt">&quot;options&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-90-6"><a id="__codelineno-90-6" name="__codelineno-90-6" href="#__codelineno-90-6"></a><span class="w">    </span><span class="nt">&quot;key&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;value&quot;</span>
+</span><span id="__span-90-7"><a id="__codelineno-90-7" name="__codelineno-90-7" href="#__codelineno-90-7"></a><span class="w">  </span><span class="p">}</span>
+</span><span id="__span-90-8"><a id="__codelineno-90-8" name="__codelineno-90-8" href="#__codelineno-90-8"></a><span class="p">}</span>
 </span></code></pre></div>
 <h3 id="sample-generation-response">Sample Generation Response</h3>
-<div class="language-json highlight"><pre><span></span><code><span id="__span-90-1"><a id="__codelineno-90-1" name="__codelineno-90-1" href="#__codelineno-90-1"></a><span class="p">{</span>
-</span><span id="__span-90-2"><a id="__codelineno-90-2" name="__codelineno-90-2" href="#__codelineno-90-2"></a><span class="w">  </span><span class="nt">&quot;success&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
-</span><span id="__span-90-3"><a id="__codelineno-90-3" name="__codelineno-90-3" href="#__codelineno-90-3"></a><span class="w">  </span><span class="nt">&quot;executionId&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;string&quot;</span><span class="p">,</span>
-</span><span id="__span-90-4"><a id="__codelineno-90-4" name="__codelineno-90-4" href="#__codelineno-90-4"></a><span class="w">  </span><span class="nt">&quot;schema&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
-</span><span id="__span-90-5"><a id="__codelineno-90-5" name="__codelineno-90-5" href="#__codelineno-90-5"></a><span class="w">    </span><span class="nt">&quot;fields&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
-</span><span id="__span-90-6"><a id="__codelineno-90-6" name="__codelineno-90-6" href="#__codelineno-90-6"></a><span class="w">      </span><span class="p">{</span>
-</span><span id="__span-90-7"><a id="__codelineno-90-7" name="__codelineno-90-7" href="#__codelineno-90-7"></a><span class="w">        </span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;string&quot;</span><span class="p">,</span>
-</span><span id="__span-90-8"><a id="__codelineno-90-8" name="__codelineno-90-8" href="#__codelineno-90-8"></a><span class="w">        </span><span class="nt">&quot;type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;string&quot;</span><span class="p">,</span>
-</span><span id="__span-90-9"><a id="__codelineno-90-9" name="__codelineno-90-9" href="#__codelineno-90-9"></a><span class="w">        </span><span class="nt">&quot;nullable&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
-</span><span id="__span-90-10"><a id="__codelineno-90-10" name="__codelineno-90-10" href="#__codelineno-90-10"></a><span class="w">        </span><span class="nt">&quot;fields&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[]</span>
-</span><span id="__span-90-11"><a id="__codelineno-90-11" name="__codelineno-90-11" href="#__codelineno-90-11"></a><span class="w">      </span><span class="p">}</span>
-</span><span id="__span-90-12"><a id="__codelineno-90-12" name="__codelineno-90-12" href="#__codelineno-90-12"></a><span class="w">    </span><span class="p">]</span>
-</span><span id="__span-90-13"><a id="__codelineno-90-13" name="__codelineno-90-13" href="#__codelineno-90-13"></a><span class="w">  </span><span class="p">},</span>
-</span><span id="__span-90-14"><a id="__codelineno-90-14" name="__codelineno-90-14" href="#__codelineno-90-14"></a><span class="w">  </span><span class="nt">&quot;sampleData&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
-</span><span id="__span-90-15"><a id="__codelineno-90-15" name="__codelineno-90-15" href="#__codelineno-90-15"></a><span class="w">    </span><span class="p">{</span>
-</span><span id="__span-90-16"><a id="__codelineno-90-16" name="__codelineno-90-16" href="#__codelineno-90-16"></a><span class="w">      </span><span class="nt">&quot;field1&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;value1&quot;</span><span class="p">,</span>
-</span><span id="__span-90-17"><a id="__codelineno-90-17" name="__codelineno-90-17" href="#__codelineno-90-17"></a><span class="w">      </span><span class="nt">&quot;field2&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;value2&quot;</span>
-</span><span id="__span-90-18"><a id="__codelineno-90-18" name="__codelineno-90-18" href="#__codelineno-90-18"></a><span class="w">    </span><span class="p">}</span>
-</span><span id="__span-90-19"><a id="__codelineno-90-19" name="__codelineno-90-19" href="#__codelineno-90-19"></a><span class="w">  </span><span class="p">],</span>
-</span><span id="__span-90-20"><a id="__codelineno-90-20" name="__codelineno-90-20" href="#__codelineno-90-20"></a><span class="w">  </span><span class="nt">&quot;metadata&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
-</span><span id="__span-90-21"><a id="__codelineno-90-21" name="__codelineno-90-21" href="#__codelineno-90-21"></a><span class="w">    </span><span class="nt">&quot;sampleSize&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">10</span><span class="p">,</span>
-</span><span id="__span-90-22"><a id="__codelineno-90-22" name="__codelineno-90-22" href="#__codelineno-90-22"></a><span class="w">    </span><span class="nt">&quot;actualRecords&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">10</span><span class="p">,</span>
-</span><span id="__span-90-23"><a id="__codelineno-90-23" name="__codelineno-90-23" href="#__codelineno-90-23"></a><span class="w">    </span><span class="nt">&quot;generatedInMs&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">100</span><span class="p">,</span>
-</span><span id="__span-90-24"><a id="__codelineno-90-24" name="__codelineno-90-24" href="#__codelineno-90-24"></a><span class="w">    </span><span class="nt">&quot;fastModeEnabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span>
-</span><span id="__span-90-25"><a id="__codelineno-90-25" name="__codelineno-90-25" href="#__codelineno-90-25"></a><span class="w">  </span><span class="p">},</span>
-</span><span id="__span-90-26"><a id="__codelineno-90-26" name="__codelineno-90-26" href="#__codelineno-90-26"></a><span class="w">  </span><span class="nt">&quot;error&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
-</span><span id="__span-90-27"><a id="__codelineno-90-27" name="__codelineno-90-27" href="#__codelineno-90-27"></a><span class="w">    </span><span class="nt">&quot;code&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;string&quot;</span><span class="p">,</span>
-</span><span id="__span-90-28"><a id="__codelineno-90-28" name="__codelineno-90-28" href="#__codelineno-90-28"></a><span class="w">    </span><span class="nt">&quot;message&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;string&quot;</span><span class="p">,</span>
-</span><span id="__span-90-29"><a id="__codelineno-90-29" name="__codelineno-90-29" href="#__codelineno-90-29"></a><span class="w">    </span><span class="nt">&quot;details&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;string&quot;</span>
-</span><span id="__span-90-30"><a id="__codelineno-90-30" name="__codelineno-90-30" href="#__codelineno-90-30"></a><span class="w">  </span><span class="p">}</span>
-</span><span id="__span-90-31"><a id="__codelineno-90-31" name="__codelineno-90-31" href="#__codelineno-90-31"></a><span class="p">}</span>
+<div class="language-json highlight"><pre><span></span><code><span id="__span-91-1"><a id="__codelineno-91-1" name="__codelineno-91-1" href="#__codelineno-91-1"></a><span class="p">{</span>
+</span><span id="__span-91-2"><a id="__codelineno-91-2" name="__codelineno-91-2" href="#__codelineno-91-2"></a><span class="w">  </span><span class="nt">&quot;success&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+</span><span id="__span-91-3"><a id="__codelineno-91-3" name="__codelineno-91-3" href="#__codelineno-91-3"></a><span class="w">  </span><span class="nt">&quot;executionId&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;string&quot;</span><span class="p">,</span>
+</span><span id="__span-91-4"><a id="__codelineno-91-4" name="__codelineno-91-4" href="#__codelineno-91-4"></a><span class="w">  </span><span class="nt">&quot;schema&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-91-5"><a id="__codelineno-91-5" name="__codelineno-91-5" href="#__codelineno-91-5"></a><span class="w">    </span><span class="nt">&quot;fields&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+</span><span id="__span-91-6"><a id="__codelineno-91-6" name="__codelineno-91-6" href="#__codelineno-91-6"></a><span class="w">      </span><span class="p">{</span>
+</span><span id="__span-91-7"><a id="__codelineno-91-7" name="__codelineno-91-7" href="#__codelineno-91-7"></a><span class="w">        </span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;string&quot;</span><span class="p">,</span>
+</span><span id="__span-91-8"><a id="__codelineno-91-8" name="__codelineno-91-8" href="#__codelineno-91-8"></a><span class="w">        </span><span class="nt">&quot;type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;string&quot;</span><span class="p">,</span>
+</span><span id="__span-91-9"><a id="__codelineno-91-9" name="__codelineno-91-9" href="#__codelineno-91-9"></a><span class="w">        </span><span class="nt">&quot;nullable&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+</span><span id="__span-91-10"><a id="__codelineno-91-10" name="__codelineno-91-10" href="#__codelineno-91-10"></a><span class="w">        </span><span class="nt">&quot;fields&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[]</span>
+</span><span id="__span-91-11"><a id="__codelineno-91-11" name="__codelineno-91-11" href="#__codelineno-91-11"></a><span class="w">      </span><span class="p">}</span>
+</span><span id="__span-91-12"><a id="__codelineno-91-12" name="__codelineno-91-12" href="#__codelineno-91-12"></a><span class="w">    </span><span class="p">]</span>
+</span><span id="__span-91-13"><a id="__codelineno-91-13" name="__codelineno-91-13" href="#__codelineno-91-13"></a><span class="w">  </span><span class="p">},</span>
+</span><span id="__span-91-14"><a id="__codelineno-91-14" name="__codelineno-91-14" href="#__codelineno-91-14"></a><span class="w">  </span><span class="nt">&quot;sampleData&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+</span><span id="__span-91-15"><a id="__codelineno-91-15" name="__codelineno-91-15" href="#__codelineno-91-15"></a><span class="w">    </span><span class="p">{</span>
+</span><span id="__span-91-16"><a id="__codelineno-91-16" name="__codelineno-91-16" href="#__codelineno-91-16"></a><span class="w">      </span><span class="nt">&quot;field1&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;value1&quot;</span><span class="p">,</span>
+</span><span id="__span-91-17"><a id="__codelineno-91-17" name="__codelineno-91-17" href="#__codelineno-91-17"></a><span class="w">      </span><span class="nt">&quot;field2&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;value2&quot;</span>
+</span><span id="__span-91-18"><a id="__codelineno-91-18" name="__codelineno-91-18" href="#__codelineno-91-18"></a><span class="w">    </span><span class="p">}</span>
+</span><span id="__span-91-19"><a id="__codelineno-91-19" name="__codelineno-91-19" href="#__codelineno-91-19"></a><span class="w">  </span><span class="p">],</span>
+</span><span id="__span-91-20"><a id="__codelineno-91-20" name="__codelineno-91-20" href="#__codelineno-91-20"></a><span class="w">  </span><span class="nt">&quot;metadata&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-91-21"><a id="__codelineno-91-21" name="__codelineno-91-21" href="#__codelineno-91-21"></a><span class="w">    </span><span class="nt">&quot;sampleSize&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">10</span><span class="p">,</span>
+</span><span id="__span-91-22"><a id="__codelineno-91-22" name="__codelineno-91-22" href="#__codelineno-91-22"></a><span class="w">    </span><span class="nt">&quot;actualRecords&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">10</span><span class="p">,</span>
+</span><span id="__span-91-23"><a id="__codelineno-91-23" name="__codelineno-91-23" href="#__codelineno-91-23"></a><span class="w">    </span><span class="nt">&quot;generatedInMs&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">100</span><span class="p">,</span>
+</span><span id="__span-91-24"><a id="__codelineno-91-24" name="__codelineno-91-24" href="#__codelineno-91-24"></a><span class="w">    </span><span class="nt">&quot;fastModeEnabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span>
+</span><span id="__span-91-25"><a id="__codelineno-91-25" name="__codelineno-91-25" href="#__codelineno-91-25"></a><span class="w">  </span><span class="p">},</span>
+</span><span id="__span-91-26"><a id="__codelineno-91-26" name="__codelineno-91-26" href="#__codelineno-91-26"></a><span class="w">  </span><span class="nt">&quot;error&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-91-27"><a id="__codelineno-91-27" name="__codelineno-91-27" href="#__codelineno-91-27"></a><span class="w">    </span><span class="nt">&quot;code&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;string&quot;</span><span class="p">,</span>
+</span><span id="__span-91-28"><a id="__codelineno-91-28" name="__codelineno-91-28" href="#__codelineno-91-28"></a><span class="w">    </span><span class="nt">&quot;message&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;string&quot;</span><span class="p">,</span>
+</span><span id="__span-91-29"><a id="__codelineno-91-29" name="__codelineno-91-29" href="#__codelineno-91-29"></a><span class="w">    </span><span class="nt">&quot;details&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;string&quot;</span>
+</span><span id="__span-91-30"><a id="__codelineno-91-30" name="__codelineno-91-30" href="#__codelineno-91-30"></a><span class="w">  </span><span class="p">}</span>
+</span><span id="__span-91-31"><a id="__codelineno-91-31" name="__codelineno-91-31" href="#__codelineno-91-31"></a><span class="p">}</span>
 </span></code></pre></div>
 <hr />
 <h2 id="quick-start">Quick Start</h2>

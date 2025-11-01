@@ -1784,6 +1784,29 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../generator/transformation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Transformations
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -2154,6 +2177,24 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#how-it-works" class="md-nav__link">
+    <span class="md-ellipsis">
+      How It Works
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#supported-data-sources" class="md-nav__link">
+    <span class="md-ellipsis">
+      Supported Data Sources
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#foreign-keysrelationships" class="md-nav__link">
     <span class="md-ellipsis">
       Foreign Keys/Relationships
@@ -2208,6 +2249,66 @@
         
       </ul>
     </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#quick-reference" class="md-nav__link">
+    <span class="md-ellipsis">
+      Quick Reference
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Quick Reference">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#configuration-flags" class="md-nav__link">
+    <span class="md-ellipsis">
+      Configuration Flags
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#deletion-behavior" class="md-nav__link">
+    <span class="md-ellipsis">
+      Deletion Behavior
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#common-patterns" class="md-nav__link">
+    <span class="md-ellipsis">
+      Common Patterns
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#troubleshooting" class="md-nav__link">
+    <span class="md-ellipsis">
+      Troubleshooting
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#example-workflow" class="md-nav__link">
+    <span class="md-ellipsis">
+      Example Workflow
+    </span>
+  </a>
   
 </li>
         
@@ -2592,6 +2693,29 @@
             Changelog
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../use-case/changelog/0.17.2/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    0.17.2
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
             
               
                 
@@ -3296,12 +3420,26 @@
 
 
 <h1 id="delete-generated-data">Delete Generated Data</h1>
-<p>As you generate and validate data, you may want to clean up the data that has been generated. This helps you:</p>
+<p>Data Caterer tracks generated records and can delete them on demand, including downstream data consumed by services/jobs. This helps you:</p>
 <ol>
-<li>Keep your test environments clean</li>
-<li>Reduce chance of existing data interacting with your validations</li>
-<li>Creates a simple workflow for developers and testers to follow</li>
+<li>Keep test environments clean</li>
+<li>Prevent test data pollution</li>
+<li>Enable reliable test workflows</li>
+<li>Clean up data across multiple related systems</li>
 </ol>
+<h2 id="how-it-works">How It Works</h2>
+<ol>
+<li><strong>Record Tracking</strong>: During generation, Data Caterer tracks all generated records in a specified folder</li>
+<li><strong>Deletion</strong>: Uses tracked records to delete only generated data (preserves manually added data)</li>
+<li><strong>Foreign Keys</strong>: Respects relationships and deletes in reverse insertion order</li>
+<li><strong>Downstream Data</strong>: Can delete data in systems that consumed generated records</li>
+</ol>
+<h2 id="supported-data-sources">Supported Data Sources</h2>
+<ul>
+<li><strong>JDBC Databases</strong>: Postgres, MySQL, Oracle, SQL Server, etc.</li>
+<li><strong>Cassandra</strong>: NoSQL database</li>
+<li><strong>Files</strong>: CSV, JSON, Parquet, ORC, Delta Lake</li>
+</ul>
 <h2 id="foreign-keysrelationships">Foreign Keys/Relationships</h2>
 <p>You can either define a foreign key for data generation (i.e. create same account numbers across accounts and
 transactions table)
@@ -3310,8 +3448,8 @@ you
 can delete the Postgres and Parquet data via the account numbers generated).</p>
 <h3 id="generate">Generate</h3>
 <p>In scenarios where you have defined foreign keys for multiple data sources, when data is generated, Data Caterer will
-ensure that the values generated in one data source, will be the same in the other. When you want to delete the data, 
-data will be deleted in reverse order of how the data was inserted. This ensures that for data sources, such as 
+ensure that the values generated in one data source, will be the same in the other. When you want to delete the data,
+data will be deleted in reverse order of how the data was inserted. This ensures that for data sources, such as
 Postgres, no errors will occur whilst deleting data.</p>
 <pre class="mermaid"><code>graph LR
   subgraph plan ["Plan/Scenario"]
@@ -3474,8 +3612,8 @@ You can choose to also delete the data that is pushed down into the other data s
   consumerJob --&gt; postgresAccTable
   consumerJob --&gt; parquetAcc</code></pre>
 <h4 id="configuration_1">Configuration</h4>
-<p>We will use the scenario that we generate data for <code>accounts</code> table in Postgres and a job will insert a record into the 
-<code>balances</code> table for each record generated. To define the consumed data that should also be deleted, 
+<p>We will use the scenario that we generate data for <code>accounts</code> table in Postgres and a job will insert a record into the
+<code>balances</code> table for each record generated. To define the consumed data that should also be deleted,
 follow the below example:</p>
 <div class="tabbed-set tabbed-alternate" data-tabs="2:4"><input checked="checked" id="__tabbed_2_1" name="__tabbed_2" type="radio" /><input id="__tabbed_2_2" name="__tabbed_2" type="radio" /><input id="__tabbed_2_3" name="__tabbed_2" type="radio" /><input id="__tabbed_2_4" name="__tabbed_2" type="radio" /><div class="tabbed-labels"><label for="__tabbed_2_1">Java</label><label for="__tabbed_2_2">Scala</label><label for="__tabbed_2_3">YAML</label><label for="__tabbed_2_4">UI</label></div>
 <div class="tabbed-content">
@@ -3568,6 +3706,143 @@ follow the below example:</p>
 </div>
 </div>
 </div>
+<h2 id="quick-reference">Quick Reference</h2>
+<h3 id="configuration-flags">Configuration Flags</h3>
+<table>
+<thead>
+<tr>
+<th>Flag</th>
+<th>Purpose</th>
+<th>Generation Phase</th>
+<th>Deletion Phase</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>enableRecordTracking</code></td>
+<td>Track generated records</td>
+<td><code>true</code></td>
+<td><code>true</code></td>
+</tr>
+<tr>
+<td><code>enableGenerateData</code></td>
+<td>Generate new data</td>
+<td><code>true</code></td>
+<td><code>false</code></td>
+</tr>
+<tr>
+<td><code>enableDeleteGeneratedRecords</code></td>
+<td>Delete tracked data</td>
+<td><code>false</code></td>
+<td><code>true</code></td>
+</tr>
+<tr>
+<td><code>recordTrackingFolderPath</code></td>
+<td>Where to store tracking data</td>
+<td>Set path</td>
+<td>Same path</td>
+</tr>
+</tbody>
+</table>
+<h3 id="deletion-behavior">Deletion Behavior</h3>
+<ul>
+<li><strong>Only Tracked Records</strong>: Only deletes records that were generated and tracked</li>
+<li><strong>Preserves Manual Data</strong>: Manually inserted records are not affected</li>
+<li><strong>Reverse Order</strong>: Deletes related records in reverse insertion order (respects foreign keys)</li>
+<li><strong>Downstream Support</strong>: Can delete data consumed by services/jobs using <code>delete</code> relationships</li>
+<li><strong>Same Configuration</strong>: Must use same connection names and tracking folder path</li>
+</ul>
+<h3 id="common-patterns">Common Patterns</h3>
+<p><strong>Pattern 1: Generate then Delete (same class)</strong></p>
+<div class="language-scala highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="c1">// First run: Generate with tracking</span>
+</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="kd">val</span><span class="w"> </span><span class="n">config</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">configuration</span>
+</span><span id="__span-6-3"><a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="w">  </span><span class="p">.</span><span class="n">enableRecordTracking</span><span class="p">(</span><span class="kc">true</span><span class="p">)</span>
+</span><span id="__span-6-4"><a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="w">  </span><span class="p">.</span><span class="n">enableGenerateData</span><span class="p">(</span><span class="kc">true</span><span class="p">)</span>
+</span><span id="__span-6-5"><a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>
+</span><span id="__span-6-6"><a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a><span class="c1">// Second run: Delete by changing flags</span>
+</span><span id="__span-6-7"><a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a><span class="kd">val</span><span class="w"> </span><span class="n">deleteConfig</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">configuration</span>
+</span><span id="__span-6-8"><a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a><span class="w">  </span><span class="p">.</span><span class="n">enableRecordTracking</span><span class="p">(</span><span class="kc">true</span><span class="p">)</span>
+</span><span id="__span-6-9"><a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a><span class="w">  </span><span class="p">.</span><span class="n">enableDeleteGeneratedRecords</span><span class="p">(</span><span class="kc">true</span><span class="p">)</span>
+</span><span id="__span-6-10"><a id="__codelineno-6-10" name="__codelineno-6-10" href="#__codelineno-6-10"></a><span class="w">  </span><span class="p">.</span><span class="n">enableGenerateData</span><span class="p">(</span><span class="kc">false</span><span class="p">)</span>
+</span></code></pre></div>
+<p><strong>Pattern 2: Separate Classes</strong></p>
+<div class="language-scala highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="c1">// GeneratePlan.scala</span>
+</span><span id="__span-7-2"><a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="k">class</span><span class="w"> </span><span class="nc">GeneratePlan</span><span class="w"> </span><span class="k">extends</span><span class="w"> </span><span class="nc">PlanRun</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-7-3"><a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a><span class="w">  </span><span class="kd">val</span><span class="w"> </span><span class="n">config</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">configuration</span>
+</span><span id="__span-7-4"><a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a><span class="w">    </span><span class="p">.</span><span class="n">postgres</span><span class="p">(</span><span class="s">&quot;my_db&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;jdbc:...&quot;</span><span class="p">)</span>
+</span><span id="__span-7-5"><a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a><span class="w">    </span><span class="p">.</span><span class="n">enableRecordTracking</span><span class="p">(</span><span class="kc">true</span><span class="p">)</span>
+</span><span id="__span-7-6"><a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a><span class="w">    </span><span class="p">.</span><span class="n">recordTrackingFolderPath</span><span class="p">(</span><span class="s">&quot;/shared/tracking&quot;</span><span class="p">)</span>
+</span><span id="__span-7-7"><a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a><span class="p">}</span>
+</span><span id="__span-7-8"><a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a>
+</span><span id="__span-7-9"><a id="__codelineno-7-9" name="__codelineno-7-9" href="#__codelineno-7-9"></a><span class="c1">// DeletePlan.scala</span>
+</span><span id="__span-7-10"><a id="__codelineno-7-10" name="__codelineno-7-10" href="#__codelineno-7-10"></a><span class="k">class</span><span class="w"> </span><span class="nc">DeletePlan</span><span class="w"> </span><span class="k">extends</span><span class="w"> </span><span class="nc">PlanRun</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-7-11"><a id="__codelineno-7-11" name="__codelineno-7-11" href="#__codelineno-7-11"></a><span class="w">  </span><span class="kd">val</span><span class="w"> </span><span class="n">config</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">configuration</span>
+</span><span id="__span-7-12"><a id="__codelineno-7-12" name="__codelineno-7-12" href="#__codelineno-7-12"></a><span class="w">    </span><span class="p">.</span><span class="n">postgres</span><span class="p">(</span><span class="s">&quot;my_db&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;jdbc:...&quot;</span><span class="p">)</span><span class="w">  </span><span class="c1">// Same connection name!</span>
+</span><span id="__span-7-13"><a id="__codelineno-7-13" name="__codelineno-7-13" href="#__codelineno-7-13"></a><span class="w">    </span><span class="p">.</span><span class="n">enableRecordTracking</span><span class="p">(</span><span class="kc">true</span><span class="p">)</span>
+</span><span id="__span-7-14"><a id="__codelineno-7-14" name="__codelineno-7-14" href="#__codelineno-7-14"></a><span class="w">    </span><span class="p">.</span><span class="n">enableDeleteGeneratedRecords</span><span class="p">(</span><span class="kc">true</span><span class="p">)</span>
+</span><span id="__span-7-15"><a id="__codelineno-7-15" name="__codelineno-7-15" href="#__codelineno-7-15"></a><span class="w">    </span><span class="p">.</span><span class="n">enableGenerateData</span><span class="p">(</span><span class="kc">false</span><span class="p">)</span>
+</span><span id="__span-7-16"><a id="__codelineno-7-16" name="__codelineno-7-16" href="#__codelineno-7-16"></a><span class="w">    </span><span class="p">.</span><span class="n">recordTrackingFolderPath</span><span class="p">(</span><span class="s">&quot;/shared/tracking&quot;</span><span class="p">)</span><span class="w">  </span><span class="c1">// Same path!</span>
+</span><span id="__span-7-17"><a id="__codelineno-7-17" name="__codelineno-7-17" href="#__codelineno-7-17"></a><span class="p">}</span>
+</span></code></pre></div>
+<p><strong>Pattern 3: Downstream Data Cleanup</strong></p>
+<div class="language-scala highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="c1">// Define what was generated vs what was consumed downstream</span>
+</span><span id="__span-8-2"><a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a><span class="kd">val</span><span class="w"> </span><span class="n">deletePlan</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">plan</span><span class="p">.</span><span class="n">addForeignKeyRelationship</span><span class="p">(</span>
+</span><span id="__span-8-3"><a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a><span class="w">  </span><span class="n">sourceTask</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;key_field&quot;</span><span class="p">,</span>
+</span><span id="__span-8-4"><a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a><span class="w">  </span><span class="nc">List</span><span class="p">(),</span><span class="w">  </span><span class="c1">// No generation relationships</span>
+</span><span id="__span-8-5"><a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a><span class="w">  </span><span class="nc">List</span><span class="p">(</span><span class="n">downstreamTask</span><span class="w"> </span><span class="o">-&gt;</span><span class="w"> </span><span class="s">&quot;key_field&quot;</span><span class="p">)</span><span class="w">  </span><span class="c1">// Delete relationships</span>
+</span><span id="__span-8-6"><a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a><span class="p">)</span>
+</span></code></pre></div>
+<h3 id="troubleshooting">Troubleshooting</h3>
+<table>
+<thead>
+<tr>
+<th>Issue</th>
+<th>Cause</th>
+<th>Solution</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>"Failed to get tracked records"</td>
+<td>Tracking folder not found</td>
+<td>Ensure <code>recordTrackingFolderPath</code> is same for generation and deletion</td>
+</tr>
+<tr>
+<td>"Format not defined"</td>
+<td>Data source missing format</td>
+<td>Check step configuration has valid format</td>
+</tr>
+<tr>
+<td>No records deleted</td>
+<td>Connection name mismatch</td>
+<td>Use identical connection names in both phases</td>
+</tr>
+<tr>
+<td>Manual data deleted</td>
+<td>Record tracking captured manual data</td>
+<td>Don't enable tracking when manual data exists, or regenerate environment</td>
+</tr>
+<tr>
+<td>Foreign key errors during deletion</td>
+<td>Wrong deletion order</td>
+<td>Data Caterer automatically handles this - check logs for errors</td>
+</tr>
+</tbody>
+</table>
+<h3 id="example-workflow">Example Workflow</h3>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-9-1"><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="c1"># 1. Generate data with tracking</span>
+</span><span id="__span-9-2"><a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>./run.sh<span class="w"> </span>GeneratePlan
+</span><span id="__span-9-3"><a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>
+</span><span id="__span-9-4"><a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a><span class="c1"># 2. Run your tests/validations</span>
+</span><span id="__span-9-5"><a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a>./run_tests.sh
+</span><span id="__span-9-6"><a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a>
+</span><span id="__span-9-7"><a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a><span class="c1"># 3. Delete generated data</span>
+</span><span id="__span-9-8"><a id="__codelineno-9-8" name="__codelineno-9-8" href="#__codelineno-9-8"></a>./run.sh<span class="w"> </span>DeletePlan
+</span><span id="__span-9-9"><a id="__codelineno-9-9" name="__codelineno-9-9" href="#__codelineno-9-9"></a>
+</span><span id="__span-9-10"><a id="__codelineno-9-10" name="__codelineno-9-10" href="#__codelineno-9-10"></a><span class="c1"># 4. Verify cleanup</span>
+</span><span id="__span-9-11"><a id="__codelineno-9-11" name="__codelineno-9-11" href="#__codelineno-9-11"></a><span class="c1"># Only manually inserted data remains</span>
+</span></code></pre></div>
+<p>See the <a href="../guide/scenario/delete-generated-data/">Delete Generated Data Guide</a> for a complete walkthrough.</p>
 
 
 
