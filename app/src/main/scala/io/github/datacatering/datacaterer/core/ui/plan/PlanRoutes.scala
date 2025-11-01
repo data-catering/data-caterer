@@ -2,7 +2,9 @@ package io.github.datacatering.datacaterer.core.ui.plan
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.github.pjfanning.pekkohttpjackson.JacksonSupport
+import io.github.datacatering.datacaterer.api.model.Step
 import io.github.datacatering.datacaterer.core.ui.model.{EnhancedPlanRunRequest, PlanRunRequest, SaveConnectionsRequest, SchemaSampleRequest}
+import io.github.datacatering.datacaterer.core.ui.resource.SparkSessionManager
 import io.github.datacatering.datacaterer.core.ui.sample.FastSampleGenerator
 import io.github.datacatering.datacaterer.core.util.{ObjectMapperUtil, SparkProvider}
 import org.apache.log4j.Logger
@@ -34,10 +36,6 @@ class PlanRoutes(
   implicit val ec: ExecutionContextExecutor = ExecutionContext.global
   implicit val objectMapper: ObjectMapper = ObjectMapperUtil.jsonObjectMapper
 
-  private def createSparkSession(): SparkSession = {
-    new SparkProvider(DEFAULT_MASTER, DEFAULT_RUNTIME_CONFIG).getSparkSession
-  }
-
   /**
    * Helper method to convert format string to Pekko HTTP ContentType
    */
@@ -55,7 +53,9 @@ class PlanRoutes(
   private def completeWithRawData(responseWithDf: FastSampleGenerator.SampleResponseWithDataFrame): Route = {
     if (responseWithDf.response.success && responseWithDf.dataFrame.isDefined && responseWithDf.response.format.isDefined) {
       val format = responseWithDf.response.format.get
-      val rawBytes = FastSampleGenerator.dataFrameToRawBytes(responseWithDf.dataFrame.get, format)
+      // Use step from response, or create a default step without transformation
+      val step = responseWithDf.step.getOrElse(Step(options = Map("format" -> format)))
+      val rawBytes = FastSampleGenerator.dataFrameToRawBytes(responseWithDf.dataFrame.get, format, step)
       complete(HttpResponse(
         status = StatusCodes.OK,
         entity = HttpEntity(contentTypeFor(format), rawBytes)
@@ -339,9 +339,8 @@ class PlanRoutes(
             path("""[A-Za-z0-9-_]+""".r / "tasks" / """[A-Za-z0-9-_]+""".r / "steps" / """[A-Za-z0-9-_]+""".r) { (planName, taskName, stepName) =>
               get {
                 parameters("sampleSize".as[Int].optional, "fastMode".as[Boolean].optional, "enableRelationships".as[Boolean].optional) { (sampleSize, fastMode, enableRelationships) =>
-                  implicit val sparkSession: SparkSession = createSparkSession()
-                  val relationships = enableRelationships.getOrElse(false)
-                  FastSampleGenerator.generateFromPlanStep(planName, taskName, stepName, sampleSize.getOrElse(10), fastMode.getOrElse(true)) match {
+                  implicit val sparkSession: SparkSession = SparkSessionManager.getOrCreate()
+                  FastSampleGenerator.generateFromPlanStep(planName, taskName, stepName, sampleSize, fastMode.getOrElse(true)) match {
                     case Right((_, responseWithDf)) => completeWithRawData(responseWithDf)
                     case Left(error) => completeWithError(error)
                   }
@@ -352,13 +351,12 @@ class PlanRoutes(
             path("""[A-Za-z0-9-_]+""".r / "tasks" / """[A-Za-z0-9-_]+""".r) { (planName, taskName) =>
               get {
                 parameters("sampleSize".as[Int].optional, "fastMode".as[Boolean].optional, "enableRelationships".as[Boolean].optional) { (sampleSize, fastMode, enableRelationships) =>
-                  implicit val sparkSession: SparkSession = createSparkSession()
-                  val size = sampleSize.getOrElse(10)
+                  implicit val sparkSession: SparkSession = SparkSessionManager.getOrCreate()
                   val fast = fastMode.getOrElse(true)
                   val relationships = enableRelationships.getOrElse(false)
 
-                  FastSampleGenerator.generateFromPlanTask(planName, taskName, size, fast) match {
-                    case Right(results) => complete(buildMultiSchemaResponse(results, size, fast, relationships))
+                  FastSampleGenerator.generateFromPlanTask(planName, taskName, sampleSize, fast, relationships) match {
+                    case Right(results) => complete(buildMultiSchemaResponse(results, sampleSize.getOrElse(10), fast, relationships))
                     case Left(error) => completeWithError(error)
                   }
                 }
@@ -368,13 +366,12 @@ class PlanRoutes(
             path("""[A-Za-z0-9-_]+""".r) { planName =>
               get {
                 parameters("sampleSize".as[Int].optional, "fastMode".as[Boolean].optional, "enableRelationships".as[Boolean].optional) { (sampleSize, fastMode, enableRelationships) =>
-                  implicit val sparkSession: SparkSession = createSparkSession()
-                  val size = sampleSize.getOrElse(10)
+                  implicit val sparkSession: SparkSession = SparkSessionManager.getOrCreate()
                   val fast = fastMode.getOrElse(true)
                   val relationships = enableRelationships.getOrElse(false)
 
-                  FastSampleGenerator.generateFromPlan(planName, size, fast) match {
-                    case Right(results) => complete(buildMultiSchemaResponse(results, size, fast, relationships))
+                  FastSampleGenerator.generateFromPlan(planName, sampleSize, fast, relationships) match {
+                    case Right(results) => complete(buildMultiSchemaResponse(results, sampleSize.getOrElse(10), fast, relationships))
                     case Left(error) => completeWithError(error)
                   }
                 }
@@ -386,7 +383,7 @@ class PlanRoutes(
         path("schema") {
           post {
             entity(as[SchemaSampleRequest]) { request =>
-              implicit val sparkSession: SparkSession = createSparkSession()
+              implicit val sparkSession: SparkSession = SparkSessionManager.getOrCreate()
               completeWithRawData(FastSampleGenerator.generateFromSchemaWithDataFrame(request))
             }
           }
@@ -395,28 +392,25 @@ class PlanRoutes(
         path("tasks" / """[A-Za-z0-9-_]+""".r) { taskName =>
           get {
             parameters("sampleSize".as[Int].optional, "fastMode".as[Boolean].optional, "enableRelationships".as[Boolean].optional) { (sampleSize, fastMode, enableRelationships) =>
-              implicit val sparkSession: SparkSession = createSparkSession()
-              val size = sampleSize.getOrElse(10)
+              implicit val sparkSession: SparkSession = SparkSessionManager.getOrCreate()
               val fast = fastMode.getOrElse(true)
               val relationships = enableRelationships.getOrElse(false)
 
-              FastSampleGenerator.generateFromTaskName(taskName, size, fast) match {
-                case Right(results) => complete(buildMultiSchemaResponse(results, size, fast, relationships))
+              FastSampleGenerator.generateFromTaskName(taskName, sampleSize, fast, relationships) match {
+                case Right(results) => complete(buildMultiSchemaResponse(results, sampleSize.getOrElse(10), fast, relationships))
                 case Left(error) => completeWithError(error)
               }
             }
           }
         },
-        // Step name-based sample generation  
+        // Step name-based sample generation
         path("steps" / """[A-Za-z0-9-_]+""".r) { stepName =>
           get {
             parameters("sampleSize".as[Int].optional, "fastMode".as[Boolean].optional, "enableRelationships".as[Boolean].optional) { (sampleSize, fastMode, enableRelationships) =>
-              implicit val sparkSession: SparkSession = createSparkSession()
-              val size = sampleSize.getOrElse(10)
+              implicit val sparkSession: SparkSession = SparkSessionManager.getOrCreate()
               val fast = fastMode.getOrElse(true)
-              val relationships = enableRelationships.getOrElse(false)
 
-              FastSampleGenerator.generateFromStepName(stepName, size, fast) match {
+              FastSampleGenerator.generateFromStepName(stepName, sampleSize, fast) match {
                 case Right((_, responseWithDf)) => completeWithRawData(responseWithDf)
                 case Left(error) => completeWithError(error)
               }

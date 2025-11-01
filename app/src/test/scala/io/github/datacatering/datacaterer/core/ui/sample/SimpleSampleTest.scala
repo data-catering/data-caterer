@@ -29,11 +29,11 @@ class SimpleSampleTest extends SparkSuite with Matchers with BeforeAndAfterEach 
 
     val request = SchemaSampleRequest(
       fields = step.fields,
-      sampleSize = 2,
+      sampleSize = Some(2),
       fastMode = true
     )
 
-    val result = FastSampleGenerator.generateFromSchema(request)
+    val result = FastSampleGenerator.generateFromSchemaWithDataFrame(request).response
 
     if (!result.success) {
       println(s"Generation failed: ${result.error}")

@@ -1,11 +1,9 @@
 package io.github.datacatering.datacaterer.core.generator.metadata.datasource.yaml
 
 import io.github.datacatering.datacaterer.api.model.Constants.{METADATA_IDENTIFIER, YAML_PLAN_FILE, YAML_STEP_NAME, YAML_TASK_FILE, YAML_TASK_NAME}
-import io.github.datacatering.datacaterer.api.model.{Plan, Task}
 import io.github.datacatering.datacaterer.core.generator.metadata.datasource.database.FieldMetadata
 import io.github.datacatering.datacaterer.core.generator.metadata.datasource.{DataSourceMetadata, SubDataSourceMetadata}
 import io.github.datacatering.datacaterer.core.parser.PlanParser
-import io.github.datacatering.datacaterer.core.util.{FileUtil, ObjectMapperUtil}
 import org.apache.log4j.Logger
 import org.apache.spark.sql.{Dataset, SparkSession}
 
@@ -176,7 +174,6 @@ case class YamlDataSourceMetadata(
       identifier: String,
       dataSourceReadOptions: Map[String, String] = Map()
   )(implicit sparkSession: SparkSession): Dataset[FieldMetadata] = {
-    import sparkSession.implicits._
 
     try {
       if (fields.nonEmpty) {

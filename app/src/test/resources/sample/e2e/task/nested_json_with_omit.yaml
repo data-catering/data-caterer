@@ -1,0 +1,75 @@
+name: "nested_json_task"
+steps:
+  - name: "payment_data"
+    type: "json"
+    count:
+      records: 100
+    options:
+      path: "/tmp/payments"
+    fields:
+      - name: "transaction_id"
+        type: "string"
+        options:
+          sql: "CONCAT('TXN-', FLOOR(RAND() * 100000 + temp_amount_cents))"
+      - name: "temp_amount_cents"
+        type: "long"
+        options:
+          omit: true
+          min: 1000
+          max: 500000
+      - name: "amount"
+        type: "double"
+        options:
+          sql: "temp_amount_cents / 100.0"
+      - name: "payment_information"
+        type: "struct"
+        fields:
+          - name: "payment_id"
+            type: "string"
+            options:
+              sql: "CONCAT('PAY-', FLOOR(RAND() * 10000))"
+          - name: "payment_method"
+            type: "string"
+            options:
+              oneOf: ["CREDIT_CARD", "DEBIT_CARD", "PAYPAL"]
+          - name: "temp_payment_id"
+            type: "string"
+            options:
+              omit: true
+              static: "temp_should_not_appear"
+          - name: "cardholder"
+            type: "struct"
+            fields:
+              - name: "name"
+                type: "string"
+                options:
+                  expression: "#{Name.fullName}"
+              - name: "email"
+                type: "string"
+                options:
+                  expression: "#{Internet.emailAddress}"
+              - name: "temp_internal_id"
+                type: "string"
+                options:
+                  omit: true
+                  static: "internal_temp_data"
+      - name: "items"
+        type: "array"
+        options:
+          arrayMinLen: 1
+          arrayMaxLen: 3
+        fields:
+          - name: "description"
+            type: "string"
+            options:
+              expression: "#{Commerce.productName}"
+          - name: "price"
+            type: "double"
+            options:
+              min: 5.0
+              max: 200.0
+          - name: "temp_processing_flag"
+            type: "boolean"
+            options:
+              omit: true
+              static: true

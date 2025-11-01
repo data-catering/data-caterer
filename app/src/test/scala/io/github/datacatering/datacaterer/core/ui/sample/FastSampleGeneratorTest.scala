@@ -80,8 +80,8 @@ class FastSampleGeneratorTest extends SparkSuite with Matchers with BeforeAndAft
       doubleField("amount", min = 10.0, max = 100.0)
     )
 
-    val request = SchemaSampleRequest(fields = fields, sampleSize = 5, fastMode = true)
-    val result = FastSampleGenerator.generateFromSchema(request)
+    val request = SchemaSampleRequest(fields = fields, sampleSize = Some(5), fastMode = true)
+    val result = FastSampleGenerator.generateFromSchemaWithDataFrame(request).response
 
     assertBasicSampleResponse(result, expectedSize = 5, fastMode = true)
 
@@ -104,8 +104,8 @@ class FastSampleGeneratorTest extends SparkSuite with Matchers with BeforeAndAft
 
   test("FastSampleGenerator handle nested fields in schema") {
     val fields = List(stringField("simple_field", expression = Some("#{Name.fullName}")))
-    val request = SchemaSampleRequest(fields = fields, sampleSize = 3, fastMode = true)
-    val result = FastSampleGenerator.generateFromSchema(request)
+    val request = SchemaSampleRequest(fields = fields, sampleSize = Some(3), fastMode = true)
+    val result = FastSampleGenerator.generateFromSchemaWithDataFrame(request).response
 
     assertBasicSampleResponse(result, expectedSize = 3, fastMode = true)
 
@@ -127,11 +127,11 @@ class FastSampleGeneratorTest extends SparkSuite with Matchers with BeforeAndAft
 
     val request = SchemaSampleRequest(
       fields = step.fields,
-      sampleSize = 150, // Above max limit
+      sampleSize = Some(150), // Above max limit
       fastMode = true
     )
 
-    val result = FastSampleGenerator.generateFromSchema(request)
+    val result = FastSampleGenerator.generateFromSchemaWithDataFrame(request).response
 
     result.success shouldBe true
     result.sampleData shouldBe defined
@@ -144,10 +144,10 @@ class FastSampleGeneratorTest extends SparkSuite with Matchers with BeforeAndAft
   test("FastSampleGenerator handle empty schema gracefully") {
     val request = SchemaSampleRequest(
       fields = List(),
-      sampleSize = 5
+      sampleSize = Some(5)
     )
 
-    val result = FastSampleGenerator.generateFromSchema(request)
+    val result = FastSampleGenerator.generateFromSchemaWithDataFrame(request).response
 
     // Should succeed with empty field list (generates empty records)
     result.success shouldBe true
@@ -175,12 +175,12 @@ class FastSampleGeneratorTest extends SparkSuite with Matchers with BeforeAndAft
 
     val request = SchemaSampleRequest(
       fields = step.fields,
-      sampleSize = 10,
+      sampleSize = Some(10),
       fastMode = true
     )
 
     // Generate sample data
-    val result = FastSampleGenerator.generateFromSchema(request)
+    val result = FastSampleGenerator.generateFromSchemaWithDataFrame(request).response
 
     // Request should succeed
     result.success shouldBe true
@@ -206,8 +206,8 @@ class FastSampleGeneratorTest extends SparkSuite with Matchers with BeforeAndAft
       booleanField("boolean_field")
     )
 
-    val request = SchemaSampleRequest(fields = fields, sampleSize = 5, fastMode = true)
-    val result = FastSampleGenerator.generateFromSchema(request)
+    val request = SchemaSampleRequest(fields = fields, sampleSize = Some(5), fastMode = true)
+    val result = FastSampleGenerator.generateFromSchemaWithDataFrame(request).response
 
     assertBasicSampleResponse(result, expectedSize = 5, fastMode = true)
 
@@ -233,11 +233,10 @@ class FastSampleGeneratorTest extends SparkSuite with Matchers with BeforeAndAft
     val request = TaskFileSampleRequest(
       taskYamlPath = yamlPath,
       stepName = Some("payment_data"),
-      sampleSize = 3,
-      fastMode = true // Using true to avoid Faker serialization issues in test
+      sampleSize = Some(3)
     )
 
-    val result = FastSampleGenerator.generateFromTaskFile(request)
+    val result = FastSampleGenerator.generateFromTaskFileWithDataFrame(request).response
 
     // Request should succeed
     result.success shouldBe true
@@ -328,7 +327,7 @@ class FastSampleGeneratorTest extends SparkSuite with Matchers with BeforeAndAft
     val request = SchemaSampleRequest(
       fields = fields,
       format = "csv",
-      sampleSize = 5,
+      sampleSize = Some(5),
       fastMode = true
     )
 
@@ -339,7 +338,7 @@ class FastSampleGeneratorTest extends SparkSuite with Matchers with BeforeAndAft
     responseWithDf.response.format shouldBe Some("csv")
 
     // Test raw bytes conversion
-    val rawBytes = FastSampleGenerator.dataFrameToRawBytes(responseWithDf.dataFrame.get, "csv")
+    val rawBytes = FastSampleGenerator.dataFrameToRawBytes(responseWithDf.dataFrame.get, "csv", Step())
     rawBytes should not be empty
 
     val csvContent = new String(rawBytes, "UTF-8")
@@ -359,7 +358,7 @@ class FastSampleGeneratorTest extends SparkSuite with Matchers with BeforeAndAft
     val request = SchemaSampleRequest(
       fields = fields,
       format = "json",
-      sampleSize = 3,
+      sampleSize = Some(3),
       fastMode = true
     )
 
@@ -370,7 +369,7 @@ class FastSampleGeneratorTest extends SparkSuite with Matchers with BeforeAndAft
     responseWithDf.response.format shouldBe Some("json")
 
     // Test raw bytes conversion
-    val rawBytes = FastSampleGenerator.dataFrameToRawBytes(responseWithDf.dataFrame.get, "json")
+    val rawBytes = FastSampleGenerator.dataFrameToRawBytes(responseWithDf.dataFrame.get, "json", Step())
     rawBytes should not be empty
 
     val jsonContent = new String(rawBytes, "UTF-8")
@@ -408,7 +407,7 @@ class FastSampleGeneratorTest extends SparkSuite with Matchers with BeforeAndAft
     val request = TaskYamlSampleRequest(
       taskYamlContent = yamlContent,
       stepName = None,
-      sampleSize = 5,
+      sampleSize = Some(5),
       fastMode = true
     )
 
@@ -463,7 +462,7 @@ class FastSampleGeneratorTest extends SparkSuite with Matchers with BeforeAndAft
     Files.writeString(planFile, planContent)
 
     try {
-      val result = FastSampleGenerator.generateFromPlanStep("test-plan", "test_task", "test_task", 5, true)
+      val result = FastSampleGenerator.generateFromPlanStep("test-plan", "test_task", "test_task", Some(5), true)
 
       result.isRight shouldBe true
       val (step, responseWithDf) = result.right.get
@@ -519,7 +518,7 @@ class FastSampleGeneratorTest extends SparkSuite with Matchers with BeforeAndAft
     Files.writeString(planFile, planContent)
 
     try {
-      val result = FastSampleGenerator.generateFromPlanTask("multi-step-plan", "csv_task", 3, true)
+      val result = FastSampleGenerator.generateFromPlanTask("multi-step-plan", "csv_task", Some(3), true)
 
       result.isRight shouldBe true
       val samples = result.right.get
@@ -586,7 +585,7 @@ class FastSampleGeneratorTest extends SparkSuite with Matchers with BeforeAndAft
     Files.writeString(planFile, planContent)
 
     try {
-      val result = FastSampleGenerator.generateFromPlan("full-plan", 2, true)
+      val result = FastSampleGenerator.generateFromPlan("full-plan", Some(2), true)
 
       result.isRight shouldBe true
       val samples = result.right.get
@@ -608,7 +607,7 @@ class FastSampleGeneratorTest extends SparkSuite with Matchers with BeforeAndAft
   }
 
   test("FastSampleGenerator handle missing plan gracefully") {
-    val result = FastSampleGenerator.generateFromPlan("nonexistent-plan", 5, true)
+    val result = FastSampleGenerator.generateFromPlan("nonexistent-plan", Some(5), true)
 
     result.isLeft shouldBe true
     val error = result.left.get
@@ -647,7 +646,7 @@ class FastSampleGeneratorTest extends SparkSuite with Matchers with BeforeAndAft
     Files.writeString(planFile, planContent)
 
     try {
-      val result = FastSampleGenerator.generateFromPlanStep("error-test-plan", "nonexistent_task", "step", 5, true)
+      val result = FastSampleGenerator.generateFromPlanStep("error-test-plan", "nonexistent_task", "step", Some(5), true)
 
       result.isLeft shouldBe true
       val error = result.left.get
@@ -764,7 +763,7 @@ class FastSampleGeneratorTest extends SparkSuite with Matchers with BeforeAndAft
 
     try {
       // Test 1: Generate from plan with relationships enabled
-      val planResult = FastSampleGenerator.generateFromPlan("foreign_key_test_plan", 5, fastMode = true, enableRelationships = true,
+      val planResult = FastSampleGenerator.generateFromPlan("foreign_key_test_plan", Some(5), fastMode = true, enableRelationships = true,
         planDirectory = Some(planDir.toString), taskDirectory = Some(taskDir.toString))
 
       planResult.isRight shouldBe true
@@ -803,7 +802,7 @@ class FastSampleGeneratorTest extends SparkSuite with Matchers with BeforeAndAft
       }
 
       // Test 2: Generate from task with relationships enabled
-      val taskResult = FastSampleGenerator.generateFromPlanTask("foreign_key_test_plan", "transactions_task", 3, fastMode = true, enableRelationships = true,
+      val taskResult = FastSampleGenerator.generateFromPlanTask("foreign_key_test_plan", "transactions_task", Some(3), fastMode = true, enableRelationships = true,
         planDirectory = Some(planDir.toString), taskDirectory = Some(taskDir.toString))
 
       taskResult.isRight shouldBe true
@@ -907,7 +906,7 @@ class FastSampleGeneratorTest extends SparkSuite with Matchers with BeforeAndAft
 
     try {
       // Generate samples with relationships disabled
-      val planResult = FastSampleGenerator.generateFromPlan("no_relationships_test_plan", 3, fastMode = true, enableRelationships = false,
+      val planResult = FastSampleGenerator.generateFromPlan("no_relationships_test_plan", Some(3), fastMode = true, enableRelationships = false,
         planDirectory = Some(planDir.toString), taskDirectory = Some(taskDir.toString))
 
       planResult.isRight shouldBe true
@@ -1001,7 +1000,7 @@ class FastSampleGeneratorTest extends SparkSuite with Matchers with BeforeAndAft
 
     try {
       // Test step-level generation - relationships should NOT be applied even if plan has them
-      val stepResult = FastSampleGenerator.generateFromPlanStep("step_level_test_plan", "accounts_task", "accounts", 3, fastMode = true,
+      val stepResult = FastSampleGenerator.generateFromPlanStep("step_level_test_plan", "accounts_task", "accounts", Some(3), fastMode = true,
         planDirectory = Some(planDir.toString), taskDirectory = Some(taskDir.toString))
 
       stepResult.isRight shouldBe true
@@ -1014,7 +1013,7 @@ class FastSampleGeneratorTest extends SparkSuite with Matchers with BeforeAndAft
       response.response.metadata.get.relationshipsEnabled shouldBe false
 
       // Test generateFromStepName - also should not use relationships
-      val stepNameResult = FastSampleGenerator.generateFromStepName("accounts", 3, fastMode = true)
+      val stepNameResult = FastSampleGenerator.generateFromStepName("accounts", Some(3), fastMode = true)
 
       stepNameResult.isRight shouldBe true
       val (_, stepNameResponse) = stepNameResult.right.get
@@ -1143,7 +1142,7 @@ class FastSampleGeneratorTest extends SparkSuite with Matchers with BeforeAndAft
     val (planFile, taskFiles) = createTestFiles(planContent, "complex_fk_test_plan", taskContents)
 
     try {
-      val planResult = FastSampleGenerator.generateFromPlan("complex_fk_test_plan", 3, fastMode = false, enableRelationships = true,
+      val planResult = FastSampleGenerator.generateFromPlan("complex_fk_test_plan", Some(3), fastMode = false, enableRelationships = true,
         planDirectory = Some(Paths.get(s"$INSTALL_DIRECTORY/plan").toString), taskDirectory = Some(Paths.get(s"$INSTALL_DIRECTORY/task").toString))
 
       planResult.isRight shouldBe true
@@ -1221,7 +1220,7 @@ class FastSampleGeneratorTest extends SparkSuite with Matchers with BeforeAndAft
     val (planFile, taskFiles) = createTestFiles(planContent, "fk_validation_plan", taskContents)
 
     try {
-      val result = FastSampleGenerator.generateFromPlan("fk_validation_plan", 2, fastMode = false, enableRelationships = true,
+      val result = FastSampleGenerator.generateFromPlan("fk_validation_plan", Some(2), fastMode = false, enableRelationships = true,
         planDirectory = Some(Paths.get(s"$INSTALL_DIRECTORY/plan").toString), taskDirectory = Some(Paths.get(s"$INSTALL_DIRECTORY/task").toString))
 
       result.isRight shouldBe true
@@ -1237,6 +1236,104 @@ class FastSampleGeneratorTest extends SparkSuite with Matchers with BeforeAndAft
       accountCustomerIds.foreach { accountCustomerId =>
         customerIds should contain(accountCustomerId)
       }
+    } finally {
+      cleanupFiles(planFile, taskFiles)
+    }
+  }
+
+  test("FastSampleGenerator should cap large step record counts to MAX_SAMPLE_SIZE for HTTP endpoints") {
+    // This test verifies that even if a step has count.records set to a very large value,
+    // the sample endpoint will cap it to MAX_SAMPLE_SIZE (100) to prevent huge HTTP payloads
+    val planContent =
+      """
+        |name: "large_count_plan"
+        |tasks:
+        |  - name: "large_data_task"
+        |    dataSourceName: "large_count_plan"
+        |""".stripMargin
+
+    val taskContents = Map(
+      "large_data_task" ->
+        """
+          |name: "large_data_task"
+          |steps:
+          |  - name: "big_step"
+          |    type: "file"
+          |    options: { format: "json" }
+          |    count: { records: 1000000 }
+          |    fields:
+          |      - name: "id"
+          |        type: "long"
+          |      - name: "name"
+          |        type: "string"
+          |        options: { expression: "#{Name.fullName}" }
+          |""".stripMargin
+    )
+
+    val (planFile, taskFiles) = createTestFiles(planContent, "large_count_plan", taskContents)
+
+    try {
+      // Test with relationships enabled (this path was previously uncapped)
+      val result = FastSampleGenerator.generateFromPlan("large_count_plan", sampleSize = Some(10), fastMode = true, enableRelationships = true,
+        planDirectory = Some(Paths.get(s"$INSTALL_DIRECTORY/plan").toString), taskDirectory = Some(Paths.get(s"$INSTALL_DIRECTORY/task").toString))
+
+      result.isRight shouldBe true
+      val samples = result.right.get
+
+      val bigStepData = samples("large_count_plan/big_step")._2.response.sampleData.get
+
+      // Should be capped to MAX_SAMPLE_SIZE (100) even though step.count.records is 1,000,000
+      bigStepData.size should be <= 100
+      bigStepData.size shouldBe 10 // Should use the requested sampleSize since it's below MAX
+
+      // Verify the data is valid
+      bigStepData.foreach { record =>
+        record should contain key "id"
+        record should contain key "name"
+      }
+    } finally {
+      cleanupFiles(planFile, taskFiles)
+    }
+  }
+
+  test("FastSampleGenerator should respect MAX_SAMPLE_SIZE even when sampleSize parameter exceeds it") {
+    // Verify that requesting a sample size > MAX_SAMPLE_SIZE gets capped
+    val planContent =
+      """
+        |name: "oversized_request_plan"
+        |tasks:
+        |  - name: "test_task"
+        |    dataSourceName: "oversized_request_plan"
+        |""".stripMargin
+
+    val taskContents = Map(
+      "test_task" ->
+        """
+          |name: "test_task"
+          |steps:
+          |  - name: "test_step"
+          |    type: "file"
+          |    options: { format: "json" }
+          |    count: { records: 500 }
+          |    fields:
+          |      - name: "value"
+          |        type: "int"
+          |""".stripMargin
+    )
+
+    val (planFile, taskFiles) = createTestFiles(planContent, "oversized_request_plan", taskContents)
+
+    try {
+      // Request 150 samples, which exceeds MAX_SAMPLE_SIZE (100)
+      val result = FastSampleGenerator.generateFromPlan("oversized_request_plan", sampleSize = Some(150), fastMode = true, enableRelationships = true,
+        planDirectory = Some(Paths.get(s"$INSTALL_DIRECTORY/plan").toString), taskDirectory = Some(Paths.get(s"$INSTALL_DIRECTORY/task").toString))
+
+      result.isRight shouldBe true
+      val samples = result.right.get
+      val testStepData = samples("oversized_request_plan/test_step")._2.response.sampleData.get
+
+      // Should be capped to MAX_SAMPLE_SIZE (100)
+      testStepData.size should be <= 100
     } finally {
       cleanupFiles(planFile, taskFiles)
     }

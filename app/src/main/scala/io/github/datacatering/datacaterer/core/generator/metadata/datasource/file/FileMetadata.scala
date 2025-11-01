@@ -2,7 +2,6 @@ package io.github.datacatering.datacaterer.core.generator.metadata.datasource.fi
 
 import io.github.datacatering.datacaterer.api.model.Constants.{DELTA, FORMAT, PARQUET, PATH}
 import io.github.datacatering.datacaterer.core.generator.metadata.datasource.{DataSourceMetadata, SubDataSourceMetadata}
-import io.github.datacatering.datacaterer.core.plan.PlanProcessor.getClass
 import org.apache.log4j.Logger
 import org.apache.spark.sql.SparkSession
 

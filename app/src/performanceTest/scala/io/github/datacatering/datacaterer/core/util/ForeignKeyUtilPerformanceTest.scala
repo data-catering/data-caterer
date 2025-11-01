@@ -4,13 +4,12 @@ import io.github.datacatering.datacaterer.api.PlanRun
 import io.github.datacatering.datacaterer.core.plan.PlanProcessor
 import io.github.datacatering.datacaterer.core.util.ForeignKeyUtilV2.ForeignKeyConfig
 import org.apache.log4j.Logger
-import org.apache.spark.sql.{DataFrame, Row}
 import org.apache.spark.sql.functions._
 import org.apache.spark.sql.types._
+import org.apache.spark.sql.{DataFrame, Row}
 import org.scalatest.BeforeAndAfterEach
 
 import java.io.File
-import java.nio.file.{Files, Paths}
 import scala.collection.mutable.ListBuffer
 
 /**

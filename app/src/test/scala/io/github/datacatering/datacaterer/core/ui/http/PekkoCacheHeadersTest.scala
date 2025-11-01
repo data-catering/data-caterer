@@ -1,6 +1,6 @@
 package io.github.datacatering.datacaterer.core.ui.http
 
-import org.apache.pekko.http.scaladsl.model.headers.{CacheDirectives, EntityTag, `Cache-Control`, `ETag`, `Last-Modified`, RawHeader}
+import org.apache.pekko.http.scaladsl.model.headers.{CacheDirectives, RawHeader, `Cache-Control`, `Last-Modified`}
 import org.apache.pekko.http.scaladsl.model.{DateTime, HttpHeader, HttpResponse, StatusCodes}
 import org.scalatest.funsuite.AnyFunSuiteLike
 import org.scalatest.matchers.should.Matchers

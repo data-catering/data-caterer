@@ -6,7 +6,7 @@ JAVA_17_OPTS="--add-opens=java.base/java.lang=ALL-UNNAMED --add-opens=java.base/
 DRIVER_MEMORY="${DRIVER_MEMORY:-2g}"
 EXECUTOR_MEMORY="${EXECUTOR_MEMORY:-2g}"
 SPARK_OPTS="$ADDITIONAL_OPTS --conf \"spark.driver.extraJavaOptions=$JAVA_OPTS $JAVA_17_OPTS\" --conf \"spark.executor.extraJavaOptions=$JAVA_OPTS $JAVA_17_OPTS\""
-JAVA_CLASSPATH="/opt/app/jars/*:/opt/app/data-caterer-api.jar:/opt/app/data-caterer.jar"
+JAVA_CLASSPATH="/opt/app/jars/*:/opt/app/data-caterer-api.jar:/opt/app/data-caterer.jar:/opt/app/custom/*"
 
 # Pre and post processor script configuration
 PRE_PROCESSOR_SCRIPT="${PRE_PROCESSOR_SCRIPT:-}"

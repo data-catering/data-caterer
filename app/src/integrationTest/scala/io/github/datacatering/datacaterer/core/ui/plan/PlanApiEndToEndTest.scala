@@ -8,11 +8,9 @@ import org.scalatest.BeforeAndAfterAll
 import org.scalatest.funsuite.AnyFunSuite
 import org.scalatest.matchers.should.Matchers
 
-import java.net.http.{HttpClient, HttpRequest, HttpResponse}
 import java.net.URI
+import java.net.http.{HttpClient, HttpRequest, HttpResponse}
 import java.nio.file.{Files, Path, Paths}
-import java.util.stream.Collectors
-import scala.collection.JavaConverters.{asScalaIteratorConverter, collectionAsScalaIterableConverter}
 import scala.concurrent.duration._
 import scala.reflect.io.Directory
 import scala.util.{Failure, Success, Try}
@@ -489,11 +487,12 @@ class PlanApiEndToEndTest extends AnyFunSuite with Matchers with BeforeAndAfterA
 
     response.statusCode() shouldBe 200
     val sampleResponse = objectMapper.readValue(response.body(), classOf[io.github.datacatering.datacaterer.core.ui.model.MultiSchemaSampleResponse])
-    
+
     sampleResponse.success shouldBe true
     sampleResponse.samples should not be empty
     sampleResponse.executionId should not be empty
   }
+
 
   test("GET /sample/plans/{planName}/tasks/{taskName} - should generate sample from specific task") {
     val response = get("/sample/plans/e2e_test_plan/tasks/e2e_json_task?sampleSize=5&fastMode=true")
@@ -904,12 +903,12 @@ class PlanApiEndToEndTest extends AnyFunSuite with Matchers with BeforeAndAfterA
     response.statusCode() shouldBe 200
     val bodyContent = response.body()
     bodyContent should not be empty
-    
+
     // Parse the response to validate step2 fields
     if (bodyContent.trim.startsWith("{")) {
       val lines = bodyContent.split("\n").filter(_.trim.nonEmpty)
       lines.length should be >= 1
-      
+
       val firstRecord = objectMapper.readValue(lines.head, classOf[Map[String, Any]])
       firstRecord should contain key "id"
       firstRecord should contain key "value"
@@ -918,6 +917,69 @@ class PlanApiEndToEndTest extends AnyFunSuite with Matchers with BeforeAndAfterA
       fail(s"Unexpected response format: ${bodyContent.take(200)}")
     }
   }
+
+  test("GET /sample/steps/{stepName} - should omit fields marked with omit=true in nested structures") {
+    // Test with payment_data step which has multiple nested omitted fields
+    val response = get("/sample/steps/payment_data?sampleSize=5&fastMode=true")
+
+    response.statusCode() shouldBe 200
+    val bodyContent = response.body()
+    bodyContent should not be empty
+
+    // Should return raw JSON data (one object per line)
+    val lines = bodyContent.split("\n").filter(_.trim.nonEmpty)
+    lines should have length 5
+
+    lines.foreach { line =>
+      val sample = objectMapper.readValue(line, classOf[Map[String, Any]])
+
+      // Top-level fields should be present
+      sample should contain key "transaction_id"
+      sample should contain key "amount"
+      sample should contain key "payment_information"
+      sample should contain key "items"
+
+      // Omitted temp_amount_cents should NOT be present
+      sample should not contain key("temp_amount_cents")
+
+      // Verify nested structure - payment_information
+      val paymentInfo = sample("payment_information")
+      paymentInfo shouldBe a[Map[_, _]]
+      val paymentMap = paymentInfo.asInstanceOf[Map[String, Any]]
+
+      // payment_information should have required fields but not temp_payment_id
+      paymentMap should contain key "payment_id"
+      paymentMap should contain key "payment_method"
+      paymentMap should contain key "cardholder"
+      paymentMap should not contain key("temp_payment_id")
+
+      // Verify cardholder nested structure
+      val cardholder = paymentMap("cardholder")
+      cardholder shouldBe a[Map[_, _]]
+      val cardholderMap = cardholder.asInstanceOf[Map[String, Any]]
+
+      cardholderMap should contain key "name"
+      cardholderMap should contain key "email"
+      cardholderMap should not contain key("temp_internal_id")
+
+      // Verify array structure - items
+      val items = sample("items")
+      items shouldBe a[Seq[_]]
+      val itemsList = items.asInstanceOf[Seq[_]]
+      itemsList should not be empty
+
+      // Each item should have required fields but not temp_processing_flag
+      itemsList.foreach { item =>
+        item shouldBe a[Map[_, _]]
+        val itemMap = item.asInstanceOf[Map[String, Any]]
+
+        itemMap should contain key "description"
+        itemMap should contain key "price"
+        itemMap should not contain key("temp_processing_flag")
+      }
+    }
+  }
+
 
   // ============================================================================
   // Relationship-enabled Sample Generation Tests
@@ -933,7 +995,7 @@ class PlanApiEndToEndTest extends AnyFunSuite with Matchers with BeforeAndAfterA
         Field(name = "created_at", `type` = Some("timestamp"))
       ),
       format = "json",
-      sampleSize = 5,
+      sampleSize = Some(5),
       fastMode = true,
       enableRelationships = true
     )

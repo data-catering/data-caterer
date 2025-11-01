@@ -5,7 +5,7 @@ import io.github.datacatering.datacaterer.api.HttpMethodEnum.HttpMethodEnum
 import io.github.datacatering.datacaterer.api.HttpQueryParameterStyleEnum.HttpQueryParameterStyleEnum
 import io.github.datacatering.datacaterer.api.converter.Converters.{toScalaList, toScalaMap}
 import io.github.datacatering.datacaterer.api.model.Constants._
-import io.github.datacatering.datacaterer.api.model.{ArrayType, Count, DataType, DoubleType, Field, HeaderType, PerFieldCount, Step, StringType, Task, TaskSummary}
+import io.github.datacatering.datacaterer.api.model.{ArrayType, Count, DataType, DoubleType, Field, HeaderType, PerFieldCount, Step, StringType, Task, TaskSummary, TransformationConfig}
 
 import scala.annotation.varargs
 import scala.collection.JavaConverters._
@@ -168,6 +168,88 @@ case class TaskBuilder(task: Task = Task()) {
     )
     this.modify(_.task.steps)(_ ++ List(placeholderStep))
   }
+
+  /**
+   * Configure custom transformation for all steps in this task. Defaults to whole-file mode.
+   * Transformations execute after files are written ("last mile" transformation).
+   * Step-level transformations will override this task-level configuration.
+   *
+   * @param className Fully qualified class name of the transformer
+   * @return TaskBuilder
+   */
+  def transformation(className: String): TaskBuilder =
+    this.modify(_.task.transformation).setTo(Some(TransformationConfig(className = className)))
+
+  /**
+   * Configure per-record transformation for all steps. Transforms each record/line individually.
+   *
+   * @param className  Fully qualified class name of the transformer
+   * @param methodName Method name to invoke (default: "transformRecord")
+   * @return TaskBuilder
+   */
+  def transformationPerRecord(className: String, methodName: String = "transformRecord"): TaskBuilder =
+    this.modify(_.task.transformation).setTo(Some(TransformationConfig(
+      className = className,
+      methodName = methodName,
+      mode = "per-record"
+    )))
+
+  /**
+   * Configure whole-file transformation for all steps. Transforms entire files as units.
+   *
+   * @param className  Fully qualified class name of the transformer
+   * @param methodName Method name to invoke (default: "transformFile")
+   * @return TaskBuilder
+   */
+  def transformationWholeFile(className: String, methodName: String = "transformFile"): TaskBuilder =
+    this.modify(_.task.transformation).setTo(Some(TransformationConfig(
+      className = className,
+      methodName = methodName,
+      mode = "whole-file"
+    )))
+
+  /**
+   * Set output path for transformation. If specified, creates new files instead of replacing originals.
+   *
+   * @param outputPath     Path where transformed output should be written
+   * @param deleteOriginal Whether to delete original files after transformation (default: false)
+   * @return TaskBuilder
+   */
+  def transformationOutput(outputPath: String, deleteOriginal: Boolean = false): TaskBuilder =
+    this.task.transformation match {
+      case Some(config) =>
+        this.modify(_.task.transformation).setTo(Some(config.copy(outputPath = Some(outputPath), deleteOriginal = deleteOriginal)))
+      case None =>
+        this
+    }
+
+  /**
+   * Add options to transformation configuration.
+   *
+   * @param options Options to pass to the transformer
+   * @return TaskBuilder
+   */
+  def transformationOptions(options: Map[String, String]): TaskBuilder =
+    this.task.transformation match {
+      case Some(config) =>
+        this.modify(_.task.transformation).setTo(Some(config.copy(options = config.options ++ options)))
+      case None =>
+        this
+    }
+
+  /**
+   * Explicitly enable or disable transformation for all steps in this task.
+   *
+   * @param enabled Whether transformation is enabled
+   * @return TaskBuilder
+   */
+  def enableTransformation(enabled: Boolean): TaskBuilder =
+    this.task.transformation match {
+      case Some(config) =>
+        this.modify(_.task.transformation).setTo(Some(config.copy(enabled = enabled)))
+      case None =>
+        this
+    }
 }
 
 case class StepBuilder(step: Step = Step(), optValidation: Option[DataSourceValidationBuilder] = None) {
@@ -489,6 +571,87 @@ case class StepBuilder(step: Step = Step(), optValidation: Option[DataSourceVali
    */
   @varargs def excludeFieldPatterns(patterns: String*): StepBuilder =
     this.modify(_.step.options)(_ ++ Map(EXCLUDE_FIELD_PATTERNS -> patterns.mkString(",")))
+
+  /**
+   * Configure custom transformation for this step. Defaults to whole-file mode.
+   * Transformations execute after the file is written ("last mile" transformation).
+   *
+   * @param className Fully qualified class name of the transformer
+   * @return StepBuilder
+   */
+  def transformation(className: String): StepBuilder =
+    this.modify(_.step.transformation).setTo(Some(TransformationConfig(className = className)))
+
+  /**
+   * Configure per-record transformation. Transforms each record/line in the file individually.
+   *
+   * @param className  Fully qualified class name of the transformer
+   * @param methodName Method name to invoke (default: "transformRecord")
+   * @return StepBuilder
+   */
+  def transformationPerRecord(className: String, methodName: String = "transformRecord"): StepBuilder =
+    this.modify(_.step.transformation).setTo(Some(TransformationConfig(
+      className = className,
+      methodName = methodName,
+      mode = "per-record"
+    )))
+
+  /**
+   * Configure whole-file transformation. Transforms the entire file as a unit.
+   *
+   * @param className  Fully qualified class name of the transformer
+   * @param methodName Method name to invoke (default: "transformFile")
+   * @return StepBuilder
+   */
+  def transformationWholeFile(className: String, methodName: String = "transformFile"): StepBuilder =
+    this.modify(_.step.transformation).setTo(Some(TransformationConfig(
+      className = className,
+      methodName = methodName,
+      mode = "whole-file"
+    )))
+
+  /**
+   * Set output path for transformation. If specified, creates a new file instead of replacing the original.
+   *
+   * @param outputPath     Path where transformed output should be written
+   * @param deleteOriginal Whether to delete the original file after transformation (default: false)
+   * @return StepBuilder
+   */
+  def transformationOutput(outputPath: String, deleteOriginal: Boolean = false): StepBuilder =
+    this.step.transformation match {
+      case Some(config) =>
+        this.modify(_.step.transformation).setTo(Some(config.copy(outputPath = Some(outputPath), deleteOriginal = deleteOriginal)))
+      case None =>
+        this
+    }
+
+  /**
+   * Add options to transformation configuration.
+   *
+   * @param options Options to pass to the transformer
+   * @return StepBuilder
+   */
+  def transformationOptions(options: Map[String, String]): StepBuilder =
+    this.step.transformation match {
+      case Some(config) =>
+        this.modify(_.step.transformation).setTo(Some(config.copy(options = config.options ++ options)))
+      case None =>
+        this
+    }
+
+  /**
+   * Explicitly enable or disable transformation for this step.
+   *
+   * @param enabled Whether transformation is enabled
+   * @return StepBuilder
+   */
+  def enableTransformation(enabled: Boolean): StepBuilder =
+    this.step.transformation match {
+      case Some(config) =>
+        this.modify(_.step.transformation).setTo(Some(config.copy(enabled = enabled)))
+      case None =>
+        this
+    }
 
   private def getValidation: DataSourceValidationBuilder = optValidation.getOrElse(DataSourceValidationBuilder())
 }

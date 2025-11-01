@@ -109,6 +109,7 @@ nav:
           - Data Generator: 'docs/generator/data-generator.md'
           - Record Count: 'docs/generator/count.md'
           - Relationships: 'docs/generator/foreign-key.md'
+          - Transformations: 'docs/generator/transformation.md'
       - Validation:
           - 'docs/validation.md'
           - Basic: 'docs/validation/basic-validation.md'
@@ -134,6 +135,7 @@ nav:
           - A year of getting paid from Medium articles: 'use-case/blog/a-year-of-getting-paid-from-medium-articles.md'
           - Shift Left Data Quality: 'use-case/blog/shift-left-data-quality.md'
       - Changelog:
+          - 0.17.2: 'use-case/changelog/0.17.2.md'
           - 0.17.1: 'use-case/changelog/0.17.1.md'
           - 0.17.0: 'use-case/changelog/0.17.0.md'
           - 0.16.11: 'use-case/changelog/0.16.11.md'

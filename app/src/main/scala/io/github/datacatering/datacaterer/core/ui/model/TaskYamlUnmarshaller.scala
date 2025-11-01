@@ -38,7 +38,7 @@ object TaskYamlUnmarshaller {
                 TaskYamlSampleRequest(
                   taskYamlContent = data,
                   stepName = None, // Will be overridden by query parameters
-                  sampleSize = 10, // Will be overridden by query parameters  
+                  sampleSize = None, // Will be overridden by query parameters or use step's count.records
                   fastMode = true // Will be overridden by query parameters
                 )
               }

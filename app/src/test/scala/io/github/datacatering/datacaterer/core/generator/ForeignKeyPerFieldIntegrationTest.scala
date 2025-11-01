@@ -8,7 +8,6 @@ import org.scalatest.BeforeAndAfterEach
 import org.scalatest.matchers.should.Matchers
 
 import java.io.File
-import java.nio.file.Paths
 
 /**
  * Integration test to verify that foreign key + perField count works correctly

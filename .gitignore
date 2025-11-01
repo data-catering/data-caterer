@@ -56,6 +56,7 @@ example/build
 example/.gradle
 example/benchmark/build
 example/benchmark/jars
+.tmp_prev_class_name
 
 *.class
 *.log

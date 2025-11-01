@@ -270,7 +270,15 @@ class BatchDataProcessor(connectionConfigsByName: Map[String, Map[String, String
       val dataSourceName = df._1.split("\\.").head
       val (step, task) = stepAndTaskByDataSourceName(df._1)
       val dataSourceConfig = connectionConfigsByName.getOrElse(dataSourceName, Map())
-      val stepWithDataSourceConfig = step.copy(options = dataSourceConfig ++ step.options)
+
+      // Inherit task-level transformation if step doesn't have one configured
+      val stepWithTaskTransformation = if (step.transformation.isEmpty && task.transformation.isDefined) {
+        step.copy(transformation = task.transformation)
+      } else {
+        step
+      }
+
+      val stepWithDataSourceConfig = stepWithTaskTransformation.copy(options = dataSourceConfig ++ stepWithTaskTransformation.options)
       val stepWithSaveMode = checkSaveMode(batchNum, stepWithDataSourceConfig)
 
       if (flagsConfig.enableRecordTracking) {

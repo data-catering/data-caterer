@@ -6,7 +6,7 @@ RUN addgroup -S app \
     && apk update --no-cache \
     && apk update --no-cache openssl \
     && apk add --no-cache libc6-compat bash \
-    && mkdir -p /opt/app /opt/DataCaterer/connection /opt/DataCaterer/plan /opt/DataCaterer/execution /opt/DataCaterer/report \
+    && mkdir -p /opt/app /opt/app/custom /opt/DataCaterer/connection /opt/DataCaterer/plan /opt/DataCaterer/execution /opt/DataCaterer/report \
     && chown -R app:app /opt/app /opt/DataCaterer/connection /opt/DataCaterer/plan /opt/DataCaterer/execution /opt/DataCaterer/report
 COPY --chown=app:app misc/docker-image app/src/main/resources app/build/libs /opt/app/
 
