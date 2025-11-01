@@ -617,7 +617,93 @@ var config = configuration()
     .slackAlertChannels(List.of("#data-quality", "#alerts"))
 ```
 
-### 10. Advanced Features
+### 10. Custom Transformations
+
+Apply custom logic to generated files after they are written ("last mile" transformation). Useful for converting to custom formats, restructuring data, or applying business-specific transformations.
+
+**Per-Record Transformation** - Transform each line/record individually:
+```java
+var task = csv("my_csv", "/path/to/csv")
+    .fields(
+        field().name("account_id"),
+        field().name("name")
+    )
+    .count(count().records(100))
+    .transformationPerRecord(
+        "com.example.MyPerRecordTransformer",
+        "transformRecord"  // Method name (default: "transformRecord")
+    )
+    .transformationOptions(Map.of(
+        "prefix", "BANK_",
+        "suffix", "_VERIFIED"
+    ));
+```
+
+**Whole-File Transformation** - Transform entire file as a unit:
+```java
+var task = json("my_json", "/path/to/json")
+    .fields(
+        field().name("id"),
+        field().name("data")
+    )
+    .count(count().records(200))
+    .transformationWholeFile(
+        "com.example.JsonArrayWrapperTransformer",
+        "transformFile"  // Method name (default: "transformFile")
+    )
+    .transformationOptions(Map.of("minify", "true"));
+```
+
+**Task-Level Transformation** - Apply to all steps in a task:
+```java
+var myTask = task("my_task", "csv")
+    .transformation("com.example.MyTransformer")  // Defaults to whole-file mode
+    .transformationOptions(Map.of("format", "custom"));
+```
+
+**Custom Output Path** - Save transformed file to different location:
+```java
+var task = csv("my_csv", "/path/to/original")
+    .fields(...)
+    .transformationPerRecord("com.example.Transformer")
+    .transformationOutput(
+        "/path/to/transformed/output.csv",
+        true  // Delete original file after transformation
+    );
+```
+
+**Enable/Disable Transformation**:
+```java
+var task = json("my_json", "/path")
+    .fields(...)
+    .transformationWholeFile("com.example.Transformer")
+    .enableTransformation(Boolean.parseBoolean(
+        System.getenv().getOrDefault("ENABLE_TRANSFORM", "false")
+    ));
+```
+
+**Implementing Transformers**:
+```java
+// Per-Record Transformer
+public class MyPerRecordTransformer {
+    public String transformRecord(String record, Map<String, String> options) {
+        var prefix = options.getOrDefault("prefix", "");
+        var suffix = options.getOrDefault("suffix", "");
+        return prefix + record + suffix;
+    }
+}
+
+// Whole-File Transformer
+public class MyWholeFileTransformer {
+    public void transformFile(String inputPath, String outputPath, Map<String, String> options) {
+        var content = Files.readString(Path.of(inputPath));
+        var transformed = // ... apply transformation ...
+        Files.writeString(Path.of(outputPath), transformed);
+    }
+}
+```
+
+### 11. Advanced Features
 
 **Fast Generation Mode**
 ```java
@@ -648,6 +734,91 @@ var task = csv("partitioned_csv", "/path")
     .fields(...)
     .count(count().records(10000));
 ```
+
+### 12. Delete Generated Data
+
+Clean up test data after use, including downstream data consumed by services/jobs.
+
+**Enable Record Tracking** (during data generation):
+```java
+var config = configuration()
+    .enableRecordTracking(true)
+    .recordTrackingFolderPath("/tmp/record_tracking")
+    .generatedReportsFolderPath("/tmp/reports");
+
+execute(config, tasks...);
+```
+
+**Delete Generated Data**:
+```java
+var deleteConfig = configuration()
+    .enableRecordTracking(true)
+    .enableDeleteGeneratedRecords(true)
+    .enableGenerateData(false)  // Disable generation
+    .recordTrackingFolderPath("/tmp/record_tracking");
+
+execute(deleteConfig, tasks...);
+```
+
+**Delete with Foreign Keys** - Deletes in reverse order:
+```java
+var accounts = postgres("my_postgres", "jdbc:...")
+    .table("public", "accounts")
+    .fields(field().name("account_id"));
+
+var transactions = postgres(accounts)
+    .table("public", "transactions")
+    .fields(field().name("account_id"));
+
+var deletePlan = plan().addForeignKeyRelationship(
+    accounts, List.of("account_id"),
+    List.of(Map.entry(transactions, List.of("account_id")))
+);
+
+var deleteConfig = configuration()
+    .enableRecordTracking(true)
+    .enableDeleteGeneratedRecords(true)
+    .enableGenerateData(false);
+
+execute(deletePlan, deleteConfig, accounts, transactions);
+```
+
+**Delete Downstream Data** - Delete data consumed by services:
+```java
+// Source: Postgres accounts table
+var accounts = postgres("my_postgres", "jdbc:...")
+    .table("public", "accounts")
+    .fields(field().name("account_id"));
+
+// Downstream: Parquet files created by a service
+var downstreamParquet = parquet("downstream", "/path/to/parquet");
+
+// Define deletion relationship
+var deletePlan = plan().addForeignKeyRelationship(
+    accounts, List.of("account_id"),
+    List.of(),  // No generation relationships
+    List.of(Map.entry(downstreamParquet, List.of("account_id")))  // Delete relationships
+);
+
+var deleteConfig = configuration()
+    .enableRecordTracking(true)
+    .enableDeleteGeneratedRecords(true)
+    .enableGenerateData(false);
+
+execute(deletePlan, deleteConfig, accounts);
+```
+
+**Supported Data Sources for Deletion**:
+- JDBC databases (Postgres, MySQL, etc.)
+- Cassandra
+- Files (CSV, JSON, Parquet, ORC, Delta)
+
+**Key Points**:
+- Record tracking must be enabled during generation
+- Same `recordTrackingFolderPath` must be used for both generation and deletion
+- Foreign keys determine deletion order (reverse of insertion)
+- Only tracked records are deleted - manually added data is preserved
+- Can have separate classes for generation vs deletion
 
 ## Common Use Cases
 

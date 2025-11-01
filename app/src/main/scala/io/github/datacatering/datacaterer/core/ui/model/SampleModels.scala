@@ -8,7 +8,7 @@ import org.apache.spark.sql.types.StructType
 case class TaskFileSampleRequest(
   taskYamlPath: String,
   stepName: Option[String] = None,
-  sampleSize: Int = 10,
+  sampleSize: Option[Int] = None,
   fastMode: Boolean = true,
   enableRelationships: Boolean = false
 )
@@ -17,7 +17,7 @@ case class TaskFileSampleRequest(
 case class SchemaSampleRequest(
   fields: List[Field],
   format: String = "json",
-  sampleSize: Int = 10,
+  sampleSize: Option[Int] = None,
   fastMode: Boolean = true,
   enableRelationships: Boolean = false
 )
@@ -26,7 +26,7 @@ case class SchemaSampleRequest(
 case class TaskYamlSampleRequest(
   taskYamlContent: String,
   stepName: Option[String] = None,
-  sampleSize: Int = 10,
+  sampleSize: Option[Int] = None,
   fastMode: Boolean = true,
   enableRelationships: Boolean = false
 )

@@ -1,6 +1,5 @@
 package io.github.datacatering.datacaterer.core.util
 
-import io.github.datacatering.datacaterer.api.model.Constants._
 import io.github.datacatering.datacaterer.api.model._
 import io.github.datacatering.datacaterer.core.util.PlanImplicits._
 import org.scalatest.funsuite.AnyFunSuite

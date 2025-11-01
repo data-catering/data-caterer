@@ -24,8 +24,7 @@ else
   PROP_FILE="$PROP_FILE_LOCAL"
 fi
 
-data_caterer_version="yaml-test"
-#data_caterer_version=$(grep -E "^version=" "$PROP_FILE" | cut -d= -f2)
+data_caterer_version=$(grep -E "^version=" "$PROP_FILE" | cut -d= -f2)
 
 if [[ -s ".tmp_prev_class_name" ]]; then
   prev_class_name=$(cat .tmp_prev_class_name)

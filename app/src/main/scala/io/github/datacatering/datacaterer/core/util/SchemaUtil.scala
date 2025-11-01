@@ -517,35 +517,148 @@ object DataFrameOmitUtil {
   import com.fasterxml.jackson.databind.JsonNode
   import com.fasterxml.jackson.databind.node.ObjectNode
   import io.github.datacatering.datacaterer.api.model.Constants.OMIT
-  import org.apache.spark.sql.DataFrame
   import org.apache.spark.sql.types.{ArrayType, DataType, StructType}
+  import org.apache.spark.sql.{Column, DataFrame}
 
   /**
    * Removes fields marked with omit=true from a DataFrame, including nested fields within structs and arrays.
    * This handles the complete removal of helper/intermediate fields that should not appear in final output.
+   * Uses native Spark column operations for efficient processing.
    *
    * @param df The DataFrame to process
    * @return A new DataFrame with omitted fields removed
    */
-  def removeOmitFields(df: DataFrame): DataFrame = {
+  def removeOmitFields(df: DataFrame)(implicit sparkSession: org.apache.spark.sql.SparkSession): DataFrame = {
     val omittedPaths = collectOmittedPaths(df.schema)
 
     if (omittedPaths.isEmpty) {
       df
     } else {
-      // For simple case with only top-level omitted fields, use direct column selection (more efficient)
-      val hasOnlyTopLevelOmits = omittedPaths.forall(!_.contains("."))
-
-      if (hasOnlyTopLevelOmits) {
-        val columnsToSelect = df.columns.filter(c => !omittedPaths.contains(c))
-          .map(c => if (c.contains(".")) s"`$c`" else c)
-        df.selectExpr(columnsToSelect: _*)
+      // Build column projections that exclude omitted fields
+      val projectedColumns = buildColumnProjections(df.schema, omittedPaths)
+      
+      if (projectedColumns.isEmpty) {
+        // All fields are omitted - return empty DataFrame with no columns
+        df.limit(0).drop(df.columns: _*)
       } else {
-        // For nested omitted fields, we need to process via JSON conversion
-        // This is less efficient but handles all nesting cases correctly
-        df
+        df.select(projectedColumns: _*)
       }
     }
+  }
+  
+  /**
+   * Build column projections that exclude omitted fields.
+   * This recursively rebuilds structs and arrays without omitted fields using native Spark operations.
+   *
+   * @param schema The schema to process
+   * @param omittedPaths Set of paths to omitted fields
+   * @param pathPrefix Current path prefix for recursion
+   * @return List of Column objects that project the schema without omitted fields
+   */
+  private def buildColumnProjections(
+    schema: StructType, 
+    omittedPaths: Set[String], 
+    pathPrefix: String = ""
+  ): Seq[Column] = {
+    import org.apache.spark.sql.functions._
+    
+    schema.fields.flatMap { field =>
+      val fieldPath = if (pathPrefix.isEmpty) field.name else s"$pathPrefix.${field.name}"
+      
+      // Skip if this field is omitted
+      if (omittedPaths.contains(fieldPath)) {
+        None
+      } else {
+        field.dataType match {
+          case structType: StructType =>
+            // Recursively build the struct without omitted nested fields
+            val nestedColumns = buildNestedStructColumns(structType, omittedPaths, fieldPath)
+            if (nestedColumns.isEmpty) {
+              None // All nested fields are omitted
+            } else {
+              val structCols = nestedColumns.map { case (name, colExpr) => colExpr.alias(name) }
+              Some(struct(structCols: _*).alias(field.name))
+            }
+            
+          case ArrayType(elementType: StructType, containsNull) =>
+            // For arrays of structs, use SQL TRANSFORM to rebuild array elements without omitted fields
+            // Note: omitted paths for array elements don't include ".element" - they're at fieldPath.fieldName
+            val nestedColumns = buildNestedStructColumns(elementType, omittedPaths, fieldPath)
+            if (nestedColumns.isEmpty) {
+              None // All nested fields are omitted
+            } else {
+              // Build SQL expression for the transform
+              val transformSql = buildArrayTransformSql(field.name, nestedColumns)
+              Some(expr(transformSql).alias(field.name))
+            }
+            
+          case _ =>
+            // Simple field - just project it
+            Some(col(if (pathPrefix.isEmpty) field.name else fieldPath).alias(field.name))
+        }
+      }
+    }
+  }
+  
+  /**
+   * Build columns for a nested struct, excluding omitted fields.
+   * Returns field name -> Column mappings for the struct fields.
+   */
+  private def buildNestedStructColumns(
+    structType: StructType,
+    omittedPaths: Set[String],
+    basePath: String
+  ): Seq[(String, Column)] = {
+    import org.apache.spark.sql.functions._
+    
+    structType.fields.flatMap { field =>
+      val fieldPath = s"$basePath.${field.name}"
+      
+      if (omittedPaths.contains(fieldPath)) {
+        None
+      } else {
+        field.dataType match {
+          case nestedStruct: StructType =>
+            // Recursively process deeper nested structs
+            val deeperColumns = buildNestedStructColumns(nestedStruct, omittedPaths, fieldPath)
+            if (deeperColumns.isEmpty) {
+              None
+            } else {
+              // Build the struct from the nested columns
+              val nestedStructCols = deeperColumns.map { case (name, colExpr) => colExpr.alias(name) }
+              Some((field.name, struct(nestedStructCols: _*)))
+            }
+            
+          case ArrayType(elementType: StructType, _) =>
+            // Arrays within structs - need to use SQL transform
+            // Note: omitted paths for array elements don't include ".element"
+            val arrayElementFields = buildNestedStructColumns(elementType, omittedPaths, fieldPath)
+            if (arrayElementFields.isEmpty) {
+              None
+            } else {
+              // Build SQL expression for transform
+              val transformSql = buildArrayTransformSql(fieldPath, arrayElementFields)
+              Some((field.name, expr(transformSql)))
+            }
+            
+          case _ =>
+            Some((field.name, col(fieldPath)))
+        }
+      }
+    }
+  }
+  
+  /**
+   * Build an SQL TRANSFORM expression for arrays of structs.
+   * This approach uses SQL strings which is more reliable for nested array transformations.
+   */
+  private def buildArrayTransformSql(arrayPath: String, elementFields: Seq[(String, Column)]): String = {
+    // Build the struct field expressions for the lambda
+    val structFields = elementFields.map { case (name, _) =>
+      s"x.$name AS $name"
+    }.mkString(", ")
+    
+    s"TRANSFORM($arrayPath, x -> struct($structFields))"
   }
 
   /**

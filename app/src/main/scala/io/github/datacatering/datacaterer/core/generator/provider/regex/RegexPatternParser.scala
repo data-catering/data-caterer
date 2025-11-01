@@ -1,7 +1,7 @@
 package io.github.datacatering.datacaterer.core.generator.provider.regex
 
+import scala.util.Try
 import scala.util.parsing.combinator.RegexParsers
-import scala.util.{Failure, Success, Try}
 
 /**
  * Parser for converting regex patterns to AST nodes that can generate SQL.

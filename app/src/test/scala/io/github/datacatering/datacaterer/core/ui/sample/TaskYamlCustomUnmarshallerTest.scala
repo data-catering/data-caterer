@@ -36,11 +36,11 @@ steps:
     val request = TaskYamlSampleRequest(
       taskYamlContent = yamlContent,
       stepName = Some("test_step"),
-      sampleSize = 5,
+      sampleSize = Some(5),
       fastMode = true
     )
 
-    val result = FastSampleGenerator.generateFromTaskYaml(request)
+    val result = FastSampleGenerator.generateFromTaskYamlWithDataFrame(request).response
 
     result.success shouldBe true
     result.sampleData shouldBe defined
@@ -88,11 +88,11 @@ steps:
     val request = TaskYamlSampleRequest(
       taskYamlContent = yamlContent,
       stepName = None,
-      sampleSize = 3,
+      sampleSize = Some(3),
       fastMode = true
     )
 
-    val result = FastSampleGenerator.generateFromTaskYaml(request)
+    val result = FastSampleGenerator.generateFromTaskYamlWithDataFrame(request).response
 
     result.success shouldBe true
     result.sampleData shouldBe defined

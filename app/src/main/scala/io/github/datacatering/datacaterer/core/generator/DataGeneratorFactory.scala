@@ -18,6 +18,7 @@ import org.apache.spark.sql.functions._
 import org.apache.spark.sql.types._
 import org.apache.spark.sql.{DataFrame, SparkSession}
 
+import scala.annotation.tailrec
 import scala.util.Random
 
 
@@ -311,6 +312,7 @@ class DataGeneratorFactory(faker: Faker, enableFastGeneration: Boolean = false)(
   /**
    * Recursively matches path parts, skipping "element" parts in the actual path.
    */
+  @tailrec
   private def matchPathsSkippingElements(actualParts: List[String], userParts: List[String]): Boolean = {
     (actualParts, userParts) match {
       case (Nil, Nil) => true
@@ -367,7 +369,7 @@ class DataGeneratorFactory(faker: Faker, enableFastGeneration: Boolean = false)(
   private def registerSparkFunctions(): Unit = {
     sparkSession.udf.register(GENERATE_REGEX_UDF, UDFHelperFunctions.regex(faker))
     sparkSession.udf.register(GENERATE_FAKER_EXPRESSION_UDF, UDFHelperFunctions.expression(faker))
-    sparkSession.udf.register(GENERATE_RANDOM_ALPHANUMERIC_STRING_UDF, UDFHelperFunctions.alphaNumeric(faker))
+    sparkSession.udf.register(GENERATE_RANDOM_ALPHANUMERIC_STRING_UDF, UDFHelperFunctions.alphaNumeric())
   }
 
   private def attachMetadata(df: DataFrame, structType: StructType): DataFrame = {
@@ -430,7 +432,7 @@ object UDFHelperFunctions extends Serializable {
 
   def expression(faker: Faker): UserDefinedFunction = udf((s: String) => faker.expression(s)).asNondeterministic()
 
-  def alphaNumeric(faker: Faker): UserDefinedFunction = udf((minLength: Int, maxLength: Int) => {
+  def alphaNumeric(): UserDefinedFunction = udf((minLength: Int, maxLength: Int) => {
     val length = RANDOM.nextInt(maxLength + 1) + minLength
     RANDOM.alphanumeric.take(length).mkString("")
   }).asNondeterministic()

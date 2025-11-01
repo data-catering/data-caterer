@@ -5,8 +5,6 @@ import org.scalatest.BeforeAndAfterEach
 import org.scalatest.funsuite.AnyFunSuiteLike
 import org.scalatest.matchers.should.Matchers
 
-import scala.concurrent.duration.DurationInt
-
 class RateLimiterTest extends AnyFunSuiteLike with Matchers with BeforeAndAfterEach {
 
   var rateLimiter: RateLimiter = _

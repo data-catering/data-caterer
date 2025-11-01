@@ -102,6 +102,44 @@ spark-submit \
 - **JAR Name**: Update the `COPY` command in Stage 2 to match your JAR name from `build.gradle.kts`.
 - **Data Caterer Version**: Change `DATA_CATERER_VERSION` to match your required version.
 
+### Including Custom Transformers
+
+If you have custom transformations (see [Transformations documentation](generator/transformation.md)), you can include them in your deployment:
+
+#### Option 1: Volume Mount Custom JARs
+
+Mount your transformer JAR(s) into the `/opt/app/custom` directory:
+
+```shell
+docker run -d \
+  -v /path/to/transformers.jar:/opt/app/custom/transformers.jar \
+  -v /path/to/plan:/opt/DataCaterer/plan \
+  datacatering/data-caterer:0.17.0
+```
+
+#### Option 2: Build Image with Transformers
+
+Include transformers in your custom Docker image:
+
+```dockerfile
+# Stage 1: Build transformers
+FROM gradle:8.11.1-jdk17 AS builder
+WORKDIR /build
+COPY . .
+RUN ./gradlew clean build --no-daemon
+
+# Stage 2: Add to Data Caterer
+ARG DATA_CATERER_VERSION=0.17.0
+FROM datacatering/data-caterer:${DATA_CATERER_VERSION}
+
+# Copy transformer JAR to custom directory (automatically in classpath)
+COPY --from=builder --chown=app:app /build/build/libs/transformers.jar /opt/app/custom/
+```
+
+The `/opt/app/custom` directory is automatically included in the classpath, so any JARs placed there will be available to Data Caterer.
+
+For detailed deployment instructions with transformers, see the [Transformations documentation](generator/transformation.md#deployment-with-custom-transformers).
+
 ### Docker Pre and Post Processing Scripts
 
 Data Caterer supports running custom scripts before and after the main data generation process when deployed via Docker. This is useful for setup tasks, cleanup operations, notifications, or integrating with external systems.

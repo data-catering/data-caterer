@@ -47,7 +47,8 @@ case class TaskSummary(
 
 case class Task(
                  name: String = DEFAULT_TASK_NAME,
-                 steps: List[Step] = List()
+                 steps: List[Step] = List(),
+                 transformation: Option[TransformationConfig] = None
                )
 
 case class Step(
@@ -56,7 +57,8 @@ case class Step(
                  count: Count = Count(),
                  options: Map[String, String] = Map(),
                  fields: List[Field] = List(),
-                 enabled: Boolean = DEFAULT_STEP_ENABLED
+                 enabled: Boolean = DEFAULT_STEP_ENABLED,
+                 transformation: Option[TransformationConfig] = None
                )
 
 case class Count(

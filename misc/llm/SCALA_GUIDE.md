@@ -506,7 +506,91 @@ val accountPlan = plan
 )
 ```
 
-### 8. Metadata Source Integration
+### 8. Custom Transformations
+
+Apply custom logic to generated files after they are written ("last mile" transformation). Useful for converting to custom formats, restructuring data, or applying business-specific transformations.
+
+**Per-Record Transformation** - Transform each line/record individually:
+```scala
+val task = csv("my_csv", "/path/to/csv")
+  .fields(
+    field.name("account_id"),
+    field.name("name")
+  )
+  .count(count.records(100))
+  .transformationPerRecord(
+    "com.example.MyPerRecordTransformer",
+    "transformRecord"  // Method name (default: "transformRecord")
+  )
+  .transformationOptions(Map(
+    "prefix" -> "BANK_",
+    "suffix" -> "_VERIFIED"
+  ))
+```
+
+**Whole-File Transformation** - Transform entire file as a unit:
+```scala
+val task = json("my_json", "/path/to/json")
+  .fields(
+    field.name("id"),
+    field.name("data")
+  )
+  .count(count.records(200))
+  .transformationWholeFile(
+    "com.example.JsonArrayWrapperTransformer",
+    "transformFile"  // Method name (default: "transformFile")
+  )
+  .transformationOptions(Map("minify" -> "true"))
+```
+
+**Task-Level Transformation** - Apply to all steps in a task:
+```scala
+val myTask = task("my_task", "csv")
+  .transformation("com.example.MyTransformer")  // Defaults to whole-file mode
+  .transformationOptions(Map("format" -> "custom"))
+```
+
+**Custom Output Path** - Save transformed file to different location:
+```scala
+val task = csv("my_csv", "/path/to/original")
+  .fields(...)
+  .transformationPerRecord("com.example.Transformer")
+  .transformationOutput(
+    "/path/to/transformed/output.csv",
+    true  // Delete original file after transformation
+  )
+```
+
+**Enable/Disable Transformation**:
+```scala
+val task = json("my_json", "/path")
+  .fields(...)
+  .transformationWholeFile("com.example.Transformer")
+  .enableTransformation(sys.env.getOrElse("ENABLE_TRANSFORM", "false").toBoolean)
+```
+
+**Implementing Transformers**:
+```scala
+// Per-Record Transformer
+class MyPerRecordTransformer {
+  def transformRecord(record: String, options: Map[String, String]): String = {
+    val prefix = options.getOrElse("prefix", "")
+    val suffix = options.getOrElse("suffix", "")
+    s"$prefix$record$suffix"
+  }
+}
+
+// Whole-File Transformer
+class MyWholeFileTransformer {
+  def transformFile(inputPath: String, outputPath: String, options: Map[String, String]): Unit = {
+    val content = scala.io.Source.fromFile(inputPath).mkString
+    val transformed = // ... apply transformation ...
+    java.nio.file.Files.writeString(java.nio.file.Paths.get(outputPath), transformed)
+  }
+}
+```
+
+### 9. Metadata Source Integration
 
 Metadata sources allow you to automatically extract schemas and validations from external systems. Different metadata sources serve different purposes:
 
@@ -758,6 +842,91 @@ val task1 = postgres("conn1", "jdbc:...")
 val task2 = json("conn2", "/path")
   .fields(accountIdField, nameField)
 ```
+
+### 11. Delete Generated Data
+
+Clean up test data after use, including downstream data consumed by services/jobs.
+
+**Enable Record Tracking** (during data generation):
+```scala
+val config = configuration
+  .enableRecordTracking(true)
+  .recordTrackingFolderPath("/tmp/record_tracking")
+  .generatedReportsFolderPath("/tmp/reports")
+
+execute(config, tasks...)
+```
+
+**Delete Generated Data**:
+```scala
+val deleteConfig = configuration
+  .enableRecordTracking(true)
+  .enableDeleteGeneratedRecords(true)
+  .enableGenerateData(false)  // Disable generation
+  .recordTrackingFolderPath("/tmp/record_tracking")
+
+execute(deleteConfig, tasks...)
+```
+
+**Delete with Foreign Keys** - Deletes in reverse order:
+```scala
+val accounts = postgres("my_postgres", "jdbc:...")
+  .table("public.accounts")
+  .fields(field.name("account_id"))
+
+val transactions = postgres(accounts)
+  .table("public.transactions")
+  .fields(field.name("account_id"))
+
+val deletePlan = plan.addForeignKeyRelationship(
+  accounts, "account_id",
+  List(transactions -> "account_id")
+)
+
+val deleteConfig = configuration
+  .enableRecordTracking(true)
+  .enableDeleteGeneratedRecords(true)
+  .enableGenerateData(false)
+
+execute(deletePlan, deleteConfig, accounts, transactions)
+```
+
+**Delete Downstream Data** - Delete data consumed by services:
+```scala
+// Source: Postgres accounts table
+val accounts = postgres("my_postgres", "jdbc:...")
+  .table("public.accounts")
+  .fields(field.name("account_id"))
+
+// Downstream: Parquet files created by a service
+val downstreamParquet = parquet("downstream", "/path/to/parquet")
+
+// Define deletion relationship
+val deletePlan = plan.addForeignKeyRelationship(
+  accounts, "account_id",
+  List(),  // No generation relationships
+  List(downstreamParquet -> "account_id")  // Delete relationships
+)
+
+val deleteConfig = configuration
+  .enableRecordTracking(true)
+  .enableDeleteGeneratedRecords(true)
+  .enableGenerateData(false)
+
+execute(deletePlan, deleteConfig, accounts)
+```
+
+**Supported Data Sources for Deletion**:
+- JDBC databases (Postgres, MySQL, etc.)
+- Cassandra
+- Files (CSV, JSON, Parquet, ORC, Delta)
+
+**Key Points**:
+- Record tracking must be enabled during generation
+- Same `recordTrackingFolderPath` must be used for both generation and deletion
+- Foreign keys determine deletion order (reverse of insertion)
+- Only tracked records are deleted - manually added data is preserved
+- Can have separate classes for generation vs deletion
 
 ## Common Use Cases
 

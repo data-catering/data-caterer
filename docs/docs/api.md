@@ -1121,6 +1121,20 @@ Content-Type: application/json
     }
     ```
 
+    !!! note "Transformation Support"
+    
+        If the step has a [transformation](generator/transformation.md) configured, it will be automatically applied to the sample data before returning. This allows you to preview transformed output through the API.
+        
+        ```yaml
+        # Example step with transformation
+        steps:
+          - name: "transactions"
+            type: "json"
+            transformation:
+              className: "com.example.JsonArrayWrapperTransformer"
+              mode: "whole-file"
+        ```
+
     !!! tip "Direct Step Access"
 
         This endpoint is perfect for:
@@ -1303,6 +1317,10 @@ Content-Type: application/json
     **Parquet/ORC Format** (`Content-Type: application/octet-stream`):
 
     Returns binary data that can be written to a file and read by Spark/other tools.
+    
+    !!! note "Transformation Support"
+    
+        All sample endpoints support [transformations](generator/transformation.md). If a step has a transformation configured, it will be automatically applied before returning the sample data.
 
     **Error Response:** `400 Bad Request`
 

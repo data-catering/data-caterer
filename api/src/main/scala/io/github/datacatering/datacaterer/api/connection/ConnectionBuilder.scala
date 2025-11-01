@@ -294,6 +294,76 @@ trait ConnectionTaskBuilder[T] {
     this
   }
 
+  /**
+   * Configure a transformation to apply to the generated data.
+   * By default, uses whole-file mode with method name "transformFile".
+   *
+   * @param className The fully qualified class name of the transformer
+   * @return The connection task builder
+   */
+  def transformation(className: String): ConnectionTaskBuilder[T] = {
+    this.step = Some(getStep.transformation(className))
+    this
+  }
+
+  /**
+   * Configure a per-record transformation to apply to the generated data.
+   *
+   * @param className  The fully qualified class name of the transformer
+   * @param methodName The method name to invoke (default: "transform")
+   * @return The connection task builder
+   */
+  def transformationPerRecord(className: String, methodName: String = "transform"): ConnectionTaskBuilder[T] = {
+    this.step = Some(getStep.transformationPerRecord(className, methodName))
+    this
+  }
+
+  /**
+   * Configure a whole-file transformation to apply to the generated data.
+   *
+   * @param className  The fully qualified class name of the transformer
+   * @param methodName The method name to invoke (default: "transformFile")
+   * @return The connection task builder
+   */
+  def transformationWholeFile(className: String, methodName: String = "transformFile"): ConnectionTaskBuilder[T] = {
+    this.step = Some(getStep.transformationWholeFile(className, methodName))
+    this
+  }
+
+  /**
+   * Configure the output path and deletion behavior for transformation.
+   *
+   * @param outputPath     The path where the transformed file should be written
+   * @param deleteOriginal Whether to delete the original file after transformation (default: false)
+   * @return The connection task builder
+   */
+  def transformationOutput(outputPath: String, deleteOriginal: Boolean = false): ConnectionTaskBuilder[T] = {
+    this.step = Some(getStep.transformationOutput(outputPath, deleteOriginal))
+    this
+  }
+
+  /**
+   * Add options for the transformation.
+   *
+   * @param options Map of option key-value pairs
+   * @return The connection task builder
+   */
+  def transformationOptions(options: Map[String, String]): ConnectionTaskBuilder[T] = {
+    this.step = Some(getStep.transformationOptions(options))
+    this
+  }
+
+  /**
+   * Enable or disable the transformation.
+   *
+   * @param enabled Whether the transformation should be enabled
+   * @return The connection task builder
+   */
+  def enableTransformation(enabled: Boolean): ConnectionTaskBuilder[T] = {
+    this.step = Some(getStep.enableTransformation(enabled))
+    this
+  }
+
   def toTasksBuilder: Option[TasksBuilder] = {
     val dataSourceName = connectionConfigWithTaskBuilder.dataSourceName
     val format = connectionConfigWithTaskBuilder.options(FORMAT)

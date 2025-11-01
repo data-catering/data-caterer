@@ -1,6 +1,6 @@
 package io.github.datacatering.datacaterer.core.ui.plan
 
-import io.github.datacatering.datacaterer.api.model.Constants.{CONFIG_FLAGS_DELETE_GENERATED_RECORDS, CONFIG_FLAGS_GENERATE_DATA, CONFIG_FLAGS_GENERATE_VALIDATIONS, DATA_CATERER_INTERFACE_UI, DEFAULT_MASTER, DEFAULT_RUNTIME_CONFIG, DRIVER, FORMAT, JDBC, METADATA_SOURCE_NAME, METADATA_SOURCE_TYPE, MYSQL, MYSQL_DRIVER, POSTGRES, POSTGRES_DRIVER}
+import io.github.datacatering.datacaterer.api.model.Constants.{CONFIG_FLAGS_DELETE_GENERATED_RECORDS, CONFIG_FLAGS_GENERATE_DATA, CONFIG_FLAGS_GENERATE_VALIDATIONS, DATA_CATERER_INTERFACE_UI, DRIVER, FORMAT, JDBC, METADATA_SOURCE_NAME, MYSQL, MYSQL_DRIVER, POSTGRES, POSTGRES_DRIVER}
 import io.github.datacatering.datacaterer.api.model.{DataSourceValidation, Field, Plan, Task, ValidationConfiguration, YamlUpstreamDataSourceValidation}
 import io.github.datacatering.datacaterer.api.{DataCatererConfigurationBuilder, ValidationBuilder}
 import io.github.datacatering.datacaterer.core.config.ConfigParser
@@ -13,17 +13,16 @@ import io.github.datacatering.datacaterer.core.ui.config.UiConfiguration.INSTALL
 import io.github.datacatering.datacaterer.core.ui.mapper.ConfigurationMapper.configurationMapping
 import io.github.datacatering.datacaterer.core.ui.model.{ConfigurationRequest, Connection, EnhancedPlanRunRequest, PlanRunExecution, PlanRunRequest, PlanRunRequests, SampleResponse, SchemaSampleRequest}
 import io.github.datacatering.datacaterer.core.ui.plan.PlanResponseHandler.{KO, OK, Response}
-import io.github.datacatering.datacaterer.core.ui.resource.{SparkSessionManager, YamlResourceCache}
+import io.github.datacatering.datacaterer.core.ui.resource.SparkSessionManager
 import io.github.datacatering.datacaterer.core.ui.sample.FastSampleGenerator
 import io.github.datacatering.datacaterer.core.ui.service.{ConnectionService, PlanLoaderService, TaskLoaderService}
-import io.github.datacatering.datacaterer.core.util.{ObjectMapperUtil, SparkProvider}
+import io.github.datacatering.datacaterer.core.util.ObjectMapperUtil
 import org.apache.log4j.Logger
 import org.apache.pekko.actor.typed.scaladsl.Behaviors
 import org.apache.pekko.actor.typed.{ActorRef, Behavior, SupervisorStrategy}
 import org.apache.spark.sql.SparkSession
 import org.joda.time.{DateTime, Seconds}
 
-import java.io.File
 import java.nio.file.{Files, Path, StandardOpenOption}
 import scala.collection.JavaConverters.{asScalaIteratorConverter, iterableAsScalaIterableConverter}
 import scala.concurrent.{ExecutionContext, ExecutionContextExecutor, Future}
@@ -421,7 +420,7 @@ object PlanRepository {
     LOGGER.debug(s"Generating sample from inline fields: ${request.fields.size} fields")
     try {
       implicit val sparkSession: SparkSession = createSparkSession()
-      FastSampleGenerator.generateFromSchema(request)
+      FastSampleGenerator.generateFromSchemaWithDataFrame(request).response
     } catch {
       case ex: Throwable =>
         LOGGER.error(s"Error generating sample from schema", ex)
@@ -451,10 +450,10 @@ object PlanRepository {
             options = Map("min" -> 1L, "max" -> 10L)
           )
         ),
-        sampleSize = 1,
+        sampleSize = Some(1),
         fastMode = true
       )
-      val warmupResult = FastSampleGenerator.generateFromSchema(warmupRequest)
+      val warmupResult = FastSampleGenerator.generateFromSchemaWithDataFrame(warmupRequest).response
       if (warmupResult.success) {
         LOGGER.debug("Data generation pipeline warmed up successfully")
       } else {

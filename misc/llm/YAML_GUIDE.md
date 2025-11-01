@@ -621,6 +621,186 @@ count:
     incremental: 1000000  # Start from 1000000
 ```
 
+### Custom Transformations
+
+Apply custom logic to generated files after they are written ("last mile" transformation).
+
+**Per-Record Transformation** - Transform each line/record individually:
+```yaml
+name: "csv_uppercase_task"
+steps:
+  - name: "accounts"
+    type: "csv"
+    options:
+      path: "/tmp/accounts.csv"
+    count:
+      records: 100
+    fields:
+      - name: "account_id"
+        options:
+          regex: "ACC[0-9]{8}"
+      - name: "name"
+        options:
+          expression: "#{Name.name}"
+    transformation:
+      className: "com.example.MyPerRecordTransformer"
+      methodName: "transformRecord"
+      mode: "per-record"
+      options:
+        prefix: "BANK_"
+        suffix: "_VERIFIED"
+      enabled: true
+```
+
+**Whole-File Transformation** - Transform entire file as a unit:
+```yaml
+name: "json_array_task"
+steps:
+  - name: "transactions"
+    type: "json"
+    options:
+      path: "/tmp/transactions.json"
+    count:
+      records: 200
+    fields:
+      - name: "id"
+        options:
+          regex: "[0-9]{10}"
+      - name: "amount"
+        type: "decimal(10,2)"
+        options:
+          min: 1
+          max: 1000
+    transformation:
+      className: "com.example.JsonArrayWrapperTransformer"
+      methodName: "transformFile"
+      mode: "whole-file"
+      options:
+        minify: "true"
+      enabled: true
+```
+
+**Task-Level Transformation** - Apply to all steps:
+```yaml
+name: "task_with_transformation"
+transformation:
+  className: "com.example.MyTransformer"
+  mode: "whole-file"
+  options:
+    format: "custom"
+  enabled: true
+steps:
+  - name: "data_step"
+    type: "csv"
+    # ... step configuration
+```
+
+**Custom Output Path**:
+```yaml
+transformation:
+  className: "com.example.Transformer"
+  methodName: "transformRecord"
+  mode: "per-record"
+  outputPath: "/tmp/transformed/output.csv"
+  deleteOriginal: true  # Delete original after transformation
+  enabled: true
+```
+
+### Delete Generated Data
+
+Clean up test data after use, including downstream data consumed by services/jobs.
+
+**Configuration for Generation** (enable tracking):
+```yaml
+flags:
+  enableRecordTracking: true
+  enableGenerateData: true
+  enableDeleteGeneratedRecords: false
+
+folders:
+  recordTrackingFolderPath: "/tmp/record_tracking"
+  generatedReportsFolderPath: "/tmp/reports"
+```
+
+**Configuration for Deletion**:
+```yaml
+flags:
+  enableRecordTracking: true
+  enableGenerateData: false
+  enableDeleteGeneratedRecords: true
+
+folders:
+  recordTrackingFolderPath: "/tmp/record_tracking"
+```
+
+**Delete with Foreign Keys** - Deletes in reverse order:
+```yaml
+---
+name: "postgres_data"
+steps:
+  - name: "accounts"
+    type: "postgres"
+    options:
+      dbtable: "public.accounts"
+    fields:
+      - name: "account_id"
+  
+  - name: "transactions"
+    type: "postgres"
+    options:
+      dbtable: "public.transactions"
+    fields:
+      - name: "account_id"
+---
+name: "delete_plan"
+tasks:
+  - name: "postgres_data"
+    dataSourceName: "my_postgres"
+
+sinkOptions:
+  foreignKeys:
+    - source:
+        dataSource: "my_postgres"
+        step: "accounts"
+        fields: ["account_id"]
+      generate:
+        - dataSource: "my_postgres"
+          step: "transactions"
+          fields: ["account_id"]
+```
+
+**Delete Downstream Data** - Delete data consumed by services:
+```yaml
+---
+name: "delete_downstream_plan"
+tasks:
+  - name: "postgres_data"
+    dataSourceName: "my_postgres"
+
+sinkOptions:
+  foreignKeys:
+    - source:
+        dataSource: "my_postgres"
+        step: "accounts"
+        fields: ["account_id"]
+      delete:  # Use "delete" instead of "generate"
+        - dataSource: "downstream_parquet"
+          step: "parquet_data"
+          fields: ["account_id"]
+```
+
+**Supported Data Sources**:
+- JDBC databases (Postgres, MySQL, etc.)
+- Cassandra
+- Files (CSV, JSON, Parquet, ORC, Delta)
+
+**Key Points**:
+- Record tracking must be enabled during generation
+- Same `recordTrackingFolderPath` for both generation and deletion
+- Foreign keys determine deletion order (reverse of insertion)
+- Only tracked records are deleted
+- Can use separate YAML files for generation vs deletion
+
 ## 4. Validation Configuration
 
 Validations can be defined inline with tasks or in separate validation files.
