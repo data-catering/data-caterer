@@ -1,0 +1,129 @@
+table {
+    min-width: 350px;
+}
+
+table, td {
+    border-collapse: collapse;
+    border: 1px solid #000;
+}
+
+thead {
+    display: table; /* to take the same width as tr */
+    width: calc(100% - 17px); /* - 17px because of the scrollbar width */
+}
+
+tbody {
+    display: block; /* to enable vertical scrolling */
+    max-height: 200px; /* e.g. */
+    overflow-y: scroll; /* keeps the scrollbar even if it doesn't need it; display purpose */
+}
+
+th, td {
+    width: 33.33%; /* to enable "word-break: break-all" */
+    padding: 5px;
+}
+
+tr {
+    display: table; /* display purpose; th's border */
+    width: 100%;
+    box-sizing: border-box; /* because of the border (Chrome needs this line, but not FF) */
+}
+
+td {
+    border-bottom: none;
+    border-left: none;
+}
+
+tr {
+    opacity: 0;
+    animation-name: fadeIn;
+    animation-duration: 1.5s;
+    animation-iteration-count: 1;
+    animation-fill-mode: forwards;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+code {
+    margin-block-start: 1em;
+    margin-block-end: 1em;
+}
+
+.all-card-container {
+    width: 350px;
+    max-height: 200px;
+    overflow-y: scroll;
+}
+
+.raw-transaction-container {
+    width: 450px;
+    max-height: 200px;
+    overflow-y: scroll;
+}
+
+.validation-rule-container {
+    display: flex;
+    align-items: center;
+}
+
+.card {
+    box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2);
+    transition: 0.3s;
+    border-radius: 5px;
+    margin: 2px;
+}
+
+.card:hover {
+    box-shadow: 0 8px 16px 0 rgba(0, 0, 0, 0.2);
+}
+
+.card-container {
+    display: flex;
+    padding: 2px 16px;
+
+    opacity: 0;
+    animation-name: fadeIn;
+    animation-duration: 1.5s;
+    animation-iteration-count: 1;
+    animation-fill-mode: forwards;
+}
+
+.description-text {
+    width: 50%;
+    padding-left: 3px;
+}
+
+.category-text {
+    width: 30%;
+    font-size: small;
+}
+
+.amount-text {
+    width: 20%;
+    text-align-last: right;
+}
+
+.card-text {
+    align-content: center;
+}
+
+.card-image {
+    border-radius: 5px 5px 0 0;
+}
+
+.scenario-container {
+    display: inline-flex;
+}
+
+.table-container {
+    width: 50%;
+    padding: 5px;
+}
