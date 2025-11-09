@@ -357,6 +357,7 @@ object PlanImplicits {
   }
 
   implicit class CountOps(count: Count) {
+    private val LOGGER = Logger.getLogger(getClass.getName)
 
     private def hasRecordsAndPerFieldDefined: Boolean = count.records.isDefined && count.perField.isDefined
 
@@ -414,6 +415,28 @@ object PlanImplicits {
       val countOptionsEmpty = count.options.isEmpty
       val countPerFieldOptionsEmpty = count.perField.map(_.options).getOrElse(Map.empty).isEmpty
 
+      // If duration and pattern are configured, calculate records based on pattern type
+      if (count.duration.isDefined && count.pattern.isDefined) {
+        val durationSeconds = parseDurationToSeconds(count.duration.get)
+        val pattern = count.pattern.get
+        val calculatedRecords = calculateRecordsForPattern(pattern, durationSeconds)
+        // If calculateRecordsForPattern returns a negative or zero value, it means the pattern is invalid
+        // In that case, fall back to records field if available
+        if (calculatedRecords > 0) {
+          LOGGER.debug(s"Calculating records from pattern-based config: duration=${count.duration.get}, pattern=${pattern.`type`}, calculated-records=$calculatedRecords")
+          return calculatedRecords
+        }
+      }
+
+      // If duration is configured with rate (no pattern), calculate records from duration * rate
+      if (count.duration.isDefined && count.rate.isDefined) {
+        val durationSeconds = parseDurationToSeconds(count.duration.get)
+        val rate = count.rate.get
+        val calculatedRecords = (durationSeconds * rate).toLong
+        LOGGER.debug(s"Calculating records from duration-based config: duration=${count.duration.get}, rate=$rate/sec, calculated-records=$calculatedRecords")
+        return calculatedRecords
+      }
+
       (count.records, countOptionsEmpty, count.perField, countPerFieldOptionsEmpty) match {
         case (_, false, Some(perCol), false) =>
           perCol.averageCountPerField * averageCount(count.options)
@@ -428,6 +451,71 @@ object PlanImplicits {
         case (Some(t), true, None, true) =>
           t
         case _ => 1000L
+      }
+    }
+
+    /**
+     * Calculate expected number of records for a given load pattern and duration.
+     * Returns -1 if the pattern is invalid/unknown and cannot be calculated.
+     */
+    private def calculateRecordsForPattern(pattern: io.github.datacatering.datacaterer.api.model.LoadPattern, durationSeconds: Long): Long = {
+      pattern.`type`.toLowerCase match {
+        case "ramp" =>
+          // Linear ramp: average rate = (startRate + endRate) / 2
+          val startRate = pattern.startRate.getOrElse(1)
+          val endRate = pattern.endRate.getOrElse(startRate)
+          val averageRate = (startRate + endRate) / 2.0
+          (durationSeconds * averageRate).toLong
+
+        case "wave" =>
+          // Sinusoidal wave: over complete cycles, average = baseRate
+          val baseRate = pattern.baseRate.getOrElse(1)
+          (durationSeconds * baseRate).toLong
+
+        case "stepped" =>
+          // Sum records for each step
+          pattern.steps.map { steps =>
+            steps.map { step =>
+              val stepDurationSeconds = parseDurationToSeconds(step.duration)
+              stepDurationSeconds * step.rate
+            }.sum
+          }.getOrElse(durationSeconds) // Fallback to duration if no steps
+
+        case "spike" =>
+          // Base rate for most of duration, spike rate for spike duration
+          val baseRate = pattern.baseRate.getOrElse(1)
+          val spikeRate = pattern.spikeRate.getOrElse(baseRate)
+          val spikeDurationFraction = pattern.spikeDuration.getOrElse(0.0)
+          val spikeDurationSeconds = (durationSeconds * spikeDurationFraction).toLong
+          val baseDurationSeconds = durationSeconds - spikeDurationSeconds
+          (baseDurationSeconds * baseRate) + (spikeDurationSeconds * spikeRate)
+
+        case "constant" =>
+          // Constant rate: use baseRate if available
+          val rate = pattern.baseRate.orElse(pattern.startRate).getOrElse(1)
+          durationSeconds * rate
+
+        case _ =>
+          // Unknown pattern type: return -1 to signal fallback to records field
+          -1
+      }
+    }
+
+    /**
+     * Parse duration string (e.g., "1s", "10s", "1m") to seconds
+     */
+    private def parseDurationToSeconds(duration: String): Long = {
+      val durationPattern = """(\d+)([smh])""".r
+      duration match {
+        case durationPattern(value, unit) =>
+          val longValue = value.toLong
+          unit match {
+            case "s" => longValue
+            case "m" => longValue * 60
+            case "h" => longValue * 3600
+            case _ => throw new IllegalArgumentException(s"Unsupported duration unit: $unit")
+          }
+        case _ => throw new IllegalArgumentException(s"Invalid duration format: $duration. Expected format: <number><unit> (e.g., '10s', '1m')")
       }
     }
   }

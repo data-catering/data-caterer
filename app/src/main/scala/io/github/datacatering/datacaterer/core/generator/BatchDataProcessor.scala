@@ -1,13 +1,14 @@
 package io.github.datacatering.datacaterer.core.generator
 
-import io.github.datacatering.datacaterer.api.model.Constants.{DEFAULT_ENABLE_GENERATE_DATA, DEFAULT_ENABLE_REFERENCE_MODE, ENABLE_DATA_GENERATION, ENABLE_REFERENCE_MODE, SAVE_MODE}
+import io.github.datacatering.datacaterer.api.model.Constants.{DEFAULT_ENABLE_REFERENCE_MODE, ENABLE_REFERENCE_MODE, SAVE_MODE}
 import io.github.datacatering.datacaterer.api.model.{DataSourceResult, FlagsConfig, FoldersConfig, GenerationConfig, MetadataConfig, Plan, Step, Task, TaskSummary, UpstreamDataSourceValidation, ValidationConfiguration}
 import io.github.datacatering.datacaterer.core.exception.InvalidRandomSeedException
+import io.github.datacatering.datacaterer.core.generator.execution.{DurationBasedExecutionStrategy, ExecutionStrategy, ExecutionStrategyFactory, GenerationMode, PatternBasedExecutionStrategy}
+import io.github.datacatering.datacaterer.core.generator.metrics.PerformanceMetrics
 import io.github.datacatering.datacaterer.core.generator.track.RecordTrackingProcessor
-import io.github.datacatering.datacaterer.core.sink.SinkFactory
+import io.github.datacatering.datacaterer.core.sink.{PekkoStreamingSinkWriter, SinkFactory, SinkRouter, SinkStrategy}
 import io.github.datacatering.datacaterer.core.util.GeneratorUtil.getDataSourceName
-import io.github.datacatering.datacaterer.core.util.RecordCountUtil.calculateNumBatches
-import io.github.datacatering.datacaterer.core.util.{DataSourceReader, ForeignKeyUtil, UniqueFieldsUtil}
+import io.github.datacatering.datacaterer.core.util.{ForeignKeyUtil, RecordCountUtil, StepRecordCount, UniqueFieldsUtil}
 import net.datafaker.Faker
 import org.apache.log4j.Logger
 import org.apache.spark.sql.{DataFrame, SaveMode, SparkSession}
@@ -15,7 +16,6 @@ import org.apache.spark.sql.{DataFrame, SaveMode, SparkSession}
 import java.io.Serializable
 import java.time.{Duration, LocalDateTime}
 import java.util.{Locale, Random}
-import scala.annotation.tailrec
 import scala.util.{Failure, Success, Try}
 
 class BatchDataProcessor(connectionConfigsByName: Map[String, Map[String, String]], foldersConfig: FoldersConfig,
@@ -23,228 +23,292 @@ class BatchDataProcessor(connectionConfigsByName: Map[String, Map[String, String
 
   private val LOGGER = Logger.getLogger(getClass.getName)
   private lazy val sinkFactory = new SinkFactory(flagsConfig, metadataConfig, foldersConfig)
+  private lazy val sinkRouter = new SinkRouter(foldersConfig)
   private lazy val recordTrackingProcessor = new RecordTrackingProcessor(foldersConfig.recordTrackingFolderPath)
   private lazy val validationRecordTrackingProcessor = new RecordTrackingProcessor(foldersConfig.recordTrackingForValidationFolderPath)
-  private lazy val maxRetries = 3
 
   def splitAndProcess(plan: Plan, executableTasks: List[(TaskSummary, Task)], optValidations: Option[List[ValidationConfiguration]])
-                     (implicit sparkSession: SparkSession): List[DataSourceResult] = {
+                     (implicit sparkSession: SparkSession): (List[DataSourceResult], Option[PerformanceMetrics]) = {
     val faker = getDataFaker(plan)
     val dataGeneratorFactory = new DataGeneratorFactory(faker, flagsConfig.enableFastGeneration)
     val uniqueFieldUtil = new UniqueFieldsUtil(plan, executableTasks, flagsConfig.enableUniqueCheckOnlyInBatch, generationConfig)
-    val foreignKeys = plan.sinkOptions.map(_.foreignKeys).getOrElse(List())
-    var (numBatches, trackRecordsPerStep) = calculateNumBatches(foreignKeys, executableTasks, generationConfig)
+    
+    // Create StepDataCoordinator for data generation
+    val stepDataCoordinator = new StepDataCoordinator(dataGeneratorFactory, uniqueFieldUtil, connectionConfigsByName, flagsConfig)
+    
+    // Create execution strategy
+    val executionStrategy = ExecutionStrategyFactory.create(plan, executableTasks, generationConfig)
 
-    def generateDataForStep(batch: Int, task: (TaskSummary, Task), s: Step): (String, DataFrame) = {
-      val isStepEnabledGenerateData = s.options.get(ENABLE_DATA_GENERATION).map(_.toBoolean).getOrElse(DEFAULT_ENABLE_GENERATE_DATA)
-      val isStepEnabledReferenceMode = s.options.get(ENABLE_REFERENCE_MODE).map(_.toBoolean).getOrElse(DEFAULT_ENABLE_REFERENCE_MODE)
-      val dataSourceStepName = getDataSourceName(task._1, s)
-      val dataSourceConfig = connectionConfigsByName.getOrElse(task._1.dataSourceName, Map())
+    // Route to appropriate execution mode based on strategy
+    executionStrategy.getGenerationMode match {
+      case GenerationMode.Batched =>
+        LOGGER.info("Using batched generation mode")
+        executeBatchedGeneration(plan, executableTasks, optValidations, stepDataCoordinator, executionStrategy)
       
-      // Validate configuration
-      if (isStepEnabledReferenceMode && isStepEnabledGenerateData) {
-        throw new IllegalArgumentException(
-          s"Cannot enable both reference mode and data generation for step: ${s.name} in data source: ${task._1.dataSourceName}. " +
-            "Please enable only one mode."
-        )
-      }
-
-      if (isStepEnabledReferenceMode) {
-        LOGGER.info(s"Reading reference data for step, data-source=${task._1.dataSourceName}, step-name=${s.name}")
-
-        try {
-          // Validate reference mode configuration
-          DataSourceReader.validateReferenceMode(s, dataSourceConfig)
-
-          // Read data from the data source
-          val referenceDf = DataSourceReader.readDataFromSource(task._1.dataSourceName, s, dataSourceConfig)
-
-          if (referenceDf.schema.isEmpty) {
-            LOGGER.warn(s"Reference data source has empty schema, data-source=${task._1.dataSourceName}, step-name=${s.name}")
-          }
-
-          val recordCount = if (flagsConfig.enableCount && referenceDf.schema.nonEmpty) {
-            referenceDf.count()
-          } else {
-            -1L  // Count disabled or empty schema
-          }
-
-          if (recordCount == 0) {
-            LOGGER.warn(s"Reference data source contains no records. This may cause issues with foreign key relationships, " +
-              s"data-source=${task._1.dataSourceName}, step-name=${s.name}")
-          } else if (recordCount > 0) {
-            LOGGER.info(s"Successfully loaded reference data, data-source=${task._1.dataSourceName}, step-name=${s.name}, num-records=$recordCount")
-          }
-
-          (dataSourceStepName, referenceDf)
-        } catch {
-          case ex: Exception =>
-            LOGGER.error(s"Failed to read reference data, data-source=${task._1.dataSourceName}, step-name=${s.name}, error=${ex.getMessage}")
-            throw new RuntimeException(s"Failed to read reference data for ${task._1.dataSourceName}.${s.name}: ${ex.getMessage}", ex)
-        }
-      } else if (isStepEnabledGenerateData) {
-        val recordStepName = s"${task._2.name}_${s.name}"
-        val stepRecords = trackRecordsPerStep(recordStepName)
-        val currentExpandedRecords = stepRecords.currentNumRecords
-
-        // Calculate precise number of records for this batch to ensure exact total
-        val adjustedTotalRecords = stepRecords.numTotalRecords / stepRecords.averagePerCol
-        val currentBaseRecords = currentExpandedRecords / stepRecords.averagePerCol
-        val remainingAdjustedRecords = adjustedTotalRecords - currentBaseRecords
-
-        val recordsToGenerate = if (remainingAdjustedRecords <= 0) {
-          0L
-        } else if (stepRecords.remainder > 0 && batch <= stepRecords.remainder) {
-          // First 'remainder' batches get base + 1 records
-          Math.min(stepRecords.baseRecordsPerBatch + 1, remainingAdjustedRecords)
-        } else {
-          // Remaining batches get base records
-          Math.min(stepRecords.baseRecordsPerBatch, remainingAdjustedRecords)
-        }
-
-        // For perField counts, generateDataForStep will expand records via generateRecordsPerField
-        // actualRecordsToGenerate is the target number of final records (after perField expansion)
-        val actualRecordsToGenerate = recordsToGenerate * stepRecords.averagePerCol
-        // startIndex and endIndex are in "base record space" (before perField expansion)
-        val startIndex = currentBaseRecords
-        val endIndex = startIndex + recordsToGenerate
-
-        LOGGER.debug(s"Batch $batch: startIndex=$startIndex, endIndex=$endIndex, recordsToGenerate=$recordsToGenerate, " +
-          s"actualRecordsToGenerate=$actualRecordsToGenerate, remainingAdjustedRecords=$remainingAdjustedRecords, " +
-          s"currentExpandedRecords=$currentExpandedRecords, currentBaseRecords=$currentBaseRecords")
-
-        val genDf = dataGeneratorFactory.generateDataForStep(s, task._1.dataSourceName, startIndex, endIndex)
-        val initialDf = getUniqueGeneratedRecords(uniqueFieldUtil, dataSourceStepName, genDf, s)
-        if (!initialDf.storageLevel.useMemory) initialDf.cache()
-        genDf.unpersist()
-
-        val initialRecordCount = if (flagsConfig.enableCount) initialDf.count() else actualRecordsToGenerate
-        val targetNumRecords = actualRecordsToGenerate
-
-        LOGGER.debug(s"Step record count for batch, batch=$batch, step-name=${s.name}, " +
-          s"target-num-records=$targetNumRecords, actual-num-records=$initialRecordCount, records-to-generate=$recordsToGenerate")
-
-        // if record count doesn't match expected record count, generate more data
-        def generateAdditionalRecords(currentDf: DataFrame, currentRecordCount: Long, currentBaseRecordCount: Long): (DataFrame, Long, Long) = {
-          LOGGER.debug(s"Generating additional records for batch, batch=$batch, step-name=${s.name}, " +
-            s"current-record-count=$currentRecordCount, target-num-records=$targetNumRecords")
-
-          if (currentRecordCount >= targetNumRecords) {
-            LOGGER.debug(s"No additional records needed, current count meets or exceeds target")
-            return (currentDf, currentRecordCount, currentBaseRecordCount)
-          }
-
-          // Calculate how many base records we need to generate to reach target
-          val expandedRecordsNeeded = targetNumRecords - currentRecordCount
-          val baseRecordsNeeded = Math.ceil(expandedRecordsNeeded.toDouble / stepRecords.averagePerCol).toLong
-          val newBaseEndIndex = currentBaseRecordCount + baseRecordsNeeded
-
-          val additionalGenDf = dataGeneratorFactory
-            .generateDataForStep(s, task._1.dataSourceName, currentBaseRecordCount, newBaseEndIndex)
-          val additionalDf = getUniqueGeneratedRecords(uniqueFieldUtil, dataSourceStepName, additionalGenDf, s)
-          if (!additionalDf.storageLevel.useMemory) additionalDf.cache()
-          additionalGenDf.unpersist()
-          val additionalRecordCount = if (flagsConfig.enableCount) additionalDf.count() else 0
-          LOGGER.debug(s"Additional records generated, additional-record-count=$additionalRecordCount")
-
-          // Only union if we actually generated additional records
-          val (newDf, newRecordCount, newBaseRecordCount) = if (additionalRecordCount > 0) {
-            val unionDf = currentDf.union(additionalDf)
-            val finalCount = unionDf.count()
-            additionalDf.unpersist()
-            (unionDf, finalCount, newBaseEndIndex)
-          } else {
-            // No additional records were generated, return current DataFrame as-is
-            additionalDf.unpersist()
-            (currentDf, currentRecordCount, currentBaseRecordCount)
-          }
-
-          LOGGER.debug(s"Generated more records for step, batch=$batch, step-name=${s.name}, " +
-            s"new-num-records=$additionalRecordCount, actual-num-records=$newRecordCount, current-df-count=${currentDf.count()}")
-          (newDf, newRecordCount, newBaseRecordCount)
-        }
-
-        // Recursive function to generate additional records
-        @tailrec
-        def generateRecordsRecursively(currentDf: DataFrame, currentRecordCount: Long, currentBaseRecordCount: Long, retries: Int): (DataFrame, Long) = {
-          LOGGER.debug(s"Record count does not reach expected num records for batch, generating more records until reached, " +
-            s"target-num-records=$targetNumRecords, actual-num-records=$currentRecordCount, num-retries=$retries, max-retries=$maxRetries")
-          if (targetNumRecords == currentRecordCount || retries >= maxRetries) {
-            (currentDf, currentRecordCount)
-          } else {
-            val (newDf, newRecordCount, newBaseRecordCount) = generateAdditionalRecords(currentDf, currentRecordCount, currentBaseRecordCount)
-            generateRecordsRecursively(newDf, newRecordCount, newBaseRecordCount, retries + 1)
-          }
-        }
-
-        //if random amount of records, don't try to regenerate more records
-        val (finalDf, finalRecordCount) = if (s.count.options.isEmpty && s.count.perField.forall(_.options.isEmpty)) {
-          generateRecordsRecursively(initialDf, initialRecordCount, endIndex, 0)
-        } else {
-          LOGGER.debug("Random amount of records generated, not attempting to generate more records")
-          (initialDf, initialRecordCount)
-        }
-
-        if (targetNumRecords != finalRecordCount && s.count.options.isEmpty && s.count.perField.forall(_.options.isEmpty)) {
-          LOGGER.warn("Unable to reach expected number of records due to reaching max retries. " +
-            s"Can be due to limited number of potential unique records, " +
-            s"target-num-records=$targetNumRecords, actual-num-records=$finalRecordCount")
-        }
-
-        trackRecordsPerStep = trackRecordsPerStep ++ Map(recordStepName -> stepRecords.copy(currentNumRecords = stepRecords.currentNumRecords + finalRecordCount))
-        (dataSourceStepName, finalDf)
-      } else {
-        LOGGER.debug(s"Step has both data generation and reference mode disabled, data-source=${task._1.dataSourceName}, step-name=${s.name}")
-        (dataSourceStepName, sparkSession.emptyDataFrame)
-      }
+      case GenerationMode.AllUpfront =>
+        LOGGER.info("Using all-upfront generation mode for streaming execution")
+        executeAllUpfrontGeneration(plan, executableTasks, optValidations, stepDataCoordinator, executionStrategy)
+      
+      case GenerationMode.Progressive =>
+        LOGGER.warn("Progressive generation mode not yet implemented, falling back to batched mode")
+        executeBatchedGeneration(plan, executableTasks, optValidations, stepDataCoordinator, executionStrategy)
     }
+  }
 
-    val dataSourceResults = (1 to numBatches).flatMap(batch => {
+  /**
+   * Execute data generation in batched mode (original behavior).
+   * Generates data incrementally per batch and writes to sinks after each batch.
+   */
+  private def executeBatchedGeneration(
+    plan: Plan,
+    executableTasks: List[(TaskSummary, Task)],
+    optValidations: Option[List[ValidationConfiguration]],
+    stepDataCoordinator: StepDataCoordinator,
+    executionStrategy: ExecutionStrategy
+  )(implicit sparkSession: SparkSession): (List[DataSourceResult], Option[PerformanceMetrics]) = {
+    val foreignKeys = plan.sinkOptions.map(_.foreignKeys).getOrElse(List())
+    var (numBatches, trackRecordsPerStep) = RecordCountUtil.calculateNumBatches(foreignKeys, executableTasks, generationConfig)
+
+    var currentBatch = 1
+    var dataSourceResults = List[DataSourceResult]()
+
+    while (executionStrategy.shouldContinue(currentBatch)) {
       val startTime = LocalDateTime.now()
-      LOGGER.info(s"Starting batch, batch=$batch, num-batches=$numBatches")
-      val generatedDataForeachTask = executableTasks.flatMap(task => {
-        task._2.steps.filter(_.enabled).map(s => {
-          LOGGER.debug(s"Generating data for step, task-name=${task._1.name}, step-name=${s.name}, data-source-name=${task._1.dataSourceName}")
-          try {
-            generateDataForStep(batch, task, s)
-          } catch {
-            case ex: Exception =>
-              LOGGER.error(s"Failed to generate data for step, task-name=${task._1.name}, step-name=${s.name}, data-source-name=${task._1.dataSourceName}")
-              throw ex
-          }
-        })
-      })
+      executionStrategy.onBatchStart(currentBatch)
 
+      LOGGER.info(s"Starting batch, batch=$currentBatch")
+      
+      // Generate data for each task/step
+      val (generatedDataForeachTask, updatedTrackRecords) = executableTasks.foldLeft((List[(String, DataFrame)](), trackRecordsPerStep)) {
+        case ((accData, accTracking), task) =>
+          val (taskData, updatedTaskTracking) = task._2.steps.filter(_.enabled).foldLeft((List[(String, DataFrame)](), accTracking)) {
+            case ((stepAccData, stepAccTracking), step) =>
+              LOGGER.debug(s"Generating data for step, task-name=${task._1.name}, step-name=${step.name}, data-source-name=${task._1.dataSourceName}")
+              try {
+                val recordStepName = s"${task._2.name}_${step.name}"
+                val stepRecords = stepAccTracking.getOrElse(recordStepName, StepRecordCount(0, 0, 0))
+                val (dataSourceStepName, df, updatedStepRecords) = stepDataCoordinator.generateForStep(currentBatch, task, step, stepRecords)
+                val newStepAccData = stepAccData :+ (dataSourceStepName, df)
+                val newStepAccTracking = stepAccTracking + (recordStepName -> updatedStepRecords)
+                (newStepAccData, newStepAccTracking)
+              } catch {
+                case ex: Exception =>
+                  LOGGER.error(s"Failed to generate data for step, task-name=${task._1.name}, step-name=${step.name}, data-source-name=${task._1.dataSourceName}")
+                  throw ex
+              }
+          }
+          (accData ++ taskData, updatedTaskTracking)
+      }
+      
+      trackRecordsPerStep = updatedTrackRecords
+
+      // Apply foreign key relationships
       val sinkDf = plan.sinkOptions
         .map(_ => ForeignKeyUtil.getDataFramesWithForeignKeys(plan, generatedDataForeachTask, flagsConfig.enableForeignKeyV2, Some(executableTasks)))
         .getOrElse(generatedDataForeachTask)
-      val sinkResults = pushDataToSinks(plan, executableTasks, sinkDf, batch, numBatches, startTime, optValidations)
+
+      val totalRecordsGenerated = if (flagsConfig.enableCount) {
+        sinkDf.map(_._2.count()).sum
+      } else {
+        0L
+      }
+
+      val sinkResults = pushDataToSinks(plan, executableTasks, sinkDf, currentBatch, numBatches, startTime, optValidations, executionStrategy)
+      dataSourceResults = dataSourceResults ++ sinkResults
+
       sinkDf.foreach(_._2.unpersist())
       sparkSession.sparkContext.getPersistentRDDs.foreach { case (_, rdd) => rdd.unpersist() }
+
       val endTime = LocalDateTime.now()
       val timeTakenMs = Duration.between(startTime, endTime).toMillis
-      LOGGER.info(s"Finished batch, batch=$batch, num-batches=$numBatches, time-taken-ms=$timeTakenMs")
-      sinkResults
-    }).toList
+      executionStrategy.onBatchEnd(currentBatch, totalRecordsGenerated)
 
-    LOGGER.debug(s"Completed all batches, num-batches=$numBatches")
-    
+      LOGGER.info(s"Finished batch, batch=$currentBatch, time-taken-ms=$timeTakenMs, records-generated=$totalRecordsGenerated")
+      currentBatch += 1
+    }
+
+    LOGGER.info(s"Completed all batches, total-batches=${currentBatch - 1}")
+
     // Finalize any pending consolidations for multi-batch scenarios
     sinkFactory.finalizePendingConsolidations()
-    
-    uniqueFieldUtil.cleanup()
-    dataSourceResults
+
+    (dataSourceResults, executionStrategy.getMetrics)
   }
 
+  /**
+   * Execute data generation with all-upfront mode.
+   * Generates all data upfront, then streams to sinks with rate control.
+   */
+  private def executeAllUpfrontGeneration(
+    plan: Plan,
+    executableTasks: List[(TaskSummary, Task)],
+    optValidations: Option[List[ValidationConfiguration]],
+    stepDataCoordinator: StepDataCoordinator,
+    executionStrategy: ExecutionStrategy
+  )(implicit sparkSession: SparkSession): (List[DataSourceResult], Option[PerformanceMetrics]) = {
+    val startTime = LocalDateTime.now()
+    
+    // Extract streaming config from duration-based strategy
+    val (durationSeconds, rate) = executionStrategy match {
+      case dbs: DurationBasedExecutionStrategy =>
+        (dbs.getDurationSeconds, dbs.getTargetRate.getOrElse(1))
+      case _ =>
+        throw new IllegalStateException("AllUpfront generation mode requires DurationBasedExecutionStrategy with rate configured")
+    }
+
+    LOGGER.info(s"Starting all-upfront data generation for streaming: duration=${durationSeconds}s, rate=$rate/sec")
+
+    // Generate all data upfront and save to temp storage for progressive loading
+    val generatedDataWithPaths = executableTasks.flatMap { task =>
+      task._2.steps.filter(_.enabled).map { step =>
+        val dataSourceStepName = getDataSourceName(task._1, step)
+        val isReferenceMode = step.options.get(ENABLE_REFERENCE_MODE).map(_.toBoolean).getOrElse(DEFAULT_ENABLE_REFERENCE_MODE)
+
+        if (isReferenceMode) {
+          // Reference mode: read existing data
+          LOGGER.info(s"Reading reference data for streaming, data-source=${task._1.dataSourceName}, step-name=${step.name}")
+          val referenceDf = stepDataCoordinator.readReferenceData(task, step)
+          (dataSourceStepName, referenceDf, None) // No temp path for reference data
+        } else {
+          // Generate data
+          LOGGER.info(s"Generating data for streaming, data-source=${task._1.dataSourceName}, step-name=${step.name}")
+          
+          // Calculate total records to generate based on duration and rate
+          val totalRecords: Long = durationSeconds * rate.toLong
+          LOGGER.info(s"Generating $totalRecords records for streaming (${durationSeconds}s @ ${rate}/sec)")
+          
+          val genDf = stepDataCoordinator.generateAllUpfront(task, step, totalRecords)
+          
+          // Save to temp storage to avoid keeping all data in memory
+          val tempPath = s"${foldersConfig.generatedReportsFolderPath}/streaming-temp-${java.util.UUID.randomUUID()}"
+          LOGGER.info(s"Saving pre-generated data to temp storage, path=$tempPath, records=$totalRecords")
+          genDf.write.mode(SaveMode.Overwrite).parquet(tempPath)
+          
+          // Read back for use (will be progressively loaded during streaming)
+          val savedDf = sparkSession.read.parquet(tempPath)
+          
+          (dataSourceStepName, savedDf, Some(tempPath))
+        }
+      }
+    }
+
+    // Apply foreign key relationships if configured
+    val sinkDf = plan.sinkOptions
+      .map(_ => ForeignKeyUtil.getDataFramesWithForeignKeys(plan, generatedDataWithPaths.map(t => (t._1, t._2)), flagsConfig.enableForeignKeyV2, Some(executableTasks)))
+      .getOrElse(generatedDataWithPaths.map(t => (t._1, t._2)))
+
+    // Route to appropriate sink writers based on format and configuration
+    val dataSourceResults = routeAndPushToSinks(sinkDf, plan, executableTasks, startTime, optValidations, executionStrategy, generatedDataWithPaths.map(_._3))
+
+    // Cleanup temp storage
+    generatedDataWithPaths.foreach { case (_, df, optTempPath) =>
+      df.unpersist()
+      optTempPath.foreach { tempPath =>
+        try {
+          import org.apache.hadoop.fs.Path
+          val fs = org.apache.hadoop.fs.FileSystem.get(sparkSession.sparkContext.hadoopConfiguration)
+          fs.delete(new Path(tempPath), true)
+          LOGGER.debug(s"Cleaned up temp storage, path=$tempPath")
+        } catch {
+          case ex: Exception => LOGGER.warn(s"Failed to cleanup temp storage, path=$tempPath, error=${ex.getMessage}")
+        }
+      }
+    }
+
+    val metrics = executionStrategy.getMetrics
+    LOGGER.info(s"All-upfront generation completed, total-results=${dataSourceResults.size}")
+    
+    (dataSourceResults, metrics)
+  }
+
+  /**
+   * Route data to appropriate sink writers based on format, generation mode, and configuration.
+   */
+  private def routeAndPushToSinks(
+    generatedData: List[(String, DataFrame)],
+    plan: Plan,
+    executableTasks: List[(TaskSummary, Task)],
+    startTime: LocalDateTime,
+    optValidations: Option[List[ValidationConfiguration]],
+    executionStrategy: ExecutionStrategy,
+    tempPaths: List[Option[String]]
+  )(implicit sparkSession: SparkSession): List[DataSourceResult] = {
+    val stepAndTaskByDataSourceName = executableTasks.flatMap(task =>
+      task._2.steps.map(s => (getDataSourceName(task._1, s), (s, task._2)))
+    ).toMap
+    
+    val dataSourcesUsedInValidation = getDataSourcesUsedInValidation(optValidations)
+    val pekkoStreamingWriter = new PekkoStreamingSinkWriter(foldersConfig)
+
+    generatedData.flatMap { case (dataSourceStepName, df) =>
+      val dataSourceName = dataSourceStepName.split("\\.").head
+      val (step, task) = stepAndTaskByDataSourceName(dataSourceStepName)
+      val dataSourceConfig = connectionConfigsByName.getOrElse(dataSourceName, Map())
+      
+      // Skip reference mode steps - they should not be saved to sinks
+      val isReferenceMode = step.options.get(ENABLE_REFERENCE_MODE).map(_.toBoolean).getOrElse(DEFAULT_ENABLE_REFERENCE_MODE)
+      if (isReferenceMode) {
+        LOGGER.debug(s"Skipping save for reference data source, data-source=$dataSourceName, step-name=${step.name}")
+        None
+      } else {
+        val stepWithConfig = step.copy(options = dataSourceConfig ++ step.options)
+        val format = stepWithConfig.options.getOrElse("format", throw new IllegalArgumentException(s"No format specified for $dataSourceName"))
+        
+        // Add rate information to options for router decision
+        val optionsWithRate = executionStrategy match {
+          case dbs: DurationBasedExecutionStrategy if dbs.getTargetRate.isDefined =>
+            stepWithConfig.options + ("hasRateControl" -> "true")
+          case pbs: PatternBasedExecutionStrategy =>
+            stepWithConfig.options + ("hasRateControl" -> "true")
+          case _ => stepWithConfig.options
+        }
+        
+        // Determine sink strategy using router
+        val sinkStrategy = sinkRouter.determineSinkStrategy(format, executionStrategy.getGenerationMode, optionsWithRate)
+        
+        LOGGER.info(s"Routing to sink, data-source=$dataSourceName, format=$format, strategy=$sinkStrategy")
+        
+        // Apply record tracking if enabled
+        if (flagsConfig.enableRecordTracking) {
+          recordTrackingProcessor.trackRecords(df, dataSourceName, plan.name, stepWithConfig)
+        }
+        if (dataSourcesUsedInValidation.contains(dataSourceName)) {
+          validationRecordTrackingProcessor.trackRecords(df, dataSourceName, plan.name, stepWithConfig)
+        }
+        
+        val sinkResult = sinkStrategy match {
+          case SinkStrategy.BatchSink =>
+            // Use standard batch writer
+            sinkFactory.pushToSink(df, dataSourceName, stepWithConfig, startTime, isMultiBatch = false, isLastBatch = true)
+          
+          case SinkStrategy.StreamingSink =>
+            // Use Pekko streaming writer with rate control
+            val rate = executionStrategy match {
+              case dbs: DurationBasedExecutionStrategy => dbs.getTargetRate.getOrElse(1)
+              case _ => 1
+            }
+            pekkoStreamingWriter.saveWithRateControl(dataSourceName, df, format, dataSourceConfig, stepWithConfig, rate, startTime)
+        }
+        
+        Some(DataSourceResult(dataSourceName, task, stepWithConfig, sinkResult, 1))
+      }
+    }
+  }
+
+  /**
+   * Push data to sinks for batched generation mode.
+   * This is the original pushDataToSinks method for batch-by-batch execution.
+   */
   private def pushDataToSinks(
-                               plan: Plan,
-                               executableTasks: List[(TaskSummary, Task)],
-                               sinkDf: List[(String, DataFrame)],
-                               batchNum: Int,
-                               numBatches: Int,
-                               startTime: LocalDateTime,
-                               optValidations: Option[List[ValidationConfiguration]]
-                             ): List[DataSourceResult] = {
+    plan: Plan,
+    executableTasks: List[(TaskSummary, Task)],
+    sinkDf: List[(String, DataFrame)],
+    batchNum: Int,
+    numBatches: Int,
+    startTime: LocalDateTime,
+    optValidations: Option[List[ValidationConfiguration]],
+    executionStrategy: ExecutionStrategy
+  ): List[DataSourceResult] = {
     val stepAndTaskByDataSourceName = executableTasks.flatMap(task =>
       task._2.steps.map(s => (getDataSourceName(task._1, s), (s, task._2)))
     ).toMap

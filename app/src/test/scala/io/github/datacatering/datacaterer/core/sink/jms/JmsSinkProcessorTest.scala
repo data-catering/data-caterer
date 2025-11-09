@@ -37,7 +37,7 @@ class JmsSinkProcessorTest extends SparkSuite with MockFactory {
   test("Push value as a basic text message") {
     val mockSession = mock[Session]
     val mockMessageProducer = mock[MessageProducer]
-    val jmsSinkProcessor = JmsSinkProcessor.createConnections(mockMessageProducer, mockSession, mockConnection, step)
+    val jmsSinkProcessor = new JmsSinkProcessor().createConnections(mockMessageProducer, mockSession, mockConnection, step)
 
     val mockRow = new GenericRowWithSchema(Array("some_value", "url", 4), baseStruct)
     val mockMessage = mock[TestTextMessage]
@@ -51,7 +51,7 @@ class JmsSinkProcessorTest extends SparkSuite with MockFactory {
     val fields = basicFields ++ List(Field(REAL_TIME_PARTITION_FIELD))
     val mockSession = mock[Session]
     val mockMessageProducer = mock[MessageProducer]
-    val jmsSinkProcessor = JmsSinkProcessor.createConnections(mockMessageProducer, mockSession, mockConnection, step.copy(fields = fields))
+    val jmsSinkProcessor = new JmsSinkProcessor().createConnections(mockMessageProducer, mockSession, mockConnection, step.copy(fields = fields))
 
     val mockRow = new GenericRowWithSchema(Array("some_value", "url", 1), baseStruct)
     val mockMessage = mock[TestTextMessage]
@@ -65,7 +65,7 @@ class JmsSinkProcessorTest extends SparkSuite with MockFactory {
     val fields = basicFields ++ List(Field(REAL_TIME_HEADERS_FIELD))
     val mockSession = mock[Session]
     val mockMessageProducer = mock[MessageProducer]
-    val jmsSinkProcessor = JmsSinkProcessor.createConnections(mockMessageProducer, mockSession, mockConnection, step.copy(fields = fields))
+    val jmsSinkProcessor = new JmsSinkProcessor().createConnections(mockMessageProducer, mockSession, mockConnection, step.copy(fields = fields))
 
     val innerRow = new GenericRowWithSchema(Array("account-id", "abc123".getBytes), headerKeyValueStruct)
     val mockRow = new GenericRowWithSchema(Array("some_value", "url", 4, mutable.WrappedArray.make(Array(innerRow))), structWithHeader)
@@ -78,7 +78,7 @@ class JmsSinkProcessorTest extends SparkSuite with MockFactory {
   }
 
   test("Throw exception when incomplete connection configuration provided") {
-    assertThrows[RuntimeException](JmsSinkProcessor.createConnections(Map(), step))
+    assertThrows[RuntimeException](new JmsSinkProcessor().createConnections(Map(), step))
   }
 
 }

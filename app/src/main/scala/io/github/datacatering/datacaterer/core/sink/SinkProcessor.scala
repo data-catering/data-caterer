@@ -66,16 +66,16 @@ object SinkProcessor {
 
   def getConnection(format: String, connectionConfig: Map[String, String], step: Step): SinkProcessor[_] = {
     format match {
-      case HTTP => HttpSinkProcessor.createConnections(connectionConfig, step)
-      case JMS => JmsSinkProcessor.createConnections(connectionConfig, step)
+      case HTTP => new http.HttpSinkProcessor().createConnections(connectionConfig, step)
+      case JMS => new jms.JmsSinkProcessor().createConnections(connectionConfig, step)
       case x => throw UnsupportedRealTimeDataSourceFormat(x)
     }
   }
 
   def validateSchema(format: String, schema: StructType): Unit = {
     format match {
-      case HTTP => HttpSinkProcessor.validate(schema)
-      case JMS => JmsSinkProcessor.validate(schema)
+      case HTTP => new http.HttpSinkProcessor().validate(schema)
+      case JMS => new jms.JmsSinkProcessor().validate(schema)
       case _ => //do nothing
     }
   }

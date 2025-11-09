@@ -1,0 +1,7 @@
+name: "http_simple_test_plan"
+description: "Simple HTTP test to verify execution strategy"
+tasks:
+  - name: "http_simple_task"
+    dataSourceName: "http_orders"
+    enabled: true
+

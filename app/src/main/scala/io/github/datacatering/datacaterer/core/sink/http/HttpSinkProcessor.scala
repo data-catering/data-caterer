@@ -24,18 +24,18 @@ import java.util.concurrent.TimeUnit
 import javax.net.ssl.X509TrustManager
 import scala.annotation.tailrec
 import scala.compat.java8.FutureConverters._
-import scala.concurrent.Await
+import scala.concurrent.{Await, Future}
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.Duration
 import scala.util.{Failure, Success, Try}
 
-object HttpSinkProcessor extends RealTimeSinkProcessor[Unit] with Serializable {
+class HttpSinkProcessor extends RealTimeSinkProcessor[Unit] with Serializable {
 
   private val LOGGER = Logger.getLogger(getClass.getName)
 
   var connectionConfig: Map[String, String] = _
   var step: Step = _
-  var http: AsyncHttpClient = buildClient
+  var http: AsyncHttpClient = HttpSinkProcessor.buildClient
   implicit val httpResultEncoder: Encoder[HttpResult] = Encoders.kryo[HttpResult]
 
   override val expectedSchema: Map[String, String] = Map(
@@ -65,7 +65,7 @@ object HttpSinkProcessor extends RealTimeSinkProcessor[Unit] with Serializable {
   }
 
   @tailrec
-  def close(numRetry: Int): Unit = {
+  private def close(numRetry: Int): Unit = {
     Thread.sleep(1000)
     val activeConnections = http.getClientStats.getTotalActiveConnectionCount
     val idleConnections = http.getClientStats.getTotalIdleConnectionCount
@@ -83,9 +83,30 @@ object HttpSinkProcessor extends RealTimeSinkProcessor[Unit] with Serializable {
     RealTimeSinkResult(pushRowToSinkFuture(row))
   }
 
+  /**
+   * Sends HTTP request asynchronously and returns a Future.
+   * This allows for non-blocking HTTP requests to achieve target rate more accurately.
+   * 
+   * @param row Row containing HTTP request data
+   * @return Future[String] containing JSON response
+   */
+  def pushRowToSinkAsync(row: Row): Future[String] = {
+    if (http.isClosed) {
+      http = HttpSinkProcessor.buildClient
+    }
+    val request = createHttpRequest(row)
+    val startTime = Timestamp.from(Instant.now())
+    Try(http.executeRequest(request)) match {
+      case Failure(exception) =>
+        LOGGER.error(s"Failed to execute HTTP request, url=${request.getUri}, method=${request.getMethod}", exception)
+        Future.failed(exception)
+      case Success(value) => handleResponseAsync(value, request, startTime)
+    }
+  }
+
   private def pushRowToSinkFuture(row: Row): String = {
     if (http.isClosed) {
-      http = buildClient
+      http = HttpSinkProcessor.buildClient
     }
     val request = createHttpRequest(row)
     val startTime = Timestamp.from(Instant.now())
@@ -95,6 +116,31 @@ object HttpSinkProcessor extends RealTimeSinkProcessor[Unit] with Serializable {
         throw exception
       case Success(value) => handleResponse(value, request, startTime)
     }
+  }
+
+  /**
+   * Handles HTTP response asynchronously without blocking.
+   * Returns a Future that completes when the response is received.
+   */
+  private def handleResponseAsync(value: ListenableFuture[Response], request: Request, startTime: Timestamp): Future[String] = {
+    val futureResult = value.toCompletableFuture
+      .toScala
+      .map(HttpResult.fromRequestAndResponse(startTime, request, _))
+
+    futureResult.onComplete {
+      case Success(value) =>
+        val resp = value.response
+        if (resp.statusCode >= 200 && resp.statusCode < 300) {
+          LOGGER.debug(s"Successful HTTP request, url=${request.getUrl}, method=${request.getMethod}, status-code=${resp.statusCode}, " +
+            s"status-text=${resp.statusText}, response-body=${resp.body}")
+        } else {
+          LOGGER.error(s"Failed HTTP request, url=${request.getUrl}, method=${request.getMethod}, status-code=${resp.statusCode}, " +
+            s"status-text=${resp.statusText}")
+        }
+      case Failure(exception) =>
+        LOGGER.error(s"Failed to send HTTP request, url=${request.getUri}, method=${request.getMethod}", exception)
+    }
+    futureResult.map(ObjectMapperUtil.jsonObjectMapper.writeValueAsString)
   }
 
   private def handleResponse(value: ListenableFuture[Response], request: Request, startTime: Timestamp): String = {
@@ -152,7 +198,10 @@ object HttpSinkProcessor extends RealTimeSinkProcessor[Unit] with Serializable {
       }).toMap ++ getAuthHeader(connectionConfig)
   }
 
-  private def buildClient: AsyncHttpClient = {
+}
+
+object HttpSinkProcessor {
+  def buildClient: AsyncHttpClient = {
     val trustManager = new X509TrustManager() {
       override def checkClientTrusted(chain: Array[X509Certificate], authType: String): Unit = {}
 
@@ -166,4 +215,3 @@ object HttpSinkProcessor extends RealTimeSinkProcessor[Unit] with Serializable {
     asyncHttpClient(config)
   }
 }
-

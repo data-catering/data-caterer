@@ -1,0 +1,9 @@
+---
+name: "weighted_tasks_test_plan"
+description: "Test weighted task execution"
+tasks: []
+sinkOptions:
+  foreignKeys: []
+validations: []
+runId: "5af3a33c-4f1d-4f89-b3fd-0ab6c059b0cd"
+testType: "performance"

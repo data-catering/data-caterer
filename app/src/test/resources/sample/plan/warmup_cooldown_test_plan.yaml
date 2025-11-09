@@ -1,0 +1,13 @@
+---
+name: "warmup_cooldown_test_plan"
+description: "Test warmup and cooldown phases"
+tasks: []
+sinkOptions:
+  foreignKeys: []
+validations: []
+runId: "21d22009-197d-4f4d-a530-956e98cc5385"
+testType: "performance"
+testConfig:
+  executionMode: "duration"
+  warmup: "1s"
+  cooldown: "1s"

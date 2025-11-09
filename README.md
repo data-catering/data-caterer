@@ -38,7 +38,7 @@ and deep dive into issues [from the generated report](https://data.catering/late
 
 1. Docker
    ```shell
-   docker run -d -i -p 9898:9898 -e DEPLOY_MODE=standalone --name datacaterer datacatering/data-caterer:0.17.2
+   docker run -d -i -p 9898:9898 -e DEPLOY_MODE=standalone --name datacaterer datacatering/data-caterer:0.18.0
    ```
    [Open localhost:9898](http://localhost:9898).
 1. [Run Scala/Java examples](#run-scalajava-examples)
@@ -116,12 +116,6 @@ Different ways to run Data Caterer based on your use case:
 ### Roadmap
 
 [Can check here for full list of roadmap items.](https://data.catering/latest/use-case/roadmap/)
-
-## Pricing
-
-Data Caterer is set up under a usage pricing model for the latest application version. There are different pricing tiers based on how much you use Data Caterer. This also includes support and requesting features. The current open-source version will be kept for those who want to continue using the open-source version.
-
-[Find out more details here.](https://data.catering/latest/pricing/)
 
 ### Mildly Quick Start
 

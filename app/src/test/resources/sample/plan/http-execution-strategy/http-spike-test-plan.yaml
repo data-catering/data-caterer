@@ -1,0 +1,7 @@
+name: "http_spike_test_plan"
+description: "Test spike load pattern with HTTP sink"
+tasks:
+  - name: "http_spike_task"
+    dataSourceName: "http_orders"
+    enabled: true
+

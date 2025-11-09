@@ -13,7 +13,9 @@ case class Plan(
                  sinkOptions: Option[SinkOptions] = None,
                  validations: List[String] = List(),
                  runId: Option[String] = Some(UUID.randomUUID().toString),
-                 runInterface: Option[String] = None
+                 runInterface: Option[String] = None,
+                 testType: Option[String] = None,
+                 testConfig: Option[TestConfig] = None
                )
 
 case class SinkOptions(
@@ -42,7 +44,9 @@ case class ForeignKey(
 case class TaskSummary(
                         name: String,
                         dataSourceName: String,
-                        enabled: Boolean = DEFAULT_TASK_SUMMARY_ENABLE
+                        enabled: Boolean = DEFAULT_TASK_SUMMARY_ENABLE,
+                        weight: Option[Int] = None,
+                        stage: Option[String] = None
                       )
 
 case class Task(
@@ -64,7 +68,11 @@ case class Step(
 case class Count(
                   @JsonDeserialize(contentAs = classOf[java.lang.Long]) records: Option[Long] = Some(DEFAULT_COUNT_RECORDS),
                   perField: Option[PerFieldCount] = None,
-                  options: Map[String, Any] = Map()
+                  options: Map[String, Any] = Map(),
+                  duration: Option[String] = None,
+                  rate: Option[Int] = None,
+                  rateUnit: Option[String] = None,
+                  pattern: Option[LoadPattern] = None
                 )
 
 case class PerFieldCount(
@@ -81,3 +89,30 @@ case class Field(
                   static: Option[String] = None,
                   fields: List[Field] = List()
                 )
+
+case class TestConfig(
+                       executionMode: Option[String] = None,
+                       warmup: Option[String] = None,
+                       cooldown: Option[String] = None
+                     )
+
+case class LoadPattern(
+                        `type`: String,
+                        startRate: Option[Int] = None,
+                        endRate: Option[Int] = None,
+                        baseRate: Option[Int] = None,
+                        spikeRate: Option[Int] = None,
+                        spikeStart: Option[Double] = None,
+                        spikeDuration: Option[Double] = None,
+                        steps: Option[List[LoadPatternStep]] = None,
+                        amplitude: Option[Int] = None,
+                        frequency: Option[Double] = None,
+                        rateIncrement: Option[Int] = None,
+                        incrementInterval: Option[String] = None,
+                        maxRate: Option[Int] = None
+                      )
+
+case class LoadPatternStep(
+                            rate: Int,
+                            duration: String
+                          )

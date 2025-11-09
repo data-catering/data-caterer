@@ -60,7 +60,7 @@ class HttpSinkProcessorTest extends SparkSuite with Matchers with MockFactory {
     val rdd = sparkSession.sparkContext.parallelize(Seq(Row(url, method, body, header)))
     val row = sparkSession.createDataFrame(rdd, schema).head()
 
-    val processor = HttpSinkProcessor.createConnections(Map.empty, Step(), mockHttpClient)
+    val processor = new HttpSinkProcessor().createConnections(Map.empty, Step(), mockHttpClient)
     val result = processor.pushRowToSink(row)
 
     result shouldBe a[RealTimeSinkResult]
@@ -71,7 +71,7 @@ class HttpSinkProcessorTest extends SparkSuite with Matchers with MockFactory {
     (() => mockHttpClient.getClientStats).expects().twice().returns(clientStats)
     (() => mockHttpClient.close()).expects().once()
 
-    val processor = HttpSinkProcessor.createConnections(Map.empty, Step(), mockHttpClient)
+    val processor = new HttpSinkProcessor().createConnections(Map.empty, Step(), mockHttpClient)
     processor.close
   }
 }

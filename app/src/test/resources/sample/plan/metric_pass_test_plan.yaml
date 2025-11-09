@@ -1,0 +1,9 @@
+---
+name: "metric_pass_test_plan"
+description: "Test metric validation pass"
+tasks: []
+sinkOptions:
+  foreignKeys: []
+validations:
+- "metric_pass_validation"
+runId: "9d847ebf-47dd-4114-b0d0-e2160dc46f8a"
