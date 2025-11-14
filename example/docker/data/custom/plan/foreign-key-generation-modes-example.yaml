@@ -1,0 +1,89 @@
+name: "foreign_key_generation_modes_example"
+description: "Example demonstrating different foreign key generation modes"
+
+tasks:
+  - name: "product_data"
+    dataSourceName: "product_postgres"
+  - name: "order_data"
+    dataSourceName: "order_postgres"
+  - name: "test_data"
+    dataSourceName: "test_postgres"
+
+sinkOptions:
+  seed: "99999"
+  foreignKeys:
+    # Mode 1: all-exist (default) - Every record has a valid FK
+    - source:
+        dataSource: "product_postgres"
+        step: "categories"
+        fields: [ "category_id" ]
+      generate:
+        - dataSource: "product_postgres"
+          step: "products"
+          fields: [ "category_id" ]
+      generationMode: "all-exist"  # All products belong to a category
+
+    # Mode 2: all-combinations - Generate all FK match patterns for testing
+    # For 2 FK fields, generates 2^2 = 4 combinations:
+    #   - Both fields match (valid FK)
+    #   - Only first field matches (partial FK)
+    #   - Only second field matches (partial FK)
+    #   - Neither field matches (invalid FK/orphan)
+    - source:
+        dataSource: "order_postgres"
+        step: "accounts"
+        fields: [ "account_id", "branch_id" ]
+      generate:
+        - dataSource: "order_postgres"
+          step: "transactions"
+          fields: [ "account_id", "branch_id" ]
+      generationMode: "all-combinations"  # Perfect for comprehensive join testing
+
+    # Mode 3: partial - Mix of valid, null, and invalid FKs
+    # Use with nullability config for controlled violations
+    - source:
+        dataSource: "test_postgres"
+        step: "users"
+        fields: [ "user_id" ]
+      generate:
+        - dataSource: "test_postgres"
+          step: "audit_logs"
+          fields: [ "user_id" ]
+      generationMode: "partial"
+      nullability:
+        nullPercentage: 0.25  # 25% have null user_id
+        strategy: "random"
+
+    # Mode 3 alternative: partial with explicit violations
+    # Can also use violationRatio in code for non-null invalid values
+    - source:
+        dataSource: "product_postgres"
+        step: "warehouses"
+        fields: [ "warehouse_id" ]
+      generate:
+        - dataSource: "product_postgres"
+          step: "inventory"
+          fields: [ "warehouse_id" ]
+      generationMode: "partial"
+      nullability:
+        nullPercentage: 0.1  # 10% null warehouse_id
+        strategy: "random"
+
+# Notes on generation modes:
+#
+# all-exist:
+#   - All records have valid FKs (referential integrity maintained)
+#   - Use for: Production data generation, standard workflows
+#   - Default mode if not specified
+#
+# all-combinations:
+#   - Generates all 2^n combinations for n FK fields
+#   - Use for: Comprehensive join testing, data quality validation
+#   - Tests: complete match, partial match, no match scenarios
+#   - Example: 3 FK fields = 8 combinations tested
+#
+# partial:
+#   - Mix of valid and invalid FKs
+#   - Use with: nullability config for null FKs
+#   - Use for: Testing orphan handling, error scenarios
+#   - Realistic testing data with data quality issues

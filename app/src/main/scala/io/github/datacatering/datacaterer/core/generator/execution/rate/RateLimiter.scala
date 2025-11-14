@@ -2,8 +2,6 @@ package io.github.datacatering.datacaterer.core.generator.execution.rate
 
 import org.apache.log4j.Logger
 
-import java.time.Duration
-
 /**
  * Rate limiter for controlling throughput
  */

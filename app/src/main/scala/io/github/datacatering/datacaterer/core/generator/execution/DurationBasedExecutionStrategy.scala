@@ -1,6 +1,6 @@
 package io.github.datacatering.datacaterer.core.generator.execution
 
-import io.github.datacatering.datacaterer.api.model.{Count, GenerationConfig, Plan, Task, TaskSummary}
+import io.github.datacatering.datacaterer.api.model.{GenerationConfig, Plan, Task, TaskSummary}
 import io.github.datacatering.datacaterer.core.generator.execution.rate.{DurationTracker, RateLimiter}
 import io.github.datacatering.datacaterer.core.generator.metrics.{PerformanceMetrics, PerformanceMetricsCollector}
 import org.apache.log4j.Logger

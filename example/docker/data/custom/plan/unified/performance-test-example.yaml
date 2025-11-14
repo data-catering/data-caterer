@@ -1,0 +1,237 @@
+# Performance Test Example
+# Demonstrates unified YAML for load testing and performance validation
+# Features:
+# - Load patterns (ramp, spike, wave)
+# - Performance metrics validation
+# - Warmup and cooldown periods
+# - Weighted tasks
+
+name: "api_load_test"
+description: "HTTP API load test with performance validation"
+
+testType: "performance"
+testConfig:
+  executionMode: "duration"
+  warmup: "30s"
+  cooldown: "15s"
+
+# HTTP API connection
+connections:
+  - name: api_server
+    type: http
+    url: "${API_BASE_URL:-http://localhost:8080}"
+    options:
+      method: "POST"
+      headers: "{\"Content-Type\": \"application/json\"}"
+
+tasks:
+  - name: create_user_requests
+    dataSourceName: api_server
+    enabled: true
+    weight: 3  # 3x more frequent than update requests
+
+  - name: update_user_requests
+    dataSourceName: api_server
+    enabled: true
+    weight: 1
+
+  - name: read_user_requests
+    dataSourceName: api_server
+    enabled: true
+    weight: 5  # Read-heavy workload
+
+---
+# Task 1: Create User Requests (with ramp load pattern)
+name: create_user_requests
+steps:
+  - name: create_endpoint
+    type: http
+    options:
+      url: "${API_BASE_URL:-http://localhost:8080}/api/users"
+      method: "POST"
+    count:
+      duration: "10m"
+      rate: 50  # Start at 50 requests/sec
+      pattern:
+        type: "ramp"
+        startRate: 50
+        endRate: 200  # Gradually increase to 200 req/sec
+    fields:
+      - name: request_body
+        type: string
+        options:
+          sql: "CONCAT('{\"username\":\"', username, '\",\"email\":\"', email, '\",\"age\":', age, '}')"
+      - name: username
+        type: string
+        options:
+          faker: "#{Internet.username}"
+      - name: email
+        type: string
+        options:
+          faker: "#{Internet.emailAddress}"
+      - name: age
+        type: integer
+        options:
+          min: 18
+          max: 75
+
+    validations:
+      # Performance validations
+      - metric: "throughput"
+        description: "Maintain at least 90% of target throughput"
+        validation:
+          - type: greaterThan
+            value: 45  # 90% of minimum 50
+
+      - metric: "p95_latency"
+        description: "95th percentile latency under 200ms"
+        validation:
+          - type: lessThan
+            value: 200
+
+      - metric: "p99_latency"
+        description: "99th percentile latency under 500ms"
+        validation:
+          - type: lessThan
+            value: 500
+
+      - metric: "error_rate"
+        description: "Error rate below 1%"
+        validation:
+          - type: lessThan
+            value: 0.01
+
+      # Response validations
+      - field: http_status_code
+        validation:
+          - type: in
+            values: [200, 201]
+
+---
+# Task 2: Update User Requests (with spike pattern)
+name: update_user_requests
+steps:
+  - name: update_endpoint
+    type: http
+    options:
+      url: "${API_BASE_URL:-http://localhost:8080}/api/users/{user_id}"
+      method: "PUT"
+    count:
+      duration: "10m"
+      rate: 30
+      pattern:
+        type: "spike"
+        baseRate: 30
+        spikeRate: 150  # Spike to 150 req/sec
+        spikeStart: 0.5  # At 50% through duration
+        spikeDuration: 0.1  # Spike lasts 10% of total duration
+    fields:
+      - name: user_id
+        type: string
+        options:
+          regex: "USER[0-9]{6}"
+      - name: request_body
+        type: string
+        options:
+          sql: "CONCAT('{\"age\":', age, ',\"subscription\":\"', subscription, '\"}')"
+      - name: age
+        type: integer
+        options:
+          min: 18
+          max: 75
+      - name: subscription
+        type: string
+        options:
+          oneOf: ["free", "pro", "enterprise"]
+
+    validations:
+      - metric: "throughput"
+        validation:
+          - type: greaterThan
+            value: 27  # 90% of base rate
+
+      - metric: "p95_latency"
+        validation:
+          - type: lessThan
+            value: 300  # Allow higher latency during spikes
+
+      - metric: "error_rate"
+        validation:
+          - type: lessThan
+            value: 0.05  # Allow 5% errors during spike
+
+      - field: http_status_code
+        validation:
+          - type: in
+            values: [200, 204]
+
+---
+# Task 3: Read User Requests (with wave pattern)
+name: read_user_requests
+steps:
+  - name: read_endpoint
+    type: http
+    options:
+      url: "${API_BASE_URL:-http://localhost:8080}/api/users/{user_id}"
+      method: "GET"
+    count:
+      duration: "10m"
+      rate: 100
+      pattern:
+        type: "wave"
+        baseRate: 100
+        amplitude: 50  # Oscillate ±50 req/sec
+        frequency: 0.1  # Complete wave cycles per minute
+    fields:
+      - name: user_id
+        type: string
+        options:
+          regex: "USER[0-9]{6}"
+
+    validations:
+      - metric: "throughput"
+        validation:
+          - type: greaterThan
+            value: 90
+
+      - metric: "p95_latency"
+        description: "Reads should be fast"
+        validation:
+          - type: lessThan
+            value: 100
+
+      - metric: "p99_latency"
+        validation:
+          - type: lessThan
+            value: 200
+
+      - metric: "error_rate"
+        validation:
+          - type: lessThan
+            value: 0.001  # Very low error tolerance for reads
+
+      - field: http_status_code
+        validation:
+          - type: in
+            values: [200, 404]  # 404 is acceptable for GET
+
+      # Validate response body structure
+      - expr: "SIZE(http_response_body) > 0"
+        description: "Response body should not be empty for 200 responses"
+        preFilterExpr: "http_status_code = 200"
+
+---
+# Configuration
+configuration:
+  flags:
+    enableFastGeneration: true
+    enableValidation: true
+  folders:
+    generatedReportsFolderPath: "/tmp/data-caterer/load-test-reports"
+
+# Expected performance metrics after test:
+# - Total requests: ~(50→200)*10min + (30+spike)*10min + (100±wave)*10min ≈ 200k requests
+# - Throughput: Validated per task
+# - Latency: p95 < 200ms (create), < 300ms (update), < 100ms (read)
+# - Error rate: < 1% (create), < 5% (update spike), < 0.1% (read)
+# - Success rate: > 99% overall

@@ -51,7 +51,6 @@ class UniqueFieldsUtilTest extends SparkSuite {
     val result2 = uniqueFieldUtil.getUniqueFieldsValues("postgresAccount.accounts", generatedData2, Step())
 
     result2.cache()
-    result2.show()
     val data2 = result2.select("account_id", "name").collect()
 
     assertResult(1)(data2.length)

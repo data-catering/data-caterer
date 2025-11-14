@@ -1,7 +1,6 @@
 package io.github.datacatering.datacaterer.core.generator.execution
 
 import io.github.datacatering.datacaterer.api.model.{GenerationConfig, Plan, Task, TaskSummary}
-import io.github.datacatering.datacaterer.core.parser.LoadPatternParser
 import org.apache.log4j.Logger
 
 /**

@@ -24,9 +24,9 @@ import java.util.concurrent.TimeUnit
 import javax.net.ssl.X509TrustManager
 import scala.annotation.tailrec
 import scala.compat.java8.FutureConverters._
-import scala.concurrent.{Await, Future}
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.Duration
+import scala.concurrent.{Await, Future}
 import scala.util.{Failure, Success, Try}
 
 class HttpSinkProcessor extends RealTimeSinkProcessor[Unit] with Serializable {

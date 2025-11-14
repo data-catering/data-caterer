@@ -1,17 +1,17 @@
 package io.github.datacatering.datacaterer.core.sink
 
-import io.github.datacatering.datacaterer.api.model.{FoldersConfig, SinkResult, Step}
 import io.github.datacatering.datacaterer.api.model.Constants.{HTTP, JMS}
+import io.github.datacatering.datacaterer.api.model.{FoldersConfig, SinkResult, Step}
 import io.github.datacatering.datacaterer.core.util.ValidationUtil.cleanValidationIdentifier
 import org.apache.log4j.Logger
 import org.apache.pekko.actor.ActorSystem
-import org.apache.pekko.stream.{Materializer, ThrottleMode}
-import org.apache.pekko.stream.scaladsl.{Sink => PekkoSink, Source}
+import org.apache.pekko.stream.Materializer
+import org.apache.pekko.stream.scaladsl.{Source, Sink => PekkoSink}
 import org.apache.spark.sql.{DataFrame, SaveMode, SparkSession}
 
 import java.time.LocalDateTime
 import scala.collection.mutable
-import scala.concurrent.{Await, Future}
+import scala.concurrent.Await
 import scala.concurrent.duration.DurationInt
 import scala.util.{Failure, Success, Try}
 

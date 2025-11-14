@@ -3,12 +3,14 @@ package io.github.datacatering.datacaterer.core.generator
 import io.github.datacatering.datacaterer.api.model.Constants.{DEFAULT_ENABLE_REFERENCE_MODE, ENABLE_REFERENCE_MODE, SAVE_MODE}
 import io.github.datacatering.datacaterer.api.model.{DataSourceResult, FlagsConfig, FoldersConfig, GenerationConfig, MetadataConfig, Plan, Step, Task, TaskSummary, UpstreamDataSourceValidation, ValidationConfiguration}
 import io.github.datacatering.datacaterer.core.exception.InvalidRandomSeedException
+import io.github.datacatering.datacaterer.core.foreignkey.ForeignKeyProcessor
+import io.github.datacatering.datacaterer.core.foreignkey.model.ForeignKeyContext
 import io.github.datacatering.datacaterer.core.generator.execution.{DurationBasedExecutionStrategy, ExecutionStrategy, ExecutionStrategyFactory, GenerationMode, PatternBasedExecutionStrategy}
 import io.github.datacatering.datacaterer.core.generator.metrics.PerformanceMetrics
 import io.github.datacatering.datacaterer.core.generator.track.RecordTrackingProcessor
 import io.github.datacatering.datacaterer.core.sink.{PekkoStreamingSinkWriter, SinkFactory, SinkRouter, SinkStrategy}
 import io.github.datacatering.datacaterer.core.util.GeneratorUtil.getDataSourceName
-import io.github.datacatering.datacaterer.core.util.{ForeignKeyUtil, RecordCountUtil, StepRecordCount, UniqueFieldsUtil}
+import io.github.datacatering.datacaterer.core.util.{RecordCountUtil, StepRecordCount, UniqueFieldsUtil}
 import net.datafaker.Faker
 import org.apache.log4j.Logger
 import org.apache.spark.sql.{DataFrame, SaveMode, SparkSession}
@@ -104,7 +106,17 @@ class BatchDataProcessor(connectionConfigsByName: Map[String, Map[String, String
 
       // Apply foreign key relationships
       val sinkDf = plan.sinkOptions
-        .map(_ => ForeignKeyUtil.getDataFramesWithForeignKeys(plan, generatedDataForeachTask, flagsConfig.enableForeignKeyV2, Some(executableTasks)))
+        .map { sinkOptions =>
+          if (sinkOptions.foreignKeys.nonEmpty) {
+            val fkProcessor = new ForeignKeyProcessor(useV2 = flagsConfig.enableForeignKeyV2)
+            val fkConfig = io.github.datacatering.datacaterer.core.foreignkey.config.ForeignKeyConfig()
+            val fkContext = ForeignKeyContext(plan, generatedDataForeachTask.toMap, Some(executableTasks), fkConfig)
+            val fkResult = fkProcessor.process(fkContext)
+            fkResult.dataFrames
+          } else {
+            generatedDataForeachTask
+          }
+        }
         .getOrElse(generatedDataForeachTask)
 
       val totalRecordsGenerated = if (flagsConfig.enableCount) {
@@ -194,7 +206,17 @@ class BatchDataProcessor(connectionConfigsByName: Map[String, Map[String, String
 
     // Apply foreign key relationships if configured
     val sinkDf = plan.sinkOptions
-      .map(_ => ForeignKeyUtil.getDataFramesWithForeignKeys(plan, generatedDataWithPaths.map(t => (t._1, t._2)), flagsConfig.enableForeignKeyV2, Some(executableTasks)))
+      .map { sinkOptions =>
+        if (sinkOptions.foreignKeys.nonEmpty) {
+          val fkProcessor = new ForeignKeyProcessor(useV2 = flagsConfig.enableForeignKeyV2)
+          val fkConfig = io.github.datacatering.datacaterer.core.foreignkey.config.ForeignKeyConfig()
+          val fkContext = ForeignKeyContext(plan, generatedDataWithPaths.map(t => (t._1, t._2)).toMap, Some(executableTasks), fkConfig)
+          val fkResult = fkProcessor.process(fkContext)
+          fkResult.dataFrames
+        } else {
+          generatedDataWithPaths.map(t => (t._1, t._2))
+        }
+      }
       .getOrElse(generatedDataWithPaths.map(t => (t._1, t._2)))
 
     // Route to appropriate sink writers based on format and configuration

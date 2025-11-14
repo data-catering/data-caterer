@@ -5,6 +5,7 @@ import io.github.datacatering.datacaterer.api.model.{DataCatererConfiguration, D
 import io.github.datacatering.datacaterer.api.{ConnectionConfigWithTaskBuilder, FieldBuilder, HttpMethodEnum, HttpQueryParameterStyleEnum, ValidationBuilder}
 import io.github.datacatering.datacaterer.core.exception.DataValidationMissingUpstreamDataSourceException
 import io.github.datacatering.datacaterer.core.generator.provider.OneOfDataGenerator
+import io.github.datacatering.datacaterer.core.plan.ConnectionResolver
 import io.github.datacatering.datacaterer.core.util.FileUtil.{getFileContentFromFileSystem, isCloudStoragePath}
 import io.github.datacatering.datacaterer.core.util.PlanImplicits.FieldOps
 import io.github.datacatering.datacaterer.core.util.{FileUtil, ObjectMapperUtil}
@@ -52,10 +53,10 @@ object PlanParser {
     validationFolderPath: String
   )(implicit sparkSession: SparkSession): (Plan, List[Task], Option[List[ValidationConfiguration]]) = {
     val parsedPlan = planName match {
-      case Some(name) => 
+      case Some(name) =>
         findYamlPlanFile(dataCatererConfiguration.foldersConfig.planFilePath, name) match {
           case Some(planPath) => parsePlan(planPath)
-          case None => 
+          case None =>
             LOGGER.warn(s"YAML plan file not found for plan name: $name, using default plan file: ${dataCatererConfiguration.foldersConfig.planFilePath}")
             parsePlan(dataCatererConfiguration.foldersConfig.planFilePath)
         }
@@ -63,14 +64,29 @@ object PlanParser {
     }
 
     LOGGER.debug(s"Parsed plan from YAML: name=${parsedPlan.name}, num-tasks=${parsedPlan.tasks.size}, task-names=${parsedPlan.tasks.map(_.name).mkString(", ")}")
+
+    // Extract inline tasks from plan (unified YAML format)
+    val inlineTasksFromPlan = extractInlineTasksFromPlan(parsedPlan)
+    LOGGER.debug(s"Extracted inline tasks from plan: num-inline-tasks=${inlineTasksFromPlan.size}, inline-task-names=${inlineTasksFromPlan.map(_.name).mkString(", ")}")
+
+    // Parse tasks from folder (legacy format)
+    val tasksFromFolder = parseTasksFromFolder(taskFolderPath)
+    LOGGER.debug(s"Parsed tasks from folder: task-folder=$taskFolderPath, num-tasks=${tasksFromFolder.size}, task-names=${tasksFromFolder.map(_.name).mkString(", ")}")
+
+    // Combine inline tasks and folder tasks (inline takes priority)
+    val inlineTaskNames = inlineTasksFromPlan.map(_.name).toSet
+    val folderTasksNotInline = tasksFromFolder.filterNot(t => inlineTaskNames.contains(t.name))
+    val allTasks = (inlineTasksFromPlan ++ folderTasksNotInline).toList
+    LOGGER.debug(s"Combined tasks: num-total-tasks=${allTasks.size}, task-names=${allTasks.map(_.name).mkString(", ")}")
+
+    // Filter by enabled status
     val enabledPlannedTasks = if (enabledOnly) parsedPlan.tasks.filter(_.enabled) else parsedPlan.tasks
     val enabledTaskMap = enabledPlannedTasks.map(t => (t.name, t)).toMap
     val planWithEnabledTasks = parsedPlan.copy(tasks = enabledPlannedTasks)
 
-    val tasks = parseTasksFromFolder(taskFolderPath)
-    LOGGER.debug(s"Parsed tasks from folder: task-folder=$taskFolderPath, num-tasks=${tasks.size}, task-names=${tasks.map(_.name).mkString(", ")}")
-    val enabledTasks = tasks.filter(t => enabledTaskMap.contains(t.name)).toList
+    val enabledTasks = allTasks.filter(t => enabledTaskMap.contains(t.name)).toList
     LOGGER.debug(s"Filtered enabled tasks: num-enabled-tasks=${enabledTasks.size}, enabled-task-names=${enabledTasks.map(_.name).mkString(", ")}")
+
     val validations = if (dataCatererConfiguration.flagsConfig.enableValidation) {
       Some(parseValidations(validationFolderPath, dataCatererConfiguration.connectionConfigByName))
     } else None
@@ -78,6 +94,29 @@ object PlanParser {
   }
 
   // ==================== Plan Parsing ====================
+
+  /**
+   * Extract inline task definitions from plan's tasks array.
+   * Converts TaskSummary with steps into full Task objects.
+   */
+  private def extractInlineTasksFromPlan(plan: Plan)(implicit sparkSession: SparkSession): Array[Task] = {
+    plan.tasks.flatMap { taskSummary =>
+      taskSummary.steps match {
+        case Some(steps) =>
+          // This is an inline task definition - convert TaskSummary to Task
+          val task = Task(
+            name = taskSummary.name,
+            steps = steps,
+            transformation = taskSummary.transformation
+          )
+          // Apply field conversion and specific field transformations
+          Some(convertToSpecificFields(convertTaskNumbersToString(task)))
+        case None =>
+          // Just a task reference, will be loaded from folder
+          None
+      }
+    }.toArray
+  }
 
   /**
    * Parse a plan file without requiring SparkSession (for simpler use cases)
@@ -104,7 +143,16 @@ object PlanParser {
       OBJECT_MAPPER.readValue(planFile, classOf[Plan])
     }
     LOGGER.debug(s"Found plan file and parsed successfully, plan-file-path=$planFilePath, plan-name=${parsedPlan.name}, plan-description=${parsedPlan.description}")
-    parsedPlan
+
+    // Apply environment variable interpolation if plan has connections
+    parsedPlan.connections match {
+      case Some(connections) =>
+        LOGGER.info(s"Found ${connections.size} connections in plan, applying environment variable interpolation")
+        val interpolatedConnections = connections.map(ConnectionResolver.interpolateConnection)
+        parsedPlan.copy(connections = Some(interpolatedConnections))
+      case None =>
+        parsedPlan
+    }
   }
 
 

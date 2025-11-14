@@ -2,8 +2,8 @@ package io.github.datacatering.datacaterer.core.generator
 
 import io.github.datacatering.datacaterer.api.model.Constants.{DEFAULT_ENABLE_GENERATE_DATA, DEFAULT_ENABLE_REFERENCE_MODE, ENABLE_DATA_GENERATION, ENABLE_REFERENCE_MODE}
 import io.github.datacatering.datacaterer.api.model.{FlagsConfig, Step, Task, TaskSummary}
-import io.github.datacatering.datacaterer.core.util.{DataSourceReader, StepRecordCount, UniqueFieldsUtil}
 import io.github.datacatering.datacaterer.core.util.GeneratorUtil.getDataSourceName
+import io.github.datacatering.datacaterer.core.util.{DataSourceReader, StepRecordCount, UniqueFieldsUtil}
 import org.apache.log4j.Logger
 import org.apache.spark.sql.{DataFrame, SparkSession}
 

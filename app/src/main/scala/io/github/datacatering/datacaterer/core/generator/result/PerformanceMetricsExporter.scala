@@ -1,12 +1,12 @@
 package io.github.datacatering.datacaterer.core.generator.result
 
-import io.github.datacatering.datacaterer.core.generator.metrics.{BatchMetrics, PerformanceMetrics}
+import com.fasterxml.jackson.databind.ObjectMapper
+import com.fasterxml.jackson.module.scala.DefaultScalaModule
+import io.github.datacatering.datacaterer.core.generator.metrics.PerformanceMetrics
 import io.github.datacatering.datacaterer.core.util.FileUtil
 import org.apache.hadoop.fs.FileSystem
 import org.apache.log4j.Logger
 import org.apache.spark.sql.SparkSession
-import com.fasterxml.jackson.databind.ObjectMapper
-import com.fasterxml.jackson.module.scala.DefaultScalaModule
 
 import java.time.format.DateTimeFormatter
 

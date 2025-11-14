@@ -3,10 +3,11 @@ package io.github.datacatering.datacaterer.core.generator.delete
 import io.github.datacatering.datacaterer.api.model.Constants.{CASSANDRA, CSV, DELTA, FOREIGN_KEY_DELIMITER, FORMAT, JDBC, JSON, ORC, PARQUET, PATH}
 import io.github.datacatering.datacaterer.api.model.{ForeignKeyRelation, Plan, Step, Task, TaskSummary}
 import io.github.datacatering.datacaterer.api.util.ConfigUtil.cleanseOptions
+import io.github.datacatering.datacaterer.core.foreignkey.util.InsertOrderCalculator
 import io.github.datacatering.datacaterer.core.model.Constants.RECORD_TRACKING_VALIDATION_FORMAT
+import io.github.datacatering.datacaterer.core.util.ForeignKeyRelationHelper
 import io.github.datacatering.datacaterer.core.util.MetadataUtil.getSubDataSourcePath
 import io.github.datacatering.datacaterer.core.util.PlanImplicits.SinkOptionsOps
-import io.github.datacatering.datacaterer.core.util.{ForeignKeyRelationHelper, ForeignKeyUtil}
 import org.apache.log4j.Logger
 import org.apache.spark.sql.{DataFrame, SparkSession}
 
@@ -38,7 +39,7 @@ class DeleteRecordProcessor(connectionConfigsByName: Map[String, Map[String, Str
       val sinkOpts = plan.sinkOptions.get
       val allForeignKeys = sinkOpts.getAllForeignKeyRelations
       val foreignKeysWithoutColNames = sinkOpts.foreignKeysWithoutFieldNames
-      val foreignKeyDeleteOrder = ForeignKeyUtil.getDeleteOrder(foreignKeysWithoutColNames)
+      val foreignKeyDeleteOrder = InsertOrderCalculator.getDeleteOrder(foreignKeysWithoutColNames)
 
       foreignKeyDeleteOrder.foreach(foreignKeyName => {
         val fullForeignKey = allForeignKeys.find(f => s"${f._1.dataSource}$FOREIGN_KEY_DELIMITER${f._1.step}".equalsIgnoreCase(foreignKeyName))

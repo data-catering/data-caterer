@@ -20,7 +20,6 @@ class OrderFulfillmentDebugSpec extends SparkSuite {
 
     val step = Step("fulfillment_debug", "parquet", Count(records = Some(20)), Map("path" -> "sample/output/parquet/fulfillment_debug"), fields)
     val df = dataGeneratorFactory.generateDataForStep(step, "parquet", 0, 20)
-    df.select("order_amount", "customer_lifetime_value", "priority_score", "expedited_shipping").show(50, truncate = false)
 
     val rows = df.collect()
     rows.foreach { r =>

@@ -1,6 +1,6 @@
 package io.github.datacatering.datacaterer.core.parser
 
-import io.github.datacatering.datacaterer.api.model.{LoadPattern => LoadPatternModel, LoadPatternStep}
+import io.github.datacatering.datacaterer.api.model.{LoadPatternStep, LoadPattern => LoadPatternModel}
 import io.github.datacatering.datacaterer.core.generator.execution.pattern._
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers

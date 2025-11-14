@@ -1,6 +1,5 @@
 package io.github.datacatering.datacaterer.core.generator.execution
 
-import io.github.datacatering.datacaterer.api.model.{Plan, Step, Task, TaskSummary}
 import io.github.datacatering.datacaterer.core.generator.metrics.PerformanceMetrics
 
 /**

@@ -3,9 +3,9 @@ package io.github.datacatering.datacaterer.core.sink
 import io.github.datacatering.datacaterer.api.model.Constants.{DELTA, DELTA_LAKE_SPARK_CONF, DRIVER, FORMAT, ICEBERG, ICEBERG_SPARK_CONF, JDBC, POSTGRES_DRIVER, ROWS_PER_SECOND}
 import io.github.datacatering.datacaterer.api.model.{FlagsConfig, FoldersConfig, MetadataConfig, SinkResult, Step}
 import io.github.datacatering.datacaterer.api.util.ConfigUtil
-import io.github.datacatering.datacaterer.core.util.DataFrameOmitUtil
 import io.github.datacatering.datacaterer.core.exception.FailedSaveDataException
 import io.github.datacatering.datacaterer.core.model.Constants.{BATCH, DEFAULT_ROWS_PER_SECOND, FAILED, FINISHED, STARTED}
+import io.github.datacatering.datacaterer.core.util.DataFrameOmitUtil
 import io.github.datacatering.datacaterer.core.util.GeneratorUtil.determineSaveTiming
 import io.github.datacatering.datacaterer.core.util.MetadataUtil.getFieldMetadata
 import org.apache.log4j.Logger

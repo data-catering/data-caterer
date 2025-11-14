@@ -8,7 +8,6 @@ import io.github.datacatering.datacaterer.core.util.PlanImplicits.CountOps
 import org.joda.time.DateTime
 import scalatags.Text.all._
 import scalatags.Text.tags2
-import scalatags.generic.AttrPair
 
 import scala.math.BigDecimal.RoundingMode
 

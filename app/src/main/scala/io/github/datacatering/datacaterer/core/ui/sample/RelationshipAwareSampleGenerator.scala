@@ -1,9 +1,10 @@
 package io.github.datacatering.datacaterer.core.ui.sample
 
 import io.github.datacatering.datacaterer.api.model.{Plan, Step}
+import io.github.datacatering.datacaterer.core.foreignkey.ForeignKeyProcessor
+import io.github.datacatering.datacaterer.core.foreignkey.model.ForeignKeyContext
 import io.github.datacatering.datacaterer.core.generator.DataGeneratorFactory
 import io.github.datacatering.datacaterer.core.ui.service.{DataFrameManager, TaskLoaderService}
-import io.github.datacatering.datacaterer.core.util.ForeignKeyUtil
 import org.apache.log4j.Logger
 import org.apache.spark.sql.SparkSession
 
@@ -122,7 +123,15 @@ object RelationshipAwareSampleGenerator {
     LOGGER.info(s"Generated ${allGeneratedData.size} DataFrames, applying foreign key relationships")
 
     // Apply foreign key relationships
-    val dataFramesWithForeignKeys = ForeignKeyUtil.getDataFramesWithForeignKeys(plan, allGeneratedData.toList, useV2)
+    val dataFramesWithForeignKeys = if (plan.sinkOptions.exists(_.foreignKeys.nonEmpty)) {
+      val fkProcessor = new ForeignKeyProcessor(useV2 = useV2)
+      val fkConfig = io.github.datacatering.datacaterer.core.foreignkey.config.ForeignKeyConfig()
+      val fkContext = ForeignKeyContext(plan, allGeneratedData, executableTasks = None, fkConfig)
+      val fkResult = fkProcessor.process(fkContext)
+      fkResult.dataFrames
+    } else {
+      allGeneratedData.toList
+    }
     val updatedDataMap = dataFramesWithForeignKeys.toMap
 
     try {

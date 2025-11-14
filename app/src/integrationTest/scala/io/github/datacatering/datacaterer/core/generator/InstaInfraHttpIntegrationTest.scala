@@ -11,7 +11,7 @@ import org.scalatest.matchers.should.Matchers
 
 import java.io.File
 import scala.sys.process.{Process, ProcessLogger}
-import scala.util.{Failure, Success, Try}
+import scala.util.Try
 
 /**
  * Integration tests for HTTP execution strategies using insta-infra to manage httpbin service.

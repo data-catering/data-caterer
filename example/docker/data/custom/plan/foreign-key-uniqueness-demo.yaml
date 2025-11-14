@@ -1,0 +1,99 @@
+---
+name: "foreign_key_uniqueness_demo"
+description: |
+  Demonstrates the importance of unique source FK fields with limited value spaces.
+
+  Scenario:
+  - accounts table with account_id limited to values A-E (5 possibilities)
+  - Request 20 account records
+  - transactions table with 1:3 cardinality (each account should have 3 transactions)
+  - Expected: 20 unique accounts → 60 transactions
+
+  Without ForeignKeyUniquenessProcessor:
+  - account_id could have duplicates (e.g., A, A, B, A, C, ...)
+  - FK logic would create unexpected number of transactions
+
+  With ForeignKeyUniquenessProcessor:
+  - account_id automatically marked as unique
+  - Exactly 20 unique accounts generated
+  - Exactly 60 transactions (20 × 3 ratio)
+
+tasks:
+  - name: "accounts_source"
+    dataSourceName: "customer_accounts"
+    enabled: true
+    steps:
+      - name: "accounts"
+        type: "csv"
+        options:
+          path: "/tmp/data-caterer/foreign-key-uniqueness-demo/accounts"
+        count:
+          records: 20
+        fields:
+          # LIMITED VALUE SPACE: Only 5 possible values (A, B, C, D, E)
+          # ForeignKeyUniquenessProcessor will automatically add unique=true
+          - name: "account_id"
+            type: "string"
+            options:
+              regex: "[A-E]"
+
+          - name: "customer_name"
+            type: "string"
+            options:
+              expression: "#{Name.name}"
+
+          - name: "balance"
+            type: "double"
+            options:
+              min: 100.0
+              max: 50000.0
+
+  - name: "transactions_target"
+    dataSourceName: "customer_transactions"
+    enabled: true
+    steps:
+      - name: "transactions"
+        type: "csv"
+        options:
+          path: "/tmp/data-caterer/foreign-key-uniqueness-demo/transactions"
+        count:
+          records: 100  # Will be adjusted to 60 by CardinalityCountAdjustmentProcessor
+        fields:
+          - name: "transaction_id"
+            type: "string"
+            options:
+              expression: "#{IdNumber.valid}"
+
+          - name: "account_id"
+            type: "string"
+            # Will be populated by FK relationship
+
+          - name: "amount"
+            type: "double"
+            options:
+              min: 1.0
+              max: 1000.0
+
+          - name: "timestamp"
+            type: "timestamp"
+            options:
+              expression: "#{Date.past}"
+
+sinkOptions:
+  foreignKeys:
+    - source:
+        dataSource: "customer_accounts"
+        step: "accounts"
+        fields:
+          - "account_id"
+      generate:
+        - dataSource: "customer_transactions"
+          step: "transactions"
+          fields:
+            - "account_id"
+      cardinality:
+        ratio: 3.0
+        distribution: "uniform"
+
+flags:
+  enableGenerateData: true
