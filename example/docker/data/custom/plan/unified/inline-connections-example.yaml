@@ -1,0 +1,119 @@
+# Inline Connections Example
+# Demonstrates tasks with inline connection definitions AND inline steps
+# No separate connections section needed - everything in one place!
+# Perfect for quick tests and simple scenarios
+
+name: "quick_test_data"
+description: "Quick data generation with inline connections"
+
+# Tasks with EVERYTHING inline - connections AND steps
+tasks:
+  - name: json_data
+    # Inline connection - no reference needed!
+    connection:
+      type: json
+      options:
+        path: "/tmp/output/users"
+    enabled: true
+
+    # Steps defined inline in the task!
+    steps:
+      - name: users
+        type: json
+        options:
+          path: "/tmp/output/users/users.json"
+        count:
+          records: 100
+        fields:
+          - name: user_id
+            type: string
+            options:
+              regex: "USER[0-9]{6}"
+              unique: true
+          - name: username
+            type: string
+            options:
+              faker: "#{Internet.username}"
+          - name: email
+            type: string
+            options:
+              faker: "#{Internet.emailAddress}"
+          - name: age
+            type: integer
+            options:
+              min: 18
+              max: 75
+
+        validations:
+          - field: user_id
+            validation:
+              - type: unique
+          - field: age
+            validation:
+              - type: between
+                min: 18
+                max: 75
+          - metric: "count"
+            validation:
+              - type: equal
+                value: 100
+
+  - name: csv_data
+    connection:
+      type: csv
+      options:
+        path: "/tmp/output/transactions"
+        header: "true"
+        delimiter: ","
+    enabled: true
+
+    # Steps defined inline in the task!
+    steps:
+      - name: transactions
+        type: csv
+        options:
+          path: "/tmp/output/transactions/transactions.csv"
+        count:
+          records: 500
+        fields:
+          - name: transaction_id
+            type: string
+            options:
+              regex: "TXN[0-9]{10}"
+              unique: true
+          - name: user_id
+            type: string
+            options:
+              regex: "USER[0-9]{6}"
+          - name: amount
+            type: decimal
+            options:
+              min: 1
+              max: 1000
+          - name: currency
+            type: string
+            options:
+              oneOf: ["USD", "EUR", "GBP"]
+          - name: timestamp
+            type: timestamp
+            options:
+              faker: "#{Date.past '30', 'DAYS'}"
+
+        validations:
+          - field: transaction_id
+            validation:
+              - type: unique
+          - field: amount
+            validation:
+              - type: greaterThan
+                value: 0
+          - field: currency
+            validation:
+              - type: in
+                values: ["USD", "EUR", "GBP"]
+          - groupBy: ["currency"]
+            aggField: "amount"
+            aggType: "sum"
+            validation:
+              - type: greaterThan
+                value: 0

@@ -12,8 +12,6 @@ import org.apache.hadoop.fs.FileSystem
 import org.apache.log4j.Logger
 import org.apache.spark.sql.SparkSession
 
-import scala.xml.Node
-
 class DataGenerationResultWriter(val dataCatererConfiguration: DataCatererConfiguration)
                                 (implicit sparkSession: SparkSession) extends PostPlanProcessor {
 
@@ -42,17 +40,20 @@ class DataGenerationResultWriter(val dataCatererConfiguration: DataCatererConfig
     val reportFolder = plan.runId.map(id => s"${foldersConfig.generatedReportsFolderPath}/$id")
       .getOrElse(foldersConfig.generatedReportsFolderPath)
 
-    LOGGER.info(s"Writing data generation summary to HTML files, folder-path=$reportFolder")
-    val htmlWriter = new ResultHtmlWriter()
-    val fileWriter = writeToFile(fileSystem, reportFolder) _
+    LOGGER.info(s"Writing data generation summary to HTML files using modern template, folder-path=$reportFolder")
+    val htmlWriter = new ModernHtmlWriter()
 
     try {
-      fileWriter(REPORT_HOME_HTML, htmlWriter.index(plan, stepSummary, taskSummary, dataSourceSummary,
-        validationResults, dataCatererConfiguration.flagsConfig, sparkRecordListener))
-      fileWriter(REPORT_TASK_HTML, htmlWriter.taskDetails(taskSummary))
-      fileWriter(REPORT_FIELDS_HTML, htmlWriter.stepDetails(stepSummary))
-      fileWriter(REPORT_DATA_SOURCES_HTML, htmlWriter.dataSourceDetails(stepSummary.flatMap(_.dataSourceResults)))
-      fileWriter(REPORT_VALIDATIONS_HTML, htmlWriter.validations(validationResults, validationConfig))
+      writeStringToFile(fileSystem, s"$reportFolder/$REPORT_HOME_HTML",
+        htmlWriter.index(plan, stepSummary, taskSummary, dataSourceSummary, validationResults, dataCatererConfiguration.flagsConfig, sparkRecordListener))
+      writeStringToFile(fileSystem, s"$reportFolder/$REPORT_TASK_HTML",
+        htmlWriter.taskDetails(taskSummary))
+      writeStringToFile(fileSystem, s"$reportFolder/$REPORT_FIELDS_HTML",
+        htmlWriter.stepDetails(stepSummary))
+      writeStringToFile(fileSystem, s"$reportFolder/$REPORT_DATA_SOURCES_HTML",
+        htmlWriter.dataSourceDetails(stepSummary.flatMap(_.dataSourceResults)))
+      writeStringToFile(fileSystem, s"$reportFolder/$REPORT_VALIDATIONS_HTML",
+        htmlWriter.validations(validationResults, validationConfig))
       writeStringToFile(fileSystem, s"$reportFolder/$REPORT_RESULT_JSON", resultsAsJson(generationResult, validationResults))
       writeStringToFile(fileSystem, s"$reportFolder/$REPORT_DATA_CATERING_SVG", htmlWriter.dataCateringSvg)
       writeStringToFile(fileSystem, s"$reportFolder/$REPORT_MAIN_CSS", htmlWriter.mainCss)
@@ -62,9 +63,6 @@ class DataGenerationResultWriter(val dataCatererConfiguration: DataCatererConfig
     }
   }
 
-  private def writeToFile(fileSystem: FileSystem, folderPath: String)(fileName: String, content: Node): Unit = {
-    writeStringToFile(fileSystem, s"$folderPath/$fileName", content.toString())
-  }
 
   private def getSummaries(generationResult: List[DataSourceResult]): (List[StepResultSummary], List[TaskResultSummary], List[DataSourceResultSummary]) = {
     val resultByStep = generationResult.groupBy(_.step).map(getResultSummary).toList

@@ -1,4 +1,4 @@
-package io.github.datacatering.datacaterer.core.util
+package io.github.datacatering.datacaterer.core.foreignkey
 
 import org.apache.log4j.Logger
 import org.apache.spark.sql.expressions.Window
@@ -10,7 +10,13 @@ import org.apache.spark.storage.StorageLevel
 import scala.annotation.tailrec
 
 /**
- * Next-generation foreign key utility with improved performance and flexibility.
+ * Foreign key application utilities with improved performance and flexibility.
+ *
+ * Provides core FK application logic including:
+ * - Distributed sampling for FK assignment
+ * - Cardinality configuration support
+ * - Nullability handling
+ * - All-combinations generation for testing
  *
  * Key improvements:
  * 1. Eliminates collect() bottleneck via distributed sampling
@@ -25,7 +31,7 @@ import scala.annotation.tailrec
  * - Support real-world testing: Allow controlled integrity violations
  * - Smart caching: Cache only when beneficial
  */
-object ForeignKeyUtilV2 {
+object ForeignKeyApplicationUtil {
 
   private val LOGGER = Logger.getLogger(getClass.getName)
 
@@ -42,13 +48,17 @@ object ForeignKeyUtilV2 {
    * @param enableBroadcastOptimization Whether to use broadcast joins for small dimension tables
    * @param cacheThresholdMB Only cache DataFrames smaller than this threshold
    * @param seed Optional seed for random number generation to ensure deterministic behavior
+   * @param cardinality Optional cardinality configuration for controlling relationship ratios
+   * @param nullability Optional nullability configuration for controlling null FK percentage
    */
   case class ForeignKeyConfig(
     violationRatio: Double = 0.0,
     violationStrategy: String = "random",
     enableBroadcastOptimization: Boolean = true,
     cacheThresholdMB: Long = CACHE_SIZE_THRESHOLD_MB,
-    seed: Option[Long] = None
+    seed: Option[Long] = None,
+    cardinality: Option[io.github.datacatering.datacaterer.api.model.CardinalityConfig] = None,
+    nullability: Option[io.github.datacatering.datacaterer.api.model.NullabilityConfig] = None
   )
 
   /**
@@ -77,11 +87,11 @@ object ForeignKeyUtilV2 {
     require(sourceFields.length == targetFields.length,
       s"Source and target field counts must match: source=${sourceFields.length}, target=${targetFields.length}")
 
-    LOGGER.info(s"Applying foreign keys: source fields=${sourceFields.mkString(",")}, target fields=${targetFields.mkString(",")}")
-    LOGGER.info(s"FK Config: violations=${config.violationRatio}, strategy=${config.violationStrategy}")
+    LOGGER.debug(s"Applying foreign keys: source fields=${sourceFields.mkString(",")}, target fields=${targetFields.mkString(",")}")
+    LOGGER.debug(s"FK Config: violations=${config.violationRatio}, strategy=${config.violationStrategy}")
 
     if (targetPerFieldCount.isDefined) {
-      LOGGER.info(s"Target has perField count: fields=${targetPerFieldCount.get.fieldNames.mkString(",")}, " +
+      LOGGER.debug(s"Target has perField count: fields=${targetPerFieldCount.get.fieldNames.mkString(",")}, " +
         s"count=${targetPerFieldCount.get.count.getOrElse("dynamic")}")
     }
 
@@ -127,7 +137,7 @@ object ForeignKeyUtilV2 {
     val targetFields = fieldMappings.map(_._2)
     val perFieldAvgCount = perFieldCount.count.getOrElse(10L)
 
-    LOGGER.info(s"Applying grouped FKs: perField count=$perFieldAvgCount, grouping fields=${perFieldCount.fieldNames.mkString(",")}")
+    LOGGER.debug(s"Applying grouped FKs: perField count=$perFieldAvgCount, grouping fields=${perFieldCount.fieldNames.mkString(",")}")
 
     // Get distinct source values
     val distinctSource = sourceDf.select(sourceFields.map(col): _*).distinct()
@@ -181,7 +191,7 @@ object ForeignKeyUtilV2 {
     val sourceFields = fieldMappings.map(_._1)
     val targetFields = fieldMappings.map(_._2)
 
-    LOGGER.info(s"Using optimized flat field approach for ${fieldMappings.length} fields")
+    LOGGER.debug(s"Using optimized flat field approach for ${fieldMappings.length} fields")
 
     // Check if we need to handle perField grouping
     val needsPerFieldGrouping = targetPerFieldCount.isDefined && {
@@ -191,7 +201,7 @@ object ForeignKeyUtilV2 {
     }
 
     if (needsPerFieldGrouping) {
-      LOGGER.info("Target has perField count and FK fields overlap with perField grouping - using grouped FK assignment")
+      LOGGER.debug("Target has perField count and FK fields overlap with perField grouping - using grouped FK assignment")
       return applyGroupedForeignKeys(sourceDf, targetDf, fieldMappings, config, targetPerFieldCount.get)
     }
 
@@ -213,7 +223,7 @@ object ForeignKeyUtilV2 {
       val useBroadcast = if (config.enableBroadcastOptimization) {
         val shouldBroadcast = sourceCount < BROADCAST_THRESHOLD_ROWS
         if (shouldBroadcast) {
-          LOGGER.info(s"Using broadcast for small dimension table (rows: $sourceCount)")
+          LOGGER.debug(s"Using broadcast for small dimension table (rows: $sourceCount)")
         }
         shouldBroadcast
       } else {
@@ -318,7 +328,7 @@ object ForeignKeyUtilV2 {
     val sourceFields = fieldMappings.map(_._1)
     val targetFields = fieldMappings.map(_._2)
 
-    LOGGER.info(s"Using distributed sampling approach for ${fieldMappings.length} fields (includes nested)")
+    LOGGER.debug(s"Using distributed sampling approach for ${fieldMappings.length} fields (includes nested)")
 
     // Create a temporary table with all source field combinations
     val distinctSource = sourceDf.select(sourceFields.map(col): _*).distinct()
@@ -341,7 +351,7 @@ object ForeignKeyUtilV2 {
       }
 
       if (useBroadcast) {
-        LOGGER.info(s"Using broadcast join for lookup table")
+        LOGGER.debug(s"Using broadcast join for lookup table")
       }
 
       // Add contiguous index to source (0-based)
@@ -653,5 +663,334 @@ object ForeignKeyUtilV2 {
     )
 
     (validResult, invalidResult)
+  }
+
+  /**
+   * Apply nullability configuration to target DataFrame.
+   * This creates null FK values for a percentage of records based on the strategy.
+   *
+   * @param targetDf Target DataFrame
+   * @param targetFields Target field names to potentially nullify
+   * @param nullabilityConfig Configuration for null FK behavior
+   * @param seed Optional seed for deterministic behavior
+   * @return DataFrame with some FK fields set to null
+   */
+  def applyNullability(
+    targetDf: DataFrame,
+    targetFields: List[String],
+    nullabilityConfig: io.github.datacatering.datacaterer.api.model.NullabilityConfig,
+    seed: Option[Long] = None
+  ): DataFrame = {
+
+    val percentage = nullabilityConfig.nullPercentage
+    val strategy = nullabilityConfig.strategy.toLowerCase
+
+    if (percentage <= 0.0) {
+      LOGGER.debug("Nullability percentage is 0, skipping null FK generation")
+      return targetDf
+    }
+
+    LOGGER.info(s"Applying nullability: ${percentage * 100}% of records will have null FKs, strategy=$strategy")
+
+    // Add a column to determine which records get null FKs
+    val withNullFlag = strategy match {
+      case "random" =>
+        val randExpr = seed.map(s => rand(s)).getOrElse(rand())
+        targetDf.withColumn("_should_null_fk", randExpr < percentage)
+
+      case "head" =>
+        // First N% of records get null FKs
+        val totalCount = targetDf.count()
+        val nullCount = (totalCount * percentage).toLong
+        targetDf
+          .withColumn("_row_idx", row_number().over(Window.orderBy(lit(1))) - 1)
+          .withColumn("_should_null_fk", col("_row_idx") < nullCount)
+          .drop("_row_idx")
+
+      case "tail" =>
+        // Last N% of records get null FKs
+        val totalCount = targetDf.count()
+        val validCount = (totalCount * (1.0 - percentage)).toLong
+        targetDf
+          .withColumn("_row_idx", row_number().over(Window.orderBy(lit(1))) - 1)
+          .withColumn("_should_null_fk", col("_row_idx") >= validCount)
+          .drop("_row_idx")
+
+      case _ =>
+        LOGGER.warn(s"Unknown nullability strategy: $strategy, using random")
+        val randExpr = seed.map(s => rand(s)).getOrElse(rand())
+        targetDf.withColumn("_should_null_fk", randExpr < percentage)
+    }
+
+    // Apply nulls to target fields
+    var result = withNullFlag
+    targetFields.foreach { field =>
+      result = result.withColumn(field,
+        when(col("_should_null_fk"), lit(null).cast(result.schema(field).dataType))
+          .otherwise(col(field))
+      )
+    }
+
+    result.drop("_should_null_fk")
+  }
+
+
+  /**
+   * Apply cardinality configuration to generate one-to-many relationships.
+   * This creates multiple child records per parent based on the cardinality config.
+   *
+   * STRATEGY:
+   * When perField count is configured (e.g., 5 transactions per account_id), the target DataFrame
+   * is already generated with groups of records sharing the same FK field value.
+   * We preserve these groups by:
+   * 1. Getting distinct FK values from the target (these are the group identifiers)
+   * 2. Assigning each distinct FK value to a source parent (round-robin)
+   * 3. Replacing all occurrences of each target FK value with the corresponding source value
+   *
+   * This ensures that all records in the same group get the same FK value, maintaining
+   * the cardinality while preserving unique non-FK field values.
+   *
+   * @param sourceDf Source DataFrame (parent records)
+   * @param targetDf Target DataFrame template (child records)
+   * @param fieldMappings List of (sourceField, targetField) tuples
+   * @param cardinalityConfig Configuration for cardinality control
+   * @param seed Optional seed for deterministic behavior
+   * @param targetPerFieldCount Optional perField count configuration from target step
+   * @return Target DataFrame with expanded rows based on cardinality
+   */
+  def applyCardinality(
+    sourceDf: DataFrame,
+    targetDf: DataFrame,
+    fieldMappings: List[(String, String)],
+    cardinalityConfig: io.github.datacatering.datacaterer.api.model.CardinalityConfig,
+    seed: Option[Long] = None,
+    targetPerFieldCount: Option[io.github.datacatering.datacaterer.api.model.PerFieldCount] = None
+  ): DataFrame = {
+
+    val sourceFields = fieldMappings.map(_._1)
+    val targetFields = fieldMappings.map(_._2)
+
+    LOGGER.info(s"Applying cardinality: min=${cardinalityConfig.min}, max=${cardinalityConfig.max}, " +
+      s"ratio=${cardinalityConfig.ratio}, distribution=${cardinalityConfig.distribution}")
+
+    // Get distinct source values
+    val distinctSource = sourceDf.select(sourceFields.map(col): _*).distinct()
+    val sourceCount = distinctSource.count()
+
+    LOGGER.info(s"Source has $sourceCount distinct parent records")
+
+    // Check if target has perField config that creates grouping structure
+    // If so, use group-based approach which preserves the generated groups
+    val hasMatchingPerFieldConfig = targetPerFieldCount.exists { pfc =>
+      // Check if the FK fields are part of the perField grouping
+      targetFields.exists(pfc.fieldNames.contains)
+    }
+
+    if (hasMatchingPerFieldConfig) {
+      // Use group-based approach when perField grouping exists
+      // This preserves the group structure created during generation (uniform or varying)
+      LOGGER.info("Using GROUP-BASED approach: target has perField grouping for FK fields")
+      applyCardinalityWithGrouping(sourceDf, targetDf, sourceFields, targetFields, sourceCount)
+    } else {
+      // Use index-based approach when no perField grouping exists
+      // Calculate expected records per parent for index assignment
+      val recordsPerParent = cardinalityConfig match {
+        case config if config.min.isDefined && config.max.isDefined =>
+          // For bounded, use average of min and max
+          (config.min.get + config.max.get) / 2.0
+        case config if config.ratio.isDefined =>
+          config.ratio.get
+        case _ =>
+          1.0
+      }
+
+      LOGGER.info(s"Using INDEX-BASED approach: assigning FKs by row position (${recordsPerParent} records per parent)")
+      applyCardinalityWithIndex(sourceDf, targetDf, sourceFields, targetFields, sourceCount, recordsPerParent.toLong)
+    }
+  }
+
+  /**
+   * Group-based FK assignment: Maps existing FK groups to source values.
+   * Used when target has perField grouping that creates the correct cardinality structure.
+   */
+  private def applyCardinalityWithGrouping(
+    sourceDf: DataFrame,
+    targetDf: DataFrame,
+    sourceFields: List[String],
+    targetFields: List[String],
+    sourceCount: Long
+  ): DataFrame = {
+
+    // Step 1: Get distinct FK value combinations from target
+    val distinctTargetFKs = targetDf.select(targetFields.map(col): _*).distinct()
+    val distinctTargetCount = distinctTargetFKs.count()
+
+    LOGGER.info(s"Target has $distinctTargetCount distinct FK value groups")
+
+    // Step 2: Add index to both source and distinct target FKs
+    val windowSpec = Window.orderBy(lit(1))
+
+    val sourceWithIndex = sourceDf.select(sourceFields.map(col): _*).distinct()
+      .withColumn("_fk_idx", row_number().over(windowSpec) - 1)
+
+    // For target, assign indices without modulo to avoid collisions when possible
+    // Map distinct target groups to source values in order (0->0, 1->1, etc.)
+    // Only use modulo if we have more target groups than source values
+    val useModulo = distinctTargetCount > sourceCount
+    val targetFKsWithIndex = if (useModulo) {
+      LOGGER.info(s"Target has more distinct groups ($distinctTargetCount) than source values ($sourceCount), using modulo")
+      distinctTargetFKs
+        .withColumn("_target_idx", row_number().over(windowSpec) - 1)
+        .withColumn("_fk_idx", (col("_target_idx") % sourceCount).cast("long"))
+    } else {
+      LOGGER.info(s"Mapping distinct target groups ($distinctTargetCount) 1:1 to source values ($sourceCount)")
+      distinctTargetFKs
+        .withColumn("_target_idx", row_number().over(windowSpec) - 1)
+        .withColumn("_fk_idx", col("_target_idx"))
+    }
+
+    // Step 3: Rename source fields to prepare for join
+    val sourceFieldsRenamed = sourceFields.foldLeft(sourceWithIndex) { case (df, field) =>
+      df.withColumnRenamed(field, s"_src_$field")
+    }
+
+    // Step 4: Create mapping table: old FK values -> new FK values
+    // Keep original field names for the join key
+    val fkMapping = targetFKsWithIndex
+      .join(broadcast(sourceFieldsRenamed), Seq("_fk_idx"), "left")
+      .select(
+        targetFields.map(col) ++
+         sourceFields.map(f => col(s"_src_$f")): _*
+      )
+
+    // Step 5: Join target with mapping to replace FK values
+    // This preserves all non-FK fields while updating only the FK fields
+    var result = targetDf.join(fkMapping, targetFields, "left")
+
+    // Step 6: Replace target FK fields with source values
+    sourceFields.zip(targetFields).foreach { case (sourceField, targetField) =>
+      val srcColName = s"_src_$sourceField"
+      // If join succeeded, use source value; otherwise keep target value (shouldn't happen)
+      result = result.withColumn(targetField, coalesce(col(srcColName), col(targetField)))
+    }
+
+    // Step 7: Clean up and return only original columns
+    result.select(targetDf.columns.map(col): _*)
+  }
+
+  /**
+   * Index-based FK assignment: Assigns FKs based on row position.
+   * Used when target doesn't have perField grouping, or when we need explicit cardinality control.
+   */
+  private def applyCardinalityWithIndex(
+    sourceDf: DataFrame,
+    targetDf: DataFrame,
+    sourceFields: List[String],
+    targetFields: List[String],
+    sourceCount: Long,
+    recordsPerParent: Long
+  ): DataFrame = {
+
+    val windowSpec = Window.orderBy(lit(1))
+
+    // Step 1: Add index to source for join
+    val sourceWithIndex = sourceDf.select(sourceFields.map(col): _*).distinct()
+      .withColumn("_fk_idx", row_number().over(windowSpec) - 1)
+
+    // Step 2: Rename source fields to avoid collision during join
+    val sourceFieldsRenamed = sourceFields.foldLeft(sourceWithIndex) { case (df, field) =>
+      df.withColumnRenamed(field, s"_src_$field")
+    }
+
+    // Step 3: Add grouping logic to target based on row position
+    // Each group of recordsPerParent consecutive rows gets the same FK index
+    val targetWithGrouping = targetDf
+      .withColumn("_row_num", row_number().over(windowSpec) - 1)
+      .withColumn("_group_id", floor(col("_row_num") / recordsPerParent))
+      .withColumn("_fk_idx", (col("_group_id") % sourceCount).cast("long"))
+
+    // Step 4: Join on FK index to get source values
+    val joined = targetWithGrouping.join(broadcast(sourceFieldsRenamed), Seq("_fk_idx"), "left")
+
+    // Step 5: Update target FK fields with source values
+    var result = joined
+    sourceFields.zip(targetFields).foreach { case (sourceField, targetField) =>
+      val srcColName = s"_src_$sourceField"
+      result = result.withColumn(targetField, col(srcColName))
+    }
+
+    // Step 6: Clean up temporary columns and return
+    result.select(targetDf.columns.map(col): _*)
+  }
+
+  /**
+   * Generate all combinations of foreign key relationships including:
+   * - Complete match (all FK fields match)
+   * - Partial match (some FK fields match, others don't)
+   * - No match (no FK fields match)
+   *
+   * This is useful for testing join behavior and data quality validation.
+   *
+   * @param sourceDf Source DataFrame
+   * @param targetDf Target DataFrame
+   * @param fieldMappings List of (sourceField, targetField) tuples
+   * @param seed Optional seed for deterministic behavior
+   * @return DataFrame with all combinations of FK matches
+   */
+  def generateAllForeignKeyCombinations(
+    sourceDf: DataFrame,
+    targetDf: DataFrame,
+    fieldMappings: List[(String, String)],
+    seed: Option[Long] = None
+  ): DataFrame = {
+
+    val numFields = fieldMappings.length
+    LOGGER.info(s"Generating all FK combinations for $numFields fields (${math.pow(2, numFields).toInt} combinations)")
+
+    if (numFields == 0) {
+      LOGGER.warn("No fields to generate combinations for")
+      return targetDf
+    }
+
+    // Calculate total combinations: 2^n (each field can match or not match)
+    val totalCombinations = math.pow(2, numFields).toInt
+    val targetCount = targetDf.count()
+    val recordsPerCombination = math.max(1, targetCount / totalCombinations)
+
+    LOGGER.info(s"Generating $totalCombinations combinations with ~$recordsPerCombination records each")
+
+    // Add combination ID to target
+    val targetWithCombo = targetDf
+      .withColumn("_row_id", row_number().over(Window.orderBy(lit(1))) - 1)
+      .withColumn("_combination_id", floor(col("_row_id") / recordsPerCombination))
+
+    // Get valid FK values from source
+    val validConfig = ForeignKeyConfig(violationRatio = 0.0, seed = seed)
+    val withValidFKs = applyForeignKeysToTargetDf(
+      sourceDf, targetWithCombo,
+      fieldMappings.map(_._1), fieldMappings.map(_._2),
+      validConfig
+    )
+
+    // For each combination, decide which fields to invalidate
+    var result = withValidFKs
+    fieldMappings.zipWithIndex.foreach { case ((_, targetField), fieldIdx) =>
+      // Bit mask: if bit at position fieldIdx is 0, invalidate this field
+      // This ensures we get all 2^n combinations
+      val shouldInvalidate = (col("_combination_id") % totalCombinations).bitwiseAND(1 << fieldIdx) === 0
+
+      val randExpr = seed.map(s => rand(s)).getOrElse(rand())
+      val invalidValue = generateViolationValue(
+        result.schema(targetField).dataType,
+        "random",
+        seed
+      )
+
+      result = result.withColumn(targetField,
+        when(shouldInvalidate, invalidValue).otherwise(col(targetField))
+      )
+    }
+
+    result.drop("_row_id", "_combination_id")
   }
 }

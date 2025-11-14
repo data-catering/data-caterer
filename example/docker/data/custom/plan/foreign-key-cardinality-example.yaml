@@ -1,0 +1,71 @@
+name: "foreign_key_cardinality_example"
+description: "Example demonstrating cardinality control for foreign key relationships"
+
+tasks:
+  - name: "customer_postgres_data"
+    dataSourceName: "customer_postgres"
+  - name: "order_postgres_data"
+    dataSourceName: "order_postgres"
+  - name: "order_item_postgres_data"
+    dataSourceName: "order_item_postgres"
+
+sinkOptions:
+  seed: "12345"
+  foreignKeys:
+    # One-to-one relationship: Each customer has exactly 1 profile
+    - source:
+        dataSource: "customer_postgres"
+        step: "customers"
+        fields: [ "customer_id" ]
+      generate:
+        - dataSource: "customer_postgres"
+          step: "customer_profiles"
+          fields: [ "customer_id" ]
+      relationshipType: "one-to-one"
+      cardinality:
+        min: 1
+        max: 1
+        distribution: "uniform"
+
+    # One-to-many with normal distribution: Customers have 2-8 orders (avg ~5)
+    - source:
+        dataSource: "customer_postgres"
+        step: "customers"
+        fields: [ "customer_id" ]
+      generate:
+        - dataSource: "order_postgres"
+          step: "orders"
+          fields: [ "customer_id" ]
+      relationshipType: "one-to-many"
+      cardinality:
+        min: 2
+        max: 8
+        distribution: "normal"
+
+    # One-to-many with ratio: Orders have avg 3.5 items with uniform distribution
+    - source:
+        dataSource: "order_postgres"
+        step: "orders"
+        fields: [ "order_id" ]
+      generate:
+        - dataSource: "order_item_postgres"
+          step: "order_items"
+          fields: [ "order_id" ]
+      relationshipType: "one-to-many"
+      cardinality:
+        ratio: 3.5
+        distribution: "uniform"
+
+    # Power law distribution: Few products have many reviews, most have few
+    - source:
+        dataSource: "customer_postgres"
+        step: "products"
+        fields: [ "product_id" ]
+      generate:
+        - dataSource: "customer_postgres"
+          step: "reviews"
+          fields: [ "product_id" ]
+      relationshipType: "one-to-many"
+      cardinality:
+        ratio: 10.0
+        distribution: "zipf"  # Realistic skewed distribution

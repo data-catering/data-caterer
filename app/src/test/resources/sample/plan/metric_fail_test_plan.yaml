@@ -1,0 +1,9 @@
+---
+name: "metric_fail_test_plan"
+description: "Test metric validation failure"
+tasks: []
+sinkOptions:
+  foreignKeys: []
+validations:
+- "metric_fail_validation"
+runId: "43d85499-4754-447c-91d0-8a80da8e1a88"

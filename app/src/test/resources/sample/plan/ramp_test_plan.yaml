@@ -1,0 +1,8 @@
+---
+name: "ramp_test_plan"
+description: "Test ramp load pattern"
+tasks: []
+sinkOptions:
+  foreignKeys: []
+validations: []
+runId: "ffee8132-1202-43ac-8061-31b2f26330de"

@@ -1,0 +1,11 @@
+---
+name: "multi_format_e2e_test"
+description: "End-to-end test for multiple formats in single plan"
+tasks: []
+sinkOptions:
+  foreignKeys: []
+validations: []
+runId: "25a0c46b-0fbe-4bdb-b097-9435a88a919e"
+configuration:
+  folders:
+    generatedReportsFolderPath: "/tmp/data-caterer-integration-test-7b18f83a/reports"

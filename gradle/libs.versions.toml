@@ -86,6 +86,7 @@ json-schema-validator = "1.5.7"
 joda-time = "2.12.7"
 pureconfig = "0.17.6"
 scala-xml-full = "2.2.0"
+scalatags = "0.13.1"
 
 # Pekko (Akka fork)
 pekko-http = "1.0.0"
@@ -183,6 +184,7 @@ json-schema-validator = { module = "com.networknt:json-schema-validator", versio
 joda-time = { module = "joda-time:joda-time", version.ref = "joda-time" }
 pureconfig = { module = "com.github.pureconfig:pureconfig_2.12", version.ref = "pureconfig" }
 scala-xml-full = { module = "org.scala-lang.modules:scala-xml_2.12", version.ref = "scala-xml-full" }
+scalatags = { module = "com.lihaoyi:scalatags_2.12", version.ref = "scalatags" }
 
 # Pekko (Akka fork)
 pekko-http = { module = "org.apache.pekko:pekko-http_2.12", version.ref = "pekko-http" }

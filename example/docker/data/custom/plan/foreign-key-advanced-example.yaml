@@ -1,0 +1,162 @@
+name: "foreign_key_advanced_example"
+description: "Advanced foreign key examples combining multiple features"
+
+tasks:
+  - name: "ecommerce_data"
+    dataSourceName: "ecommerce_postgres"
+
+sinkOptions:
+  seed: "42"
+  foreignKeys:
+    # Example 1: Realistic e-commerce scenario
+    # Customers have 1-10 orders with normal distribution (avg ~5)
+    # 5% of orders have no customer (guest checkout / orphaned)
+    - source:
+        dataSource: "ecommerce_postgres"
+        step: "customers"
+        fields: [ "customer_id" ]
+      generate:
+        - dataSource: "ecommerce_postgres"
+          step: "orders"
+          fields: [ "customer_id" ]
+      relationshipType: "one-to-many"
+      cardinality:
+        min: 1
+        max: 10
+        distribution: "normal"  # Most customers have ~5 orders
+      nullability:
+        nullPercentage: 0.05  # 5% guest checkouts
+        strategy: "random"
+
+    # Example 2: Power law distribution for realistic data
+    # Authors and books: Few authors have many books, most have 1-2
+    # 2% of books have no author (edge case testing)
+    - source:
+        dataSource: "ecommerce_postgres"
+        step: "authors"
+        fields: [ "author_id" ]
+      generate:
+        - dataSource: "ecommerce_postgres"
+          step: "books"
+          fields: [ "author_id" ]
+      relationshipType: "one-to-many"
+      cardinality:
+        ratio: 5.0
+        distribution: "zipf"  # Power law: 80/20 rule applies
+      nullability:
+        nullPercentage: 0.02
+        strategy: "random"
+
+    # Example 3: Strict one-to-one with no nulls
+    # Every user must have exactly one profile (strict referential integrity)
+    - source:
+        dataSource: "ecommerce_postgres"
+        step: "users"
+        fields: [ "user_id" ]
+      generate:
+        - dataSource: "ecommerce_postgres"
+          step: "user_profiles"
+          fields: [ "user_id" ]
+      relationshipType: "one-to-one"
+      cardinality:
+        min: 1
+        max: 1
+      # No nullability config = 0% nulls
+
+    # Example 4: Chained relationships
+    # customers -> orders -> order_items (hierarchical)
+    - source:
+        dataSource: "ecommerce_postgres"
+        step: "orders"
+        fields: [ "order_id" ]
+      generate:
+        - dataSource: "ecommerce_postgres"
+          step: "order_items"
+          fields: [ "order_id" ]
+      cardinality:
+        min: 1
+        max: 15
+        distribution: "normal"  # Most orders have 3-5 items
+
+    # Example 5: Multi-field composite key
+    # Transactions reference account_id + branch_id
+    - source:
+        dataSource: "ecommerce_postgres"
+        step: "accounts"
+        fields: [ "account_id", "branch_id" ]
+      generate:
+        - dataSource: "ecommerce_postgres"
+          step: "transactions"
+          fields: [ "account_id", "branch_id" ]
+      cardinality:
+        ratio: 25.0  # Accounts have many transactions
+        distribution: "zipf"  # Few accounts have most transactions
+
+    # Example 6: Testing scenario with all combinations
+    # Generate all FK match patterns for order validation testing
+    - source:
+        dataSource: "ecommerce_postgres"
+        step: "shipping_addresses"
+        fields: [ "address_id" ]
+      generate:
+        - dataSource: "ecommerce_postgres"
+          step: "test_orders"
+          fields: [ "shipping_address_id" ]
+      generationMode: "all-combinations"
+      # This creates test data with:
+      # - Valid address_id (exists in shipping_addresses)
+      # - Invalid address_id (doesn't exist)
+      # Useful for testing order validation logic
+
+    # Example 7: Gradual rollout scenario
+    # First 10% of products have no supplier (legacy data)
+    # Rest have valid supplier relationships
+    - source:
+        dataSource: "ecommerce_postgres"
+        step: "suppliers"
+        fields: [ "supplier_id" ]
+      generate:
+        - dataSource: "ecommerce_postgres"
+          step: "products"
+          fields: [ "supplier_id" ]
+      nullability:
+        nullPercentage: 0.1
+        strategy: "head"  # First 10% are legacy products with no supplier
+
+    # Example 8: Recent data has relationships, old data doesn't
+    # Last 20% of shipments have no tracking (old data before tracking was added)
+    - source:
+        dataSource: "ecommerce_postgres"
+        step: "tracking_info"
+        fields: [ "tracking_id" ]
+      generate:
+        - dataSource: "ecommerce_postgres"
+          step: "shipments"
+          fields: [ "tracking_id" ]
+      nullability:
+        nullPercentage: 0.2
+        strategy: "tail"  # Last 20% are old shipments with no tracking
+
+# Real-world use cases demonstrated:
+#
+# 1. E-commerce:
+#    - Customers with varying order counts (normal distribution)
+#    - Guest checkouts (null customer_id)
+#    - Product-supplier relationships with legacy data
+#
+# 2. Social Media:
+#    - Users with posts (power law: few have many, most have few)
+#    - One-to-one user-profile relationships
+#
+# 3. Financial:
+#    - Multi-field composite keys (account + branch)
+#    - High transaction volumes with skewed distribution
+#
+# 4. Testing:
+#    - All combinations for comprehensive join testing
+#    - Partial relationships for error handling tests
+#    - Orphan records for data quality validation
+#
+# 5. Data Migration:
+#    - Legacy data without relationships (head strategy)
+#    - Gradual feature rollout (tail strategy)

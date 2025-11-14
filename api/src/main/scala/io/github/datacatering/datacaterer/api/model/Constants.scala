@@ -343,6 +343,31 @@ object Constants {
   lazy val FOREIGN_KEY_PLAN_FILE_DELIMITER = "."
   lazy val FOREIGN_KEY_PLAN_FILE_DELIMITER_REGEX = "\\."
 
+  //foreign key relationship types
+  lazy val FOREIGN_KEY_RELATIONSHIP_ONE_TO_ONE = "one-to-one"
+  lazy val FOREIGN_KEY_RELATIONSHIP_ONE_TO_MANY = "one-to-many"
+  lazy val FOREIGN_KEY_RELATIONSHIP_MANY_TO_MANY = "many-to-many"
+  lazy val DEFAULT_FOREIGN_KEY_RELATIONSHIP_TYPE = FOREIGN_KEY_RELATIONSHIP_ONE_TO_MANY
+
+  //foreign key generation modes
+  lazy val FOREIGN_KEY_GENERATION_MODE_ALL_EXIST = "all-exist"
+  lazy val FOREIGN_KEY_GENERATION_MODE_ALL_COMBINATIONS = "all-combinations"
+  lazy val FOREIGN_KEY_GENERATION_MODE_PARTIAL = "partial"
+  lazy val DEFAULT_FOREIGN_KEY_GENERATION_MODE = FOREIGN_KEY_GENERATION_MODE_ALL_EXIST
+
+  //foreign key cardinality distribution types
+  lazy val CARDINALITY_DISTRIBUTION_UNIFORM = "uniform"
+  lazy val CARDINALITY_DISTRIBUTION_NORMAL = "normal"
+  lazy val CARDINALITY_DISTRIBUTION_ZIPF = "zipf"
+  lazy val CARDINALITY_DISTRIBUTION_POWER = "power"
+  lazy val DEFAULT_CARDINALITY_DISTRIBUTION = CARDINALITY_DISTRIBUTION_UNIFORM
+
+  //foreign key nullability strategies
+  lazy val NULLABILITY_STRATEGY_RANDOM = "random"
+  lazy val NULLABILITY_STRATEGY_HEAD = "head"
+  lazy val NULLABILITY_STRATEGY_TAIL = "tail"
+  lazy val DEFAULT_NULLABILITY_STRATEGY = NULLABILITY_STRATEGY_RANDOM
+
   //plan defaults
   lazy val DEFAULT_PLAN_NAME = "default_plan"
 

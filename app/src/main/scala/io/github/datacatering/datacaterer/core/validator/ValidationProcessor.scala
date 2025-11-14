@@ -2,12 +2,13 @@ package io.github.datacatering.datacaterer.core.validator
 
 import io.github.datacatering.datacaterer.api.ValidationBuilder
 import io.github.datacatering.datacaterer.api.model.Constants.{DEFAULT_ENABLE_VALIDATION, DELTA, DELTA_LAKE_SPARK_CONF, ENABLE_DATA_VALIDATION, FORMAT, HTTP, ICEBERG, ICEBERG_SPARK_CONF, JMS, TABLE, VALIDATION_IDENTIFIER}
-import io.github.datacatering.datacaterer.api.model.{DataSourceValidation, DataSourceValidationResult, ExpressionValidation, FoldersConfig, GroupByValidation, UpstreamDataSourceValidation, ValidationConfig, ValidationConfigResult, ValidationConfiguration, ValidationResult}
+import io.github.datacatering.datacaterer.api.model.{DataSourceValidation, DataSourceValidationResult, ExpressionValidation, FoldersConfig, GroupByValidation, MetricValidation, UpstreamDataSourceValidation, ValidationConfig, ValidationConfigResult, ValidationConfiguration, ValidationResult}
 import io.github.datacatering.datacaterer.core.parser.PlanParser
 import io.github.datacatering.datacaterer.core.util.ObjectMapperUtil
 import io.github.datacatering.datacaterer.core.util.ValidationUtil.cleanValidationIdentifier
 import io.github.datacatering.datacaterer.core.validator.ValidationHelper.getValidationType
 import io.github.datacatering.datacaterer.core.validator.ValidationWaitImplicits.ValidationWaitConditionOps
+import io.github.datacatering.datacaterer.core.validator.metric.MetricValidator
 import org.apache.log4j.Logger
 import org.apache.spark.sql.{DataFrame, SparkSession}
 
@@ -35,7 +36,8 @@ class ValidationProcessor(
                            connectionConfigsByName: Map[String, Map[String, String]],
                            optValidationConfigs: Option[List[ValidationConfiguration]],
                            validationConfig: ValidationConfig,
-                           foldersConfig: FoldersConfig
+                           foldersConfig: FoldersConfig,
+                           optPerformanceMetrics: Option[io.github.datacatering.datacaterer.core.generator.metrics.PerformanceMetrics] = None
                          )(implicit sparkSession: SparkSession) {
 
   private val LOGGER = Logger.getLogger(getClass.getName)
@@ -76,18 +78,86 @@ class ValidationProcessor(
           s"data-source-name=$dataSourceName, details=${dataSourceValidation.options}, num-validations=${dataSourceValidation.validations.size}")
         dataSourceValidation.waitCondition.waitBeforeValidation(connectionConfigsByName)
 
-        val df = getDataFrame(dataSourceName, dataSourceValidation.options)
-        if (!df.storageLevel.useMemory) df.cache()
-        val results = dataSourceValidation.validations.flatMap(validBuilder => tryValidate(df, validBuilder))
-        df.unpersist()
+        // Separate metric validations from data validations
+        val (metricValidations, dataValidations) = dataSourceValidation.validations.partition { validBuilder =>
+          validBuilder.validation.isInstanceOf[MetricValidation]
+        }
+
+        // Process metric validations
+        val metricResults = if (metricValidations.nonEmpty) {
+          processMetricValidations(metricValidations)
+        } else {
+          List()
+        }
+
+        // Process data validations
+        val dataResults = if (dataValidations.nonEmpty) {
+          val df = getDataFrame(dataSourceName, dataSourceValidation.options)
+          if (!df.storageLevel.useMemory) df.cache()
+          val results = dataValidations.flatMap(validBuilder => tryValidate(df, validBuilder))
+          df.unpersist()
+          results
+        } else {
+          List()
+        }
+
         LOGGER.debug(s"Finished data validations, name=${vc.name}," +
-          s"data-source-name=$dataSourceName, details=${dataSourceValidation.options}, num-validations=${dataSourceValidation.validations.size}")
+          s"data-source-name=$dataSourceName, details=${dataSourceValidation.options}, " +
+          s"num-data-validations=${dataValidations.size}, num-metric-validations=${metricValidations.size}")
         cleanRecordTrackingFiles()
-        DataSourceValidationResult(dataSourceName, dataSourceValidation.options, results)
+        DataSourceValidationResult(dataSourceName, dataSourceValidation.options, metricResults ++ dataResults)
       }
     } else {
       LOGGER.debug(s"Data validations are disabled, data-source-name=$dataSourceName, details=${dataSourceValidation.options}")
       DataSourceValidationResult(dataSourceName, dataSourceValidation.options, List())
+    }
+  }
+
+  private def processMetricValidations(metricValidations: List[ValidationBuilder]): List[ValidationResult] = {
+    optPerformanceMetrics match {
+      case Some(performanceMetrics) =>
+        LOGGER.info(s"Processing metric validations: num-metrics=${metricValidations.size}")
+        val metricValidator = new MetricValidator(performanceMetrics)
+
+        metricValidations.flatMap { validBuilder =>
+          validBuilder.validation match {
+            case mv: MetricValidation =>
+              Try(metricValidator.validate(mv)) match {
+                case Success(result) =>
+                  val isSuccess = result.isValid
+                  val errorCount = if (isSuccess) 0L else 1L
+                  LOGGER.info(s"Metric validation result: metric=${result.metricName}, value=${result.metricValue}, " +
+                    s"is-success=$isSuccess, validations=${result.fieldValidations.map(fv => s"${fv.validationType}=${fv.isValid}").mkString(", ")}")
+
+                  val sampleErrors = if (!isSuccess) {
+                    Some(Array(Map[String, Any](
+                      "metric" -> result.metricName,
+                      "actual_value" -> result.metricValue.toString,
+                      "failed_validations" -> result.fieldValidations.filter(!_.isValid)
+                        .map(fv => s"${fv.validationType}: expected ${fv.expectedValue}")
+                        .mkString("; ")
+                    )))
+                  } else None
+
+                  List(ValidationResult(mv, isSuccess, 1L, errorCount, sampleErrors))
+
+                case Failure(exception) =>
+                  LOGGER.error(s"Failed to run metric validation for metric=${mv.metric}", exception)
+                  List(ValidationResult(mv, false, 1L, 1L, Some(Array(Map[String, Any]("exception" -> exception.getLocalizedMessage)))))
+              }
+            case _ =>
+              LOGGER.warn(s"Expected MetricValidation but got ${validBuilder.validation.getClass.getSimpleName}")
+              List()
+          }
+        }
+
+      case None =>
+        LOGGER.warn(s"Metric validations defined but no performance metrics available. " +
+          s"Metric validations require duration-based execution. Skipping ${metricValidations.size} metric validations.")
+        metricValidations.map { validBuilder =>
+          ValidationResult(validBuilder.validation, false, 0L, 1L,
+            Some(Array(Map[String, Any]("error" -> "Performance metrics not available. Use duration-based execution to enable metric validations."))))
+        }
     }
   }
 

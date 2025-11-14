@@ -7,8 +7,8 @@ import org.scalatest.BeforeAndAfterAll
 import org.scalatest.matchers.should.Matchers
 
 import java.io.File
-import scala.io.Source
 import scala.collection.JavaConverters._
+import scala.io.Source
 
 class TestUpperCaseTransformer {
   def transform(record: String): String = record.toUpperCase

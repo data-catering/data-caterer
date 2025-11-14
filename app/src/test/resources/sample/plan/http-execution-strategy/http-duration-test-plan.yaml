@@ -1,0 +1,7 @@
+name: "http_duration_test_plan"
+description: "Test duration-based execution with HTTP sink"
+tasks:
+  - name: "http_duration_task"
+    dataSourceName: "http_orders"
+    enabled: true
+

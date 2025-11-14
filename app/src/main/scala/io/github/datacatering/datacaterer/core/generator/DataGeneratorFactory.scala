@@ -81,7 +81,8 @@ class DataGeneratorFactory(faker: Faker, enableFastGeneration: Boolean = false)(
       df
     } else {
       val metadata = if (perFieldCount.options.nonEmpty) {
-        Metadata.fromJson(OBJECT_MAPPER.writeValueAsString(perFieldCount.options))
+        val stringOptions = perFieldCount.options.map(x => (x._1, x._2.toString))
+        Metadata.fromJson(OBJECT_MAPPER.writeValueAsString(stringOptions))
       } else if (perFieldCount.count.isDefined) {
         Metadata.fromJson(OBJECT_MAPPER.writeValueAsString(Map(STATIC -> perFieldCount.count.get.toString)))
       } else {

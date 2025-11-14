@@ -1,0 +1,72 @@
+name: "foreign_key_nullability_example"
+description: "Example demonstrating nullable foreign keys (partial relationships)"
+
+tasks:
+  - name: "order_data"
+    dataSourceName: "order_postgres"
+  - name: "shipment_data"
+    dataSourceName: "shipment_postgres"
+  - name: "user_data"
+    dataSourceName: "user_postgres"
+
+sinkOptions:
+  seed: "54321"
+  foreignKeys:
+    # Partial relationship: 30% of orders have no shipment (null shipment_id)
+    - source:
+        dataSource: "shipment_postgres"
+        step: "shipments"
+        fields: [ "shipment_id" ]
+      generate:
+        - dataSource: "order_postgres"
+          step: "orders"
+          fields: [ "shipment_id" ]
+      nullability:
+        nullPercentage: 0.3  # 30% will have null FK
+        strategy: "random"   # Randomly distributed
+
+    # Optional profile: 20% of users have no profile (null profile_id)
+    # Using "head" strategy: first 20% of records get null
+    - source:
+        dataSource: "user_postgres"
+        step: "profiles"
+        fields: [ "profile_id" ]
+      generate:
+        - dataSource: "user_postgres"
+          step: "users"
+          fields: [ "profile_id" ]
+      nullability:
+        nullPercentage: 0.2
+        strategy: "head"  # First 20% of users have no profile
+
+    # Partially filled addresses: 15% of customers missing address
+    # Using "tail" strategy: last 15% of records get null
+    - source:
+        dataSource: "order_postgres"
+        step: "addresses"
+        fields: [ "address_id" ]
+      generate:
+        - dataSource: "order_postgres"
+          step: "customers"
+          fields: [ "address_id" ]
+      nullability:
+        nullPercentage: 0.15
+        strategy: "tail"  # Last 15% of customers have no address
+
+    # Combined: Cardinality + Nullability
+    # Users have 0-5 posts, and 10% of posts have no author (orphaned)
+    - source:
+        dataSource: "user_postgres"
+        step: "users"
+        fields: [ "user_id" ]
+      generate:
+        - dataSource: "user_postgres"
+          step: "posts"
+          fields: [ "user_id" ]
+      cardinality:
+        min: 0
+        max: 5
+        distribution: "uniform"
+      nullability:
+        nullPercentage: 0.1
+        strategy: "random"

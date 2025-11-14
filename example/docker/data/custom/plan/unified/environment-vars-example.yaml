@@ -1,0 +1,191 @@
+# Environment Variables Example
+# Demonstrates the use of Docker Compose/Bash style environment variables
+# Syntax: ${VAR_NAME:-default_value}
+#
+# This makes configurations portable and secure:
+# - No hardcoded credentials
+# - Different values for dev/staging/prod
+# - Defaults for local development
+
+name: "${TEST_NAME:-production_data_generation}"
+description: "Generate ${ENVIRONMENT:-production} data with configurable parameters"
+
+# Connections using environment variables
+connections:
+  - name: main_database
+    type: postgres
+    url: "jdbc:postgresql://${DB_HOST:-localhost}:${DB_PORT:-5432}/${DB_NAME:-myapp}"
+    options:
+      user: "${DB_USER:-postgres}"
+      password: "${DB_PASSWORD:-postgres}"
+      driver: "org.postgresql.Driver"
+      # Spark-specific options
+      spark.sql.catalog.postgres: "org.apache.spark.sql.jdbc.JdbcCatalog"
+
+  - name: kafka_cluster
+    type: kafka
+    options:
+      kafka.bootstrap.servers: "${KAFKA_BROKERS:-localhost:9092}"
+      kafka.security.protocol: "${KAFKA_SECURITY_PROTOCOL:-PLAINTEXT}"
+      kafka.sasl.mechanism: "${KAFKA_SASL_MECHANISM:-PLAIN}"
+      # Only used if SASL is enabled
+      kafka.sasl.jaas.config: "${KAFKA_JAAS_CONFIG:-}"
+
+  - name: s3_storage
+    type: parquet
+    options:
+      path: "${S3_BUCKET:-s3a://my-bucket}/data/${ENVIRONMENT:-dev}"
+      fs.s3a.access.key: "${AWS_ACCESS_KEY_ID:-}"
+      fs.s3a.secret.key: "${AWS_SECRET_ACCESS_KEY:-}"
+      fs.s3a.endpoint: "${S3_ENDPOINT:-s3.amazonaws.com}"
+
+tasks:
+  - name: generate_users
+    dataSourceName: main_database
+    enabled: true
+
+  - name: generate_events
+    dataSourceName: kafka_cluster
+    enabled: true
+
+  - name: backup_to_s3
+    dataSourceName: s3_storage
+    enabled: "${ENABLE_BACKUP:-false}"  # Can even use env vars for boolean flags!
+
+---
+# Task: Generate Users
+name: generate_users
+steps:
+  - name: users
+    options:
+      dbtable: "${DB_SCHEMA:-public}.${USERS_TABLE:-users}"
+    count:
+      # Use env var for record count - great for testing with smaller datasets
+      records: ${NUM_USERS:-10000}
+    fields:
+      - name: user_id
+        type: string
+        options:
+          # Customize prefix per environment
+          regex: "${USER_ID_PREFIX:-USER}[0-9]{6}"
+          unique: true
+      - name: username
+        type: string
+        options:
+          faker: "#{Internet.username}"
+      - name: email
+        type: string
+        options:
+          # Use environment-specific email domain
+          faker: "#{Internet.emailAddress '${EMAIL_DOMAIN:-example.com}'}"
+      - name: country
+        type: string
+        options:
+          # Different default country per region
+          oneOf: ["${DEFAULT_COUNTRY:-US}", "CA", "GB", "AU"]
+      - name: subscription_tier
+        type: string
+        options:
+          # Configurable tiers
+          oneOf: ["${TIER_FREE:-free}", "${TIER_PRO:-pro}", "${TIER_ENTERPRISE:-enterprise}"]
+
+    validations:
+      - field: user_id
+        validation:
+          - type: unique
+      - metric: "count"
+        validation:
+          - type: equal
+            value: ${NUM_USERS:-10000}
+
+---
+# Task: Generate Events to Kafka
+name: generate_events
+steps:
+  - name: user_events
+    options:
+      topic: "${KAFKA_TOPIC:-user_events}"
+    count:
+      duration: "${TEST_DURATION:-5m}"
+      rate: ${EVENT_RATE:-100}
+    fields:
+      - name: event_id
+        type: string
+        options:
+          regex: "EVT[0-9]{12}"
+      - name: user_id
+        type: string
+        options:
+          regex: "${USER_ID_PREFIX:-USER}[0-9]{6}"
+      - name: event_type
+        type: string
+        options:
+          oneOf: ["login", "logout", "purchase", "view"]
+      - name: timestamp
+        type: timestamp
+        options:
+          faker: "#{Date.past '1', 'HOURS'}"
+
+    validations:
+      - metric: "throughput"
+        validation:
+          - type: greaterThan
+            # Allow 10% variance
+            value: ${MIN_THROUGHPUT:-90}
+
+---
+# Task: Backup to S3
+name: backup_to_s3
+steps:
+  - name: user_backup
+    options:
+      path: "${S3_BUCKET:-s3a://my-bucket}/backups/${BACKUP_DATE:-2025-01-01}/users"
+    count:
+      records: ${NUM_USERS:-10000}
+    fields:
+      - name: user_id
+        type: string
+        options:
+          regex: "${USER_ID_PREFIX:-USER}[0-9]{6}"
+      - name: backup_timestamp
+        type: timestamp
+        options:
+          faker: "#{Date.now}"
+
+---
+# Configuration with environment variables
+configuration:
+  flags:
+    enableFastGeneration: ${ENABLE_FAST_GENERATION:-true}
+    enableValidation: ${ENABLE_VALIDATION:-true}
+    enableRecordTracking: ${ENABLE_RECORD_TRACKING:-false}
+  folders:
+    generatedReportsFolderPath: "${REPORTS_PATH:-/tmp/data-caterer/reports}"
+    planFilePath: "${PLAN_FILE_PATH:-/opt/app/plan}"
+    taskFolderPath: "${TASK_FOLDER_PATH:-/opt/app/task}"
+    validationFolderPath: "${VALIDATION_FOLDER_PATH:-/opt/app/validation}"
+
+# Example usage:
+#
+# Development (uses defaults):
+#   ./gradlew :app:run
+#
+# Staging environment:
+#   export ENVIRONMENT=staging
+#   export DB_HOST=staging-db.example.com
+#   export DB_USER=staging_user
+#   export DB_PASSWORD=staging_pass
+#   export NUM_USERS=1000
+#   export EMAIL_DOMAIN=staging.example.com
+#   ./gradlew :app:run
+#
+# Production:
+#   export ENVIRONMENT=production
+#   export DB_HOST=prod-db.example.com
+#   export DB_USER=prod_user
+#   export DB_PASSWORD=$PROD_DB_PASSWORD  # From secrets manager
+#   export NUM_USERS=1000000
+#   export EMAIL_DOMAIN=example.com
+#   export ENABLE_BACKUP=true
+#   export S3_BUCKET=s3a://prod-backups
+#   ./gradlew :app:run

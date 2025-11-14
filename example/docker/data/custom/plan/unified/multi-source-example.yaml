@@ -1,0 +1,253 @@
+# Multi-Source Unified YAML Example
+# Demonstrates:
+# - Multiple connection types (Postgres, Kafka, CSV)
+# - Foreign key relationships
+# - Connection reuse
+# - Mix of inline and referenced connections
+
+name: "e_commerce_data_generation"
+description: "Generate e-commerce data across database, messaging, and files"
+
+# Define multiple connections
+connections:
+  - name: orders_db
+    type: postgres
+    url: "jdbc:postgresql://${DB_HOST:-localhost}:5432/orders"
+    options:
+      user: "${DB_USER:-postgres}"
+      password: "${DB_PASSWORD:-postgres}"
+
+  - name: events_kafka
+    type: kafka
+    options:
+      kafka.bootstrap.servers: "${KAFKA_BROKERS:-localhost:9092}"
+      topic: "order_events"
+
+  - name: reports_storage
+    type: csv
+    options:
+      path: "/tmp/reports"
+      header: "true"
+
+# Tasks reference connections
+tasks:
+  - name: generate_customers
+    dataSourceName: orders_db
+    enabled: true
+
+  - name: generate_orders
+    dataSourceName: orders_db
+    enabled: true
+
+  - name: publish_events
+    dataSourceName: events_kafka
+    enabled: true
+
+  - name: export_reports
+    dataSourceName: reports_storage
+    enabled: true
+
+# Foreign key relationships
+sinkOptions:
+  seed: "12345"
+  foreignKeys:
+    # Customers → Orders relationship
+    - source:
+        dataSource: orders_db
+        step: customers
+        fields: ["customer_id"]
+      generate:
+        - dataSource: orders_db
+          step: orders
+          fields: ["customer_id"]
+
+    # Orders → Events relationship
+    - source:
+        dataSource: orders_db
+        step: orders
+        fields: ["order_id"]
+      generate:
+        - dataSource: events_kafka
+          step: order_events
+          fields: ["order_id"]
+
+---
+# Task 1: Generate Customers
+name: generate_customers
+steps:
+  - name: customers
+    options:
+      dbtable: "public.customers"
+    count:
+      records: 10000
+    fields:
+      - name: customer_id
+        type: string
+        options:
+          regex: "CUST[0-9]{8}"
+          unique: true
+      - name: email
+        type: string
+        options:
+          faker: "#{Internet.emailAddress}"
+      - name: name
+        type: string
+        options:
+          faker: "#{Name.fullName}"
+      - name: created_at
+        type: timestamp
+        options:
+          faker: "#{Date.past '365', 'DAYS'}"
+
+    validations:
+      - field: customer_id
+        validation:
+          - type: unique
+      - field: email
+        validation:
+          - type: matches
+            regex: "^[A-Za-z0-9+_.-]+@(.+)$"
+      - metric: "count"
+        validation:
+          - type: equal
+            value: 10000
+
+---
+# Task 2: Generate Orders
+name: generate_orders
+steps:
+  - name: orders
+    options:
+      dbtable: "public.orders"
+    count:
+      records: 50000
+    fields:
+      - name: order_id
+        type: string
+        options:
+          regex: "ORD[0-9]{10}"
+          unique: true
+      - name: customer_id  # Foreign key - will be populated
+        type: string
+      - name: order_total
+        type: decimal
+        options:
+          min: 10
+          max: 5000
+      - name: status
+        type: string
+        options:
+          oneOf: ["pending", "confirmed", "shipped", "delivered", "cancelled"]
+      - name: order_date
+        type: timestamp
+        options:
+          faker: "#{Date.past '90', 'DAYS'}"
+
+    validations:
+      - field: order_id
+        validation:
+          - type: unique
+      - field: order_total
+        validation:
+          - type: greaterThan
+            value: 0
+      - field: status
+        validation:
+          - type: in
+            values: ["pending", "confirmed", "shipped", "delivered", "cancelled"]
+      - groupBy: ["status"]
+        aggField: "order_total"
+        aggType: "sum"
+        aggExpr: "status IN ('confirmed', 'shipped', 'delivered')"
+        validation:
+          - type: greaterThan
+            value: 0
+
+---
+# Task 3: Publish Events to Kafka
+name: publish_events
+steps:
+  - name: order_events
+    options:
+      topic: "order_events"
+    count:
+      duration: "5m"
+      rate: 100  # 100 events per second
+    fields:
+      - name: event_id
+        type: string
+        options:
+          regex: "EVT[0-9]{12}"
+      - name: order_id  # Foreign key to orders
+        type: string
+      - name: event_type
+        type: string
+        options:
+          oneOf: ["created", "updated", "shipped", "delivered"]
+      - name: timestamp
+        type: timestamp
+        options:
+          faker: "#{Date.past '1', 'HOURS'}"
+      - name: payload
+        type: string
+        options:
+          faker: "#{Lorem.paragraph}"
+
+    validations:
+      - field: event_type
+        validation:
+          - type: in
+            values: ["created", "updated", "shipped", "delivered"]
+      - metric: "throughput"
+        validation:
+          - type: greaterThan
+            value: 90  # At least 90 events/sec
+
+---
+# Task 4: Export Reports to CSV
+name: export_reports
+steps:
+  - name: daily_summary
+    options:
+      path: "/tmp/reports/daily_summary.csv"
+    count:
+      records: 365  # One year of daily summaries
+    fields:
+      - name: report_date
+        type: date
+        options:
+          faker: "#{Date.past '365', 'DAYS'}"
+      - name: total_orders
+        type: integer
+        options:
+          min: 100
+          max: 500
+      - name: total_revenue
+        type: decimal
+        options:
+          min: 1000
+          max: 50000
+      - name: avg_order_value
+        type: decimal
+        options:
+          min: 10
+          max: 200
+
+    validations:
+      - field: total_orders
+        validation:
+          - type: greaterThan
+            value: 0
+      - expr: "total_revenue / total_orders = avg_order_value"
+        description: "Average order value should match calculation"
+        errorThreshold: 0.01  # Allow 1% margin for rounding
+
+---
+# Configuration
+configuration:
+  flags:
+    enableFastGeneration: true
+    enableValidation: true
+    enableRecordTracking: true
+  folders:
+    generatedReportsFolderPath: "/tmp/data-caterer/multi-source-reports"

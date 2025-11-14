@@ -1,0 +1,35 @@
+name: "http_wave_task"
+steps:
+  - name: "orders"
+    type: "http"
+    count:
+      duration: "5s"
+      pattern:
+        type: "wave"
+        baseRate: 5
+        amplitude: 3
+        frequency: 1.0
+      rateUnit: "1s"
+    options:
+      format: "http"
+    fields:
+      - name: "httpUrl"
+        type: "struct"
+        fields:
+          - name: "url"
+            static: "http://localhost:80/post"
+          - name: "method"
+            static: "POST"
+      - name: "httpBody"
+        type: "struct"
+        fields:
+          - name: "order_id"
+            type: "string"
+            options:
+              regex: "ORD[0-9]{8}"
+          - name: "amount"
+            type: "double"
+            options:
+              min: 10.0
+              max: 1000.0
+

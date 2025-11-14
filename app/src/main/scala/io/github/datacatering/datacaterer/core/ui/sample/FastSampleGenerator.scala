@@ -4,17 +4,13 @@ import io.github.datacatering.datacaterer.api.model.{Count, Field, Plan, Step, T
 import io.github.datacatering.datacaterer.core.config.ConfigParser
 import io.github.datacatering.datacaterer.core.generator.DataGeneratorFactory
 import io.github.datacatering.datacaterer.core.parser.PlanParser
-import io.github.datacatering.datacaterer.core.transformer.{PerRecordTransformer, WholeFileTransformer}
 import io.github.datacatering.datacaterer.core.ui.model._
-import io.github.datacatering.datacaterer.core.ui.service.{DataFrameManager, PlanLoaderService, TaskLoaderService}
-import io.github.datacatering.datacaterer.core.util.{DataFrameOmitUtil, ForeignKeyUtil, ObjectMapperUtil}
+import io.github.datacatering.datacaterer.core.ui.service.{PlanLoaderService, TaskLoaderService}
 import net.datafaker.Faker
 import org.apache.log4j.Logger
 import org.apache.spark.sql.{DataFrame, SparkSession}
 
-import java.nio.file.{Files, Paths}
-import java.util.{Locale, UUID}
-import scala.jdk.CollectionConverters._
+import java.util.Locale
 import scala.util.{Failure, Success, Try}
 
 object FastSampleGenerator {

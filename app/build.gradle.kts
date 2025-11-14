@@ -209,6 +209,7 @@ dependencies {
     basicImpl(libs.scala.xml.full) {
         exclude(group = "org.scala-lang")
     }
+    basicImpl(libs.scalatags)
 
     // Test dependencies
     testImplementation(libs.bundles.test)
@@ -284,6 +285,8 @@ tasks.register<Test>("integrationTest") {
     // Enable proper test filtering
     filter {
         setFailOnNoMatchingTests(false)
+        // Exclude insta-infra tests from regular integration tests
+        excludeTestsMatching("io.github.datacatering.datacaterer.core.generator.InstaInfraHttpIntegrationTest")
     }
 
     mustRunAfter("test")
@@ -320,6 +323,41 @@ tasks.register<Test>("performanceTest") {
     }
 
     mustRunAfter("test")
+}
+
+// Integration test task for insta-infra based tests (requires insta-infra CLI and Docker/Podman)
+tasks.register<Test>("integrationTestInsta") {
+    description = "Runs integration tests that require insta-infra (InstaInfraHttpIntegrationTest)"
+    group = "verification"
+
+    testClassesDirs = sourceSets["integrationTest"].output.classesDirs
+    classpath = sourceSets["integrationTest"].runtimeClasspath
+
+    // Same JVM settings as regular integration tests
+    minHeapSize = "1024m"
+    maxHeapSize = "4096m"
+
+    jvmArgs("-Djava.security.manager=allow", "-Djdk.module.illegalAccess=deny", "--add-opens=java.base/java.lang=ALL-UNNAMED", "--add-opens=java.base/java.lang.invoke=ALL-UNNAMED", "--add-opens=java.base/java.lang.reflect=ALL-UNNAMED", "--add-opens=java.base/java.io=ALL-UNNAMED", "--add-opens=java.base/java.net=ALL-UNNAMED", "--add-opens=java.base/java.nio=ALL-UNNAMED", "--add-opens=java.base/java.util=ALL-UNNAMED", "--add-opens=java.base/java.util.concurrent=ALL-UNNAMED", "--add-opens=java.base/java.util.concurrent.atomic=ALL-UNNAMED", "--add-opens=java.base/sun.nio.ch=ALL-UNNAMED", "--add-opens=java.base/sun.nio.cs=ALL-UNNAMED", "--add-opens=java.base/sun.security.action=ALL-UNNAMED", "--add-opens=java.base/sun.util.calendar=ALL-UNNAMED", "--add-opens=java.security.jgss/sun.security.krb5=ALL-UNNAMED")
+
+    useJUnitPlatform {
+        includeEngines("scalatest")
+        testLogging {
+            events("passed", "failed", "skipped")
+            showStandardStreams = true
+        }
+    }
+
+    // These tests must run sequentially due to shared Docker resources
+    maxParallelForks = 1
+
+    // Enable proper test filtering
+    filter {
+        setFailOnNoMatchingTests(false)
+        // Only run InstaInfraHttpIntegrationTest
+        includeTestsMatching("io.github.datacatering.datacaterer.core.generator.InstaInfraHttpIntegrationTest")
+    }
+
+    mustRunAfter("test", "integrationTest")
 }
 
 application {

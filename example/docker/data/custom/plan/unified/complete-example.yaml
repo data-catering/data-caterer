@@ -1,0 +1,565 @@
+# Complete Unified YAML Example
+# This example demonstrates ALL features of the unified YAML format:
+# - Multiple connection types
+# - Connection reuse
+# - Inline connections
+# - Environment variables
+# - Foreign key relationships
+# - Complex field generators
+# - Inline validations (field, expression, groupBy, metric)
+# - Load patterns
+# - Transformations
+# - Performance testing
+# - Configuration options
+
+name: "complete_unified_example"
+description: "Comprehensive example showcasing all unified YAML features"
+
+testType: "performance"
+testConfig:
+  executionMode: "duration"
+  warmup: "10s"
+  cooldown: "5s"
+
+# Reusable connections with environment variables
+connections:
+  - name: postgres_db
+    type: postgres
+    url: "jdbc:postgresql://${DB_HOST:-localhost}:5432/${DB_NAME:-testdb}"
+    options:
+      user: "${DB_USER:-postgres}"
+      password: "${DB_PASSWORD:-postgres}"
+      driver: "org.postgresql.Driver"
+
+  - name: data_lake
+    type: parquet
+    options:
+      path: "${DATA_LAKE_PATH:-/tmp/data-lake}"
+
+  - name: message_bus
+    type: kafka
+    options:
+      kafka.bootstrap.servers: "${KAFKA_BROKERS:-localhost:9092}"
+
+# Tasks with various configurations
+tasks:
+  - name: generate_customers
+    dataSourceName: postgres_db
+    enabled: true
+    weight: 1
+
+  - name: generate_orders
+    dataSourceName: postgres_db
+    enabled: true
+    weight: 2
+
+  - name: export_analytics
+    dataSourceName: data_lake
+    enabled: true
+
+  - name: stream_events
+    dataSourceName: message_bus
+    enabled: true
+    weight: 3
+
+  - name: generate_logs
+    # Inline connection example
+    connection:
+      type: json
+      options:
+        path: "/tmp/logs"
+    enabled: "${ENABLE_LOGS:-true}"
+
+# Foreign key relationships
+sinkOptions:
+  seed: "${RANDOM_SEED:-42}"
+  locale: "${LOCALE:-en_US}"
+  foreignKeys:
+    - source:
+        dataSource: postgres_db
+        step: customers
+        fields: ["customer_id"]
+      generate:
+        - dataSource: postgres_db
+          step: orders
+          fields: ["customer_id"]
+        - dataSource: message_bus
+          step: customer_events
+          fields: ["customer_id"]
+
+    - source:
+        dataSource: postgres_db
+        step: orders
+        fields: ["order_id"]
+      generate:
+        - dataSource: data_lake
+          step: order_analytics
+          fields: ["order_id"]
+
+---
+# Task 1: Generate Customers
+name: generate_customers
+steps:
+  - name: customers
+    type: postgres
+    options:
+      dbtable: "public.customers"
+    count:
+      records: 10000
+    fields:
+      # Primary key with regex
+      - name: customer_id
+        type: string
+        options:
+          regex: "CUST[0-9]{8}"
+          unique: true
+
+      # Faker generators
+      - name: first_name
+        type: string
+        options:
+          faker: "#{Name.firstName}"
+
+      - name: last_name
+        type: string
+        options:
+          faker: "#{Name.lastName}"
+
+      - name: email
+        type: string
+        options:
+          faker: "#{Internet.emailAddress}"
+
+      # SQL expression generator
+      - name: full_name
+        type: string
+        options:
+          sql: "CONCAT(first_name, ' ', last_name)"
+
+      # OneOf with weights
+      - name: customer_tier
+        type: string
+        options:
+          oneOf: ["bronze", "silver", "gold", "platinum"]
+
+      # Numeric ranges
+      - name: age
+        type: integer
+        options:
+          min: 18
+          max: 85
+
+      - name: credit_score
+        type: integer
+        options:
+          min: 300
+          max: 850
+
+      - name: account_balance
+        type: decimal
+        options:
+          min: -1000
+          max: 100000
+
+      # Nested fields (for JSON)
+      - name: address
+        type: struct
+        fields:
+          - name: street
+            type: string
+            options:
+              faker: "#{Address.streetAddress}"
+          - name: city
+            type: string
+            options:
+              faker: "#{Address.city}"
+          - name: state
+            type: string
+            options:
+              faker: "#{Address.stateAbbr}"
+          - name: zip
+            type: string
+            options:
+              regex: "[0-9]{5}"
+
+      # Array field
+      - name: tags
+        type: array
+        options:
+          arrayType: "string"
+          minLength: 1
+          maxLength: 5
+          arrayElementOptions: "{\"oneOf\": [\"vip\", \"new\", \"returning\", \"premium\"]}"
+
+      # Date/timestamp fields
+      - name: created_at
+        type: timestamp
+        options:
+          faker: "#{Date.past '365', 'DAYS'}"
+
+      - name: last_login
+        type: timestamp
+        options:
+          faker: "#{Date.between '#{Date.past ''30'', ''DAYS''}', '#{Date.now}'}"
+
+    # Transformations (post-generation data processing)
+    transformation:
+      sql:
+        - "email = LOWER(email)"
+        - "full_name = UPPER(full_name)"
+
+    # Inline validations - comprehensive examples
+    validations:
+      # Field validations
+      - field: customer_id
+        validation:
+          - type: unique
+          - type: "null"
+            negate: true
+          - type: matches
+            regex: "^CUST[0-9]{8}$"
+
+      - field: email
+        validation:
+          - type: matches
+            regex: "^[A-Za-z0-9+_.-]+@(.+)$"
+          - type: unique
+
+      - field: age
+        validation:
+          - type: between
+            min: 18
+            max: 85
+
+      - field: credit_score
+        validation:
+          - type: between
+            min: 300
+            max: 850
+
+      - field: account_balance
+        validation:
+          - type: greaterThan
+            value: -1000
+            strictly: false
+
+      - field: customer_tier
+        validation:
+          - type: in
+            values: ["bronze", "silver", "gold", "platinum"]
+
+      # Expression validations
+      - expr: "age >= 18"
+        description: "All customers must be adults"
+
+      - expr: "LENGTH(email) > 5"
+        description: "Email must have reasonable length"
+
+      - expr: "account_balance >= -1000"
+        description: "Account balance within overdraft limit"
+
+      # GroupBy validations
+      - groupBy: ["customer_tier"]
+        aggField: "account_balance"
+        aggType: "avg"
+        validation:
+          - type: greaterThan
+            value: 0
+        description: "Average balance per tier should be positive"
+
+      - groupBy: ["customer_tier"]
+        aggField: "credit_score"
+        aggType: "avg"
+        aggExpr: "customer_tier IN ('gold', 'platinum')"
+        validation:
+          - type: greaterThan
+            value: 650
+        description: "Premium tiers should have better credit scores"
+
+      # Metric validations
+      - metric: "count"
+        validation:
+          - type: equal
+            value: 10000
+
+      - metric: "count"
+        validation:
+          - type: greaterThan
+            value: 0
+        preFilterExpr: "customer_tier = 'platinum'"
+        description: "Should have at least some platinum customers"
+
+---
+# Task 2: Generate Orders
+name: generate_orders
+steps:
+  - name: orders
+    type: postgres
+    options:
+      dbtable: "public.orders"
+    count:
+      duration: "2m"
+      rate: 100
+      pattern:
+        type: "ramp"
+        startRate: 50
+        endRate: 150
+    fields:
+      - name: order_id
+        type: string
+        options:
+          regex: "ORD[0-9]{10}"
+          unique: true
+
+      - name: customer_id  # Foreign key - auto-populated
+        type: string
+
+      - name: order_total
+        type: decimal
+        options:
+          min: 10
+          max: 5000
+
+      - name: tax
+        type: decimal
+        options:
+          sql: "order_total * 0.08"
+
+      - name: shipping_cost
+        type: decimal
+        options:
+          min: 0
+          max: 50
+
+      - name: grand_total
+        type: decimal
+        options:
+          sql: "order_total + tax + shipping_cost"
+
+      - name: status
+        type: string
+        options:
+          oneOf: ["pending", "confirmed", "shipped", "delivered", "cancelled"]
+
+      - name: payment_method
+        type: string
+        options:
+          oneOf: ["credit_card", "debit_card", "paypal", "bank_transfer"]
+
+      - name: order_date
+        type: timestamp
+        options:
+          faker: "#{Date.past '90', 'DAYS'}"
+
+      - name: shipping_date
+        type: timestamp
+        options:
+          sql: "CASE WHEN status IN ('shipped', 'delivered') THEN DATE_ADD(order_date, INTERVAL 2 DAY) ELSE NULL END"
+
+    validations:
+      - field: order_id
+        validation:
+          - type: unique
+
+      - field: order_total
+        validation:
+          - type: greaterThan
+            value: 0
+
+      - field: grand_total
+        validation:
+          - type: greaterThan
+            value: 0
+
+      - field: status
+        validation:
+          - type: in
+            values: ["pending", "confirmed", "shipped", "delivered", "cancelled"]
+
+      - expr: "grand_total >= order_total"
+        description: "Grand total should include order total"
+
+      - expr: "tax = ROUND(order_total * 0.08, 2)"
+        description: "Tax calculation should be correct"
+        errorThreshold: 0.01
+
+      - groupBy: ["status"]
+        aggField: "order_total"
+        aggType: "sum"
+        validation:
+          - type: greaterThan
+            value: 0
+
+      - metric: "throughput"
+        validation:
+          - type: greaterThan
+            value: 45  # 90% of minimum rate
+
+---
+# Task 3: Export Analytics to Data Lake
+name: export_analytics
+steps:
+  - name: order_analytics
+    type: parquet
+    options:
+      path: "${DATA_LAKE_PATH:-/tmp/data-lake}/order_analytics"
+    count:
+      records: 1000
+    fields:
+      - name: order_id  # Foreign key
+        type: string
+
+      - name: analysis_date
+        type: date
+        options:
+          faker: "#{Date.past '30', 'DAYS'}"
+
+      - name: revenue
+        type: decimal
+        options:
+          min: 100
+          max: 10000
+
+      - name: cost
+        type: decimal
+        options:
+          min: 50
+          max: 8000
+
+      - name: profit
+        type: decimal
+        options:
+          sql: "revenue - cost"
+
+      - name: margin
+        type: decimal
+        options:
+          sql: "(revenue - cost) / revenue"
+
+    validations:
+      - field: profit
+        validation:
+          - type: greaterThan
+            value: 0
+
+      - field: margin
+        validation:
+          - type: between
+            min: 0
+            max: 1
+
+      - expr: "profit = revenue - cost"
+        errorThreshold: 0.01
+
+      - expr: "margin = (revenue - cost) / revenue"
+        errorThreshold: 0.01
+
+---
+# Task 4: Stream Events to Kafka
+name: stream_events
+steps:
+  - name: customer_events
+    type: kafka
+    options:
+      topic: "customer_events"
+    count:
+      duration: "2m"
+      rate: 200
+    fields:
+      - name: event_id
+        type: string
+        options:
+          regex: "EVT[0-9]{12}"
+
+      - name: customer_id  # Foreign key
+        type: string
+
+      - name: event_type
+        type: string
+        options:
+          oneOf: ["login", "logout", "purchase", "view", "search", "cart_add"]
+
+      - name: timestamp
+        type: timestamp
+        options:
+          faker: "#{Date.past '1', 'HOURS'}"
+
+      - name: metadata
+        type: string
+        options:
+          faker: "#{Json.object '3', '5'}"
+
+    validations:
+      - field: event_type
+        validation:
+          - type: in
+            values: ["login", "logout", "purchase", "view", "search", "cart_add"]
+
+      - metric: "throughput"
+        validation:
+          - type: greaterThan
+            value: 180
+
+---
+# Task 5: Generate Logs (with inline connection)
+name: generate_logs
+steps:
+  - name: application_logs
+    type: json
+    options:
+      path: "/tmp/logs/app.json"
+    count:
+      records: 5000
+    fields:
+      - name: log_id
+        type: string
+        options:
+          regex: "LOG[0-9]{10}"
+
+      - name: level
+        type: string
+        options:
+          oneOf: ["DEBUG", "INFO", "WARN", "ERROR"]
+
+      - name: message
+        type: string
+        options:
+          faker: "#{Lorem.sentence}"
+
+      - name: timestamp
+        type: timestamp
+        options:
+          faker: "#{Date.past '1', 'DAYS'}"
+
+      - name: source
+        type: string
+        options:
+          oneOf: ["api", "web", "worker", "scheduler"]
+
+    validations:
+      - field: level
+        validation:
+          - type: in
+            values: ["DEBUG", "INFO", "WARN", "ERROR"]
+
+      - groupBy: ["level"]
+        aggField: "log_id"
+        aggType: "count"
+        validation:
+          - type: greaterThan
+            value: 0
+
+---
+# Configuration
+configuration:
+  flags:
+    enableFastGeneration: ${ENABLE_FAST_GENERATION:-true}
+    enableValidation: ${ENABLE_VALIDATION:-true}
+    enableRecordTracking: ${ENABLE_RECORD_TRACKING:-false}
+  folders:
+    generatedReportsFolderPath: "${REPORTS_PATH:-/tmp/data-caterer/reports}"
+  generation:
+    numRecordsPerBatch: ${BATCH_SIZE:-10000}
+  validation:
+    numSampleErrorRecords: 10
+    enableDeleteRecordTrackingFiles: false

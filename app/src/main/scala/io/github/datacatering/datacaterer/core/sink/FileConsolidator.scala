@@ -4,7 +4,6 @@ import io.github.datacatering.datacaterer.api.model.Constants.CSV
 import org.apache.log4j.Logger
 
 import java.nio.file.{Files, Paths, StandardCopyOption}
-import scala.util.{Failure, Success, Try}
 
 /**
  * Handles consolidation of Spark-generated part files into single files.

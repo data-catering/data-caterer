@@ -15,10 +15,11 @@ import org.apache.spark.sql.types.{IntegerType, StringType}
 
 import java.nio.charset.StandardCharsets
 import scala.collection.mutable
+import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success, Try}
 
 
-object JmsSinkProcessor extends RealTimeSinkProcessor[(MessageProducer, Session, Connection)] {
+class JmsSinkProcessor extends RealTimeSinkProcessor[(MessageProducer, Session, Connection)] {
 
   private val LOGGER = Logger.getLogger(getClass.getName)
 
@@ -38,6 +39,23 @@ object JmsSinkProcessor extends RealTimeSinkProcessor[(MessageProducer, Session,
     val message = tryCreateMessage(body, messageProducer, session, connection)
     trySendMessage(row, messageProducer, session, connection, message)
     RealTimeSinkResult()
+  }
+
+  /**
+   * Sends JMS message asynchronously without blocking.
+   * This allows for non-blocking message sends to achieve target rate more accurately.
+   * 
+   * @param row Row containing JMS message data
+   * @param ec ExecutionContext for async execution
+   * @return Future[Unit] that completes when message is sent
+   */
+  def pushRowToSinkAsync(row: Row)(implicit ec: ExecutionContext): Future[Unit] = {
+    Future {
+      val body = tryGetBody(row)
+      val (messageProducer, session, connection) = getConnectionFromPool
+      val message = tryCreateMessage(body, messageProducer, session, connection)
+      trySendMessage(row, messageProducer, session, connection, message)
+    }
   }
 
   private def trySendMessage(row: Row, messageProducer: MessageProducer, session: Session, connection: Connection, message: TextMessage): Unit = {
