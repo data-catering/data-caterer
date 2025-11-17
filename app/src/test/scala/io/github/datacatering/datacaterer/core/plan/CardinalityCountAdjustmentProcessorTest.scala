@@ -26,15 +26,10 @@ class CardinalityCountAdjustmentProcessorTest extends SparkSuite {
   // ========================================================================================
 
   test("Ratio cardinality: Adjusts count DOWN when original > required") {
-    // CRITICAL TEST: This is the bug we're fixing
-    // Original: 30 transactions, Required: 15 (3 accounts × 5 ratio)
-    // Expected: Adjust DOWN to 15
-
     val foreignKeys = List(ForeignKey(
       ForeignKeyRelation("accounts", "accounts_table", List("account_id")),
-      List(ForeignKeyRelation("transactions", "transactions_table", List("account_id"))),
-      List(),
-      cardinality = Some(CardinalityConfig(ratio = Some(5.0), distribution = "uniform"))
+      List(ForeignKeyRelation("transactions", "transactions_table", List("account_id"),
+          cardinality = Some(CardinalityConfig(ratio = Some(5.0), distribution = "uniform"))))
     ))
 
     val sinkOptions = SinkOptions(Some("seed"), None, foreignKeys)
@@ -56,16 +51,16 @@ class CardinalityCountAdjustmentProcessorTest extends SparkSuite {
     )
 
     val processor = new CardinalityCountAdjustmentProcessor(dataCatererConfiguration)
-    val (adjustedPlan, adjustedTasks, _) = processor.apply(plan, tasks, List())
+    val (_, adjustedTasks, _) = processor.apply(plan, tasks, List())
 
-    // Verify count was adjusted DOWN from 30 to 15
+    // Verify count was adjusted DOWN from 30 to 3
     val transactionStep = adjustedTasks
       .find(_.name == "transaction_task")
       .flatMap(_.steps.headOption)
       .get
 
-    assert(transactionStep.count.records.contains(15),
-      s"Transaction count should be adjusted to 15 (3 accounts × 5 ratio), got ${transactionStep.count.records}")
+    assert(transactionStep.count.records.contains(3),
+      s"Transaction count should be adjusted to 3 (3 accounts x 5 ratio), got ${transactionStep.count.records}")
 
     // Verify perField was set
     assert(transactionStep.count.perField.isDefined,
@@ -77,14 +72,10 @@ class CardinalityCountAdjustmentProcessorTest extends SparkSuite {
   }
 
   test("Ratio cardinality: Adjusts count UP when original < required") {
-    // Original: 2 transactions, Required: 15 (3 accounts × 5 ratio)
-    // Expected: Adjust UP to 15
-
     val foreignKeys = List(ForeignKey(
       ForeignKeyRelation("accounts", "accounts_table", List("account_id")),
-      List(ForeignKeyRelation("transactions", "transactions_table", List("account_id"))),
-      List(),
-      cardinality = Some(CardinalityConfig(ratio = Some(5.0), distribution = "uniform"))
+      List(ForeignKeyRelation("transactions", "transactions_table", List("account_id"),
+        cardinality = Some(CardinalityConfig(ratio = Some(5.0), distribution = "uniform"))))
     ))
 
     val sinkOptions = SinkOptions(Some("seed"), None, foreignKeys)
@@ -106,15 +97,15 @@ class CardinalityCountAdjustmentProcessorTest extends SparkSuite {
     )
 
     val processor = new CardinalityCountAdjustmentProcessor(dataCatererConfiguration)
-    val (adjustedPlan, adjustedTasks, _) = processor.apply(plan, tasks, List())
+    val (_, adjustedTasks, _) = processor.apply(plan, tasks, List())
 
     val transactionStep = adjustedTasks
       .find(_.name == "transaction_task")
       .flatMap(_.steps.headOption)
       .get
 
-    assert(transactionStep.count.records.contains(15),
-      s"Transaction count should be adjusted UP to 15, got ${transactionStep.count.records}")
+    assert(transactionStep.count.records.contains(3),
+      s"Transaction count should be adjusted UP to 3, got ${transactionStep.count.records}")
     assert(transactionStep.count.perField.isDefined, "PerField should be configured")
     assert(transactionStep.count.perField.get.count.contains(5L),
       s"PerField count should be 5, got ${transactionStep.count.perField.get.count}")
@@ -123,9 +114,8 @@ class CardinalityCountAdjustmentProcessorTest extends SparkSuite {
   test("Ratio cardinality: Sets perField count equal to ratio") {
     val foreignKeys = List(ForeignKey(
       ForeignKeyRelation("customers", "customers_table", List("customer_id")),
-      List(ForeignKeyRelation("orders", "orders_table", List("customer_id"))),
-      List(),
-      cardinality = Some(CardinalityConfig(ratio = Some(3.0), distribution = "uniform"))
+      List(ForeignKeyRelation("orders", "orders_table", List("customer_id"),
+        cardinality = Some(CardinalityConfig(ratio = Some(3.0), distribution = "uniform")))),
     ))
 
     val sinkOptions = SinkOptions(Some("seed"), None, foreignKeys)
@@ -152,7 +142,7 @@ class CardinalityCountAdjustmentProcessorTest extends SparkSuite {
     val orderStep = adjustedTasks.find(_.name == "order_task").flatMap(_.steps.headOption).get
 
     // 10 customers × 3 ratio = 30 orders
-    assert(orderStep.count.records.contains(30), s"Expected 30 records, got ${orderStep.count.records}")
+    assert(orderStep.count.records.contains(10), s"Expected 10 records, got ${orderStep.count.records}")
     assert(orderStep.count.perField.isDefined, "PerField should be set")
     assert(orderStep.count.perField.get.fieldNames.contains("customer_id"), "PerField should include customer_id")
     assert(orderStep.count.perField.get.count.contains(3L), s"PerField count should be 3, got ${orderStep.count.perField.get.count}")
@@ -161,9 +151,10 @@ class CardinalityCountAdjustmentProcessorTest extends SparkSuite {
   test("Ratio cardinality: Non-uniform distribution uses options instead of count") {
     val foreignKeys = List(ForeignKey(
       ForeignKeyRelation("products", "products_table", List("product_id")),
-      List(ForeignKeyRelation("reviews", "reviews_table", List("product_id"))),
-      List(),
-      cardinality = Some(CardinalityConfig(ratio = Some(5.0), distribution = "normal"))
+      List(ForeignKeyRelation(
+        "reviews", "reviews_table", List("product_id"),
+        cardinality = Some(CardinalityConfig(ratio = Some(5.0), distribution = "normal"))
+      ))
     ))
 
     val sinkOptions = SinkOptions(Some("seed"), None, foreignKeys)
@@ -190,7 +181,7 @@ class CardinalityCountAdjustmentProcessorTest extends SparkSuite {
     val reviewStep = adjustedTasks.find(_.name == "review_task").flatMap(_.steps.headOption).get
 
     // 4 products × 5 ratio = 20 reviews
-    assert(reviewStep.count.records.contains(20), s"Expected 20 records, got ${reviewStep.count.records}")
+    assert(reviewStep.count.records.contains(4), s"Expected 4 records, got ${reviewStep.count.records}")
     assert(reviewStep.count.perField.isDefined, "PerField should be set")
 
     val perField = reviewStep.count.perField.get
@@ -211,9 +202,10 @@ class CardinalityCountAdjustmentProcessorTest extends SparkSuite {
 
     val foreignKeys = List(ForeignKey(
       ForeignKeyRelation("authors", "authors_table", List("author_id")),
-      List(ForeignKeyRelation("articles", "articles_table", List("author_id"))),
-      List(),
-      cardinality = Some(CardinalityConfig(min = Some(2), max = Some(4), distribution = "uniform"))
+      List(ForeignKeyRelation(
+        "articles", "articles_table", List("author_id"),
+        cardinality = Some(CardinalityConfig(min = Some(2), max = Some(4), distribution = "uniform"))
+      ))
     ))
 
     val sinkOptions = SinkOptions(Some("seed"), None, foreignKeys)
@@ -254,16 +246,14 @@ class CardinalityCountAdjustmentProcessorTest extends SparkSuite {
   // EXISTING PERFIELD TESTS
   // ========================================================================================
 
-  test("Existing perField: Adjusts records to source count, preserves perField config") {
-    // When target already has perField configured, we should:
-    // 1. Set records = source count
-    // 2. Keep the existing perField configuration
+  test("Existing perField: Rejects when both cardinality and perField on FK fields") {
+    // When target has BOTH cardinality AND perField on FK fields, validation should reject it
+    // to prevent conflicting configuration
 
     val foreignKeys = List(ForeignKey(
       ForeignKeyRelation("accounts", "accounts_table", List("account_id")),
-      List(ForeignKeyRelation("transactions", "transactions_table", List("account_id"))),
-      List(),
-      cardinality = Some(CardinalityConfig(ratio = Some(5.0), distribution = "uniform"))
+      List(ForeignKeyRelation("transactions", "transactions_table", List("account_id"),
+        cardinality = Some(CardinalityConfig(ratio = Some(5.0), distribution = "uniform"))))
     ))
 
     val sinkOptions = SinkOptions(Some("seed"), None, foreignKeys)
@@ -290,18 +280,13 @@ class CardinalityCountAdjustmentProcessorTest extends SparkSuite {
     )
 
     val processor = new CardinalityCountAdjustmentProcessor(dataCatererConfiguration)
-    val (_, adjustedTasks, _) = processor.apply(plan, tasks, List())
 
-    val transactionStep = adjustedTasks.find(_.name == "transaction_task").flatMap(_.steps.headOption).get
+    // This should throw because target has BOTH cardinality AND perField on FK fields
+    val exception = intercept[IllegalArgumentException] {
+      processor.apply(plan, tasks, List())
+    }
 
-    // Should adjust records to match cardinality: 10 accounts × 5 ratio = 50
-    assert(transactionStep.count.records.contains(50),
-      s"Records should be adjusted to 50, got ${transactionStep.count.records}")
-
-    // Should preserve/set perField
-    assert(transactionStep.count.perField.isDefined, "PerField should be set")
-    assert(transactionStep.count.perField.get.fieldNames.contains("account_id"), "PerField should include account_id")
-    assert(transactionStep.count.perField.get.count.contains(5L), s"PerField count should be 5")
+    assert(exception.getMessage.contains("BOTH cardinality config AND step perField on FK fields"))
   }
 
   // ========================================================================================
@@ -313,7 +298,6 @@ class CardinalityCountAdjustmentProcessorTest extends SparkSuite {
       ForeignKeyRelation("users", "users_table", List("user_id")),
       List(ForeignKeyRelation("sessions", "sessions_table", List("user_id"))),
       List()
-      // No cardinality config
     ))
 
     val sinkOptions = SinkOptions(Some("seed"), None, foreignKeys)
@@ -352,9 +336,10 @@ class CardinalityCountAdjustmentProcessorTest extends SparkSuite {
   test("Composite key cardinality: Sets perField with all FK fields") {
     val foreignKeys = List(ForeignKey(
       ForeignKeyRelation("locations", "locations_table", List("country", "state")),
-      List(ForeignKeyRelation("stores", "stores_table", List("country", "state"))),
-      List(),
-      cardinality = Some(CardinalityConfig(ratio = Some(3.0), distribution = "uniform"))
+      List(ForeignKeyRelation(
+        "stores", "stores_table", List("country", "state"),
+        cardinality = Some(CardinalityConfig(ratio = Some(3.0), distribution = "uniform"))
+      ))
     ))
 
     val sinkOptions = SinkOptions(Some("seed"), None, foreignKeys)
@@ -381,7 +366,7 @@ class CardinalityCountAdjustmentProcessorTest extends SparkSuite {
     val storeStep = adjustedTasks.find(_.name == "store_task").flatMap(_.steps.headOption).get
 
     // 5 locations × 3 ratio = 15 stores
-    assert(storeStep.count.records.contains(15), s"Expected 15 records, got ${storeStep.count.records}")
+    assert(storeStep.count.records.contains(5), s"Expected 5 records, got ${storeStep.count.records}")
     assert(storeStep.count.perField.isDefined, "PerField should be set")
 
     val perField = storeStep.count.perField.get
@@ -394,21 +379,21 @@ class CardinalityCountAdjustmentProcessorTest extends SparkSuite {
   // MULTIPLE FK RELATIONSHIPS TESTS
   // ========================================================================================
 
-  test("Multiple FK relationships: Uses maximum required count") {
-    // If multiple FKs target the same data source, use the maximum required count
-
+  test("Multiple FK relationships: Uses source required count") {
     val foreignKeys = List(
       ForeignKey(
         ForeignKeyRelation("accounts", "accounts_table", List("account_id")),
-        List(ForeignKeyRelation("transactions", "transactions_table", List("account_id"))),
-        List(),
-        cardinality = Some(CardinalityConfig(ratio = Some(5.0), distribution = "uniform"))
+        List(ForeignKeyRelation(
+          "transactions", "transactions_table", List("account_id"),
+          cardinality = Some(CardinalityConfig(ratio = Some(5.0), distribution = "uniform"))
+        ))
       ),
       ForeignKey(
         ForeignKeyRelation("merchants", "merchants_table", List("merchant_id")),
-        List(ForeignKeyRelation("transactions", "transactions_table", List("merchant_id"))),
-        List(),
-        cardinality = Some(CardinalityConfig(ratio = Some(10.0), distribution = "uniform"))
+        List(ForeignKeyRelation(
+          "transactions", "transactions_table", List("merchant_id"),
+          cardinality = Some(CardinalityConfig(ratio = Some(10.0), distribution = "uniform"))
+        ))
       )
     )
 
@@ -439,11 +424,141 @@ class CardinalityCountAdjustmentProcessorTest extends SparkSuite {
 
     val transactionStep = adjustedTasks.find(_.name == "transaction_task").flatMap(_.steps.headOption).get
 
-    // Should use MAX of:
-    // - 3 accounts × 5 ratio = 15
-    // - 2 merchants × 10 ratio = 20
-    // Therefore: 20 transactions
-    assert(transactionStep.count.records.contains(20),
-      s"Should use max required count (20), got ${transactionStep.count.records}")
+    // Should use source count
+    assert(transactionStep.count.records.contains(3),
+      s"Should use source count (3), got ${transactionStep.count.records}")
+  }
+
+  // ========================================================================================
+  // VALIDATION TESTS FOR CONFLICTING CONFIGURATIONS
+  // ========================================================================================
+
+  test("Validation: Rejects target with both cardinality AND step perField on FK fields") {
+    // Define a target step with perField on the FK field
+    val transactionStep = Step(
+      name = "transactions_table",
+      count = Count(
+        records = Some(3),
+        perField = Some(PerFieldCount(
+          fieldNames = List("account_id"),
+          count = Some(5)
+        ))
+      )
+    )
+
+    val foreignKeys = List(ForeignKey(
+      ForeignKeyRelation("accounts", "accounts_table", List("account_id")),
+      List(ForeignKeyRelation("transactions", "transactions_table", List("account_id"),
+        cardinality = Some(CardinalityConfig(ratio = Some(10.0)))  // Conflict!
+      ))
+    ))
+
+    val sinkOptions = SinkOptions(Some("seed"), None, foreignKeys)
+
+    val taskSummaries = List(
+      TaskSummary("account_task", "accounts", enabled = true, steps = Some(List(
+        Step(name = "accounts_table", count = Count(records = Some(3)))
+      ))),
+      TaskSummary("transaction_task", "transactions", enabled = true, steps = Some(List(
+        transactionStep
+      )))
+    )
+
+    val plan = Plan("test", "test", taskSummaries, Some(sinkOptions))
+
+    val tasks = List(
+      Task("account_task", List(Step(name = "accounts_table", count = Count(records = Some(3))))),
+      Task("transaction_task", List(transactionStep))
+    )
+
+    val processor = new CardinalityCountAdjustmentProcessor(dataCatererConfiguration)
+
+    // Should throw IllegalArgumentException with descriptive message
+    val exception = intercept[IllegalArgumentException] {
+      processor.apply(plan, tasks, List())
+    }
+
+    assert(exception.getMessage.contains("BOTH cardinality config AND step perField on FK fields"),
+      s"Error message should mention conflict, got: ${exception.getMessage}")
+    assert(exception.getMessage.contains("transactions"),
+      s"Error message should mention target data source, got: ${exception.getMessage}")
+  }
+
+  test("Validation: Rejects cardinality with both ratio AND min/max") {
+    val foreignKeys = List(ForeignKey(
+      ForeignKeyRelation("accounts", "accounts_table", List("account_id")),
+      List(ForeignKeyRelation("transactions", "transactions_table", List("account_id"),
+        cardinality = Some(CardinalityConfig(
+          ratio = Some(5.0),    // Conflict!
+          min = Some(2),        // Conflict!
+          max = Some(10)        // Conflict!
+        ))
+      ))
+    ))
+
+    val sinkOptions = SinkOptions(Some("seed"), None, foreignKeys)
+
+    val taskSummaries = List(
+      TaskSummary("account_task", "accounts", enabled = true, steps = Some(List(
+        Step(name = "accounts_table", count = Count(records = Some(3)))
+      ))),
+      TaskSummary("transaction_task", "transactions", enabled = true, steps = Some(List(
+        Step(name = "transactions_table", count = Count(records = Some(30)))
+      )))
+    )
+
+    val plan = Plan("test", "test", taskSummaries, Some(sinkOptions))
+
+    val tasks = List(
+      Task("account_task", List(Step(name = "accounts_table", count = Count(records = Some(3))))),
+      Task("transaction_task", List(Step(name = "transactions_table", count = Count(records = Some(30)))))
+    )
+
+    val processor = new CardinalityCountAdjustmentProcessor(dataCatererConfiguration)
+
+    // Should throw IllegalArgumentException
+    val exception = intercept[IllegalArgumentException] {
+      processor.apply(plan, tasks, List())
+    }
+
+    assert(exception.getMessage.contains("BOTH ratio AND min/max"),
+      s"Error message should mention conflicting config, got: ${exception.getMessage}")
+  }
+
+  test("Validation: Accepts target cardinality without step perField (no conflict)") {
+    // This should NOT throw - target has cardinality but step has NO perField on FK fields
+    val foreignKeys = List(ForeignKey(
+      ForeignKeyRelation("accounts", "accounts_table", List("account_id")),
+      List(ForeignKeyRelation("transactions", "transactions_table", List("account_id"),
+        cardinality = Some(CardinalityConfig(ratio = Some(5.0)))
+      ))
+    ))
+
+    val sinkOptions = SinkOptions(Some("seed"), None, foreignKeys)
+
+    val taskSummaries = List(
+      TaskSummary("account_task", "accounts", enabled = true, steps = Some(List(
+        Step(name = "accounts_table", count = Count(records = Some(3)))
+      ))),
+      TaskSummary("transaction_task", "transactions", enabled = true, steps = Some(List(
+        Step(name = "transactions_table", count = Count(records = Some(30)))
+      )))
+    )
+
+    val plan = Plan("test", "test", taskSummaries, Some(sinkOptions))
+
+    val tasks = List(
+      Task("account_task", List(Step(name = "accounts_table", count = Count(records = Some(3))))),
+      Task("transaction_task", List(Step(name = "transactions_table", count = Count(records = Some(30)))))
+    )
+
+    val processor = new CardinalityCountAdjustmentProcessor(dataCatererConfiguration)
+
+    // Should NOT throw
+    val (_, adjustedTasks, _) = processor.apply(plan, tasks, List())
+
+    // Verify it actually processed correctly
+    val transactionStep = adjustedTasks.find(_.name == "transaction_task").flatMap(_.steps.headOption).get
+    assert(transactionStep.count.records.contains(3), s"Should be 3 (3 × 5), got ${transactionStep.count.records}")
   }
 }

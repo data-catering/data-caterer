@@ -189,13 +189,12 @@ object FastSampleGenerator {
     sampleSize: Option[Int],
     fastMode: Boolean,
     enableRelationships: Boolean,
-    taskDirectory: Option[String] = None,
-    useV2: Boolean = true
+    taskDirectory: Option[String] = None
   )(implicit sparkSession: SparkSession): Map[String, (Step, SampleResponseWithDataFrame)] = {
     val factory = getFactory(fastMode)
     RelationshipAwareSampleGenerator.generateSamplesWithRelationships(
       plan, requestedSteps, sampleSize, fastMode, enableRelationships,
-      factory, taskDirectory, useV2
+      factory, taskDirectory
     )
   }
 
@@ -276,8 +275,7 @@ object FastSampleGenerator {
                             fastMode: Boolean = true,
                             enableRelationships: Boolean = false,
                             planDirectory: Option[String] = None,
-                            taskDirectory: Option[String] = None,
-                            useV2: Boolean = true
+                            taskDirectory: Option[String] = None
                           )(implicit sparkSession: SparkSession): Either[SampleError, Map[String, (Step, SampleResponseWithDataFrame)]] = {
     LOGGER.info(s"Generating samples from plan task: plan=$planName, task=$taskName, enableRelationships=$enableRelationships")
 
@@ -312,7 +310,6 @@ object FastSampleGenerator {
         fastMode = fastMode,
         enableRelationships = enableRelationships,
         taskDirectory = taskDirectory,
-        useV2 = useV2
       )
 
       // Convert key format from "dataSource/stepName" to "planName/stepName" for backward compatibility
@@ -332,7 +329,7 @@ object FastSampleGenerator {
    * Generate sample data from all tasks in a plan
    * Note: In PlanRunRequest, "tasks" is actually List[Step] where each Step represents a task definition
    */
-  def generateFromPlan(planName: String, sampleSize: Option[Int] = None, fastMode: Boolean = true, enableRelationships: Boolean = false, planDirectory: Option[String] = None, taskDirectory: Option[String] = None, useV2: Boolean = true)(implicit sparkSession: SparkSession): Either[SampleError, Map[String, (Step, SampleResponseWithDataFrame)]] = {
+  def generateFromPlan(planName: String, sampleSize: Option[Int] = None, fastMode: Boolean = true, enableRelationships: Boolean = false, planDirectory: Option[String] = None, taskDirectory: Option[String] = None)(implicit sparkSession: SparkSession): Either[SampleError, Map[String, (Step, SampleResponseWithDataFrame)]] = {
     LOGGER.info(s"Generating samples from plan: plan=$planName, enableRelationships=$enableRelationships")
 
     Try {
@@ -371,7 +368,6 @@ object FastSampleGenerator {
         fastMode = fastMode,
         enableRelationships = enableRelationships,
         taskDirectory = taskDirectory,
-        useV2 = useV2
       )
 
       // Convert key format from "dataSource/stepName" to "planName/stepName" for backward compatibility

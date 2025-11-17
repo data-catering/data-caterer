@@ -108,7 +108,7 @@ class BatchDataProcessor(connectionConfigsByName: Map[String, Map[String, String
       val sinkDf = plan.sinkOptions
         .map { sinkOptions =>
           if (sinkOptions.foreignKeys.nonEmpty) {
-            val fkProcessor = new ForeignKeyProcessor(useV2 = flagsConfig.enableForeignKeyV2)
+            val fkProcessor = new ForeignKeyProcessor()
             val fkConfig = io.github.datacatering.datacaterer.core.foreignkey.config.ForeignKeyConfig()
             val fkContext = ForeignKeyContext(plan, generatedDataForeachTask.toMap, Some(executableTasks), fkConfig)
             val fkResult = fkProcessor.process(fkContext)
@@ -208,7 +208,7 @@ class BatchDataProcessor(connectionConfigsByName: Map[String, Map[String, String
     val sinkDf = plan.sinkOptions
       .map { sinkOptions =>
         if (sinkOptions.foreignKeys.nonEmpty) {
-          val fkProcessor = new ForeignKeyProcessor(useV2 = flagsConfig.enableForeignKeyV2)
+          val fkProcessor = new ForeignKeyProcessor()
           val fkConfig = io.github.datacatering.datacaterer.core.foreignkey.config.ForeignKeyConfig()
           val fkContext = ForeignKeyContext(plan, generatedDataWithPaths.map(t => (t._1, t._2)).toMap, Some(executableTasks), fkConfig)
           val fkResult = fkProcessor.process(fkContext)

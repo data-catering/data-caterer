@@ -25,20 +25,14 @@ object ForeignKeyUtil {
    *
    * @param plan The execution plan containing foreign key definitions
    * @param generatedData Map of dataframe names to DataFrames
-   * @param useV2 Whether to use V2 implementation (default: true, V1 no longer supported)
    * @param executableTasks Optional list of (TaskSummary, Task) pairs for perField count extraction
    * @return List of (dataframe name, DataFrame) with foreign keys applied, ordered by dependency
    */
   def getDataFramesWithForeignKeys(
     plan: Plan,
     generatedData: Seq[(String, DataFrame)],
-    useV2: Boolean = true,
     executableTasks: Option[List[(TaskSummary, Task)]] = None
   ): List[(String, DataFrame)] = {
-
-    if (!useV2) {
-      LOGGER.warn("V1 foreign key implementation has been removed. Using V2 implementation.")
-    }
 
     LOGGER.debug(s"Applying foreign keys using new architecture (ForeignKeyProcessor)")
 

@@ -20,12 +20,12 @@ class ForeignKeyEndToEndIntegrationTest extends SparkSuite {
   // ========================================================================================
 
   test("E2E: Ratio-based cardinality with uniform distribution - full flow") {
-    // Step 1: Define plan with cardinality
+    // Step 1: Define plan with cardinality at target level
     val foreignKeys = List(ForeignKey(
       ForeignKeyRelation("accounts", "accounts_table", List("account_id")),
-      List(ForeignKeyRelation("transactions", "transactions_table", List("account_id"))),
-      List(),
-      cardinality = Some(CardinalityConfig(ratio = Some(5.0), distribution = "uniform"))
+      List(ForeignKeyRelation("transactions", "transactions_table", List("account_id"),
+        cardinality = Some(CardinalityConfig(ratio = Some(5.0), distribution = "uniform")))),
+      List()
     ))
 
     val sinkOptions = SinkOptions(Some("12345"), None, foreignKeys)
@@ -58,13 +58,15 @@ class ForeignKeyEndToEndIntegrationTest extends SparkSuite {
     val (adjustedPlan, adjustedTasks, _) = processor.apply(plan, tasks, validations)
 
     // Verify count was adjusted: 3 accounts * 5 ratio = 15 transactions
+    // With perField, records is set to SOURCE count (3), and perField count is set to ratio (5)
+    // This generates 3 * 5 = 15 total records
     val adjustedTransactionStep = adjustedTasks
       .find(_.name == "transaction_task")
       .flatMap(_.steps.headOption)
       .get
 
-    assert(adjustedTransactionStep.count.records.contains(15),
-      s"Transaction count should be adjusted to 15, got ${adjustedTransactionStep.count.records}")
+    assert(adjustedTransactionStep.count.records.contains(3),
+      s"Transaction count should be set to source count (3), got ${adjustedTransactionStep.count.records}")
 
     // Verify perField was set
     assert(adjustedTransactionStep.count.perField.isDefined,
@@ -115,7 +117,6 @@ class ForeignKeyEndToEndIntegrationTest extends SparkSuite {
     val result = ForeignKeyUtil.getDataFramesWithForeignKeys(
       adjustedPlan,
       dfMap,
-      useV2 = true,
       executableTasks = Some(executableTasks)
     )
 
@@ -143,12 +144,12 @@ class ForeignKeyEndToEndIntegrationTest extends SparkSuite {
   }
 
   test("E2E: Bounded cardinality (min/max) - full flow") {
-    // Step 1: Define plan with bounded cardinality
+    // Step 1: Define plan with bounded cardinality at target level
     val foreignKeys = List(ForeignKey(
       ForeignKeyRelation("authors", "authors_table", List("author_id")),
-      List(ForeignKeyRelation("articles", "articles_table", List("author_id"))),
-      List(),
-      cardinality = Some(CardinalityConfig(min = Some(2), max = Some(4), distribution = "uniform"))
+      List(ForeignKeyRelation("articles", "articles_table", List("author_id"),
+        cardinality = Some(CardinalityConfig(min = Some(2), max = Some(4), distribution = "uniform")))),
+      List()
     ))
 
     val sinkOptions = SinkOptions(Some("12346"), None, foreignKeys)
@@ -190,8 +191,8 @@ class ForeignKeyEndToEndIntegrationTest extends SparkSuite {
     assert(adjustedArticleStep.count.perField.isDefined, "PerField should be set")
     val perField = adjustedArticleStep.count.perField.get
     assert(perField.fieldNames.contains("author_id"), "PerField should include author_id")
-    assert(perField.options.get("min") == Some(2), "PerField min should be 2")
-    assert(perField.options.get("max") == Some(4), "PerField max should be 4")
+    assert(perField.options.get("min").contains(2), "PerField min should be 2")
+    assert(perField.options.get("max").contains(4), "PerField max should be 4")
 
     // Step 3: Simulate data generation with perField grouping (varying counts 2-4)
     val authorsDf = sparkSession.createDataFrame(Seq(
@@ -227,7 +228,6 @@ class ForeignKeyEndToEndIntegrationTest extends SparkSuite {
     val result = ForeignKeyUtil.getDataFramesWithForeignKeys(
       adjustedPlan,
       dfMap,
-      useV2 = true,
       executableTasks = Some(executableTasks)
     )
 
@@ -257,10 +257,10 @@ class ForeignKeyEndToEndIntegrationTest extends SparkSuite {
   test("E2E: Cardinality with all-exist mode - all FKs valid, cardinality preserved") {
     val foreignKeys = List(ForeignKey(
       ForeignKeyRelation("customers", "customers_table", List("customer_id")),
-      List(ForeignKeyRelation("orders", "orders_table", List("customer_id"))),
-      List(),
-      cardinality = Some(CardinalityConfig(ratio = Some(2.0), distribution = "uniform")),
-      generationMode = Some("all-exist")
+      List(ForeignKeyRelation("orders", "orders_table", List("customer_id"),
+        cardinality = Some(CardinalityConfig(ratio = Some(2.0), distribution = "uniform")),
+        generationMode = Some("all-exist"))),
+      List()
     ))
 
     val sinkOptions = SinkOptions(Some("12347"), None, foreignKeys)
@@ -313,7 +313,6 @@ class ForeignKeyEndToEndIntegrationTest extends SparkSuite {
     val result = ForeignKeyUtil.getDataFramesWithForeignKeys(
       adjustedPlan,
       dfMap,
-      useV2 = true,
       executableTasks = Some(executableTasks)
     )
 
@@ -339,11 +338,11 @@ class ForeignKeyEndToEndIntegrationTest extends SparkSuite {
   test("E2E: Cardinality with partial mode - introduces violations while preserving cardinality") {
     val foreignKeys = List(ForeignKey(
       ForeignKeyRelation("products", "products_table", List("product_id")),
-      List(ForeignKeyRelation("reviews", "reviews_table", List("product_id"))),
-      List(),
-      cardinality = Some(CardinalityConfig(ratio = Some(3.0), distribution = "uniform")),
-      nullability = Some(NullabilityConfig(0.25, "random")),
-      generationMode = Some("partial")
+      List(ForeignKeyRelation("reviews", "reviews_table", List("product_id"),
+        cardinality = Some(CardinalityConfig(ratio = Some(3.0), distribution = "uniform")),
+        nullability = Some(NullabilityConfig(0.25, "random")),
+        generationMode = Some("partial"))),
+      List()
     ))
 
     val sinkOptions = SinkOptions(Some("1"), None, foreignKeys)
@@ -403,7 +402,6 @@ class ForeignKeyEndToEndIntegrationTest extends SparkSuite {
     val result = ForeignKeyUtil.getDataFramesWithForeignKeys(
       adjustedPlan,
       dfMap,
-      useV2 = true,
       executableTasks = Some(executableTasks)
     )
 
@@ -441,9 +439,9 @@ class ForeignKeyEndToEndIntegrationTest extends SparkSuite {
   test("E2E: Composite key cardinality - full flow") {
     val foreignKeys = List(ForeignKey(
       ForeignKeyRelation("locations", "locations_table", List("country", "state")),
-      List(ForeignKeyRelation("stores", "stores_table", List("country", "state"))),
-      List(),
-      cardinality = Some(CardinalityConfig(ratio = Some(3.0), distribution = "uniform"))
+      List(ForeignKeyRelation("stores", "stores_table", List("country", "state"),
+        cardinality = Some(CardinalityConfig(ratio = Some(3.0), distribution = "uniform")))),
+      List()
     ))
 
     val sinkOptions = SinkOptions(Some("12348"), None, foreignKeys)
@@ -496,7 +494,6 @@ class ForeignKeyEndToEndIntegrationTest extends SparkSuite {
     val result = ForeignKeyUtil.getDataFramesWithForeignKeys(
       adjustedPlan,
       dfMap,
-      useV2 = true,
       executableTasks = Some(executableTasks)
     )
 
@@ -525,9 +522,9 @@ class ForeignKeyEndToEndIntegrationTest extends SparkSuite {
   test("E2E: FK with nullability (no cardinality) - standard processing") {
     val foreignKeys = List(ForeignKey(
       ForeignKeyRelation("stores", "stores_table", List("store_id")),
-      List(ForeignKeyRelation("sales", "sales_table", List("store_id"))),
-      List(),
-      nullability = Some(NullabilityConfig(0.2, "random"))
+      List(ForeignKeyRelation("sales", "sales_table", List("store_id"),
+        nullability = Some(NullabilityConfig(0.2, "random")))),
+      List()
     ))
 
     val sinkOptions = SinkOptions(Some("12349"), None, foreignKeys)
@@ -585,7 +582,6 @@ class ForeignKeyEndToEndIntegrationTest extends SparkSuite {
     val result = ForeignKeyUtil.getDataFramesWithForeignKeys(
       adjustedPlan,
       dfMap,
-      useV2 = true,
       executableTasks = None // No perField
     )
 

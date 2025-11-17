@@ -31,18 +31,4 @@ object ForeignKeyConfig {
 
   def default: ForeignKeyConfig = ForeignKeyConfig()
 
-  /**
-   * Convert to ForeignKeyApplicationUtil.ForeignKeyConfig for internal use.
-   */
-  def toApplicationConfig(config: ForeignKeyConfig): io.github.datacatering.datacaterer.core.foreignkey.ForeignKeyApplicationUtil.ForeignKeyConfig = {
-    io.github.datacatering.datacaterer.core.foreignkey.ForeignKeyApplicationUtil.ForeignKeyConfig(
-      violationRatio = config.violationRatio,
-      violationStrategy = config.violationStrategy,
-      enableBroadcastOptimization = config.enableBroadcastOptimization,
-      cacheThresholdMB = config.cacheThresholdMB,
-      seed = config.seed,
-      cardinality = config.cardinality,
-      nullability = config.nullability
-    )
-  }
 }

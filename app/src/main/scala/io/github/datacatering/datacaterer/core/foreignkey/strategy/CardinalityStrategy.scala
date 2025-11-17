@@ -214,6 +214,8 @@ class CardinalityStrategy extends ForeignKeyStrategy {
     recordsPerParent: Long
   ): DataFrame = {
 
+    LOGGER.debug(s"INDEX-BASED FK assignment: sourceCount=$sourceCount, recordsPerParent=$recordsPerParent, targetCount=${targetDf.count()}")
+
     val windowSpec = Window.orderBy(lit(1))
 
     // Step 1: Add index to source for join
@@ -234,6 +236,14 @@ class CardinalityStrategy extends ForeignKeyStrategy {
 
     // Step 4: Join on FK index to get source values
     val joined = targetWithGrouping.join(broadcast(sourceFieldsRenamed), Seq("_fk_idx"), "left")
+
+    // Validate join succeeded
+    if (LOGGER.isDebugEnabled) {
+      val nullJoinCount = joined.filter(sourceFields.map(f => col(s"_src_$f").isNull).reduce(_ || _)).count()
+      if (nullJoinCount > 0) {
+        LOGGER.warn(s"Found $nullJoinCount records with null FK values after join (join failed)")
+      }
+    }
 
     // Step 5: Update target FK fields with source values
     var result = joined

@@ -83,43 +83,51 @@ case class SinkOptionsBuilder(sinkOptions: SinkOptions = SinkOptions()) {
   def foreignKey(foreignKey: ForeignKeyRelation,
                  generationLinks: List[ForeignKeyRelation],
                  deleteLinks: List[ForeignKeyRelation],
-                 relationshipType: Option[String],
-                 cardinality: Option[CardinalityConfig] = None,
-                 nullability: Option[NullabilityConfig] = None,
-                 generationMode: Option[String] = None): SinkOptionsBuilder =
+                 relationshipType: Option[String]): SinkOptionsBuilder =
     this.modify(_.sinkOptions.foreignKeys)(_ ++ List(ForeignKey(
       foreignKey, generationLinks, deleteLinks,
-      relationshipType, cardinality, nullability, generationMode
+      relationshipType
     )))
 
   /**
-   * Define a foreign key relationship with cardinality configuration.
+   * DEPRECATED: Cardinality is now configured per-target on ForeignKeyRelation.
+   * Use target.copy(cardinality = Some(CardinalityConfig(...))) instead.
    *
    * @param foreignKey       Base foreign key
    * @param generationLinks  Foreign key relations for data generation
    * @param cardinality      Cardinality configuration builder
    * @return SinkOptionsBuilder
    */
+  @deprecated("Configure cardinality on individual ForeignKeyRelation targets instead", "0.18.0")
   def foreignKey(foreignKey: ForeignKeyRelation,
                  generationLinks: List[ForeignKeyRelation],
-                 cardinality: CardinalityConfigBuilder): SinkOptionsBuilder =
-    this.foreignKey(foreignKey, generationLinks, List(), None, Some(cardinality.config), None, None)
+                 cardinality: CardinalityConfigBuilder): SinkOptionsBuilder = {
+    // Apply cardinality to all targets
+    val targetsWithCard = generationLinks.map(_.copy(cardinality = Some(cardinality.config)))
+    this.foreignKey(foreignKey, targetsWithCard, List())
+  }
 
   /**
-   * Define a foreign key relationship with nullability configuration.
+   * DEPRECATED: Nullability is now configured per-target on ForeignKeyRelation.
+   * Use target.copy(nullability = Some(NullabilityConfig(...))) instead.
    *
    * @param foreignKey       Base foreign key
    * @param generationLinks  Foreign key relations for data generation
    * @param nullability      Nullability configuration builder
    * @return SinkOptionsBuilder
    */
+  @deprecated("Configure nullability on individual ForeignKeyRelation targets instead", "0.18.0")
   def foreignKey(foreignKey: ForeignKeyRelation,
                  generationLinks: List[ForeignKeyRelation],
-                 nullability: NullabilityConfigBuilder): SinkOptionsBuilder =
-    this.foreignKey(foreignKey, generationLinks, List(), None, None, Some(nullability.config), None)
+                 nullability: NullabilityConfigBuilder): SinkOptionsBuilder = {
+    // Apply nullability to all targets
+    val targetsWithNull = generationLinks.map(_.copy(nullability = Some(nullability.config)))
+    this.foreignKey(foreignKey, targetsWithNull, List())
+  }
 
   /**
-   * Define a foreign key relationship with cardinality and nullability configuration.
+   * DEPRECATED: Cardinality and nullability are now configured per-target on ForeignKeyRelation.
+   * Use target.copy(cardinality = Some(...), nullability = Some(...)) instead.
    *
    * @param foreignKey       Base foreign key
    * @param generationLinks  Foreign key relations for data generation
@@ -127,11 +135,18 @@ case class SinkOptionsBuilder(sinkOptions: SinkOptions = SinkOptions()) {
    * @param nullability      Nullability configuration builder
    * @return SinkOptionsBuilder
    */
+  @deprecated("Configure cardinality and nullability on individual ForeignKeyRelation targets instead", "0.18.0")
   def foreignKey(foreignKey: ForeignKeyRelation,
                  generationLinks: List[ForeignKeyRelation],
                  cardinality: CardinalityConfigBuilder,
-                 nullability: NullabilityConfigBuilder): SinkOptionsBuilder =
-    this.foreignKey(foreignKey, generationLinks, List(), None, Some(cardinality.config), Some(nullability.config), None)
+                 nullability: NullabilityConfigBuilder): SinkOptionsBuilder = {
+    // Apply both to all targets
+    val targetsWithConfig = generationLinks.map(_.copy(
+      cardinality = Some(cardinality.config),
+      nullability = Some(nullability.config)
+    ))
+    this.foreignKey(foreignKey, targetsWithConfig, List())
+  }
 
   /**
    * Define a many-to-many relationship using junction table pattern.
@@ -149,9 +164,12 @@ case class SinkOptionsBuilder(sinkOptions: SinkOptions = SinkOptions()) {
                              leftCardinality: Option[CardinalityConfig] = None,
                              rightCardinality: Option[CardinalityConfig] = None): SinkOptionsBuilder = {
     // Create two foreign key relationships: left->junction and right->junction
-    // Extract fields from junction table relation (assumes format like "junction_table_fields")
+    // Apply cardinality to junction table targets
+    val leftJunction = leftCardinality.map(c => junctionTable.copy(cardinality = Some(c))).getOrElse(junctionTable)
+    val rightJunction = rightCardinality.map(c => junctionTable.copy(cardinality = Some(c))).getOrElse(junctionTable)
+
     this
-      .foreignKey(leftSource, List(junctionTable), List(), None, leftCardinality, None, None)
-      .foreignKey(rightSource, List(junctionTable), List(), None, rightCardinality, None, None)
+      .foreignKey(leftSource, List(leftJunction), List())
+      .foreignKey(rightSource, List(rightJunction), List())
   }
 }

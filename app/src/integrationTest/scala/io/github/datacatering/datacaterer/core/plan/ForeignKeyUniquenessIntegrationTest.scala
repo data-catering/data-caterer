@@ -56,11 +56,11 @@ class ForeignKeyUniquenessIntegrationTest extends SparkSuite {
       steps = List(transactionsStep)
     )
 
-    // Define FK with cardinality (1:3 ratio)
+    // Define FK with cardinality (1:3 ratio) at target level
     val foreignKey = ForeignKey(
       source = ForeignKeyRelation("my_accounts", "accounts", List("account_id")),
-      generate = List(ForeignKeyRelation("my_transactions", "transactions", List("account_id"))),
-      cardinality = Some(CardinalityConfig(ratio = Some(3.0), distribution = "uniform"))
+      generate = List(ForeignKeyRelation("my_transactions", "transactions", List("account_id"),
+        cardinality = Some(CardinalityConfig(ratio = Some(3.0), distribution = "uniform"))))
     )
 
     val plan = Plan(
@@ -95,11 +95,13 @@ class ForeignKeyUniquenessIntegrationTest extends SparkSuite {
       s"account_id should have unique=true, got ${accountIdField.options(IS_UNIQUE)}")
 
     // Verify cardinality adjustment happened correctly
+    // With perField, records is set to SOURCE count (50), and perField count is set to ratio (3)
+    // This generates 50 * 3 = 150 total records
     val transactionsTaskAfter = finalTasks.find(_.name == "transactions_task").get
     val transactionsCount = transactionsTaskAfter.steps.head.count.records.get
 
-    assert(transactionsCount == 150,
-      s"Transactions count should be 150 (50 accounts × 3 ratio), got $transactionsCount")
+    assert(transactionsCount == 50,
+      s"Transactions count should be 50 (source count, perField will multiply by 3), got $transactionsCount")
 
     // Verify perField configuration for FK grouping
     val perField = transactionsTaskAfter.steps.head.count.perField
@@ -138,11 +140,11 @@ class ForeignKeyUniquenessIntegrationTest extends SparkSuite {
     val accountsTask = Task(name = "accounts_task", steps = List(accountsStep))
     val transactionsTask = Task(name = "transactions_task", steps = List(transactionsStep))
 
-    // Composite FK (both account_id and branch_id)
+    // Composite FK (both account_id and branch_id) with target-level cardinality
     val foreignKey = ForeignKey(
       source = ForeignKeyRelation("my_accounts", "accounts", List("account_id", "branch_id")),
-      generate = List(ForeignKeyRelation("my_transactions", "transactions", List("account_id", "branch_id"))),
-      cardinality = Some(CardinalityConfig(ratio = Some(2.0), distribution = "uniform"))
+      generate = List(ForeignKeyRelation("my_transactions", "transactions", List("account_id", "branch_id"),
+        cardinality = Some(CardinalityConfig(ratio = Some(2.0), distribution = "uniform"))))
     )
 
     val plan = Plan(
@@ -208,8 +210,8 @@ class ForeignKeyUniquenessIntegrationTest extends SparkSuite {
 
     val foreignKey = ForeignKey(
       source = ForeignKeyRelation("my_accounts", "accounts", List("account_id")),
-      generate = List(ForeignKeyRelation("my_transactions", "transactions", List("account_id"))),
-      cardinality = Some(CardinalityConfig(ratio = Some(2.0), distribution = "uniform"))
+      generate = List(ForeignKeyRelation("my_transactions", "transactions", List("account_id"),
+        cardinality = Some(CardinalityConfig(ratio = Some(2.0), distribution = "uniform"))))
     )
 
     val plan = Plan(

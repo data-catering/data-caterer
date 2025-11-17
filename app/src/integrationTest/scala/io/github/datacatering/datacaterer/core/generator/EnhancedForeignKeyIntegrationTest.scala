@@ -71,7 +71,10 @@ class EnhancedForeignKeyIntegrationTest extends SparkSuite with Matchers with Be
     val customerIds = customersData.map(_.getAs[String]("customer_id")).toSet
     val profileCustomerIds = profilesData.map(_.getAs[String]("customer_id")).toSet
 
-    profileCustomerIds shouldBe customerIds
+    assert(profileCustomerIds.forall(customerIds.contains))
+    profileCustomerIds.foreach(x => assert(customerIds.contains(x)))
+    customerIds.foreach(x => assert(profileCustomerIds.contains(x)))
+    assert(customerIds.forall(profileCustomerIds.contains))
     profilesData.groupBy(_.getAs[String]("customer_id")).foreach { case (_, profiles) =>
       profiles.length shouldBe 1
     }

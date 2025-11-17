@@ -27,8 +27,8 @@ class DistributedSamplingStrategy extends ForeignKeyStrategy {
   override def name: String = "DistributedSampling"
 
   override def isApplicable(relation: EnhancedForeignKeyRelation): Boolean = {
-    // This strategy works for any field combination, but is primarily for nested or mixed fields
-    relation.hasNestedFields
+    // This strategy works for any field combination (flat, nested, or mixed)
+    true
   }
 
   override def apply(

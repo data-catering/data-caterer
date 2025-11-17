@@ -31,7 +31,10 @@ case class SinkOptions(
 case class ForeignKeyRelation(
                                dataSource: String = DEFAULT_DATA_SOURCE_NAME,
                                step: String = DEFAULT_STEP_NAME,
-                               fields: List[String] = List()
+                               fields: List[String] = List(),
+                               cardinality: Option[CardinalityConfig] = None,
+                               nullability: Option[NullabilityConfig] = None,
+                               generationMode: Option[String] = None
                              ) {
 
   def this(dataSource: String, step: String, field: String) = this(dataSource, step, List(field))
@@ -43,10 +46,7 @@ case class ForeignKey(
                        source: ForeignKeyRelation = ForeignKeyRelation(),
                        generate: List[ForeignKeyRelation] = List(),
                        delete: List[ForeignKeyRelation] = List(),
-                       relationshipType: Option[String] = None,
-                       cardinality: Option[CardinalityConfig] = None,
-                       nullability: Option[NullabilityConfig] = None,
-                       generationMode: Option[String] = None
+                       relationshipType: Option[String] = None
                      )
 
 /**
@@ -64,7 +64,6 @@ case class CardinalityConfig(
                               ratio: Option[Double] = None,
                               distribution: String = "uniform"
                             ) {
-  def this() = this(None, None, None, "uniform")
 }
 
 /**
@@ -78,8 +77,6 @@ case class NullabilityConfig(
                               nullPercentage: Double = 0.0,
                               strategy: String = "random"
                             ) {
-  def this() = this(0.0, "random")
-
   require(nullPercentage >= 0.0 && nullPercentage <= 1.0, "nullPercentage must be between 0.0 and 1.0")
 }
 
@@ -99,7 +96,6 @@ case class ManyToManyRelation(
                                leftCardinality: Option[CardinalityConfig] = None,
                                rightCardinality: Option[CardinalityConfig] = None
                              ) {
-  def this() = this(ForeignKeyRelation(), ForeignKeyRelation(), ForeignKeyRelation(), None, None)
 }
 
 @JsonIgnoreProperties(ignoreUnknown = true)

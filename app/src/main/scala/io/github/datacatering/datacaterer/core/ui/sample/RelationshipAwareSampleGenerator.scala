@@ -44,7 +44,6 @@ object RelationshipAwareSampleGenerator {
    * @param enableRelationships Whether to enable foreign key relationship processing
    * @param factory DataGeneratorFactory instance for data generation
    * @param taskDirectory Optional custom task directory
-   * @param useV2 Whether to use V2 foreign key algorithm
    * @return Map of step keys to (Step, SampleResponseWithDataFrame) tuples
    */
   def generateSamplesWithRelationships(
@@ -54,8 +53,7 @@ object RelationshipAwareSampleGenerator {
     fastMode: Boolean,
     enableRelationships: Boolean,
     factory: DataGeneratorFactory,
-    taskDirectory: Option[String] = None,
-    useV2: Boolean = true
+    taskDirectory: Option[String] = None
   )(implicit sparkSession: SparkSession): Map[String, (Step, FastSampleGenerator.SampleResponseWithDataFrame)] = {
 
     if (!enableRelationships || plan.isEmpty) {
@@ -68,7 +66,7 @@ object RelationshipAwareSampleGenerator {
     LOGGER.info(s"Generating samples with relationships for plan: ${plan.get.name}")
 
     try {
-      generateWithRelationships(plan.get, requestedSteps, sampleSize, fastMode, factory, taskDirectory, useV2)
+      generateWithRelationships(plan.get, requestedSteps, sampleSize, fastMode, factory, taskDirectory)
     } catch {
       case ex: Exception =>
         LOGGER.error(s"Error in relationship-aware generation, falling back to individual generation: ${ex.getMessage}", ex)
@@ -107,8 +105,7 @@ object RelationshipAwareSampleGenerator {
     sampleSize: Option[Int],
     fastMode: Boolean,
     factory: DataGeneratorFactory,
-    taskDirectory: Option[String],
-    useV2: Boolean
+    taskDirectory: Option[String]
   )(implicit sparkSession: SparkSession): Map[String, (Step, FastSampleGenerator.SampleResponseWithDataFrame)] = {
 
     // Generate data for all plan steps to establish relationship context
@@ -124,7 +121,7 @@ object RelationshipAwareSampleGenerator {
 
     // Apply foreign key relationships
     val dataFramesWithForeignKeys = if (plan.sinkOptions.exists(_.foreignKeys.nonEmpty)) {
-      val fkProcessor = new ForeignKeyProcessor(useV2 = useV2)
+      val fkProcessor = new ForeignKeyProcessor()
       val fkConfig = io.github.datacatering.datacaterer.core.foreignkey.config.ForeignKeyConfig()
       val fkContext = ForeignKeyContext(plan, allGeneratedData, executableTasks = None, fkConfig)
       val fkResult = fkProcessor.process(fkContext)

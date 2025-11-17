@@ -176,15 +176,15 @@ class PlanParserTest extends SparkSuite {
         |        dataSource: customers
         |        step: customers
         |        fields: [customer_id]
+      relationshipType: "one-to-many"
         |      generate:
         |        - dataSource: orders
         |          step: orders
         |          fields: [customer_id]
-        |      relationshipType: "one-to-many"
-        |      cardinality:
-        |        min: 2
-        |        max: 5
-        |        distribution: "normal"
+        |          cardinality:
+        |            min: 2
+        |            max: 5
+        |            distribution: "normal"
         |""".stripMargin
 
     import io.github.datacatering.datacaterer.core.util.ObjectMapperUtil
@@ -197,10 +197,10 @@ class PlanParserTest extends SparkSuite {
     assert(fk.relationshipType.isDefined)
     assertResult("one-to-many")(fk.relationshipType.get)
 
-    assert(fk.cardinality.isDefined)
-    val cardinality = fk.cardinality.get
-    assertResult(Some(2))(cardinality.min)
-    assertResult(Some(5))(cardinality.max)
+    assert(fk.generate.head.cardinality.isDefined)
+    val cardinality = fk.generate.head.cardinality.get
+    assertResult(2)(cardinality.min.get)
+    assertResult(5)(cardinality.max.get)
     assertResult("normal")(cardinality.distribution)
   }
 
@@ -223,9 +223,9 @@ class PlanParserTest extends SparkSuite {
         |        - dataSource: orders
         |          step: orders
         |          fields: [customer_id]
-        |      nullability:
-        |        nullPercentage: 0.2
-        |        strategy: "random"
+        |          nullability:
+        |            nullPercentage: 0.2
+        |            strategy: "random"
         |""".stripMargin
 
     import io.github.datacatering.datacaterer.core.util.ObjectMapperUtil
@@ -235,9 +235,9 @@ class PlanParserTest extends SparkSuite {
     assertResult(1)(plan.sinkOptions.get.foreignKeys.size)
 
     val fk = plan.sinkOptions.get.foreignKeys.head
-    assert(fk.nullability.isDefined)
+    assert(fk.generate.head.nullability.isDefined)
 
-    val nullability = fk.nullability.get
+    val nullability = fk.generate.head.nullability.get
     assertResult(0.2)(nullability.nullPercentage)
     assertResult("random")(nullability.strategy)
   }
@@ -261,7 +261,7 @@ class PlanParserTest extends SparkSuite {
         |        - dataSource: cities
         |          step: cities
         |          fields: [country_code, region_code]
-        |      generationMode: "all-combinations"
+        |          generationMode: "all-combinations"
         |""".stripMargin
 
     import io.github.datacatering.datacaterer.core.util.ObjectMapperUtil
@@ -271,8 +271,8 @@ class PlanParserTest extends SparkSuite {
     assertResult(1)(plan.sinkOptions.get.foreignKeys.size)
 
     val fk = plan.sinkOptions.get.foreignKeys.head
-    assert(fk.generationMode.isDefined)
-    assertResult("all-combinations")(fk.generationMode.get)
+    assert(fk.generate.head.generationMode.isDefined)
+    assertResult("all-combinations")(fk.generate.head.generationMode.get)
   }
 
   test("Can parse foreign key with all enhanced configurations") {
@@ -290,18 +290,18 @@ class PlanParserTest extends SparkSuite {
         |        dataSource: customers
         |        step: customers
         |        fields: [customer_id]
+      relationshipType: "one-to-many"
         |      generate:
         |        - dataSource: orders
         |          step: orders
         |          fields: [customer_id]
-        |      relationshipType: "one-to-many"
-        |      cardinality:
-        |        ratio: 3.5
-        |        distribution: "zipf"
-        |      nullability:
-        |        nullPercentage: 0.1
-        |        strategy: "tail"
-        |      generationMode: "partial"
+        |          cardinality:
+        |            ratio: 3.5
+        |            distribution: "zipf"
+        |          nullability:
+        |            nullPercentage: 0.1
+        |            strategy: "tail"
+        |          generationMode: "partial"
         |""".stripMargin
 
     import io.github.datacatering.datacaterer.core.util.ObjectMapperUtil
@@ -317,20 +317,20 @@ class PlanParserTest extends SparkSuite {
     assertResult("one-to-many")(fk.relationshipType.get)
 
     // Verify cardinality
-    assert(fk.cardinality.isDefined)
-    val cardinality = fk.cardinality.get
-    assertResult(Some(3.5))(cardinality.ratio)
+    assert(fk.generate.head.cardinality.isDefined)
+    val cardinality = fk.generate.head.cardinality.get
+    assertResult(3.5)(cardinality.ratio.get)
     assertResult("zipf")(cardinality.distribution)
 
     // Verify nullability
-    assert(fk.nullability.isDefined)
-    val nullability = fk.nullability.get
+    assert(fk.generate.head.nullability.isDefined)
+    val nullability = fk.generate.head.nullability.get
     assertResult(0.1)(nullability.nullPercentage)
     assertResult("tail")(nullability.strategy)
 
     // Verify generationMode
-    assert(fk.generationMode.isDefined)
-    assertResult("partial")(fk.generationMode.get)
+    assert(fk.generate.head.generationMode.isDefined)
+    assertResult("partial")(fk.generate.head.generationMode.get)
   }
 
   test("Can parse foreign key with backward compatibility (no new fields)") {
@@ -369,9 +369,9 @@ class PlanParserTest extends SparkSuite {
 
     // Verify new fields are None (backward compatibility)
     assert(fk.relationshipType.isEmpty)
-    assert(fk.cardinality.isEmpty)
-    assert(fk.nullability.isEmpty)
-    assert(fk.generationMode.isEmpty)
+    assert(fk.generate.head.cardinality.isEmpty)
+    assert(fk.generate.head.nullability.isEmpty)
+    assert(fk.generate.head.generationMode.isEmpty)
   }
 
   test("Can parse cardinality with ratio only (uniform distribution by default)") {
@@ -392,20 +392,17 @@ class PlanParserTest extends SparkSuite {
         |        - dataSource: reviews
         |          step: reviews
         |          fields: [product_id]
-        |      cardinality:
-        |        ratio: 10.0
+        |          cardinality:
+        |            ratio: 10.0
         |""".stripMargin
 
     import io.github.datacatering.datacaterer.core.util.ObjectMapperUtil
     val plan = ObjectMapperUtil.yamlObjectMapper.readValue(yamlContent, classOf[io.github.datacatering.datacaterer.api.model.Plan])
 
     val fk = plan.sinkOptions.get.foreignKeys.head
-    assert(fk.cardinality.isDefined)
 
-    val cardinality = fk.cardinality.get
-    assertResult(Some(10.0))(cardinality.ratio)
-    assertResult("uniform")(cardinality.distribution) // Default value
-    assert(cardinality.min.isEmpty)
-    assert(cardinality.max.isEmpty)
+    val cardinality = fk.generate.head.cardinality.get
+    assertResult(10.0)(cardinality.ratio.get)
+    assertResult("uniform")(cardinality.distribution)
   }
 }

@@ -44,8 +44,9 @@ class ForeignKeyUniquenessProcessorTest extends SparkSuite {
     // Define FK with cardinality
     val foreignKey = ForeignKey(
       source = ForeignKeyRelation("my_accounts", "accounts", List("account_id")),
-      generate = List(ForeignKeyRelation("my_transactions", "transactions", List("account_id"))),
-      cardinality = Some(CardinalityConfig(ratio = Some(2.0), distribution = "uniform"))
+      generate = List(ForeignKeyRelation("my_transactions", "transactions", List("account_id"),
+        cardinality = Some(CardinalityConfig(ratio = Some(2.0), distribution = "uniform"))
+      ))
     )
 
     val plan = Plan(
@@ -109,8 +110,9 @@ class ForeignKeyUniquenessProcessorTest extends SparkSuite {
 
     val foreignKey = ForeignKey(
       source = ForeignKeyRelation("my_accounts", "accounts", List("account_id")),
-      generate = List(ForeignKeyRelation("my_transactions", "transactions", List("account_id"))),
-      cardinality = Some(CardinalityConfig(ratio = Some(2.0), distribution = "uniform"))
+      generate = List(ForeignKeyRelation("my_transactions", "transactions", List("account_id"),
+        cardinality = Some(CardinalityConfig(ratio = Some(2.0), distribution = "uniform"))
+      ))
     )
 
     val plan = Plan(
@@ -171,8 +173,9 @@ class ForeignKeyUniquenessProcessorTest extends SparkSuite {
 
     val foreignKey = ForeignKey(
       source = ForeignKeyRelation("my_accounts", "accounts", List("account_id", "branch_id")),
-      generate = List(ForeignKeyRelation("my_transactions", "transactions", List("account_id", "branch_id"))),
-      cardinality = Some(CardinalityConfig(ratio = Some(2.0), distribution = "uniform"))
+      generate = List(ForeignKeyRelation("my_transactions", "transactions", List("account_id", "branch_id"),
+        cardinality = Some(CardinalityConfig(ratio = Some(2.0), distribution = "uniform"))
+      ))
     )
 
     val plan = Plan(
@@ -235,8 +238,7 @@ class ForeignKeyUniquenessProcessorTest extends SparkSuite {
     // FK without cardinality
     val foreignKey = ForeignKey(
       source = ForeignKeyRelation("my_accounts", "accounts", List("account_id")),
-      generate = List(ForeignKeyRelation("my_transactions", "transactions", List("account_id"))),
-      cardinality = None
+      generate = List(ForeignKeyRelation("my_transactions", "transactions", List("account_id")))
     )
 
     val plan = Plan(
@@ -299,8 +301,10 @@ class ForeignKeyUniquenessProcessorTest extends SparkSuite {
 
     val foreignKey = ForeignKey(
       source = ForeignKeyRelation("my_accounts", "accounts", List("account_id")),
-      generate = List(ForeignKeyRelation("my_transactions", "transactions", List("account_id"))),
-      cardinality = Some(CardinalityConfig(ratio = Some(2.0), distribution = "uniform"))
+      generate = List(ForeignKeyRelation(
+        "my_transactions", "transactions", List("account_id"),
+        cardinality = Some(CardinalityConfig(ratio = Some(2.0), distribution = "uniform"))
+      ))
     )
 
     val plan = Plan(

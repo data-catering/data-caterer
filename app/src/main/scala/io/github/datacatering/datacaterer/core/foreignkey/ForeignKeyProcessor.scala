@@ -23,10 +23,8 @@ import org.apache.spark.sql.DataFrame
  * - Selects appropriate strategies based on field types and configuration
  * - Applies foreign keys using distributed, scalable approaches
  * - Calculates insertion order for proper referential integrity
- *
- * @param useV2 Whether to use V2 implementation (default: true)
  */
-class ForeignKeyProcessor(useV2: Boolean = true) {
+class ForeignKeyProcessor {
 
   private val LOGGER = Logger.getLogger(getClass.getName)
 
@@ -42,13 +40,8 @@ class ForeignKeyProcessor(useV2: Boolean = true) {
    * @return Foreign key result with updated DataFrames and insertion order
    */
   def process(context: ForeignKeyContext): ForeignKeyResult = {
-    if (useV2) {
-      LOGGER.debug("Using ForeignKeyProcessor V2 implementation")
-      processV2(context)
-    } else {
-      LOGGER.debug("Using ForeignKeyProcessor V1 implementation (deprecated)")
-      processV1(context)
-    }
+    LOGGER.debug("Processing foreign keys using strategy-based architecture")
+    processV2(context)
   }
 
   /**
@@ -102,7 +95,7 @@ class ForeignKeyProcessor(useV2: Boolean = true) {
         if (ForeignKeyValidator.targetContainsAllFields(target.fields, targetDf)) {
           LOGGER.info(s"Applying foreign key values to target data source using V2, source-data=${foreignKeyDetails.source.dataSource}, target-data=${target.dataSource}")
 
-          // Extract configuration
+          // Extract configuration from target relation
           val seed = sinkOptions.seed.map(_.toLong)
           val fkConfig = ForeignKeyConfig(
             violationRatio = 0.0,
@@ -110,8 +103,8 @@ class ForeignKeyProcessor(useV2: Boolean = true) {
             enableBroadcastOptimization = true,
             cacheThresholdMB = 200,
             seed = seed,
-            cardinality = originalFk.cardinality,
-            nullability = originalFk.nullability
+            cardinality = target.cardinality,
+            nullability = target.nullability
           )
 
           // Look up target step for perField count
@@ -132,9 +125,8 @@ class ForeignKeyProcessor(useV2: Boolean = true) {
             targetPerFieldCount = targetPerFieldCount
           )
 
-          // Apply FKs using V2 (delegating to existing ForeignKeyUtilV2 for now)
-          // This will be replaced with strategy pattern in Phase 4
-          val resultDf = applyForeignKeysV2(sourceDf, targetDf, relation, originalFk)
+          // Apply FKs using V2 with strategy pattern
+          val resultDf = applyForeignKeysV2(sourceDf, targetDf, relation, target)
 
           if (!resultDf.storageLevel.useMemory) resultDf.cache()
           (targetDfName, resultDf)
@@ -179,49 +171,58 @@ class ForeignKeyProcessor(useV2: Boolean = true) {
     sourceDf: DataFrame,
     targetDf: DataFrame,
     relation: EnhancedForeignKeyRelation,
-    originalFk: ForeignKey
+    target: io.github.datacatering.datacaterer.api.model.ForeignKeyRelation
   ): DataFrame = {
 
-    // Determine if cardinality was already handled via perField count
-    val cardinalityHandledViaPerField = originalFk.cardinality.isDefined &&
-      relation.targetPerFieldCount.isDefined && {
-        val perFieldNames = relation.targetPerFieldCount.get.fieldNames
-        relation.targetFields.exists(perFieldNames.contains)
-      }
+    // Determine if perField grouping is needed for FK assignment
+    val needsPerFieldGrouping = relation.targetPerFieldCount.isDefined && {
+      val perFieldNames = relation.targetPerFieldCount.get.fieldNames
+      relation.targetFields.exists(perFieldNames.contains)
+    }
 
     var resultDf = targetDf
 
-    // Step 1: Apply cardinality if needed
-    if (cardinalityHandledViaPerField) {
-      LOGGER.info("Cardinality already handled via perField count - using group-based FK assignment")
+    // Step 1: Handle perField grouping or cardinality
+    if (needsPerFieldGrouping) {
+      LOGGER.info("PerField grouping detected - using group-based FK assignment")
       resultDf = cardinalityStrategy.apply(sourceDf, resultDf, relation)
+      resultDf.show()
 
       // Apply generation mode if compatible with cardinality
-      val generationMode = originalFk.generationMode.getOrElse("all-exist")
-      resultDf = applyGenerationMode(resultDf, generationMode, originalFk, relation)
-
+      val generationMode = target.generationMode.getOrElse("all-exist")
+      resultDf = applyGenerationMode(resultDf, generationMode, target, relation)
+      resultDf.show()
       // Apply nullability if specified (not in partial mode)
-      if (originalFk.nullability.isDefined && generationMode != "partial") {
-        LOGGER.info(s"Applying nullability configuration: ${originalFk.nullability.get}")
+      if (target.nullability.isDefined && generationMode != "partial") {
+        LOGGER.info(s"Applying nullability configuration: ${target.nullability.get}")
         resultDf = nullabilityStrategy.postProcess(resultDf, relation)
       }
     } else {
       // Standard FK processing
 
       // Step 1: Handle cardinality if specified
-      if (originalFk.cardinality.isDefined) {
-        LOGGER.info(s"Applying cardinality configuration for FK: ${originalFk.cardinality.get}")
+      val cardinalityApplied = target.cardinality.isDefined
+      if (cardinalityApplied) {
+        LOGGER.info(s"Applying cardinality configuration for FK: ${target.cardinality.get}")
         resultDf = cardinalityStrategy.apply(sourceDf, resultDf, relation)
       }
 
       // Step 2: Apply foreign keys based on generation mode
-      val generationMode = originalFk.generationMode.getOrElse("all-exist")
-      val generationModeStrategy = GenerationModeStrategy.forMode(generationMode)
-      resultDf = generationModeStrategy.apply(sourceDf, resultDf, relation)
+      val generationMode = target.generationMode.getOrElse("all-exist")
+      if (cardinalityApplied) {
+        // Cardinality already assigned FKs, only apply generation mode violations/nulls
+        LOGGER.info(s"Cardinality already applied, using specialized generation mode handler for mode=$generationMode")
+        resultDf = applyGenerationMode(resultDf, generationMode, target, relation)
+      } else {
+        // No cardinality, use GenerationModeStrategy to assign FKs
+        LOGGER.info(s"No cardinality, using GenerationModeStrategy to assign FKs with mode=$generationMode")
+        val generationModeStrategy = GenerationModeStrategy.forMode(generationMode)
+        resultDf = generationModeStrategy.apply(sourceDf, resultDf, relation)
+      }
 
       // Step 3: Apply nullability if specified (not in partial mode)
-      if (originalFk.nullability.isDefined && generationMode != "partial") {
-        LOGGER.info(s"Applying nullability configuration: ${originalFk.nullability.get}")
+      if (target.nullability.isDefined && generationMode != "partial") {
+        LOGGER.info(s"Applying nullability configuration: ${target.nullability.get}")
         resultDf = nullabilityStrategy.postProcess(resultDf, relation)
       }
     }
@@ -242,7 +243,7 @@ class ForeignKeyProcessor(useV2: Boolean = true) {
   private def applyGenerationMode(
     df: DataFrame,
     generationMode: String,
-    originalFk: ForeignKey,
+    target: io.github.datacatering.datacaterer.api.model.ForeignKeyRelation,
     relation: EnhancedForeignKeyRelation
   ): DataFrame = {
     import org.apache.spark.sql.functions._
@@ -250,8 +251,8 @@ class ForeignKeyProcessor(useV2: Boolean = true) {
     generationMode.toLowerCase match {
       case "partial" =>
         LOGGER.info("Applying partial mode violations while preserving cardinality structure")
-        val violationRatio = originalFk.nullability.map(_.nullPercentage).getOrElse(0.1)
-        val violationStrategy = if (originalFk.nullability.isDefined) "null" else "random"
+        val violationRatio = target.nullability.map(_.nullPercentage).getOrElse(0.1)
+        val violationStrategy = if (target.nullability.isDefined) "null" else "random"
 
         val randExpr = relation.config.seed.map(s => rand(s)).getOrElse(rand())
         val withViolationFlag = df.withColumn("_fk_violation", randExpr < lit(violationRatio))
@@ -280,31 +281,16 @@ class ForeignKeyProcessor(useV2: Boolean = true) {
         df
 
       case _ => // "all-exist" or default
-        LOGGER.debug("Using all-exist mode: cardinality already ensures all FKs are valid")
+        LOGGER.info("Using all-exist mode: cardinality already ensures all FKs are valid (keeping assigned values)")
         df
     }
   }
 
-  /**
-   * V1 implementation (deprecated, no longer supported).
-   *
-   * V1 has been removed as part of the foreign key refactoring.
-   * All code should use V2 (which is the default).
-   */
-  private def processV1(context: ForeignKeyContext): ForeignKeyResult = {
-    LOGGER.warn("V1 foreign key implementation has been removed. Falling back to V2 implementation.")
-    processV2(context)
-  }
 }
 
 object ForeignKeyProcessor {
   /**
-   * Create a processor with default settings (V2 enabled).
+   * Create a processor with default settings.
    */
-  def apply(): ForeignKeyProcessor = new ForeignKeyProcessor(useV2 = true)
-
-  /**
-   * Create a processor with specified version.
-   */
-  def apply(useV2: Boolean): ForeignKeyProcessor = new ForeignKeyProcessor(useV2)
+  def apply(): ForeignKeyProcessor = new ForeignKeyProcessor()
 }

@@ -5,15 +5,15 @@ tasks: []
 sinkOptions:
   foreignKeys: []
 validations: []
-runId: "ffaa86d8-67d0-4e60-86e6-157e3019640e"
+runId: "79e9ce65-1c48-437c-8e2e-5efa6b8129e1"
 connections:
 - name: "csv_output"
   type: "csv"
   options:
-    path: "/tmp/data-caterer-integration-test-7b18f83a/csv-shared-test"
+    path: "/tmp/data-caterer-integration-test-2daa3bbb/csv-shared-test"
     header: "true"
 configuration:
   flags:
     enableValidation: true
   folders:
-    generatedReportsFolderPath: "/tmp/data-caterer-integration-test-7b18f83a/reports"
+    generatedReportsFolderPath: "/tmp/data-caterer-integration-test-2daa3bbb/reports"

@@ -240,7 +240,7 @@ public abstract class PlanRun {
      * @return A ForeignKeyRelation instance.
      */
     public ForeignKeyRelation foreignField(String dataSource, String step, List<String> fields) {
-        return new ForeignKeyRelation(dataSource, step, toScalaList(fields));
+        return new ForeignKeyRelation(dataSource, step, toScalaList(fields), scala.Option.empty(), scala.Option.empty(), scala.Option.empty());
     }
 
     /**
@@ -255,7 +255,8 @@ public abstract class PlanRun {
         return new ForeignKeyRelation(
                 connectionTaskBuilder.connectionConfigWithTaskBuilder().dataSourceName(),
                 connectionTaskBuilder.getStep().step().name(),
-                toScalaList(List.of(field))
+                toScalaList(List.of(field)),
+                scala.Option.empty(), scala.Option.empty(), scala.Option.empty()
         );
     }
 
@@ -271,7 +272,8 @@ public abstract class PlanRun {
         return new ForeignKeyRelation(
                 connectionTaskBuilder.connectionConfigWithTaskBuilder().dataSourceName(),
                 connectionTaskBuilder.getStep().step().name(),
-                toScalaList(fields)
+                toScalaList(fields),
+                scala.Option.empty(), scala.Option.empty(), scala.Option.empty()
         );
     }
 
@@ -284,7 +286,7 @@ public abstract class PlanRun {
      * @return A ForeignKeyRelation instance.
      */
     public ForeignKeyRelation foreignField(ConnectionTaskBuilder<?> connectionTaskBuilder, String step, List<String> fields) {
-        return new ForeignKeyRelation(connectionTaskBuilder.connectionConfigWithTaskBuilder().dataSourceName(), step, toScalaList(fields));
+        return new ForeignKeyRelation(connectionTaskBuilder.connectionConfigWithTaskBuilder().dataSourceName(), step, toScalaList(fields), scala.Option.empty(), scala.Option.empty(), scala.Option.empty());
     }
 
     /**
