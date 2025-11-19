@@ -1,6 +1,7 @@
 package io.github.datacatering.datacaterer.core.ui.service
 
 import io.github.datacatering.datacaterer.api.model.Constants.{DRIVER, FORMAT, JDBC, MYSQL, MYSQL_DRIVER, POSTGRES, POSTGRES_DRIVER}
+import io.github.datacatering.datacaterer.core.ui.config.UiConfiguration.INSTALL_DIRECTORY
 import io.github.datacatering.datacaterer.core.ui.model.Connection
 import io.github.datacatering.datacaterer.core.ui.plan.ConnectionRepository
 import org.apache.log4j.Logger
@@ -29,34 +30,18 @@ object ConnectionService {
    * @return Connection details
    * @throws IllegalArgumentException if connection not found
    */
-  def getConnection(connectionName: String, masking: Boolean = true): Connection = {
+  def getConnection(connectionName: String, masking: Boolean = true, baseDirectory: String = INSTALL_DIRECTORY): Connection = {
     LOGGER.debug(s"Getting connection, connection-name=$connectionName, masking=$masking")
-    ConnectionRepository.getConnection(connectionName, masking = masking)
+    ConnectionRepository.getConnection(connectionName, s"$baseDirectory/connection", masking = masking)
   }
 
-  /**
-   * Get multiple connections by names
-   *
-   * @param connectionNames List of connection names
-   * @param masking Whether to mask sensitive fields
-   * @return List of connections
-   */
-  def getConnections(connectionNames: List[String], masking: Boolean = true): List[Connection] = {
+  def getConnections(connectionNames: List[String], masking: Boolean = true, baseDirectory: String = INSTALL_DIRECTORY): List[Connection] = {
     LOGGER.debug(s"Getting connections, count=${connectionNames.size}, masking=$masking")
-    connectionNames.map(name => getConnection(name, masking))
+    connectionNames.map(name => getConnection(name, masking, baseDirectory))
   }
 
-  /**
-   * Get connection details with format-specific configuration added
-   *
-   * This method adds driver and format information based on connection type
-   * (e.g., for Postgres, adds JDBC driver and format)
-   *
-   * @param connectionName Name of the connection
-   * @return Map of configuration options with format-specific additions
-   */
-  def getConnectionDetailsWithFormat(connectionName: String): Map[String, String] = {
-    val connection = getConnection(connectionName, masking = false)
+  def getConnectionDetailsWithFormat(connectionName: String, baseDirectory: String = INSTALL_DIRECTORY): Map[String, String] = {
+    val connection = getConnection(connectionName, masking = false, baseDirectory)
 
     val additionalConfig = connection.`type` match {
       case POSTGRES => Map(FORMAT -> JDBC, DRIVER -> POSTGRES_DRIVER)
@@ -67,31 +52,17 @@ object ConnectionService {
     connection.options ++ additionalConfig
   }
 
-  /**
-   * Get connection details for multiple connections as a map
-   *
-   * @param connectionNames List of connection names
-   * @return Map of connection name to connection options with format
-   */
-  def getConnectionDetailsMap(connectionNames: List[String]): Map[String, Map[String, String]] = {
+  def getConnectionDetailsMap(connectionNames: List[String], baseDirectory: String = INSTALL_DIRECTORY): Map[String, Map[String, String]] = {
     LOGGER.debug(s"Getting connection details map, count=${connectionNames.size}")
     connectionNames.map(name => {
-      name -> getConnectionDetailsWithFormat(name)
+      name -> getConnectionDetailsWithFormat(name, baseDirectory)
     }).toMap
   }
 
-  /**
-   * Get connection details for a task-to-datasource mapping
-   *
-   * This is a common pattern where tasks reference data sources by name
-   *
-   * @param taskToDataSourceMap Map of task names to data source names
-   * @return Map of data source name to connection options
-   */
-  def getConnectionDetailsForTasks(taskToDataSourceMap: Map[String, String]): Map[String, Map[String, String]] = {
+  def getConnectionDetailsForTasks(taskToDataSourceMap: Map[String, String], baseDirectory: String = INSTALL_DIRECTORY): Map[String, Map[String, String]] = {
     val uniqueDataSourceNames = taskToDataSourceMap.values.toList.distinct
     LOGGER.debug(s"Getting connection details for tasks, unique-data-sources=${uniqueDataSourceNames.size}")
-    getConnectionDetailsMap(uniqueDataSourceNames)
+    getConnectionDetailsMap(uniqueDataSourceNames, baseDirectory)
   }
 
   /**
@@ -121,14 +92,15 @@ object ConnectionService {
    */
   def getMetadataSourceInfo(
     metadataSourceName: String,
-    connectionConfigsByName: Map[String, Map[String, String]]
+    connectionConfigsByName: Map[String, Map[String, String]],
+    baseDirectory: String = INSTALL_DIRECTORY
   ): Map[String, String] = {
     if (connectionConfigsByName.contains(metadataSourceName)) {
       LOGGER.debug(s"Using metadata source from existing configs, metadata-source=$metadataSourceName")
       connectionConfigsByName(metadataSourceName)
     } else {
       LOGGER.debug(s"Loading metadata source from connection repository, metadata-source=$metadataSourceName")
-      val metadataConnection = getConnection(metadataSourceName, masking = false)
+      val metadataConnection = getConnection(metadataSourceName, masking = false, baseDirectory)
       metadataConnection.options ++ Map(io.github.datacatering.datacaterer.api.model.Constants.METADATA_SOURCE_TYPE -> metadataConnection.`type`)
     }
   }
@@ -140,7 +112,7 @@ object ConnectionService {
    * @param connectionName Name of the connection
    * @return Connection with unmasked credentials
    */
-  def getConnectionUnmasked(connectionName: String): Connection = {
-    getConnection(connectionName, masking = false)
+  def getConnectionUnmasked(connectionName: String, baseDirectory: String = INSTALL_DIRECTORY): Connection = {
+    getConnection(connectionName, masking = false, baseDirectory)
   }
 }

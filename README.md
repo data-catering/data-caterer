@@ -38,7 +38,7 @@ and deep dive into issues [from the generated report](https://data.catering/late
 
 1. Docker
    ```shell
-   docker run -d -i -p 9898:9898 -e DEPLOY_MODE=standalone --name datacaterer datacatering/data-caterer:0.17.2
+   docker run -d -i -p 9898:9898 -e DEPLOY_MODE=standalone --name datacaterer datacatering/data-caterer:0.17.3
    ```
    [Open localhost:9898](http://localhost:9898).
 1. [Run Scala/Java examples](#run-scalajava-examples)
