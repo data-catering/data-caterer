@@ -6,35 +6,31 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="Quick start for Data Catering data generation and testing tool that can automatically discover, generate and validate for files, databases, HTTP APIs and messaging systems.">
+        <meta name="description" content="Patch release fixing an issue with connecting to a JDBC data source via UI, fix link to downloads and build for different architectures for operating systems">
       
       
       
-        <link rel="canonical" href="https://data.catering/0.17.2/get-started/quick-start/">
+        <link rel="canonical" href="https://data.catering/0.17.2/use-case/changelog/0.17.3/">
       
       
-        <link rel="prev" href="../..">
-      
-      
-        <link rel="next" href="../../docs/">
       
       
         
       
       
-      <link rel="icon" href="../../diagrams/logo/data_catering_transparent.svg">
+      <link rel="icon" href="../../../diagrams/logo/data_catering_transparent.svg">
       <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.0">
     
     
       
-        <title>Quick start - Data Catering</title>
+        <title>Data Caterer 0.17.3 release notes - Data Catering</title>
       
     
     
-      <link rel="stylesheet" href="../../assets/stylesheets/main.618322db.min.css">
+      <link rel="stylesheet" href="../../../assets/stylesheets/main.618322db.min.css">
       
         
-        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+        <link rel="stylesheet" href="../../../assets/stylesheets/palette.ab4e12ef.min.css">
       
       
   
@@ -73,14 +69,14 @@
         
         
         
-        <link rel="stylesheet" href="../../assets/external/fonts.googleapis.com/css.49ea35f2.css">
+        <link rel="stylesheet" href="../../../assets/external/fonts.googleapis.com/css.49ea35f2.css">
         <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
       
     
     
-      <link rel="stylesheet" href="../../stylesheets/extra.css">
+      <link rel="stylesheet" href="../../../stylesheets/extra.css">
     
-    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    <script>__md_scope=new URL("../../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
     
       
   
@@ -98,17 +94,17 @@
     
   
 <meta property="og:type" content="website" />
-<meta property="og:title" content="Quick start - Data Catering" />
-<meta property="og:description" content="Quick start for Data Catering data generation and testing tool that can automatically discover, generate and validate for files, databases, HTTP APIs and messaging systems." />
-<meta property="og:image" content="https://data.catering/0.17.2/assets/images/social/get-started/quick-start.png" />
+<meta property="og:title" content="Data Caterer 0.17.3 release notes - Data Catering" />
+<meta property="og:description" content="Patch release fixing an issue with connecting to a JDBC data source via UI, fix link to downloads and build for different architectures for operating systems" />
+<meta property="og:image" content="https://data.catering/0.17.2/assets/images/social/use-case/changelog/0.17.3.png" />
 <meta property="og:image:type" content="image/png" />
 <meta property="og:image:width" content="1200" />
 <meta property="og:image:height" content="630" />
-<meta property="og:url" content="https://data.catering/0.17.2/get-started/quick-start/" />
+<meta property="og:url" content="https://data.catering/0.17.2/use-case/changelog/0.17.3/" />
 <meta property="twitter:card" content="summary_large_image" />
-<meta property="twitter:title" content="Quick start - Data Catering" />
-<meta property="twitter:description" content="Quick start for Data Catering data generation and testing tool that can automatically discover, generate and validate for files, databases, HTTP APIs and messaging systems." />
-<meta property="twitter:image" content="https://data.catering/0.17.2/assets/images/social/get-started/quick-start.png" />
+<meta property="twitter:title" content="Data Caterer 0.17.3 release notes - Data Catering" />
+<meta property="twitter:description" content="Patch release fixing an issue with connecting to a JDBC data source via UI, fix link to downloads and build for different architectures for operating systems" />
+<meta property="twitter:image" content="https://data.catering/0.17.2/assets/images/social/use-case/changelog/0.17.3.png" />
 </head>
   
   
@@ -128,7 +124,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#run-data-caterer" class="md-skip">
+        <a href="#0173" class="md-skip">
           Skip to content
         </a>
       
@@ -146,9 +142,9 @@
 
 <header class="md-header" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
-    <a href="../.." title="Data Catering" class="md-header__button md-logo" aria-label="Data Catering" data-md-component="logo">
+    <a href="../../.." title="Data Catering" class="md-header__button md-logo" aria-label="Data Catering" data-md-component="logo">
       
-  <img src="../../diagrams/logo/data_catering_transparent.svg" alt="logo">
+  <img src="../../../diagrams/logo/data_catering_transparent.svg" alt="logo">
 
     </a>
     <label class="md-header__button md-icon" for="__drawer">
@@ -165,7 +161,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Quick start
+              Data Caterer 0.17.3 release notes
             
           </span>
         </div>
@@ -286,7 +282,7 @@
   
   
     <li class="md-tabs__item">
-      <a href="../.." class="md-tabs__link">
+      <a href="../../.." class="md-tabs__link">
         
   
   
@@ -303,11 +299,9 @@
   
   
   
-    
   
-  
-    <li class="md-tabs__item md-tabs__item--active">
-      <a href="./" class="md-tabs__link">
+    <li class="md-tabs__item">
+      <a href="../../../get-started/quick-start/" class="md-tabs__link">
         
   
   
@@ -328,7 +322,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../../docs/" class="md-tabs__link">
+        <a href="../../../docs/" class="md-tabs__link">
           
   
   
@@ -348,7 +342,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../../use-case/" class="md-tabs__link">
+        <a href="../../" class="md-tabs__link">
           
   
   
@@ -368,7 +362,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../../about/" class="md-tabs__link">
+        <a href="../../../about/" class="md-tabs__link">
           
   
   
@@ -386,7 +380,7 @@
   
   
     <li class="md-tabs__item">
-      <a href="../../demo/" class="md-tabs__link">
+      <a href="../../../demo/" class="md-tabs__link">
         
   
   
@@ -423,9 +417,9 @@
 
 <nav class="md-nav md-nav--primary md-nav--lifted md-nav--integrated" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href="../.." title="Data Catering" class="md-nav__button md-logo" aria-label="Data Catering" data-md-component="logo">
+    <a href="../../.." title="Data Catering" class="md-nav__button md-logo" aria-label="Data Catering" data-md-component="logo">
       
-  <img src="../../diagrams/logo/data_catering_transparent.svg" alt="logo">
+  <img src="../../../diagrams/logo/data_catering_transparent.svg" alt="logo">
 
     </a>
     Data Catering
@@ -452,7 +446,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../.." class="md-nav__link">
+      <a href="../../.." class="md-nav__link">
         
   
   
@@ -476,37 +470,10 @@
       
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Get Started
-  
-
-    
-  </span>
-  
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../../../get-started/quick-start/" class="md-nav__link">
         
   
   
@@ -522,137 +489,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#quick-start" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Quick start
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Quick start">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#javascala-api" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Java/Scala API
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#yaml" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        YAML
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#docker" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Docker
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#mac" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Mac
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#windows" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Windows
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#linux" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Linux
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Linux">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#report" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Report
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#gradual-start" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Gradual start
-      
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -714,7 +550,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../docs/" class="md-nav__link">
+      <a href="../../../docs/" class="md-nav__link">
         
   
   
@@ -742,7 +578,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../docs/design/" class="md-nav__link">
+      <a href="../../../docs/design/" class="md-nav__link">
         
   
   
@@ -820,7 +656,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../docs/guide/" class="md-nav__link">
+      <a href="../../../docs/guide/" class="md-nav__link">
         
   
   
@@ -898,7 +734,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../docs/guide/scenario/auto-generate-connection/" class="md-nav__link">
+      <a href="../../../docs/guide/scenario/auto-generate-connection/" class="md-nav__link">
         
   
   
@@ -926,7 +762,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../docs/guide/scenario/data-generation/" class="md-nav__link">
+      <a href="../../../docs/guide/scenario/data-generation/" class="md-nav__link">
         
   
   
@@ -954,7 +790,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../docs/guide/scenario/data-validation/" class="md-nav__link">
+      <a href="../../../docs/guide/scenario/data-validation/" class="md-nav__link">
         
   
   
@@ -982,7 +818,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../docs/guide/scenario/delete-generated-data/" class="md-nav__link">
+      <a href="../../../docs/guide/scenario/delete-generated-data/" class="md-nav__link">
         
   
   
@@ -1010,7 +846,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../docs/guide/scenario/first-data-generation/" class="md-nav__link">
+      <a href="../../../docs/guide/scenario/first-data-generation/" class="md-nav__link">
         
   
   
@@ -1038,7 +874,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../docs/guide/scenario/batch-and-event/" class="md-nav__link">
+      <a href="../../../docs/guide/scenario/batch-and-event/" class="md-nav__link">
         
   
   
@@ -1066,7 +902,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../docs/guide/scenario/batch-and-event/" class="md-nav__link">
+      <a href="../../../docs/guide/scenario/batch-and-event/" class="md-nav__link">
         
   
   
@@ -1094,7 +930,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../docs/guide/scenario/records-per-field/" class="md-nav__link">
+      <a href="../../../docs/guide/scenario/records-per-field/" class="md-nav__link">
         
   
   
@@ -1230,7 +1066,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../docs/guide/data-source/database/bigquery/" class="md-nav__link">
+      <a href="../../../docs/guide/data-source/database/bigquery/" class="md-nav__link">
         
   
   
@@ -1258,7 +1094,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../docs/guide/data-source/database/cassandra/" class="md-nav__link">
+      <a href="../../../docs/guide/data-source/database/cassandra/" class="md-nav__link">
         
   
   
@@ -1286,7 +1122,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../docs/guide/data-source/database/mysql/" class="md-nav__link">
+      <a href="../../../docs/guide/data-source/database/mysql/" class="md-nav__link">
         
   
   
@@ -1314,7 +1150,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../docs/guide/data-source/database/postgres/" class="md-nav__link">
+      <a href="../../../docs/guide/data-source/database/postgres/" class="md-nav__link">
         
   
   
@@ -1400,7 +1236,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../docs/guide/data-source/file/csv/" class="md-nav__link">
+      <a href="../../../docs/guide/data-source/file/csv/" class="md-nav__link">
         
   
   
@@ -1428,7 +1264,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../docs/guide/data-source/file/delta-lake/" class="md-nav__link">
+      <a href="../../../docs/guide/data-source/file/delta-lake/" class="md-nav__link">
         
   
   
@@ -1456,7 +1292,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../docs/guide/data-source/file/iceberg/" class="md-nav__link">
+      <a href="../../../docs/guide/data-source/file/iceberg/" class="md-nav__link">
         
   
   
@@ -1484,7 +1320,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../docs/guide/data-source/file/json/" class="md-nav__link">
+      <a href="../../../docs/guide/data-source/file/json/" class="md-nav__link">
         
   
   
@@ -1512,7 +1348,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../docs/guide/data-source/file/orc/" class="md-nav__link">
+      <a href="../../../docs/guide/data-source/file/orc/" class="md-nav__link">
         
   
   
@@ -1540,7 +1376,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../docs/guide/data-source/file/parquet/" class="md-nav__link">
+      <a href="../../../docs/guide/data-source/file/parquet/" class="md-nav__link">
         
   
   
@@ -1626,7 +1462,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../docs/guide/data-source/http/http/" class="md-nav__link">
+      <a href="../../../docs/guide/data-source/http/http/" class="md-nav__link">
         
   
   
@@ -1712,7 +1548,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../docs/guide/data-source/messaging/kafka/" class="md-nav__link">
+      <a href="../../../docs/guide/data-source/messaging/kafka/" class="md-nav__link">
         
   
   
@@ -1740,7 +1576,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../docs/guide/data-source/messaging/rabbitmq/" class="md-nav__link">
+      <a href="../../../docs/guide/data-source/messaging/rabbitmq/" class="md-nav__link">
         
   
   
@@ -1768,7 +1604,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../docs/guide/data-source/messaging/solace/" class="md-nav__link">
+      <a href="../../../docs/guide/data-source/messaging/solace/" class="md-nav__link">
         
   
   
@@ -1854,7 +1690,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../docs/guide/data-source/metadata/data-contract-cli/" class="md-nav__link">
+      <a href="../../../docs/guide/data-source/metadata/data-contract-cli/" class="md-nav__link">
         
   
   
@@ -1882,7 +1718,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../docs/guide/data-source/metadata/great-expectations/" class="md-nav__link">
+      <a href="../../../docs/guide/data-source/metadata/great-expectations/" class="md-nav__link">
         
   
   
@@ -1910,7 +1746,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../docs/guide/data-source/metadata/json-schema/" class="md-nav__link">
+      <a href="../../../docs/guide/data-source/metadata/json-schema/" class="md-nav__link">
         
   
   
@@ -1938,7 +1774,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../docs/guide/data-source/metadata/marquez/" class="md-nav__link">
+      <a href="../../../docs/guide/data-source/metadata/marquez/" class="md-nav__link">
         
   
   
@@ -1966,7 +1802,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../docs/guide/data-source/metadata/open-metadata/" class="md-nav__link">
+      <a href="../../../docs/guide/data-source/metadata/open-metadata/" class="md-nav__link">
         
   
   
@@ -1994,7 +1830,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../docs/guide/data-source/metadata/open-data-contract-standard/" class="md-nav__link">
+      <a href="../../../docs/guide/data-source/metadata/open-data-contract-standard/" class="md-nav__link">
         
   
   
@@ -2046,7 +1882,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../docs/connection/" class="md-nav__link">
+      <a href="../../../docs/connection/" class="md-nav__link">
         
   
   
@@ -2124,7 +1960,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../docs/generator/data-generator/" class="md-nav__link">
+      <a href="../../../docs/generator/data-generator/" class="md-nav__link">
         
   
   
@@ -2152,7 +1988,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../docs/generator/count/" class="md-nav__link">
+      <a href="../../../docs/generator/count/" class="md-nav__link">
         
   
   
@@ -2180,7 +2016,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../docs/generator/foreign-key/" class="md-nav__link">
+      <a href="../../../docs/generator/foreign-key/" class="md-nav__link">
         
   
   
@@ -2208,7 +2044,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../docs/generator/transformation/" class="md-nav__link">
+      <a href="../../../docs/generator/transformation/" class="md-nav__link">
         
   
   
@@ -2294,7 +2130,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../docs/validation/" class="md-nav__link">
+      <a href="../../../docs/validation/" class="md-nav__link">
         
   
   
@@ -2322,7 +2158,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../docs/validation/basic-validation/" class="md-nav__link">
+      <a href="../../../docs/validation/basic-validation/" class="md-nav__link">
         
   
   
@@ -2350,7 +2186,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../docs/validation/group-by-validation/" class="md-nav__link">
+      <a href="../../../docs/validation/group-by-validation/" class="md-nav__link">
         
   
   
@@ -2378,7 +2214,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../docs/validation/upstream-data-source-validation/" class="md-nav__link">
+      <a href="../../../docs/validation/upstream-data-source-validation/" class="md-nav__link">
         
   
   
@@ -2406,7 +2242,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../docs/validation/field-name-validation/" class="md-nav__link">
+      <a href="../../../docs/validation/field-name-validation/" class="md-nav__link">
         
   
   
@@ -2434,7 +2270,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../docs/validation/external-source-validation/" class="md-nav__link">
+      <a href="../../../docs/validation/external-source-validation/" class="md-nav__link">
         
   
   
@@ -2520,7 +2356,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../docs/report/html-report/" class="md-nav__link">
+      <a href="../../../docs/report/html-report/" class="md-nav__link">
         
   
   
@@ -2548,7 +2384,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../docs/report/alert/" class="md-nav__link">
+      <a href="../../../docs/report/alert/" class="md-nav__link">
         
   
   
@@ -2584,7 +2420,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../docs/api/" class="md-nav__link">
+      <a href="../../../docs/api/" class="md-nav__link">
         
   
   
@@ -2612,7 +2448,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../docs/delete-data/" class="md-nav__link">
+      <a href="../../../docs/delete-data/" class="md-nav__link">
         
   
   
@@ -2640,7 +2476,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../docs/configuration/" class="md-nav__link">
+      <a href="../../../docs/configuration/" class="md-nav__link">
         
   
   
@@ -2668,7 +2504,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../docs/deployment/" class="md-nav__link">
+      <a href="../../../docs/deployment/" class="md-nav__link">
         
   
   
@@ -2696,7 +2532,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../docs/advanced/" class="md-nav__link">
+      <a href="../../../docs/advanced/" class="md-nav__link">
         
   
   
@@ -2781,7 +2617,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../use-case/" class="md-nav__link">
+      <a href="../../" class="md-nav__link">
         
   
   
@@ -2809,7 +2645,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../use-case/business-value/" class="md-nav__link">
+      <a href="../../business-value/" class="md-nav__link">
         
   
   
@@ -2837,7 +2673,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../use-case/comparison/" class="md-nav__link">
+      <a href="../../comparison/" class="md-nav__link">
         
   
   
@@ -2865,7 +2701,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../use-case/roadmap/" class="md-nav__link">
+      <a href="../../roadmap/" class="md-nav__link">
         
   
   
@@ -2943,7 +2779,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../use-case/blog/rethinking-shift-left-for-data-pipelines/" class="md-nav__link">
+      <a href="../../blog/rethinking-shift-left-for-data-pipelines/" class="md-nav__link">
         
   
   
@@ -2971,7 +2807,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../use-case/blog/a-year-of-getting-paid-from-medium-articles/" class="md-nav__link">
+      <a href="../../blog/a-year-of-getting-paid-from-medium-articles/" class="md-nav__link">
         
   
   
@@ -2999,7 +2835,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../use-case/blog/shift-left-data-quality/" class="md-nav__link">
+      <a href="../../blog/shift-left-data-quality/" class="md-nav__link">
         
   
   
@@ -3085,7 +2921,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../use-case/changelog/0.17.2/" class="md-nav__link">
+      <a href="../0.17.2/" class="md-nav__link">
         
   
   
@@ -3113,7 +2949,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../use-case/changelog/0.17.1/" class="md-nav__link">
+      <a href="../0.17.1/" class="md-nav__link">
         
   
   
@@ -3141,7 +2977,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../use-case/changelog/0.17.0/" class="md-nav__link">
+      <a href="../0.17.0/" class="md-nav__link">
         
   
   
@@ -3169,7 +3005,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../use-case/changelog/0.16.11/" class="md-nav__link">
+      <a href="../0.16.11/" class="md-nav__link">
         
   
   
@@ -3197,7 +3033,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../use-case/changelog/0.16.10/" class="md-nav__link">
+      <a href="../0.16.10/" class="md-nav__link">
         
   
   
@@ -3225,7 +3061,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../use-case/changelog/0.16.9/" class="md-nav__link">
+      <a href="../0.16.9/" class="md-nav__link">
         
   
   
@@ -3253,7 +3089,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../use-case/changelog/0.16.8/" class="md-nav__link">
+      <a href="../0.16.8/" class="md-nav__link">
         
   
   
@@ -3281,7 +3117,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../use-case/changelog/0.16.7/" class="md-nav__link">
+      <a href="../0.16.7/" class="md-nav__link">
         
   
   
@@ -3309,7 +3145,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../use-case/changelog/0.16.6/" class="md-nav__link">
+      <a href="../0.16.6/" class="md-nav__link">
         
   
   
@@ -3337,7 +3173,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../use-case/changelog/0.16.5/" class="md-nav__link">
+      <a href="../0.16.5/" class="md-nav__link">
         
   
   
@@ -3365,7 +3201,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../use-case/changelog/0.16.4/" class="md-nav__link">
+      <a href="../0.16.4/" class="md-nav__link">
         
   
   
@@ -3393,7 +3229,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../use-case/changelog/0.16.3/" class="md-nav__link">
+      <a href="../0.16.3/" class="md-nav__link">
         
   
   
@@ -3421,7 +3257,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../use-case/changelog/0.16.2/" class="md-nav__link">
+      <a href="../0.16.2/" class="md-nav__link">
         
   
   
@@ -3449,7 +3285,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../use-case/changelog/0.16.1/" class="md-nav__link">
+      <a href="../0.16.1/" class="md-nav__link">
         
   
   
@@ -3477,7 +3313,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../use-case/changelog/0.16.0/" class="md-nav__link">
+      <a href="../0.16.0/" class="md-nav__link">
         
   
   
@@ -3505,7 +3341,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../use-case/changelog/0.15.4/" class="md-nav__link">
+      <a href="../0.15.4/" class="md-nav__link">
         
   
   
@@ -3533,7 +3369,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../use-case/changelog/0.15.3/" class="md-nav__link">
+      <a href="../0.15.3/" class="md-nav__link">
         
   
   
@@ -3561,7 +3397,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../use-case/changelog/0.15.2/" class="md-nav__link">
+      <a href="../0.15.2/" class="md-nav__link">
         
   
   
@@ -3589,7 +3425,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../use-case/changelog/0.15.1/" class="md-nav__link">
+      <a href="../0.15.1/" class="md-nav__link">
         
   
   
@@ -3617,7 +3453,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../use-case/changelog/0.15.0/" class="md-nav__link">
+      <a href="../0.15.0/" class="md-nav__link">
         
   
   
@@ -3645,7 +3481,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../use-case/changelog/0.14.7/" class="md-nav__link">
+      <a href="../0.14.7/" class="md-nav__link">
         
   
   
@@ -3673,7 +3509,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../use-case/changelog/0.14.6/" class="md-nav__link">
+      <a href="../0.14.6/" class="md-nav__link">
         
   
   
@@ -3701,7 +3537,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../use-case/changelog/0.14.5/" class="md-nav__link">
+      <a href="../0.14.5/" class="md-nav__link">
         
   
   
@@ -3729,7 +3565,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../use-case/changelog/0.14.4/" class="md-nav__link">
+      <a href="../0.14.4/" class="md-nav__link">
         
   
   
@@ -3757,7 +3593,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../use-case/changelog/0.14.3/" class="md-nav__link">
+      <a href="../0.14.3/" class="md-nav__link">
         
   
   
@@ -3785,7 +3621,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../use-case/changelog/0.14.2/" class="md-nav__link">
+      <a href="../0.14.2/" class="md-nav__link">
         
   
   
@@ -3878,7 +3714,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../about/" class="md-nav__link">
+      <a href="../../../about/" class="md-nav__link">
         
   
   
@@ -3913,7 +3749,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../demo/" class="md-nav__link">
+      <a href="../../../demo/" class="md-nav__link">
         
   
   
@@ -3961,115 +3797,14 @@
   
 
 
-<h1 id="run-data-caterer">Run Data Caterer</h1>
-<h2 id="quick-start">Quick start</h2>
-<div class="grid cards">
+<h1 id="0173">0.17.3</h1>
+<p>Deployed: 19-11-2025</p>
+<p>Latest features and fixes for Data Caterer include fixing the connection details required to connect to JDBC resource via UI.</p>
+<h2 id="bugfix">Bugfix</h2>
 <ul>
-<li>
-<p><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M16.5 6.08s-6.84 1.71-3.56 5.48c.97 1.11-.25 2.11-.25 2.11s2.45-1.25 1.31-2.85c-1.06-1.47-1.86-2.2 2.5-4.74m-4.47 1.2C16.08 4.08 14 2 14 2c.84 3.3-2.96 4.3-4.33 6.36-.94 1.4.46 2.91 2.33 4.64-.71-1.7-3.22-3.16.03-5.72M9.37 17.47c-3.08.86 1.88 2.63 5.79.96-.38-.15-.75-.33-1.1-.54-1.36.31-2.76.37-4.14.18-1.31-.16-.55-.6-.55-.6m5.32-1.68c-1.75.38-3.56.47-5.34.26-1.31-.13-.45-.77-.45-.77-3.4 1.13 1.88 2.4 6.6 1.02-.29-.11-.57-.3-.81-.51m3.42 3.3s.57.47-.61.83c-2.28.68-9.43.89-11.41.03-.71-.31.63-.74 1.05-.83.23-.06.46-.08.69-.08-.79-.54-5.13 1.1-2.19 1.56 7.97 1.3 14.54-.6 12.47-1.51m-2.74-4.86c.29-.19.6-.35.92-.49 0 0-1.51.26-3.02.4-1.6.16-3.21.18-4.81.06-2.35-.31 1.29-1.2 1.29-1.2-1.1 0-2.18.26-3.16.75-2.05 1 5.1 1.45 8.78.48m.9 2.42c-.02.04-.04.07-.08.1 5.01-1.31 3.17-4.64.77-3.81-.13.06-.24.14-.31.25.14-.05.28-.09.43-.12 1.2-.24 2.92 1.63-.81 3.58m.13 4.61c-3.01.52-6.09.56-9.12.14 0 0 .46.38 2.81.53 3.6.23 9.13-.13 9.26-1.83.03.01-.23.65-2.95 1.16"/></svg></span> <span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4.589 24c4.537 0 13.81-1.516 14.821-3v-5.729c-.957 1.408-10.284 2.912-14.821 2.912zm0-7.635c4.537 0 13.81-1.516 14.821-3V7.636c-.957 1.408-10.284 2.912-14.821 2.912zm0-7.636c4.537 0 13.81-1.516 14.821-3V0C18.453 1.408 9.126 2.912 4.589 2.912z"/></svg></span> <strong><a href="#javascala-api">Java/Scala</a></strong></p>
-<hr />
-<p>Instructions for using Java/Scala API via Docker</p>
-</li>
-<li>
-<p><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m0 .97 4.111 6.453v4.09h2.638v-4.09L11.053.969H8.214L5.58 5.125 2.965.969Zm12.093.024-4.47 10.544h2.114l.97-2.345h4.775l.804 2.345h2.26L14.255.994Zm1.133 2.225 1.463 3.87h-3.096zm3.06 9.475v10.29H24v-2.199h-5.454v-8.091zm-12.175.002v10.335h2.217v-7.129l2.32 4.792h1.746l2.4-4.96v7.295h2.127V12.696h-2.904L9.44 17.37l-2.455-4.674Z"/></svg></span> <strong><a href="#yaml">YAML</a></strong></p>
-<hr />
-<p>Instructions for using YAML via Docker</p>
-</li>
-<li>
-<p><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21.81 10.25c-.06-.04-.56-.43-1.64-.43-.28 0-.56.03-.84.08-.21-1.4-1.38-2.11-1.43-2.14l-.29-.17-.18.27c-.24.36-.43.77-.51 1.19-.2.8-.08 1.56.33 2.21-.49.28-1.29.35-1.46.35H2.62c-.34 0-.62.28-.62.63 0 1.15.18 2.3.58 3.38.45 1.19 1.13 2.07 2 2.61.98.6 2.59.94 4.42.94.79 0 1.61-.07 2.42-.22 1.12-.2 2.2-.59 3.19-1.16A8.3 8.3 0 0 0 16.78 16c1.05-1.17 1.67-2.5 2.12-3.65h.19c1.14 0 1.85-.46 2.24-.85.26-.24.45-.53.59-.87l.08-.24zm-17.96.99h1.76c.08 0 .16-.07.16-.16V9.5c0-.08-.07-.16-.16-.16H3.85c-.09 0-.16.07-.16.16v1.58c.01.09.07.16.16.16m2.43 0h1.76c.08 0 .16-.07.16-.16V9.5c0-.08-.07-.16-.16-.16H6.28c-.09 0-.16.07-.16.16v1.58c.01.09.07.16.16.16m2.47 0h1.75c.1 0 .17-.07.17-.16V9.5c0-.08-.06-.16-.17-.16H8.75c-.08 0-.15.07-.15.16v1.58c0 .09.06.16.15.16m2.44 0h1.77c.08 0 .15-.07.15-.16V9.5c0-.08-.06-.16-.15-.16h-1.77c-.08 0-.15.07-.15.16v1.58c0 .09.07.16.15.16M6.28 9h1.76c.08 0 .16-.09.16-.18V7.25c0-.09-.07-.16-.16-.16H6.28c-.09 0-.16.06-.16.16v1.57c.01.09.07.18.16.18m2.47 0h1.75c.1 0 .17-.09.17-.18V7.25c0-.09-.06-.16-.17-.16H8.75c-.08 0-.15.06-.15.16v1.57c0 .09.06.18.15.18m2.44 0h1.77c.08 0 .15-.09.15-.18V7.25c0-.09-.07-.16-.15-.16h-1.77c-.08 0-.15.06-.15.16v1.57c0 .09.07.18.15.18m0-2.28h1.77c.08 0 .15-.07.15-.16V5c0-.1-.07-.17-.15-.17h-1.77c-.08 0-.15.06-.15.17v1.56c0 .08.07.16.15.16m2.46 4.52h1.76c.09 0 .16-.07.16-.16V9.5c0-.08-.07-.16-.16-.16h-1.76c-.08 0-.15.07-.15.16v1.58c0 .09.07.16.15.16"/></svg></span> <strong><a href="#docker">UI App - Docker</a></strong></p>
-<hr />
-<p>Instructions for Docker download</p>
-</li>
-<li>
-<p><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11"/></svg></span> <strong><a href="#mac">UI App - Mac</a></strong></p>
-<hr />
-<p>Instructions for Mac download</p>
-</li>
-<li>
-<p><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 12V6.75l6-1.32v6.48zm17-9v8.75l-10 .15V5.21zM3 13l6 .09v6.81l-6-1.15zm17 .25V22l-10-1.91V13.1z"/></svg></span> <strong><a href="#windows">UI App - Windows</a></strong></p>
-<hr />
-<p>Instructions for Windows download</p>
-</li>
-<li>
-<p><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M14.62 8.35c-.42.28-1.75 1.04-1.95 1.19-.39.31-.75.29-1.14-.01-.2-.16-1.53-.92-1.95-1.19-.48-.31-.45-.7.08-.92 1.64-.69 3.28-.64 4.91.03.49.21.51.6.05.9m7.22 7.28c-.93-2.09-2.2-3.99-3.84-5.66a4.3 4.3 0 0 1-1.06-1.88c-.1-.33-.17-.67-.24-1.01-.2-.88-.29-1.78-.7-2.61-.73-1.58-2-2.4-3.84-2.47-1.81.05-3.16.81-3.95 2.4-.21.43-.36.88-.46 1.34-.17.76-.32 1.55-.5 2.32-.15.65-.45 1.21-.96 1.71-1.61 1.57-2.9 3.37-3.88 5.35-.14.29-.28.58-.37.88-.19.66.29 1.12.99.96.44-.09.88-.18 1.3-.31.41-.15.57-.05.67.35.65 2.15 2.07 3.66 4.24 4.5 4.12 1.56 8.93-.66 9.97-4.58.07-.27.17-.37.47-.27.46.14.93.24 1.4.35.49.09.85-.16.92-.64.03-.26-.06-.49-.16-.73"/></svg></span> <strong><a href="#linux">UI App - Linux</a></strong></p>
-<hr />
-<p>Instructions for Linux download</p>
-</li>
-</ul>
-</div>
-<h3 id="javascala-api">Java/Scala API</h3>
-<div class="language-shell highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>git<span class="w"> </span>clone<span class="w"> </span>git@github.com:data-catering/data-caterer.git
-</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="nb">cd</span><span class="w"> </span>example<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>./run.sh
-</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="c1">#check results under example/docker/sample/report/index.html folder</span>
-</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="c1">#If you want to run any other examples, check the class names under src/scala or src/java</span>
-</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="c1">#And then run with ./run.sh &lt;class_name&gt;</span>
-</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="c1">#i.e. ./run.sh CsvPlan</span>
-</span></code></pre></div>
-<h3 id="yaml">YAML</h3>
-<div class="language-shell highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>git<span class="w"> </span>clone<span class="w"> </span>git@github.com:data-catering/data-caterer.git
-</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="nb">cd</span><span class="w"> </span>example<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>./run.sh<span class="w"> </span>simple-json.yaml
-</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="c1">#check results under example/docker/sample/report/index.html folder</span>
-</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="c1">#check example YAML files under:</span>
-</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="c1"># - docker/data/custom/plan</span>
-</span><span id="__span-1-6"><a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a><span class="c1"># - docker/data/custom/task</span>
-</span><span id="__span-1-7"><a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="c1"># - docker/data/custom/validation</span>
-</span><span id="__span-1-8"><a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a><span class="c1">#If you want to run any other examples, check the files under docker/data/custom/plan</span>
-</span><span id="__span-1-9"><a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a><span class="c1">#And then run with ./run.sh &lt;file_name&gt;</span>
-</span><span id="__span-1-10"><a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a><span class="c1">#i.e. ./run.sh parquet.yaml</span>
-</span></code></pre></div>
-<h3 id="docker">Docker</h3>
-<ol>
-<li>Docker
-   <div class="language-shell highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>docker<span class="w"> </span>run<span class="w"> </span>-d<span class="w"> </span>-i<span class="w"> </span>-p<span class="w"> </span><span class="m">9898</span>:9898<span class="w"> </span>-e<span class="w"> </span><span class="nv">DEPLOY_MODE</span><span class="o">=</span>standalone<span class="w"> </span>--name<span class="w"> </span>datacaterer<span class="w"> </span>datacatering/data-caterer:0.17.3
-</span></code></pre></div></li>
-<li><a href="http://localhost:9898">Open localhost:9898</a></li>
-</ol>
-<h3 id="mac">Mac</h3>
-<p>Choose the download for your Mac architecture:</p>
-<ul>
-<li><strong>Intel (x86_64)</strong>: <a href="https://nightly.link/data-catering/data-caterer/workflows/build/main/data-caterer-macos-x86_64.zip">Download</a></li>
-<li>
-<p><strong>Apple Silicon (M1/M2/M3)</strong>: <a href="https://nightly.link/data-catering/data-caterer/workflows/build/main/data-caterer-macos-aarch64.zip">Download</a></p>
-</li>
-<li>
-<p>Download the appropriate version for your Mac</p>
-</li>
-<li>Drag Data Caterer to your Applications folder and double-click to run</li>
-<li>If your browser doesn't open, go to <a href="http://localhost:9898">http://localhost:9898</a> in your preferred browser</li>
-</ul>
-<h3 id="windows">Windows</h3>
-<ol>
-<li><a href="https://nightly.link/data-catering/data-caterer/workflows/build/main/data-caterer-windows-x86_64.zip">Windows x64 download</a></li>
-<li>After downloading, go to 'Downloads' folder and 'Extract All' from data-caterer-windows-x86_64</li>
-<li>Double-click the installer to install Data Caterer</li>
-<li>Click on 'More info' then at the bottom, click 'Run anyway'</li>
-<li>Go to '/Program Files/DataCaterer' folder and run DataCaterer application</li>
-<li>If your browser doesn't open, go to <a href="http://localhost:9898">http://localhost:9898</a> in your preferred browser</li>
-</ol>
-<h3 id="linux">Linux</h3>
-<p>Choose the download for your Linux architecture:</p>
-<ul>
-<li><strong>amd64 (x86_64)</strong>: <a href="https://nightly.link/data-catering/data-caterer/workflows/build/main/data-caterer-linux-amd64.zip">Download</a></li>
-<li>
-<p><strong>arm64 (aarch64)</strong>: <a href="https://nightly.link/data-catering/data-caterer/workflows/build/main/data-caterer-linux-arm64.zip">Download</a></p>
-</li>
-<li>
-<p>Download the appropriate version for your Linux system</p>
-</li>
-<li>Extract and install the debian package</li>
-<li>If your browser doesn't open, go to <a href="http://localhost:9898">http://localhost:9898</a> in your preferred browser</li>
-</ul>
-<h4 id="report">Report</h4>
-<p>Check the report generated under <code>example/docker/data/custom/report/index.html</code>.</p>
-<p><a href="../../sample/report/html/"><strong>Sample report can also be seen here</strong></a>.</p>
-<h2 id="gradual-start">Gradual start</h2>
-<p>If you prefer a step-by-step approach to learning the capabilities of Data Caterer, there are a number of guides that
-take you through the various data sources and approaches that can be taken when using the tool.</p>
-<ul>
-<li><a href="../../docs/guide/scenario/first-data-generation/"><strong>Check out the starter guide here</strong></a> that will take your through
-step by step</li>
-<li>You can also check the other guides <a href="../../docs/guide/"><strong>here</strong></a> to see the other possibilities of
-what Data Caterer can achieve for you.</li>
+<li>Add in <code>dbtable</code> as combination of <code>schema</code> and <code>table</code> from UI connection definition into step options.</li>
+<li>Build for macOS x86_64, linux arm64</li>
+<li>Fix the nightly links to downloads by pushing when main branch is updated instead of tag push.</li>
 </ul>
 
 
@@ -4108,44 +3843,6 @@ what Data Caterer can achieve for you.</li>
       
         <footer class="md-footer">
   
-    
-      
-      <nav class="md-footer__inner md-grid" aria-label="Footer" >
-        
-          
-          <a href="../.." class="md-footer__link md-footer__link--prev" aria-label="Previous: Home">
-            <div class="md-footer__button md-icon">
-              
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
-            </div>
-            <div class="md-footer__title">
-              <span class="md-footer__direction">
-                Previous
-              </span>
-              <div class="md-ellipsis">
-                Home
-              </div>
-            </div>
-          </a>
-        
-        
-          
-          <a href="../../docs/" class="md-footer__link md-footer__link--next" aria-label="Next: Setup">
-            <div class="md-footer__title">
-              <span class="md-footer__direction">
-                Next
-              </span>
-              <div class="md-ellipsis">
-                Setup
-              </div>
-            </div>
-            <div class="md-footer__button md-icon">
-              
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 11v2h12l-5.5 5.5 1.42 1.42L19.84 12l-7.92-7.92L10.5 5.5 16 11z"/></svg>
-            </div>
-          </a>
-        
-      </nav>
     
   
   <div class="md-footer-meta md-typeset">
@@ -4263,12 +3960,12 @@ what Data Caterer can achieve for you.</li>
     
       
       
-      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.tabs", "navigation.instant", "navigation.instant.prefetch", "navigation.tracking", "navigation.top", "navigation.footer", "navigation.path", "content.code.copy", "content.code.select", "content.tabs.link", "toc.integrate", "toc.follow"], "search": "../../assets/javascripts/workers/search.7a47a382.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
+      <script id="__config" type="application/json">{"annotate": null, "base": "../../..", "features": ["navigation.tabs", "navigation.instant", "navigation.instant.prefetch", "navigation.tracking", "navigation.top", "navigation.footer", "navigation.path", "content.code.copy", "content.code.select", "content.tabs.link", "toc.integrate", "toc.follow"], "search": "../../../assets/javascripts/workers/search.7a47a382.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
     
     
-      <script src="../../assets/javascripts/bundle.e71a0d61.min.js"></script>
+      <script src="../../../assets/javascripts/bundle.e71a0d61.min.js"></script>
       
-        <script src="../../js/open_in_new_tab.js"></script>
+        <script src="../../../js/open_in_new_tab.js"></script>
       
     
   </body>
