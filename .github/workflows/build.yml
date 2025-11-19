@@ -2,7 +2,8 @@ name: Build docker images
 
 on:
   push:
-    tags: ["*"]
+    branches:
+      - main
 
 jobs:
   build:
@@ -41,7 +42,16 @@ jobs:
 
   osx:
     needs: build
-    runs-on: [macos-latest]
+    strategy:
+      matrix:
+        include:
+          - runner: macos-13  # Intel x64
+            arch: x64
+            arch_name: x86_64
+          - runner: macos-14  # Apple Silicon arm64
+            arch: aarch64
+            arch_name: aarch64
+    runs-on: ${{ matrix.runner }}
 
     steps:
       - uses: actions/checkout@v4
@@ -53,7 +63,7 @@ jobs:
         with:
           java-version: '21'
           java-package: jdk
-          architecture: x64
+          architecture: ${{ matrix.arch }}
           distribution: oracle
       - name: Download fat jar
         uses: actions/download-artifact@v4
@@ -62,11 +72,13 @@ jobs:
           path: app/build/libs/
       - name: Package jar as dmg installer
         run: 'jpackage --main-jar data-caterer.jar "@misc/jpackage/jpackage.cfg" "@misc/jpackage/jpackage-mac.cfg"'
+      - name: Rename DMG with version and architecture
+        run: mv DataCaterer-*.dmg DataCaterer-${{ env.APP_VERSION }}-macos-${{ matrix.arch_name }}.dmg
       - name: Upload dmg
         uses: actions/upload-artifact@v4
         with:
-          name: data-caterer-mac
-          path: "DataCaterer-1.0.0.dmg"
+          name: data-caterer-macos-${{ matrix.arch_name }}
+          path: "DataCaterer-${{ env.APP_VERSION }}-macos-${{ matrix.arch_name }}.dmg"
           overwrite: true
 
   windows:
@@ -92,16 +104,27 @@ jobs:
           path: app/build/libs/
       - name: Package jar as exe
         run: 'jpackage --main-jar data-caterer.jar "@misc/jpackage/jpackage.cfg" "@misc/jpackage/jpackage-windows.cfg"'
+      - name: Rename EXE with version and architecture
+        run: mv DataCaterer-*.exe DataCaterer-$env:APP_VERSION-windows-x86_64.exe
       - name: Upload installer
         uses: actions/upload-artifact@v4
         with:
-          name: data-caterer-windows
-          path: "DataCaterer-1.0.0.exe"
+          name: data-caterer-windows-x86_64
+          path: "DataCaterer-${{ env.APP_VERSION }}-windows-x86_64.exe"
           overwrite: true
 
   linux:
     needs: build
-    runs-on: [ubuntu-latest]
+    strategy:
+      matrix:
+        include:
+          - runner: ubuntu-latest
+            arch: x64
+            arch_name: amd64
+          - runner: ubuntu-latest
+            arch: aarch64
+            arch_name: arm64
+    runs-on: ${{ matrix.runner }}
 
     steps:
       - uses: actions/checkout@v4
@@ -113,7 +136,7 @@ jobs:
         with:
           java-version: '21'
           java-package: jdk
-          architecture: x64
+          architecture: ${{ matrix.arch }}
           distribution: oracle
       - name: Download fat jar
         uses: actions/download-artifact@v4
@@ -122,11 +145,11 @@ jobs:
           path: app/build/libs/
       - name: Package jar as debian package
         run: 'jpackage --main-jar data-caterer.jar "@misc/jpackage/jpackage.cfg" "@misc/jpackage/jpackage-linux.cfg"'
-      - name: List directory
-        run: ls -lart
+      - name: Rename DEB with architecture
+        run: mv datacaterer_*_*.deb datacaterer_${{ env.APP_VERSION }}_${{ matrix.arch_name }}.deb
       - name: Upload deb
         uses: actions/upload-artifact@v4
         with:
-          name: data-caterer-linux
-          path: "datacaterer_1.0.0_amd64.deb"
+          name: data-caterer-linux-${{ matrix.arch_name }}
+          path: "datacaterer_${{ env.APP_VERSION }}_${{ matrix.arch_name }}.deb"
           overwrite: true

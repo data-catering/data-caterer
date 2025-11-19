@@ -47,14 +47,20 @@ and deep dive into issues [from the generated report](https://data.catering/late
    cd data-caterer-example && ./run.sh
    #check results under docker/sample/report/index.html folder
    ```
-1. [UI App: Mac download](https://nightly.link/data-catering/data-caterer/workflows/build/main/data-caterer-mac.zip)
-1. [UI App: Windows download](https://nightly.link/data-catering/data-caterer/workflows/build/main/data-caterer-windows.zip)
-   1. After downloading, go to 'Downloads' folder and 'Extract All' from data-caterer-windows
-   1. Double-click 'DataCaterer-1.0.0' to install Data Caterer
-   1. Click on 'More info' then at the bottom, click 'Run anyway'
-   1. Go to '/Program Files/DataCaterer' folder and run DataCaterer application
-   1. If your browser doesn't open, go to [http://localhost:9898](http://localhost:9898) in your preferred browser
-1. [UI App: Linux download](https://nightly.link/data-catering/data-caterer/workflows/build/main/data-caterer-linux.zip)
+1. UI App Downloads (Nightly builds from `main` branch)
+   - **macOS**:
+     - [Intel (x86_64)](https://nightly.link/data-catering/data-caterer/workflows/build/main/data-caterer-macos-x86_64.zip)
+     - [Apple Silicon (M1/M2/M3)](https://nightly.link/data-catering/data-caterer/workflows/build/main/data-caterer-macos-aarch64.zip)
+   - **Windows**:
+     - [x64](https://nightly.link/data-catering/data-caterer/workflows/build/main/data-caterer-windows-x86_64.zip)
+       1. After downloading, go to 'Downloads' folder and 'Extract All' from data-caterer-windows-x86_64
+       1. Double-click the installer to install Data Caterer
+       1. Click on 'More info' then at the bottom, click 'Run anyway'
+       1. Go to '/Program Files/DataCaterer' folder and run DataCaterer application
+       1. If your browser doesn't open, go to [http://localhost:9898](http://localhost:9898) in your preferred browser
+   - **Linux**:
+     - [amd64](https://nightly.link/data-catering/data-caterer/workflows/build/main/data-caterer-linux-amd64.zip)
+     - [arm64](https://nightly.link/data-catering/data-caterer/workflows/build/main/data-caterer-linux-arm64.zip)
 
 [Follow quick start instructions from here if you want more details](https://data.catering/latest/get-started/quick-start/).
 
