@@ -78,11 +78,8 @@ object PlanProcessor {
 
     val (planRun, resolvedInterface) = parsePlan(dataCatererConfiguration, optPlan, interface)
     try {
-      // Use the merged configuration from the plan run (includes plan-level configuration)
-      val effectiveConfig = planRun._configuration
-
       // Step 1: Extract metadata if configured (this may generate new plan/tasks)
-      val optPlanWithTasks = extractMetadata(effectiveConfig, planRun)
+      val optPlanWithTasks = extractMetadata(dataCatererConfiguration, planRun)
 
       // Step 2: Determine which plan/tasks to use (metadata-generated or original)
       val (basePlan, baseTasks, baseValidations) = optPlanWithTasks match {
@@ -99,14 +96,13 @@ object PlanProcessor {
 
       // Step 3: Apply pre-processors to modify plan/tasks (e.g., cardinality count adjustments)
       val (finalPlan, finalTasks, finalValidations) = applyMutatingPrePlanProcessors(
-        basePlan, baseTasks, baseValidations, effectiveConfig, resolvedInterface
+        basePlan, baseTasks, baseValidations, dataCatererConfiguration, resolvedInterface
       )
 
-      LOGGER.info(s"After pre-processors: num-tasks=${finalTasks.size}, " +
-        s"task-counts=${finalTasks.flatMap(_.steps.headOption).flatMap(_.count.records).mkString(",")}")
+      LOGGER.info(s"After pre-processors: num-tasks=${finalTasks.size}")
 
       // Step 4: Generate data with the final modified plan/tasks
-      val dataGeneratorProcessor = new DataGeneratorProcessor(effectiveConfig)
+      val dataGeneratorProcessor = new DataGeneratorProcessor(dataCatererConfiguration)
       dataGeneratorProcessor.generateData(finalPlan, finalTasks, Some(finalValidations))
     } catch {
       case ex: Exception => throw ex
@@ -238,12 +234,12 @@ object PlanProcessor {
    * @return Tuple of (modified plan, modified tasks, modified validations)
    */
   private def applyMutatingPrePlanProcessors(
-    plan: Plan,
-    tasks: List[Task],
-    validations: List[ValidationConfiguration],
-    dataCatererConfiguration: DataCatererConfiguration,
-    interface: String
-  ): (Plan, List[Task], List[ValidationConfiguration]) = {
+                                              plan: Plan,
+                                              tasks: List[Task],
+                                              validations: List[ValidationConfiguration],
+                                              dataCatererConfiguration: DataCatererConfiguration,
+                                              interface: String
+                                            ): (Plan, List[Task], List[ValidationConfiguration]) = {
     try {
       // Read-only processors (for logging, monitoring, etc.)
       val readOnlyProcessors = List(new PlanRunPrePlanProcessor(dataCatererConfiguration))
@@ -300,30 +296,12 @@ class YamlPlanRun(
   _plan = yamlPlan
   _validations = validations.getOrElse(List())
 
-  private val logger = Logger.getLogger(getClass.getName)
-
-  // Build connection map from plan's connections section
-  private val planConnectionMap = ConnectionResolver.buildConnectionMap(yamlPlan)
-
   //get any metadata configuration from tasks for data sources and add to configuration
   private val tasksWithMetadataOptions = yamlTasks.filter(t => t.steps.nonEmpty)
-    .flatMap(t => {
-      val taskSummary = yamlPlan.tasks.find(ts => ts.name.equalsIgnoreCase(t.name))
-      taskSummary.flatMap { ts =>
-        val metadataOptions = t.steps.flatMap(s => s.options.filter(o => METADATA_CONNECTION_OPTIONS.contains(o._1))).toMap
-
-        // Get the data source name from task summary
-        val dataSourceNameOpt = ts.connection match {
-          case Some(Left(connectionName)) => Some(connectionName)
-          case Some(Right(_)) => Some(ts.name)  // Use task name for inline connections
-          case None if ts.dataSourceName.nonEmpty => Some(ts.dataSourceName)
-          case _ => None
-        }
-
-        dataSourceNameOpt.map(dsName => dsName -> metadataOptions)
-      }
+    .map(t => {
+      val dataSourceName = yamlPlan.tasks.find(ts => ts.name.equalsIgnoreCase(t.name)).get.dataSourceName
+      dataSourceName -> t.steps.flatMap(s => s.options.filter(o => METADATA_CONNECTION_OPTIONS.contains(o._1))).toMap
     }).toMap
-
   private val updatedConnectionConfig = dataCatererConfiguration.connectionConfigByName
     .map(c => c._1 -> (tasksWithMetadataOptions.getOrElse(c._1, Map()) ++ c._2))
 
@@ -356,15 +334,8 @@ class YamlPlanRun(
   // Merge connection configuration into task step options
   // This ensures that step.options contains all necessary connection details like 'format'
   _tasks = tasksWithFilteredSteps.map(task => {
-    val taskSummary = yamlPlan.tasks.find(ts => ts.name.equalsIgnoreCase(task.name))
-
-    val connectionConfig = taskSummary.flatMap { ts =>
-      // Resolve connection for this task using ConnectionResolver
-      ConnectionResolver.resolveTaskConnection(ts, planConnectionMap, updatedConnectionConfig)
-        .map(_._1)  // Extract the connection map, ignore the isFromAppConf flag
-    }.getOrElse(Map())
-
-    logger.info(s"Resolved connection for task '${task.name}': $connectionConfig")
+    val dataSourceName = yamlPlan.tasks.find(ts => ts.name.equalsIgnoreCase(task.name)).get.dataSourceName
+    val connectionConfig = updatedConnectionConfig.getOrElse(dataSourceName, Map())
 
     // Merge connection config into each step's options (connection config as base, step options override)
     val stepsWithConnectionConfig = task.steps.map(step => {
@@ -374,92 +345,5 @@ class YamlPlanRun(
     task.copy(steps = stepsWithConnectionConfig)
   })
 
-  // Merge plan configuration into data caterer configuration
-  private val mergedConfiguration = yamlPlan.configuration match {
-    case Some(planConfig) =>
-      logger.info(s"Applying configuration from plan YAML: ${planConfig.keys.mkString(", ")}")
-      PlanConfigurationMerger.mergePlanConfiguration(dataCatererConfiguration, planConfig)
-    case None =>
-      dataCatererConfiguration
-  }
-
-  _configuration = mergedConfiguration.copy(connectionConfigByName = updatedConnectionConfig)
-}
-
-/**
- * Utility to merge plan-level configuration into DataCatererConfiguration.
- * Handles flags, folders, and other configuration sections from unified YAML format.
- */
-object PlanConfigurationMerger {
-  private val LOGGER = Logger.getLogger(getClass.getName)
-
-  def mergePlanConfiguration(baseConfig: DataCatererConfiguration, planConfig: Map[String, Any]): DataCatererConfiguration = {
-    var updatedConfig = baseConfig
-
-    // Merge flags configuration
-    planConfig.get("flags").foreach {
-      case flagsMap: Map[_, _] =>
-        val flagsConfig = baseConfig.flagsConfig
-        val updatedFlags = flagsConfig.copy(
-          enableCount = getBooleanValue(flagsMap, "enableCount", flagsConfig.enableCount),
-          enableGenerateData = getBooleanValue(flagsMap, "enableGenerateData", flagsConfig.enableGenerateData),
-          enableRecordTracking = getBooleanValue(flagsMap, "enableRecordTracking", flagsConfig.enableRecordTracking),
-          enableDeleteGeneratedRecords = getBooleanValue(flagsMap, "enableDeleteGeneratedRecords", flagsConfig.enableDeleteGeneratedRecords),
-          enableGeneratePlanAndTasks = getBooleanValue(flagsMap, "enableGeneratePlanAndTasks", flagsConfig.enableGeneratePlanAndTasks),
-          enableFailOnError = getBooleanValue(flagsMap, "enableFailOnError", flagsConfig.enableFailOnError),
-          enableUniqueCheck = getBooleanValue(flagsMap, "enableUniqueCheck", flagsConfig.enableUniqueCheck),
-          enableSinkMetadata = getBooleanValue(flagsMap, "enableSinkMetadata", flagsConfig.enableSinkMetadata),
-          enableSaveReports = getBooleanValue(flagsMap, "enableSaveReports", flagsConfig.enableSaveReports),
-          enableValidation = getBooleanValue(flagsMap, "enableValidation", flagsConfig.enableValidation),
-          enableGenerateValidations = getBooleanValue(flagsMap, "enableGenerateValidations", flagsConfig.enableGenerateValidations),
-          enableAlerts = getBooleanValue(flagsMap, "enableAlerts", flagsConfig.enableAlerts),
-          enableUniqueCheckOnlyInBatch = getBooleanValue(flagsMap, "enableUniqueCheckOnlyInBatch", flagsConfig.enableUniqueCheckOnlyInBatch),
-          enableFastGeneration = getBooleanValue(flagsMap, "enableFastGeneration", flagsConfig.enableFastGeneration),
-          enableForeignKeyV2 = getBooleanValue(flagsMap, "enableForeignKeyV2", flagsConfig.enableForeignKeyV2)
-        )
-        updatedConfig = updatedConfig.copy(flagsConfig = updatedFlags)
-        LOGGER.debug(s"Merged flags configuration from plan: $updatedFlags")
-      case other =>
-        LOGGER.warn(s"Invalid 'flags' configuration in plan YAML, expected Map but got: ${other.getClass.getSimpleName}")
-    }
-
-    // Merge folders configuration
-    planConfig.get("folders").foreach {
-      case foldersMap: Map[_, _] =>
-        val foldersConfig = baseConfig.foldersConfig
-        val updatedFolders = foldersConfig.copy(
-          generatedReportsFolderPath = getStringValue(foldersMap, "generatedReportsFolderPath", foldersConfig.generatedReportsFolderPath),
-          recordTrackingFolderPath = getStringValue(foldersMap, "recordTrackingFolderPath", foldersConfig.recordTrackingFolderPath),
-          generatedPlanAndTaskFolderPath = getStringValue(foldersMap, "generatedPlanAndTaskFolderPath", foldersConfig.generatedPlanAndTaskFolderPath),
-          planFilePath = getStringValue(foldersMap, "planFilePath", foldersConfig.planFilePath),
-          taskFolderPath = getStringValue(foldersMap, "taskFolderPath", foldersConfig.taskFolderPath),
-          validationFolderPath = getStringValue(foldersMap, "validationFolderPath", foldersConfig.validationFolderPath)
-        )
-        updatedConfig = updatedConfig.copy(foldersConfig = updatedFolders)
-        LOGGER.debug(s"Merged folders configuration from plan: $updatedFolders")
-      case other =>
-        LOGGER.warn(s"Invalid 'folders' configuration in plan YAML, expected Map but got: ${other.getClass.getSimpleName}")
-    }
-
-    updatedConfig
-  }
-
-  private def getBooleanValue(map: Map[_, _], key: String, default: Boolean): Boolean = {
-    map.asInstanceOf[Map[String, Any]].get(key).flatMap {
-      case b: Boolean => Some(b)
-      case s: String => Some(s.toBoolean)
-      case other =>
-        LOGGER.warn(s"Invalid boolean value for '$key': $other, using default: $default")
-        None
-    }.getOrElse(default)
-  }
-
-  private def getStringValue(map: Map[_, _], key: String, default: String): String = {
-    map.asInstanceOf[Map[String, Any]].get(key).flatMap {
-      case s: String => Some(s)
-      case other =>
-        LOGGER.warn(s"Invalid string value for '$key': $other, using default: $default")
-        None
-    }.getOrElse(default)
-  }
+  _configuration = dataCatererConfiguration.copy(connectionConfigByName = updatedConnectionConfig)
 }

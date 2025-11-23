@@ -1,6 +1,6 @@
 package io.github.datacatering.datacaterer.core.foreignkey
 
-import io.github.datacatering.datacaterer.api.model.ForeignKey
+import io.github.datacatering.datacaterer.api.model.ForeignKeyRelation
 import io.github.datacatering.datacaterer.core.exception.MissingDataSourceFromForeignKeyException
 import io.github.datacatering.datacaterer.core.foreignkey.config.ForeignKeyConfig
 import io.github.datacatering.datacaterer.core.foreignkey.model._
@@ -40,14 +40,6 @@ class ForeignKeyProcessor {
    * @return Foreign key result with updated DataFrames and insertion order
    */
   def process(context: ForeignKeyContext): ForeignKeyResult = {
-    LOGGER.debug("Processing foreign keys using strategy-based architecture")
-    processV2(context)
-  }
-
-  /**
-   * V2 implementation using new strategy-based architecture.
-   */
-  private def processV2(context: ForeignKeyContext): ForeignKeyResult = {
     val plan = context.plan
     val generatedDataMap = context.generatedData
     val executableTasks = context.executableTasks
@@ -71,35 +63,24 @@ class ForeignKeyProcessor {
     var taskDfs = context.generatedData.toList
 
     // Apply foreign keys
-    val foreignKeyAppliedDfs = enabledForeignKeys.flatMap { case (originalFk, foreignKeyDetails) =>
+    val foreignKeyAppliedDfs = enabledForeignKeys.flatMap { case (_, foreignKeyDetails) =>
       val sourceDfName = foreignKeyDetails.source.dataFrameName
       LOGGER.debug(s"Getting source dataframe, source=$sourceDfName")
 
-      val optSourceDf = taskDfs.find(task => task._1.equalsIgnoreCase(sourceDfName))
-      if (optSourceDf.isEmpty) {
-        throw MissingDataSourceFromForeignKeyException(sourceDfName)
-      }
-      val sourceDf = optSourceDf.get._2
+      val sourceDf: DataFrame = getDataFrame(sourceDfName, taskDfs)
 
       val sourceDfsWithForeignKey = foreignKeyDetails.generationLinks.map(target => {
         val targetDfName = target.dataFrameName
         LOGGER.debug(s"Getting target dataframe, target=$targetDfName")
 
-        val optTargetDf = taskDfs.find(task => task._1.equalsIgnoreCase(targetDfName))
-        if (optTargetDf.isEmpty) {
-          throw MissingDataSourceFromForeignKeyException(targetDfName)
-        }
-
-        val targetDf = optTargetDf.get._2
+        val targetDf = getDataFrame(targetDfName, taskDfs)
 
         if (ForeignKeyValidator.targetContainsAllFields(target.fields, targetDf)) {
-          LOGGER.info(s"Applying foreign key values to target data source using V2, source-data=${foreignKeyDetails.source.dataSource}, target-data=${target.dataSource}")
+          LOGGER.info(s"Applying foreign key values to target data source, source-data=${foreignKeyDetails.source.dataSource}, target-data=${target.dataSource}")
 
           // Extract configuration from target relation
           val seed = sinkOptions.seed.map(_.toLong)
           val fkConfig = ForeignKeyConfig(
-            violationRatio = 0.0,
-            violationStrategy = "random",
             enableBroadcastOptimization = true,
             cacheThresholdMB = 200,
             seed = seed,
@@ -125,8 +106,8 @@ class ForeignKeyProcessor {
             targetPerFieldCount = targetPerFieldCount
           )
 
-          // Apply FKs using V2 with strategy pattern
-          val resultDf = applyForeignKeysV2(sourceDf, targetDf, relation, target)
+          // Apply FKs with strategy pattern
+          val resultDf = applyForeignKeys(sourceDf, targetDf, relation, target)
 
           if (!resultDf.storageLevel.useMemory) resultDf.cache()
           (targetDfName, resultDf)
@@ -163,16 +144,25 @@ class ForeignKeyProcessor {
     )
   }
 
+  private def getDataFrame(dfName: String, taskDfs: List[(String, DataFrame)]) = {
+    val optSourceDf = taskDfs.find(task => task._1.equalsIgnoreCase(dfName))
+    if (optSourceDf.isEmpty) {
+      throw MissingDataSourceFromForeignKeyException(dfName)
+    }
+
+    optSourceDf.get._2
+  }
+
   /**
-   * Apply foreign keys using V2 implementation with strategy composition.
+   * Apply foreign keys using implementation with strategy composition.
    * Uses specialized strategies for cardinality, generation mode, and nullability.
    */
-  private def applyForeignKeysV2(
-    sourceDf: DataFrame,
-    targetDf: DataFrame,
-    relation: EnhancedForeignKeyRelation,
-    target: io.github.datacatering.datacaterer.api.model.ForeignKeyRelation
-  ): DataFrame = {
+  private def applyForeignKeys(
+                                sourceDf: DataFrame,
+                                targetDf: DataFrame,
+                                relation: EnhancedForeignKeyRelation,
+                                target: ForeignKeyRelation
+                              ): DataFrame = {
 
     // Determine if perField grouping is needed for FK assignment
     val needsPerFieldGrouping = relation.targetPerFieldCount.isDefined && {
@@ -186,12 +176,11 @@ class ForeignKeyProcessor {
     if (needsPerFieldGrouping) {
       LOGGER.info("PerField grouping detected - using group-based FK assignment")
       resultDf = cardinalityStrategy.apply(sourceDf, resultDf, relation)
-      resultDf.show()
 
       // Apply generation mode if compatible with cardinality
       val generationMode = target.generationMode.getOrElse("all-exist")
       resultDf = applyGenerationMode(resultDf, generationMode, target, relation)
-      resultDf.show()
+
       // Apply nullability if specified (not in partial mode)
       if (target.nullability.isDefined && generationMode != "partial") {
         LOGGER.info(s"Applying nullability configuration: ${target.nullability.get}")
@@ -241,40 +230,21 @@ class ForeignKeyProcessor {
    * but for now it's kept as a helper method since it's only used in one specific scenario.
    */
   private def applyGenerationMode(
-    df: DataFrame,
-    generationMode: String,
-    target: io.github.datacatering.datacaterer.api.model.ForeignKeyRelation,
-    relation: EnhancedForeignKeyRelation
-  ): DataFrame = {
-    import org.apache.spark.sql.functions._
-
+                                   df: DataFrame,
+                                   generationMode: String,
+                                   target: ForeignKeyRelation,
+                                   relation: EnhancedForeignKeyRelation
+                                 ): DataFrame = {
     generationMode.toLowerCase match {
       case "partial" =>
         LOGGER.info("Applying partial mode violations while preserving cardinality structure")
-        val violationRatio = target.nullability.map(_.nullPercentage).getOrElse(0.1)
-        val violationStrategy = if (target.nullability.isDefined) "null" else "random"
-
-        val randExpr = relation.config.seed.map(s => rand(s)).getOrElse(rand())
-        val withViolationFlag = df.withColumn("_fk_violation", randExpr < lit(violationRatio))
-
-        var resultWithViolations = withViolationFlag
-        relation.targetFields.foreach { field =>
-          val dataType = resultWithViolations.schema(field).dataType
-          val violationValue = if (violationStrategy == "null") {
-            lit(null).cast(dataType)
-          } else {
-            relation.config.seed match {
-              case Some(s) => concat(lit("INVALID_"), expr(s"MD5(CONCAT('$s', CAST(monotonically_increasing_id() AS STRING)))"))
-              case None => concat(lit("INVALID_"), expr("uuid()"))
-            }
-          }
-
-          resultWithViolations = resultWithViolations.withColumn(field,
-            when(col("_fk_violation"), violationValue)
-              .otherwise(col(field))
-          )
+        // Use NullabilityStrategy if configured, otherwise just return the dataframe as-is
+        if (target.nullability.isDefined) {
+          nullabilityStrategy.postProcess(df, relation)
+        } else {
+          LOGGER.warn("Partial mode specified but no nullability config provided - no violations will be applied")
+          df
         }
-        resultWithViolations.drop("_fk_violation")
 
       case "all-combinations" =>
         LOGGER.warn("all-combinations mode is incompatible with cardinality - using all-exist mode instead")

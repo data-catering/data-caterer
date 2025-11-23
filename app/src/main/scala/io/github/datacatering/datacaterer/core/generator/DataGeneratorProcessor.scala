@@ -43,7 +43,7 @@ class DataGeneratorProcessor(dataCatererConfiguration: DataCatererConfiguration)
     result
   }
 
-  protected def generateDataWithResult(plan: Plan, summaryWithTask: List[(TaskSummary, Task)], optValidations: Option[List[ValidationConfiguration]]): PlanRunResults = {
+  private def generateDataWithResult(plan: Plan, summaryWithTask: List[(TaskSummary, Task)], optValidations: Option[List[ValidationConfiguration]]): PlanRunResults = {
     if (flagsConfig.enableDeleteGeneratedRecords && flagsConfig.enableGenerateData) {
       LOGGER.warn("Both enableGenerateData and enableDeleteGeneratedData are true. Please only enable one at a time. Will continue with generating data")
     }

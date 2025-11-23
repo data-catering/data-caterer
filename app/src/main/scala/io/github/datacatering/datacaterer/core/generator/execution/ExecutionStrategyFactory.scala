@@ -28,11 +28,11 @@ object ExecutionStrategyFactory {
       case (true, true, true) =>
         // Phase 3: Breaking point execution with auto-stop
         LOGGER.info("Creating breaking point execution strategy (Phase 3)")
-        new BreakingPointExecutionStrategy(plan, executableTasks, generationConfig)
+        new BreakingPointExecutionStrategy(executableTasks)
 
       case (true, false, _) =>
         LOGGER.info("Creating duration-based execution strategy")
-        new DurationBasedExecutionStrategy(plan, executableTasks, generationConfig)
+        new DurationBasedExecutionStrategy(executableTasks)
 
       case (false, true, _) =>
         // Pattern-based execution - requires duration to be specified with pattern
@@ -41,7 +41,7 @@ object ExecutionStrategyFactory {
       case (true, true, false) =>
         // Pattern takes precedence when both are specified (non-breaking point patterns)
         LOGGER.info("Creating pattern-based execution strategy")
-        new PatternBasedExecutionStrategy(plan, executableTasks, generationConfig)
+        new PatternBasedExecutionStrategy(executableTasks)
 
       case (false, false, _) =>
         // Default: count-based execution (backward compatible)

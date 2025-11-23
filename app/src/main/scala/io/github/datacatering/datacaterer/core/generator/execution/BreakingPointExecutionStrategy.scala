@@ -1,10 +1,11 @@
 package io.github.datacatering.datacaterer.core.generator.execution
 
-import io.github.datacatering.datacaterer.api.model.{GenerationConfig, Plan, Task, TaskSummary}
+import io.github.datacatering.datacaterer.api.model.{Task, TaskSummary}
 import io.github.datacatering.datacaterer.core.generator.execution.pattern.BreakingPointPattern
 import io.github.datacatering.datacaterer.core.generator.execution.rate.{DurationTracker, RateLimiter}
 import io.github.datacatering.datacaterer.core.generator.metrics.{PerformanceMetrics, PerformanceMetricsCollector}
 import io.github.datacatering.datacaterer.core.parser.LoadPatternParser
+import io.github.datacatering.datacaterer.core.util.GeneratorUtil
 import org.apache.log4j.Logger
 
 /**
@@ -19,9 +20,7 @@ import org.apache.log4j.Logger
  * Phase 3 implementation with full auto-stop capabilities.
  */
 class BreakingPointExecutionStrategy(
-                                      plan: Plan,
-                                      executableTasks: List[(TaskSummary, Task)],
-                                      generationConfig: GenerationConfig
+                                      executableTasks: List[(TaskSummary, Task)]
                                     ) extends ExecutionStrategy {
 
   private val LOGGER = Logger.getLogger(getClass.getName)
@@ -30,7 +29,7 @@ class BreakingPointExecutionStrategy(
   // Extract breaking point configuration
   private val (duration, breakingPointPattern, rateUnit, breakingCondition) = extractBreakingPointConfig(executableTasks)
 
-  private val totalDurationSeconds = parseDuration(duration)
+  private val totalDurationSeconds = GeneratorUtil.parseDurationToSeconds(duration)
   private val durationTracker = new DurationTracker(duration)
 
   private var currentRateLimiter: Option[RateLimiter] = None
@@ -109,7 +108,7 @@ class BreakingPointExecutionStrategy(
 
     // Annotate metrics with breaking point information if available
     breakingPointRate.foreach { rate =>
-      LOGGER.info(s"Breaking point found at $rate records/${rateUnit}")
+      LOGGER.info(s"Breaking point found at $rate records/$rateUnit")
     }
 
     Some(metrics)
@@ -128,7 +127,7 @@ class BreakingPointExecutionStrategy(
     if (currentRateLimiter.isEmpty || targetRate != currentRate) {
       currentRate = targetRate
       currentRateLimiter = Some(new RateLimiter(targetRate, rateUnit))
-      LOGGER.info(s"Breaking point test: increased rate to $targetRate records/${rateUnit} at ${elapsedSeconds.toInt}s elapsed")
+      LOGGER.info(s"Breaking point test: increased rate to $targetRate records/$rateUnit at ${elapsedSeconds.toInt}s elapsed")
     }
   }
 
@@ -160,7 +159,7 @@ class BreakingPointExecutionStrategy(
       // Check if threshold has been breached
       val thresholdBreached = metricName.toLowerCase match {
         case "error_rate" => currentMetricValue > threshold
-        case "throughput" => currentMetricValue < threshold  // Breaking point if throughput drops below threshold
+        case "throughput" => currentMetricValue < threshold // Breaking point if throughput drops below threshold
         case metric if metric.startsWith("latency") => currentMetricValue > threshold
         case _ => false
       }
@@ -228,42 +227,6 @@ class BreakingPointExecutionStrategy(
         throw new IllegalArgumentException("No step with breaking point pattern configuration found")
     }
   }
-
-  /**
-   * Parse duration string to seconds.
-   * Supports formats like: "30s", "5m", "1h", "2h30m15s"
-   */
-  private def parseDuration(duration: String): Double = {
-    val pattern = """(\d+)([smh])""".r
-    val matches = pattern.findAllMatchIn(duration.toLowerCase)
-
-    matches.foldLeft(0.0) { (total, m) =>
-      val value = m.group(1).toDouble
-      val unit = m.group(2)
-      val seconds = unit match {
-        case "s" => value
-        case "m" => value * 60
-        case "h" => value * 3600
-        case _ => 0.0
-      }
-      total + seconds
-    }
-  }
-
-  /**
-   * Get breaking point information
-   */
-  def getBreakingPointInfo: Option[BreakingPointInfo] = {
-    if (breakingPointReached) {
-      Some(BreakingPointInfo(
-        rate = breakingPointRate.getOrElse(currentRate),
-        reason = breakingPointReason.getOrElse("Unknown"),
-        totalBatches = metricsCollector.getMetrics.batchMetrics.size
-      ))
-    } else {
-      None
-    }
-  }
 }
 
 /**
@@ -271,7 +234,3 @@ class BreakingPointExecutionStrategy(
  */
 case class BreakingCondition(metric: String, threshold: Double)
 
-/**
- * Breaking point information for reporting
- */
-case class BreakingPointInfo(rate: Int, reason: String, totalBatches: Int)

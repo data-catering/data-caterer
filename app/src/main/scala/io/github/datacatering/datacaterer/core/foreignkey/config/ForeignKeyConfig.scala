@@ -5,8 +5,6 @@ import io.github.datacatering.datacaterer.api.model.{CardinalityConfig, Nullabil
 /**
  * Configuration for foreign key generation behavior.
  *
- * @param violationRatio Fraction of records to generate with invalid foreign keys (0.0 = all valid, 0.1 = 10% invalid)
- * @param violationStrategy How to generate invalid foreign keys: "random", "null", "out_of_range"
  * @param enableBroadcastOptimization Whether to use broadcast joins for small dimension tables
  * @param cacheThresholdMB Only cache DataFrames smaller than this threshold
  * @param seed Optional seed for random number generation to ensure deterministic behavior
@@ -14,8 +12,6 @@ import io.github.datacatering.datacaterer.api.model.{CardinalityConfig, Nullabil
  * @param nullability Optional nullability configuration for controlling null FK percentage
  */
 case class ForeignKeyConfig(
-  violationRatio: Double = 0.0,
-  violationStrategy: String = "random",
   enableBroadcastOptimization: Boolean = true,
   cacheThresholdMB: Long = 200,
   seed: Option[Long] = None,

@@ -2,6 +2,6 @@ name: "http_wave_test_plan"
 description: "Test wave load pattern with HTTP sink"
 tasks:
   - name: "http_wave_task"
-    dataSourceName: "http_orders"
+    connection: "http_orders"
     enabled: true
 

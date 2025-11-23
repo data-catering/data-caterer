@@ -2,6 +2,7 @@ package io.github.datacatering.datacaterer.core.parser
 
 import io.github.datacatering.datacaterer.api.model.{LoadPattern => LoadPatternModel}
 import io.github.datacatering.datacaterer.core.generator.execution.pattern._
+import io.github.datacatering.datacaterer.core.util.GeneratorUtil
 import org.apache.log4j.Logger
 
 /**
@@ -113,7 +114,7 @@ object LoadPatternParser {
   private def parseBreakingPoint(model: LoadPatternModel): Either[List[String], BreakingPointPattern] = {
     (model.startRate, model.rateIncrement, model.incrementInterval) match {
       case (Some(start), Some(increment), Some(interval)) =>
-        val intervalSeconds = parseDuration(interval)
+        val intervalSeconds = GeneratorUtil.parseDurationToSeconds(interval)
         Right(BreakingPointPattern(start, increment, intervalSeconds, model.maxRate))
       case _ =>
         val missing = List(
@@ -122,27 +123,6 @@ object LoadPatternParser {
           if (model.incrementInterval.isEmpty) Some("incrementInterval") else None
         ).flatten
         Left(List(s"Breaking point pattern requires: ${missing.mkString(", ")}"))
-    }
-  }
-
-  /**
-   * Parse duration string to seconds.
-   * Supports formats like: "30s", "5m", "1h", "2h30m15s"
-   */
-  private def parseDuration(duration: String): Double = {
-    val pattern = """(\d+)([smh])""".r
-    val matches = pattern.findAllMatchIn(duration.toLowerCase)
-
-    matches.foldLeft(0.0) { (total, m) =>
-      val value = m.group(1).toDouble
-      val unit = m.group(2)
-      val seconds = unit match {
-        case "s" => value
-        case "m" => value * 60
-        case "h" => value * 3600
-        case _ => 0.0
-      }
-      total + seconds
     }
   }
 }

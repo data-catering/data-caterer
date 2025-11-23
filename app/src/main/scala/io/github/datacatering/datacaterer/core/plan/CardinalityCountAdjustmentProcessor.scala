@@ -1,6 +1,6 @@
 package io.github.datacatering.datacaterer.core.plan
 
-import io.github.datacatering.datacaterer.api.model.{CardinalityConfig, DataCatererConfiguration, ForeignKey, Plan, Task, TaskSummary, ValidationConfiguration}
+import io.github.datacatering.datacaterer.api.model.{CardinalityConfig, DataCatererConfiguration, ForeignKey, Plan, Task, ValidationConfiguration}
 import org.apache.log4j.Logger
 
 /**
@@ -23,10 +23,10 @@ class CardinalityCountAdjustmentProcessor(val dataCatererConfiguration: DataCate
   private val LOGGER = Logger.getLogger(getClass.getName)
 
   override def apply(
-    plan: Plan,
-    tasks: List[Task],
-    validations: List[ValidationConfiguration]
-  ): (Plan, List[Task], List[ValidationConfiguration]) = {
+                      plan: Plan,
+                      tasks: List[Task],
+                      validations: List[ValidationConfiguration]
+                    ): (Plan, List[Task], List[ValidationConfiguration]) = {
 
     LOGGER.debug("CardinalityCountAdjustmentProcessor starting...")
     // Extract foreign keys from plan's sink options
@@ -36,10 +36,6 @@ class CardinalityCountAdjustmentProcessor(val dataCatererConfiguration: DataCate
       LOGGER.debug("No foreign keys defined, skipping cardinality count adjustment")
       return (plan, tasks, validations)
     }
-
-    // Build maps by data source name for FK lookup
-    // Task summaries have dataSourceName which matches FK source/generate names
-    val taskSummariesByDataSource = plan.tasks.map(ts => ts.dataSourceName -> ts).toMap
 
     // Tasks need to be mapped back to summaries to get dataSourceName
     val taskNameToSummary = plan.tasks.map(ts => ts.name -> ts).toMap
@@ -81,7 +77,7 @@ class CardinalityCountAdjustmentProcessor(val dataCatererConfiguration: DataCate
 
               fkOpt match {
                 case Some(fk) =>
-                  val sourceCount = getSourceCount(taskSummariesByDataSource, fk.source.dataSource, tasksByDataSource.get(fk.source.dataSource))
+                  val sourceCount = getSourceCount(tasksByDataSource.get(fk.source.dataSource))
                   val requiredCount = calculateRequiredCount(sourceCount, targetRelation.cardinality.get)
                   val originalCount = task.steps.headOption.flatMap(_.count.records).getOrElse(1L)
 
@@ -111,13 +107,7 @@ class CardinalityCountAdjustmentProcessor(val dataCatererConfiguration: DataCate
                           tasksByDataSource.get(fk.source.dataSource)
                             .flatMap(_.steps.headOption)
                             .flatMap(_.count.records)
-                            .getOrElse {
-                              taskSummariesByDataSource.get(fk.source.dataSource)
-                                .flatMap(_.steps)
-                                .flatMap(_.headOption)
-                                .flatMap(_.count.records)
-                                .getOrElse(1L)
-                            }
+                            .getOrElse(1L)
                         }
                         .getOrElse(1L)
 
@@ -138,7 +128,7 @@ class CardinalityCountAdjustmentProcessor(val dataCatererConfiguration: DataCate
                             LOGGER.debug(s"Setting perField config for step ${step.name}: fields=${fkFieldNames.mkString(",")}, " +
                               s"records=$sourceCount, min=${config.min.get}, max=${config.max.get}, distribution=${config.distribution}")
                             step.count.copy(
-                              records = Some(sourceCount),  // Use source count for bounded
+                              records = Some(sourceCount), // Use source count for bounded
                               perField = Some(io.github.datacatering.datacaterer.api.model.PerFieldCount(
                                 fieldNames = fkFieldNames,
                                 count = None,
@@ -205,134 +195,7 @@ class CardinalityCountAdjustmentProcessor(val dataCatererConfiguration: DataCate
       }
     }
 
-    // Also update TaskSummaries in the plan (extractMetadata might use these)
-    val adjustedTaskSummaries = plan.tasks.map { taskSummary =>
-      val dataSourceName = taskSummary.dataSourceName
-
-      // Check if this task is a target in any FK relationship with cardinality
-      val targetRelationOpt = enhancedForeignKeys
-        .flatMap(_.generate)
-        .find(target => target.dataSource == dataSourceName && target.cardinality.isDefined)
-
-      targetRelationOpt match {
-        case Some(targetRelation) =>
-          // Find the FK that contains this target
-          val fkOpt = enhancedForeignKeys.find(_.generate.contains(targetRelation))
-
-          fkOpt match {
-            case Some(fk) =>
-              val sourceCount = getSourceCount(taskSummariesByDataSource, fk.source.dataSource, tasksByDataSource.get(fk.source.dataSource))
-              val requiredCount = calculateRequiredCount(sourceCount, targetRelation.cardinality.get)
-
-              // Update count in the TaskSummary's steps if they exist
-              taskSummary.steps.map { stepList =>
-                val originalCount = stepList.headOption.flatMap(_.count.records).getOrElse(1L)
-                if (requiredCount != originalCount) {
-                  LOGGER.debug(s"Adjusting task summary count: data-source=$dataSourceName, " +
-                    s"original-count=$originalCount, adjusted-count=$requiredCount")
-                  val updatedSteps = stepList.map { step =>
-                    // Get the target relation for this step from the foreign key config
-                    val targetRelationOpt = enhancedForeignKeys
-                      .flatMap(_.generate)
-                      .find(target => target.dataSource == dataSourceName && target.step == step.name)
-
-                    val fkFieldNames = targetRelationOpt.map(_.fields).getOrElse(List()).distinct
-
-                    // Get the cardinality configuration from the target relation
-                    val cardinalityConfigOpt = targetRelationOpt.flatMap(_.cardinality)
-
-                    // Get the source FK for this step
-                    val fkOpt = enhancedForeignKeys
-                      .find(fk => fk.generate.exists(g => g.dataSource == dataSourceName && g.step == step.name))
-
-                    val sourceCount = fkOpt
-                      .map { fk =>
-                        taskSummariesByDataSource.get(fk.source.dataSource)
-                          .flatMap(_.steps)
-                          .flatMap(_.headOption)
-                          .flatMap(_.count.records)
-                          .getOrElse(1L)
-                      }
-                      .getOrElse(1L)
-
-                    // Check if step originally had perField config on FK fields
-                    val hadOriginalPerField = step.count.perField.exists { pfc =>
-                      fkFieldNames.exists(pfc.fieldNames.contains)
-                    }
-
-                    // Determine if we should set perField configuration (same logic as Tasks above)
-                    val updatedCount = if (fkFieldNames.nonEmpty && cardinalityConfigOpt.isDefined && !hadOriginalPerField) {
-                      val cardinalityConfig = cardinalityConfigOpt.get
-
-                      cardinalityConfig match {
-                        case config if config.min.isDefined && config.max.isDefined =>
-                          // Bounded: set perField with min/max options
-                          step.count.copy(
-                            records = Some(sourceCount),
-                            perField = Some(io.github.datacatering.datacaterer.api.model.PerFieldCount(
-                              fieldNames = fkFieldNames,
-                              count = None,
-                              options = Map(
-                                "min" -> config.min.get,
-                                "max" -> config.max.get,
-                                "distribution" -> config.distribution
-                              )
-                            ))
-                          )
-
-                        case config if config.ratio.isDefined =>
-                          // Ratio: set perField with fixed count
-                          // Use SOURCE count, not requiredCount, because perField will multiply by ratio
-                          val recordsPerParent = config.ratio.get.toInt
-
-                          if (config.distribution == "uniform") {
-                            step.count.copy(
-                              records = Some(sourceCount),  // Use source count!
-                              perField = Some(io.github.datacatering.datacaterer.api.model.PerFieldCount(
-                                fieldNames = fkFieldNames,
-                                count = Some(recordsPerParent.toLong)
-                              ))
-                            )
-                          } else {
-                            step.count.copy(
-                              records = Some(sourceCount),  // Use source count!
-                              perField = Some(io.github.datacatering.datacaterer.api.model.PerFieldCount(
-                                fieldNames = fkFieldNames,
-                                count = None,
-                                options = Map(
-                                  "min" -> recordsPerParent,
-                                  "max" -> recordsPerParent,
-                                  "distribution" -> config.distribution
-                                )
-                              ))
-                            )
-                          }
-
-                        case _ =>
-                          step.count.copy(records = Some(requiredCount), perField = None)
-                      }
-                    } else if (hadOriginalPerField) {
-                      // Step had original perField on FK fields - remove it to avoid double-grouping
-                      step.count.copy(records = Some(requiredCount), perField = None)
-                    } else {
-                      step.count.copy(records = Some(requiredCount))
-                    }
-
-                    step.copy(count = updatedCount)
-                  }
-                  taskSummary.copy(steps = Some(updatedSteps))
-                } else {
-                  taskSummary
-                }
-              }.getOrElse(taskSummary)
-            case None => taskSummary
-          }
-        case None => taskSummary
-      }
-    }
-
     val adjustedPlan = plan.copy(
-      tasks = adjustedTaskSummaries,
       sinkOptions = plan.sinkOptions.map(_.copy(foreignKeys = enhancedForeignKeys))
     )
 
@@ -359,22 +222,11 @@ class CardinalityCountAdjustmentProcessor(val dataCatererConfiguration: DataCate
     }
   }
 
-  private def getSourceCount(
-                              taskSummariesByDataSource: Map[String, TaskSummary],
-                              sourceDataSource: String,
-                              sourceTask: Option[Task]
-                            ): Long = {
+  private def getSourceCount(sourceTask: Option[Task]): Long = {
     sourceTask
       .flatMap(_.steps.headOption)
       .flatMap(_.count.records)
-      .getOrElse {
-        // Try to get from task summary if not in task
-        taskSummariesByDataSource.get(sourceDataSource)
-          .flatMap(_.steps)
-          .flatMap(_.headOption)
-          .flatMap(_.count.records)
-          .getOrElse(1L)
-      }
+      .getOrElse(1L)
   }
 
   /**
@@ -385,9 +237,9 @@ class CardinalityCountAdjustmentProcessor(val dataCatererConfiguration: DataCate
    * 2. Cardinality config has either ratio OR min/max, not both
    */
   private def validateForeignKeyConfigurations(
-    foreignKeys: List[ForeignKey],
-    tasksByDataSource: Map[String, Task]
-  ): Unit = {
+                                                foreignKeys: List[ForeignKey],
+                                                tasksByDataSource: Map[String, Task]
+                                              ): Unit = {
     foreignKeys.foreach { fk =>
       fk.generate.foreach { targetRelation =>
         // Validation 1: Reject if both target cardinality AND step perField on FK fields are defined
@@ -438,9 +290,9 @@ class CardinalityCountAdjustmentProcessor(val dataCatererConfiguration: DataCate
    * cardinality is not explicitly configured on each target.
    */
   private def enhanceForeignKeysWithPerFieldCardinality(
-    foreignKeys: List[ForeignKey],
-    tasksByDataSource: Map[String, Task]
-  ): List[ForeignKey] = {
+                                                         foreignKeys: List[ForeignKey],
+                                                         tasksByDataSource: Map[String, Task]
+                                                       ): List[ForeignKey] = {
 
     foreignKeys.map { fk =>
       // Check each target individually for perField counts and add synthetic cardinality

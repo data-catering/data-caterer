@@ -38,22 +38,6 @@ trait ExecutionStrategy {
    */
   def getGenerationMode: GenerationMode = GenerationMode.Batched
 
-  /**
-   * Calculate the number of records to generate per batch.
-   * Default implementation divides total records by number of batches.
-   * 
-   * @param batchNumber Current batch number (1-indexed)
-   * @param totalRecords Total records to generate across all batches
-   * @return Number of records for this batch
-   */
-  def getRecordsPerBatch(batchNumber: Int, totalRecords: Long): Long = {
-    val numBatches = calculateNumBatches
-    if (numBatches == Int.MaxValue) {
-      totalRecords
-    } else {
-      totalRecords / numBatches
-    }
-  }
 }
 
 /**

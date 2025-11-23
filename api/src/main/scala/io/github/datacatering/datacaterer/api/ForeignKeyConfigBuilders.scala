@@ -1,8 +1,8 @@
 package io.github.datacatering.datacaterer.api
 
 import com.softwaremill.quicklens.ModifyPimp
-import io.github.datacatering.datacaterer.api.model.{CardinalityConfig, NullabilityConfig}
 import io.github.datacatering.datacaterer.api.model.Constants._
+import io.github.datacatering.datacaterer.api.model.{CardinalityConfig, NullabilityConfig}
 
 /**
  * Builder for CardinalityConfig to control foreign key cardinality in relationships.

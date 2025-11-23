@@ -1,7 +1,7 @@
 package io.github.datacatering.datacaterer.core.plan
 
 import io.github.datacatering.datacaterer.api.model.Constants.IS_UNIQUE
-import io.github.datacatering.datacaterer.api.model.{DataCatererConfiguration, Field, Plan, Step, Task, ValidationConfiguration}
+import io.github.datacatering.datacaterer.api.model.{DataCatererConfiguration, Plan, Step, Task, ValidationConfiguration}
 import org.apache.log4j.Logger
 
 /**
@@ -35,10 +35,10 @@ class ForeignKeyUniquenessProcessor(val dataCatererConfiguration: DataCatererCon
   private val LOGGER = Logger.getLogger(getClass.getName)
 
   override def apply(
-    plan: Plan,
-    tasks: List[Task],
-    validations: List[ValidationConfiguration]
-  ): (Plan, List[Task], List[ValidationConfiguration]) = {
+                      plan: Plan,
+                      tasks: List[Task],
+                      validations: List[ValidationConfiguration]
+                    ): (Plan, List[Task], List[ValidationConfiguration]) = {
 
     LOGGER.info("ForeignKeyUniquenessProcessor starting...")
 
@@ -95,37 +95,19 @@ class ForeignKeyUniquenessProcessor(val dataCatererConfiguration: DataCatererCon
       }
     }
 
-    // Also update TaskSummaries in the plan for consistency
-    val updatedTaskSummaries = plan.tasks.map { taskSummary =>
-      val updatedSteps = taskSummary.steps.map { stepList =>
-        stepList.map { step =>
-          updateStepFields(step, taskSummary.dataSourceName, sourceFieldsToMarkUnique)
-        }
-      }
-
-      if (updatedSteps != taskSummary.steps) {
-        LOGGER.info(s"Updated task summary '${taskSummary.name}' to mark FK fields as unique")
-        taskSummary.copy(steps = updatedSteps)
-      } else {
-        taskSummary
-      }
-    }
-
-    val updatedPlan = plan.copy(tasks = updatedTaskSummaries)
-
     LOGGER.info("ForeignKeyUniquenessProcessor completed")
 
-    (updatedPlan, updatedTasks, validations)
+    (plan, updatedTasks, validations)
   }
 
   /**
    * Update fields in a step to mark FK source fields as unique.
    */
   private def updateStepFields(
-    step: Step,
-    dataSourceName: String,
-    sourceFieldsToMarkUnique: Set[(String, String, String)]
-  ): Step = {
+                                step: Step,
+                                dataSourceName: String,
+                                sourceFieldsToMarkUnique: Set[(String, String, String)]
+                              ): Step = {
     if (step.fields.isEmpty) {
       // No fields defined, can't update
       if (sourceFieldsToMarkUnique.exists { case (ds, st, _) => ds == dataSourceName && st == step.name }) {
@@ -158,43 +140,6 @@ class ForeignKeyUniquenessProcessor(val dataCatererConfiguration: DataCatererCon
       step.copy(fields = updatedFields)
     } else {
       step
-    }
-  }
-
-  /**
-   * Recursively update nested fields (for complex types).
-   * Currently, FK fields are typically top-level, but this provides extensibility.
-   */
-  private def updateNestedFields(
-    field: Field,
-    dataSourceName: String,
-    stepName: String,
-    sourceFieldsToMarkUnique: Set[(String, String, String)],
-    parentPath: String = ""
-  ): Field = {
-    val currentPath = if (parentPath.isEmpty) field.name else s"$parentPath.${field.name}"
-    val fieldKey = (dataSourceName, stepName, currentPath)
-
-    val fieldWithUnique = if (sourceFieldsToMarkUnique.contains(fieldKey)) {
-      val currentUnique = field.options.get(IS_UNIQUE).exists(_.toString.toLowerCase == "true")
-      if (currentUnique) {
-        field
-      } else {
-        LOGGER.info(s"Marking nested FK source field as unique: $dataSourceName.$stepName.$currentPath")
-        field.copy(options = field.options + (IS_UNIQUE -> "true"))
-      }
-    } else {
-      field
-    }
-
-    // Recursively process nested fields
-    if (field.fields.nonEmpty) {
-      val updatedNestedFields = field.fields.map(f =>
-        updateNestedFields(f, dataSourceName, stepName, sourceFieldsToMarkUnique, currentPath)
-      )
-      fieldWithUnique.copy(fields = updatedNestedFields)
-    } else {
-      fieldWithUnique
     }
   }
 }

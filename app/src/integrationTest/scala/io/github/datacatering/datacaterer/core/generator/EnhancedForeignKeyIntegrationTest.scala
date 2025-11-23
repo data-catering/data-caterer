@@ -27,12 +27,14 @@ class EnhancedForeignKeyIntegrationTest extends SparkSuite with Matchers with Be
 
   override def afterEach(): Unit = {
     super.afterEach()
+
     def deleteRecursively(file: File): Unit = {
       if (file.isDirectory) {
         file.listFiles.foreach(deleteRecursively)
       }
       file.delete()
     }
+
     val testDir = new File(testDataPath)
     if (testDir.exists()) {
       deleteRecursively(testDir)
@@ -41,11 +43,15 @@ class EnhancedForeignKeyIntegrationTest extends SparkSuite with Matchers with Be
 
   // Helper to extract ForeignKeyRelation from ConnectionTaskBuilder
   private def toFkRelation(builder: io.github.datacatering.datacaterer.api.connection.ConnectionTaskBuilder[_],
-                           fields: List[String]): ForeignKeyRelation = {
+                           fields: List[String],
+                           cardinalityConfigBuilder: Option[CardinalityConfigBuilder] = None,
+                           nullabilityConfigBuilder: Option[NullabilityConfigBuilder] = None): ForeignKeyRelation = {
     ForeignKeyRelation(
       builder.connectionConfigWithTaskBuilder.dataSourceName,
       builder.step.get.step.name,
-      fields
+      fields,
+      cardinality = cardinalityConfigBuilder.map(_.config),
+      nullability = nullabilityConfigBuilder.map(_.config)
     )
   }
 
@@ -362,8 +368,8 @@ class EnhancedForeignKeyIntegrationTest extends SparkSuite with Matchers with Be
     accountsData.length shouldBe 30
 
     // Both transactions and balances should have cardinality applied (1:2 ratio)
-    transactionsData.length shouldBe 60  // 30 accounts * 2
-    balancesData.length shouldBe 60      // 30 accounts * 2
+    transactionsData.length shouldBe 60 // 30 accounts * 2
+    balancesData.length shouldBe 60 // 30 accounts * 2
 
     val validAccountIds = accountsData.map(_.getAs[String]("account_id")).toSet
 
@@ -438,11 +444,10 @@ class EnhancedForeignKeyIntegrationTest extends SparkSuite with Matchers with Be
     val cardinalityConfig = CardinalityConfigBuilder.oneToOne()
 
     val planWithFk = plan
-      .seed(12345L)  // Deterministic seed for testing
+      .seed(12345L) // Deterministic seed for testing
       .addForeignKeyRelationship(
         toFkRelation(customers, List("customer_id")),
-        List(toFkRelation(profiles, List("customer_id"))),
-        cardinalityConfig
+        toFkRelation(profiles, List("customer_id"), Some(cardinalityConfig))
       )
 
     val config = configuration
@@ -467,16 +472,15 @@ class EnhancedForeignKeyIntegrationTest extends SparkSuite with Matchers with Be
         field.name("customer_id"),
         field.name("amount").`type`(DoubleType).min(10.0).max(1000.0)
       )
-      .count(count.records(50))  // Pre-processor will adjust to 150 based on cardinality
+      .count(count.records(50)) // Pre-processor will adjust to 150 based on cardinality
 
     val cardinalityConfig = CardinalityConfigBuilder.oneToMany(3.0, "uniform")
 
     val planWithFk = plan
-      .seed(12346L)  // Deterministic seed for testing
+      .seed(12346L) // Deterministic seed for testing
       .addForeignKeyRelationship(
         toFkRelation(customers, List("customer_id")),
-        List(toFkRelation(orders, List("customer_id"))),
-        cardinalityConfig
+        toFkRelation(orders, List("customer_id"), Some(cardinalityConfig))
       )
 
     val config = configuration
@@ -506,11 +510,10 @@ class EnhancedForeignKeyIntegrationTest extends SparkSuite with Matchers with Be
     val cardinalityConfig = CardinalityConfigBuilder.bounded(2, 5)
 
     val planWithFk = plan
-      .seed(12347L)  // Deterministic seed for testing
+      .seed(12347L) // Deterministic seed for testing
       .addForeignKeyRelationship(
         toFkRelation(products, List("product_id")),
-        List(toFkRelation(reviews, List("product_id"))),
-        cardinalityConfig
+        toFkRelation(reviews, List("product_id"), Some(cardinalityConfig))
       )
 
     val config = configuration
@@ -540,11 +543,10 @@ class EnhancedForeignKeyIntegrationTest extends SparkSuite with Matchers with Be
     val nullabilityConfig = NullabilityConfigBuilder.random(0.2)
 
     val planWithFk = plan
-      .seed(12348L)  // Deterministic seed for testing
+      .seed(12348L) // Deterministic seed for testing
       .addForeignKeyRelationship(
         toFkRelation(accounts, List("account_number")),
-        List(toFkRelation(transactions, List("account_number"))),
-        nullabilityConfig
+        toFkRelation(transactions, List("account_number"), None, Some(nullabilityConfig))
       )
 
     val config = configuration
@@ -576,11 +578,10 @@ class EnhancedForeignKeyIntegrationTest extends SparkSuite with Matchers with Be
       .strategy("head")
 
     val planWithFk = plan
-      .seed(12349L)  // Deterministic seed for testing
+      .seed(12349L) // Deterministic seed for testing
       .addForeignKeyRelationship(
         toFkRelation(customers, List("customer_id")),
-        List(toFkRelation(orders, List("customer_id"))),
-        nullabilityConfig
+        toFkRelation(orders, List("customer_id"), None, Some(nullabilityConfig))
       )
 
     val config = configuration
@@ -610,7 +611,7 @@ class EnhancedForeignKeyIntegrationTest extends SparkSuite with Matchers with Be
     // NOTE: all-combinations generation mode is not yet exposed in Scala API
     // This test will use default "all-exist" mode for now
     val planWithFk = plan
-      .seed(12350L)  // Deterministic seed for testing
+      .seed(12350L) // Deterministic seed for testing
       .addForeignKeyRelationship(
         toFkRelation(countries, List("country_code")),
         toFkRelation(cities, List("country_code"))
@@ -638,18 +639,16 @@ class EnhancedForeignKeyIntegrationTest extends SparkSuite with Matchers with Be
         field.name("supplier_id"),
         field.name("name").expression("#{Commerce.productName}")
       )
-      .count(count.records(30))  // Pre-processor will adjust to 60 (30 * 2.0) based on cardinality
+      .count(count.records(30)) // Pre-processor will adjust to 60 (30 * 2.0) based on cardinality
 
     val cardinalityConfig = CardinalityConfigBuilder.oneToMany(2.0, "uniform")
     val nullabilityConfig = NullabilityConfigBuilder.random(0.15)
 
     val planWithFk = plan
-      .seed(12351L)  // Deterministic seed for testing
+      .seed(12351L) // Deterministic seed for testing
       .addForeignKeyRelationship(
         toFkRelation(suppliers, List("supplier_id")),
-        List(toFkRelation(products, List("supplier_id"))),
-        cardinalityConfig,
-        nullabilityConfig
+        toFkRelation(products, List("supplier_id"), Some(cardinalityConfig), Some(nullabilityConfig))
       )
 
     val config = configuration
@@ -682,7 +681,7 @@ class EnhancedForeignKeyIntegrationTest extends SparkSuite with Matchers with Be
         field.name("customer_id"),
         field.name("tracking_number").regex("[0-9]{12}")
       )
-      .count(count.records(50))  // Pre-processor will adjust to 100 (50 * 2.0) based on cardinality
+      .count(count.records(50)) // Pre-processor will adjust to 100 (50 * 2.0) based on cardinality
 
     // FK 1: customers -> orders with 20% nullability
     val nullabilityConfig = NullabilityConfigBuilder.random(0.2)
@@ -691,16 +690,14 @@ class EnhancedForeignKeyIntegrationTest extends SparkSuite with Matchers with Be
     val cardinalityConfig = CardinalityConfigBuilder.oneToMany(2.0, "uniform")
 
     val planWithFks = plan
-      .seed(12352L)  // Deterministic seed for testing
+      .seed(12352L) // Deterministic seed for testing
       .addForeignKeyRelationship(
         toFkRelation(customers, List("customer_id")),
-        List(toFkRelation(orders, List("customer_id"))),
-        nullabilityConfig
+        toFkRelation(orders, List("customer_id"), None, Some(nullabilityConfig))
       )
       .addForeignKeyRelationship(
         toFkRelation(customers, List("customer_id")),
-        List(toFkRelation(shipments, List("customer_id"))),
-        cardinalityConfig
+        toFkRelation(shipments, List("customer_id"), Some(cardinalityConfig))
       )
 
     val config = configuration
@@ -725,7 +722,7 @@ class EnhancedForeignKeyIntegrationTest extends SparkSuite with Matchers with Be
         field.name("account_id"),
         field.name("amount").`type`(DoubleType).min(1.0).max(1000.0)
       )
-      .count(count.records(30))  // Pre-processor will adjust to 60 (30 * 2.0) based on cardinality
+      .count(count.records(30)) // Pre-processor will adjust to 60 (30 * 2.0) based on cardinality
 
     val balances = csv("balances", balancesPath, Map("saveMode" -> "overwrite", "header" -> "true"))
       .fields(
@@ -733,20 +730,17 @@ class EnhancedForeignKeyIntegrationTest extends SparkSuite with Matchers with Be
         field.name("account_id"),
         field.name("current_balance").`type`(DoubleType).min(0.0).max(10000.0)
       )
-      .count(count.records(30))  // Pre-processor will adjust to 60 (30 * 2.0) based on cardinality
+      .count(count.records(30)) // Pre-processor will adjust to 60 (30 * 2.0) based on cardinality
 
     // Single FK with multiple targets in generate list - cardinality should apply to both
     val cardinalityConfig = CardinalityConfigBuilder.oneToMany(2.0, "uniform")
 
     val planWithFk = plan
-      .seed(12353L)  // Deterministic seed for testing
+      .seed(12353L) // Deterministic seed for testing
       .addForeignKeyRelationship(
         toFkRelation(accounts, List("account_id")),
-        List(
-          toFkRelation(transactions, List("account_id")),
-          toFkRelation(balances, List("account_id"))
-        ),
-        cardinalityConfig
+        toFkRelation(transactions, List("account_id"), Some(cardinalityConfig)),
+        toFkRelation(balances, List("account_id"), Some(cardinalityConfig))
       )
 
     val config = configuration

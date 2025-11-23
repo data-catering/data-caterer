@@ -24,19 +24,15 @@ class ForeignKeyEndToEndIntegrationTest extends SparkSuite {
     val foreignKeys = List(ForeignKey(
       ForeignKeyRelation("accounts", "accounts_table", List("account_id")),
       List(ForeignKeyRelation("transactions", "transactions_table", List("account_id"),
-        cardinality = Some(CardinalityConfig(ratio = Some(5.0), distribution = "uniform")))),
+        cardinality = Some(CardinalityConfig(ratio = Some(5.0))))),
       List()
     ))
 
     val sinkOptions = SinkOptions(Some("12345"), None, foreignKeys)
 
     val taskSummaries = List(
-      TaskSummary("account_task", "accounts", enabled = true, steps = Some(List(
-        Step(name = "accounts_table", count = Count(records = Some(3)))
-      ))),
-      TaskSummary("transaction_task", "transactions", enabled = true, steps = Some(List(
-        Step(name = "transactions_table", count = Count(records = Some(30))) // Will be adjusted
-      )))
+      TaskSummary("account_task", "accounts", enabled = true),
+      TaskSummary("transaction_task", "transactions", enabled = true)
     )
 
     val plan = Plan("cardinality e2e test", "test plan", taskSummaries, Some(sinkOptions))
@@ -148,19 +144,15 @@ class ForeignKeyEndToEndIntegrationTest extends SparkSuite {
     val foreignKeys = List(ForeignKey(
       ForeignKeyRelation("authors", "authors_table", List("author_id")),
       List(ForeignKeyRelation("articles", "articles_table", List("author_id"),
-        cardinality = Some(CardinalityConfig(min = Some(2), max = Some(4), distribution = "uniform")))),
+        cardinality = Some(CardinalityConfig(min = Some(2), max = Some(4))))),
       List()
     ))
 
     val sinkOptions = SinkOptions(Some("12346"), None, foreignKeys)
 
     val taskSummaries = List(
-      TaskSummary("author_task", "authors", enabled = true, steps = Some(List(
-        Step(name = "authors_table", count = Count(records = Some(3)))
-      ))),
-      TaskSummary("article_task", "articles", enabled = true, steps = Some(List(
-        Step(name = "articles_table", count = Count(records = Some(10)))
-      )))
+      TaskSummary("author_task", "authors", enabled = true),
+      TaskSummary("article_task", "articles", enabled = true)
     )
 
     val plan = Plan("bounded cardinality e2e test", "test plan", taskSummaries, Some(sinkOptions))
@@ -258,7 +250,7 @@ class ForeignKeyEndToEndIntegrationTest extends SparkSuite {
     val foreignKeys = List(ForeignKey(
       ForeignKeyRelation("customers", "customers_table", List("customer_id")),
       List(ForeignKeyRelation("orders", "orders_table", List("customer_id"),
-        cardinality = Some(CardinalityConfig(ratio = Some(2.0), distribution = "uniform")),
+        cardinality = Some(CardinalityConfig(ratio = Some(2.0))),
         generationMode = Some("all-exist"))),
       List()
     ))
@@ -266,12 +258,8 @@ class ForeignKeyEndToEndIntegrationTest extends SparkSuite {
     val sinkOptions = SinkOptions(Some("12347"), None, foreignKeys)
 
     val taskSummaries = List(
-      TaskSummary("customer_task", "customers", enabled = true, steps = Some(List(
-        Step(name = "customers_table", count = Count(records = Some(3)))
-      ))),
-      TaskSummary("order_task", "orders", enabled = true, steps = Some(List(
-        Step(name = "orders_table", count = Count(records = Some(10)))
-      )))
+      TaskSummary("customer_task", "customers", enabled = true),
+      TaskSummary("order_task", "orders", enabled = true)
     )
 
     val plan = Plan("cardinality all-exist e2e test", "test plan", taskSummaries, Some(sinkOptions))
@@ -339,8 +327,8 @@ class ForeignKeyEndToEndIntegrationTest extends SparkSuite {
     val foreignKeys = List(ForeignKey(
       ForeignKeyRelation("products", "products_table", List("product_id")),
       List(ForeignKeyRelation("reviews", "reviews_table", List("product_id"),
-        cardinality = Some(CardinalityConfig(ratio = Some(3.0), distribution = "uniform")),
-        nullability = Some(NullabilityConfig(0.25, "random")),
+        cardinality = Some(CardinalityConfig(ratio = Some(3.0))),
+        nullability = Some(NullabilityConfig(0.25)),
         generationMode = Some("partial"))),
       List()
     ))
@@ -348,12 +336,8 @@ class ForeignKeyEndToEndIntegrationTest extends SparkSuite {
     val sinkOptions = SinkOptions(Some("1"), None, foreignKeys)
 
     val taskSummaries = List(
-      TaskSummary("product_task", "products", enabled = true, steps = Some(List(
-        Step(name = "products_table", count = Count(records = Some(4)))
-      ))),
-      TaskSummary("review_task", "reviews", enabled = true, steps = Some(List(
-        Step(name = "reviews_table", count = Count(records = Some(20)))
-      )))
+      TaskSummary("product_task", "products", enabled = true),
+      TaskSummary("review_task", "reviews", enabled = true)
     )
 
     val plan = Plan("cardinality partial e2e test", "test plan", taskSummaries, Some(sinkOptions))
@@ -410,8 +394,8 @@ class ForeignKeyEndToEndIntegrationTest extends SparkSuite {
     // Count null FKs (violations)
     val nullCount = updatedReviewsDf.filter(updatedReviewsDf("product_id").isNull).count()
 
-    // With seed=1 and 25% ratio, expect exactly 3 nulls out of 12 records
-    assert(nullCount == 3, s"Expected exactly 3 nulls with seed=1, got $nullCount")
+    // With seed=1 and 25% ratio, expect exactly 4 nulls out of 12 records
+    assert(nullCount == 4, s"Expected exactly 4 nulls with seed=1, got $nullCount")
 
     // Verify non-null FKs are valid
     val validProductIds = productsDf.select("product_id").collect().map(_.getString(0)).toSet
@@ -440,19 +424,15 @@ class ForeignKeyEndToEndIntegrationTest extends SparkSuite {
     val foreignKeys = List(ForeignKey(
       ForeignKeyRelation("locations", "locations_table", List("country", "state")),
       List(ForeignKeyRelation("stores", "stores_table", List("country", "state"),
-        cardinality = Some(CardinalityConfig(ratio = Some(3.0), distribution = "uniform")))),
+        cardinality = Some(CardinalityConfig(ratio = Some(3.0))))),
       List()
     ))
 
     val sinkOptions = SinkOptions(Some("12348"), None, foreignKeys)
 
     val taskSummaries = List(
-      TaskSummary("location_task", "locations", enabled = true, steps = Some(List(
-        Step(name = "locations_table", count = Count(records = Some(2)))
-      ))),
-      TaskSummary("store_task", "stores", enabled = true, steps = Some(List(
-        Step(name = "stores_table", count = Count(records = Some(10)))
-      )))
+      TaskSummary("location_task", "locations", enabled = true),
+      TaskSummary("store_task", "stores", enabled = true)
     )
 
     val plan = Plan("composite key cardinality e2e test", "test plan", taskSummaries, Some(sinkOptions))
@@ -523,19 +503,15 @@ class ForeignKeyEndToEndIntegrationTest extends SparkSuite {
     val foreignKeys = List(ForeignKey(
       ForeignKeyRelation("stores", "stores_table", List("store_id")),
       List(ForeignKeyRelation("sales", "sales_table", List("store_id"),
-        nullability = Some(NullabilityConfig(0.2, "random")))),
+        nullability = Some(NullabilityConfig(0.2)))),
       List()
     ))
 
     val sinkOptions = SinkOptions(Some("12349"), None, foreignKeys)
 
     val taskSummaries = List(
-      TaskSummary("store_task", "stores", enabled = true, steps = Some(List(
-        Step(name = "stores_table", count = Count(records = Some(3)))
-      ))),
-      TaskSummary("sale_task", "sales", enabled = true, steps = Some(List(
-        Step(name = "sales_table", count = Count(records = Some(10)))
-      )))
+      TaskSummary("store_task", "stores", enabled = true),
+      TaskSummary("sale_task", "sales", enabled = true)
     )
 
     val plan = Plan("nullability e2e test", "test plan", taskSummaries, Some(sinkOptions))

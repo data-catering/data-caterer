@@ -1,6 +1,6 @@
 package io.github.datacatering.datacaterer.api.util
 
-import io.github.datacatering.datacaterer.api.model.{PlanResults, PlanRunSummary, Step, Task}
+import io.github.datacatering.datacaterer.api.model.{PlanRunSummary, Step, Task}
 
 object ConfigUtil {
 

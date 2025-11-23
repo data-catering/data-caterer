@@ -2,10 +2,9 @@ package io.github.datacatering.datacaterer.core.foreignkey.strategy
 
 import io.github.datacatering.datacaterer.core.foreignkey.model.EnhancedForeignKeyRelation
 import org.apache.log4j.Logger
-import org.apache.spark.sql.{Column, DataFrame}
+import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.expressions.Window
-import org.apache.spark.sql.functions.{concat, expr, lit, rand, row_number, floor, col, when}
-import org.apache.spark.sql.types.{DataType, IntegerType, LongType, StringType}
+import org.apache.spark.sql.types.{IntegerType, LongType, StringType}
 
 /**
  * Strategy for applying different foreign key generation modes.
@@ -18,6 +17,7 @@ import org.apache.spark.sql.types.{DataType, IntegerType, LongType, StringType}
 class GenerationModeStrategy(generationMode: String = "all-exist") extends ForeignKeyStrategy {
 
   private val LOGGER = Logger.getLogger(getClass.getName)
+  private val distributedSamplingStrategy = new DistributedSamplingStrategy()
 
   override def name: String = s"GenerationModeStrategy($generationMode)"
 
@@ -63,11 +63,8 @@ class GenerationModeStrategy(generationMode: String = "all-exist") extends Forei
   ): DataFrame = {
     LOGGER.info("Using all-exist mode: all records have valid FKs")
 
-    // Configure for all valid FKs (no violations)
-    val config = relation.config.copy(violationRatio = 0.0)
-    val relationWithConfig = relation.copy(config = config)
-
-    new DistributedSamplingStrategy().apply(sourceDf, targetDf, relationWithConfig)
+    // All records have valid FKs - no nullability config needed
+    distributedSamplingStrategy.apply(sourceDf, targetDf, relation)
   }
 
   /**
@@ -81,19 +78,8 @@ class GenerationModeStrategy(generationMode: String = "all-exist") extends Forei
   ): DataFrame = {
     LOGGER.info("Using partial mode with configured violations")
 
-    // Configure violation ratio based on nullability if available
-    val partialConfig = if (relation.config.nullability.isDefined) {
-      relation.config.copy(
-        violationRatio = relation.config.nullability.get.nullPercentage,
-        violationStrategy = "null"
-      )
-    } else {
-      relation.config
-    }
-
-    val relationWithConfig = relation.copy(config = partialConfig)
-
-    new DistributedSamplingStrategy().apply(sourceDf, targetDf, relationWithConfig)
+    // Apply valid FKs first, then nullability will be handled by NullabilityStrategy
+    distributedSamplingStrategy.apply(sourceDf, targetDf, relation)
   }
 
   /**
@@ -128,9 +114,7 @@ class GenerationModeStrategy(generationMode: String = "all-exist") extends Forei
       .withColumn("_combination_id", floor(col("_row_id") / recordsPerCombination))
 
     // First, apply valid FKs to get baseline
-    val validConfig = relation.config.copy(violationRatio = 0.0)
-    val relationWithValidConfig = relation.copy(config = validConfig)
-    val withValidFKs = new DistributedSamplingStrategy().apply(sourceDf, targetWithCombo, relationWithValidConfig)
+    val withValidFKs = distributedSamplingStrategy.apply(sourceDf, targetWithCombo, relation)
 
     // For each combination, decide which fields to invalidate
     var result = withValidFKs
@@ -140,11 +124,20 @@ class GenerationModeStrategy(generationMode: String = "all-exist") extends Forei
       // This ensures we get all 2^n combinations
       val shouldInvalidate = (col("_combination_id") % totalCombinations).bitwiseAND(1 << fieldIdx) === 0
 
-      val invalidValue = generateViolationValue(
-        result.schema(targetField).dataType,
-        "random",
-        relation.config.seed
-      )
+      // Generate random invalid values for this field
+      val dataType = result.schema(targetField).dataType
+      val randExpr = relation.config.seed.map(s => rand(s)).getOrElse(rand())
+      val invalidValue = dataType match {
+        case StringType =>
+          // Use deterministic hash-based approach when seed is available
+          relation.config.seed match {
+            case Some(s) => concat(lit("INVALID_"), expr(s"MD5(CONCAT('$s', CAST(monotonically_increasing_id() AS STRING)))"))
+            case None => concat(lit("INVALID_"), expr("uuid()"))
+          }
+        case IntegerType => (randExpr * 999999999).cast(IntegerType)
+        case LongType => (randExpr * 999999999999L).cast(LongType)
+        case _ => lit(null).cast(dataType)
+      }
 
       result = result.withColumn(targetField,
         when(shouldInvalidate, invalidValue).otherwise(col(targetField))
@@ -152,42 +145,6 @@ class GenerationModeStrategy(generationMode: String = "all-exist") extends Forei
     }
 
     result.drop("_row_id", "_combination_id")
-  }
-
-  /**
-   * Generate a value that violates foreign key integrity based on strategy.
-   */
-  private def generateViolationValue(dataType: DataType, strategy: String, seed: Option[Long] = None): Column = {
-    strategy.toLowerCase match {
-      case "null" =>
-        lit(null).cast(dataType)
-
-      case "random" =>
-        val randExpr = seed.map(s => rand(s)).getOrElse(rand())
-        dataType match {
-          case StringType =>
-            // Use deterministic hash-based approach when seed is available
-            seed match {
-              case Some(s) => concat(lit("INVALID_"), expr(s"MD5(CONCAT('$s', CAST(monotonically_increasing_id() AS STRING)))"))
-              case None => concat(lit("INVALID_"), expr("uuid()"))
-            }
-          case IntegerType => (randExpr * 999999999).cast(IntegerType)
-          case LongType => (randExpr * 999999999999L).cast(LongType)
-          case _ => lit(null).cast(dataType)
-        }
-
-      case "out_of_range" =>
-        dataType match {
-          case StringType => lit("OUT_OF_RANGE_VALUE")
-          case IntegerType => lit(-999999)
-          case LongType => lit(-999999999L)
-          case _ => lit(null).cast(dataType)
-        }
-
-      case _ =>
-        LOGGER.warn(s"Unknown violation strategy: $strategy, using null")
-        lit(null).cast(dataType)
-    }
   }
 }
 

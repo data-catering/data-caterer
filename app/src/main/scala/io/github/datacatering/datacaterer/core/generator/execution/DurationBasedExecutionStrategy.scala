@@ -1,18 +1,17 @@
 package io.github.datacatering.datacaterer.core.generator.execution
 
-import io.github.datacatering.datacaterer.api.model.{GenerationConfig, Plan, Task, TaskSummary}
+import io.github.datacatering.datacaterer.api.model.{Task, TaskSummary}
 import io.github.datacatering.datacaterer.core.generator.execution.rate.{DurationTracker, RateLimiter}
 import io.github.datacatering.datacaterer.core.generator.metrics.{PerformanceMetrics, PerformanceMetricsCollector}
+import io.github.datacatering.datacaterer.core.util.GeneratorUtil
 import org.apache.log4j.Logger
 
 /**
  * Duration-based execution strategy with constant rate limiting
  */
 class DurationBasedExecutionStrategy(
-                                       plan: Plan,
-                                       executableTasks: List[(TaskSummary, Task)],
-                                       generationConfig: GenerationConfig
-                                     ) extends ExecutionStrategy {
+                                      executableTasks: List[(TaskSummary, Task)]
+                                    ) extends ExecutionStrategy {
 
   private val LOGGER = Logger.getLogger(getClass.getName)
   private val metricsCollector = new PerformanceMetricsCollector()
@@ -78,7 +77,7 @@ class DurationBasedExecutionStrategy(
   /**
    * Get the duration in seconds for streaming execution
    */
-  def getDurationSeconds: Long = parseDurationToSeconds(duration)
+  def getDurationSeconds: Double = GeneratorUtil.parseDurationToSeconds(duration)
 
   /**
    * Get the target rate per second (if configured)
@@ -99,24 +98,6 @@ class DurationBasedExecutionStrategy(
         )
       case None =>
         throw new IllegalArgumentException("No step with duration configuration found")
-    }
-  }
-
-  /**
-   * Parse duration string (e.g., "1s", "10s", "1m") to seconds
-   */
-  private def parseDurationToSeconds(duration: String): Long = {
-    val durationPattern = """(\d+)([smh])""".r
-    duration match {
-      case durationPattern(value, unit) =>
-        val longValue = value.toLong
-        unit match {
-          case "s" => longValue
-          case "m" => longValue * 60
-          case "h" => longValue * 3600
-          case _ => throw new IllegalArgumentException(s"Unsupported duration unit: $unit")
-        }
-      case _ => throw new IllegalArgumentException(s"Invalid duration format: $duration. Expected format: <number><unit> (e.g., '10s', '1m')")
     }
   }
 }

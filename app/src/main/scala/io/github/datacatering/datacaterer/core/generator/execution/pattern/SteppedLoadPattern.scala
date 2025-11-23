@@ -1,6 +1,7 @@
 package io.github.datacatering.datacaterer.core.generator.execution.pattern
 
 import io.github.datacatering.datacaterer.api.model.LoadPatternStep
+import io.github.datacatering.datacaterer.core.util.GeneratorUtil
 
 /**
  * Stepped load pattern increases the load in discrete steps.
@@ -15,7 +16,7 @@ case class SteppedLoadPattern(steps: List[LoadPatternStep]) extends LoadPattern 
   // Pre-calculate cumulative durations in seconds for efficient lookup
   private lazy val cumulativeDurations: List[(Double, Int)] = {
     steps.foldLeft((0.0, List[(Double, Int)]())) { case ((cumulative, acc), step) =>
-      val durationSeconds = parseDuration(step.duration)
+      val durationSeconds = GeneratorUtil.parseDurationToSeconds(step.duration)
       val newCumulative = cumulative + durationSeconds
       (newCumulative, acc :+ (newCumulative, step.rate))
     }._2
@@ -39,7 +40,7 @@ case class SteppedLoadPattern(steps: List[LoadPatternStep]) extends LoadPattern 
         if (step.rate <= 0) {
           errors += s"Stepped load pattern step ${index + 1} rate must be positive, got: ${step.rate}"
         }
-        val durationSeconds = parseDuration(step.duration)
+        val durationSeconds = GeneratorUtil.parseDurationToSeconds(step.duration)
         if (durationSeconds <= 0) {
           errors += s"Stepped load pattern step ${index + 1} duration must be positive, got: ${step.duration}"
         }
@@ -47,26 +48,5 @@ case class SteppedLoadPattern(steps: List[LoadPatternStep]) extends LoadPattern 
     }
 
     errors.toList
-  }
-
-  /**
-   * Parse duration string to seconds.
-   * Supports formats like: "30s", "5m", "1h", "2h30m15s"
-   */
-  private def parseDuration(duration: String): Double = {
-    val pattern = """(\d+)([smh])""".r
-    val matches = pattern.findAllMatchIn(duration.toLowerCase)
-
-    matches.foldLeft(0.0) { (total, m) =>
-      val value = m.group(1).toDouble
-      val unit = m.group(2)
-      val seconds = unit match {
-        case "s" => value
-        case "m" => value * 60
-        case "h" => value * 3600
-        case _ => 0.0
-      }
-      total + seconds
-    }
   }
 }

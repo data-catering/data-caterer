@@ -76,7 +76,7 @@ case class FailedSaveDataException(dataSourceName: String, stepName: String, sav
   throwable
 )
 
-case class FailedSaveDataDataFrameV2Exception(tableName: String, saveMode: String, throwable: Throwable) extends RuntimeException(
+case class FailedSaveDataDataFrameException(tableName: String, saveMode: String, throwable: Throwable) extends RuntimeException(
   s"Failed to save data for sink, table-name=$tableName, save-mode=$saveMode",
   throwable
 )

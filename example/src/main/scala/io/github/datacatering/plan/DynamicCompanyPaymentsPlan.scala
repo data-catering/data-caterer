@@ -1,7 +1,7 @@
 package io.github.datacatering.plan
 
 import io.github.datacatering.datacaterer.api.PlanRun
-import io.github.datacatering.datacaterer.api.model.{DoubleType, LongType, TimestampType}
+import io.github.datacatering.datacaterer.api.model.{DoubleType, TimestampType}
 
 /**
  * Example demonstrating how to programmatically generate different numbers of records

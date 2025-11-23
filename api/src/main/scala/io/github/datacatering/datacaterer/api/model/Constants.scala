@@ -1,7 +1,5 @@
 package io.github.datacatering.datacaterer.api.model
 
-import java.util.UUID
-
 object Constants {
 
   lazy val PLAN_CLASS = "PLAN_CLASS"
@@ -232,10 +230,8 @@ object Constants {
   lazy val DEFAULT_ENABLE_VALIDATION = true
   lazy val DEFAULT_ENABLE_SUGGEST_VALIDATIONS = false
   lazy val DEFAULT_ENABLE_ALERTS = true
-  lazy val DEFAULT_ENABLE_TRACK_ACTIVITY = true
   lazy val DEFAULT_ENABLE_UNIQUE_CHECK_ONLY_WITHIN_BATCH = false
   lazy val DEFAULT_ENABLE_FAST_GENERATION = false
-  lazy val DEFAULT_ENABLE_FOREIGN_KEY_V2 = true
 
   //folders defaults
   lazy val DEFAULT_PLAN_FILE_PATH = "/opt/app/plan/customer-create-plan.yaml"
@@ -631,7 +627,6 @@ object Constants {
   lazy val CONFIG_FLAGS_ALERTS = "enableAlerts"
   lazy val CONFIG_FLAGS_UNIQUE_CHECK_ONLY_IN_BATCH = "enableUniqueCheckOnlyInBatch"
   lazy val CONFIG_FLAGS_FAST_GENERATION = "enableFastGeneration"
-  lazy val CONFIG_FLAGS_FOREIGN_KEY_V2 = "enableForeignKeyV2"
   //folder config
   lazy val CONFIG_FOLDER_PLAN_FILE_PATH = "planFilePath"
   lazy val CONFIG_FOLDER_TASK_FOLDER_PATH = "taskFolderPath"

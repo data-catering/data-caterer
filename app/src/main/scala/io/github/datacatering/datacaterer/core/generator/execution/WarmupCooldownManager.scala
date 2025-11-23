@@ -1,6 +1,7 @@
 package io.github.datacatering.datacaterer.core.generator.execution
 
 import io.github.datacatering.datacaterer.api.model.{Plan, TestConfig}
+import io.github.datacatering.datacaterer.core.util.GeneratorUtil
 import org.apache.log4j.Logger
 
 /**
@@ -23,8 +24,8 @@ class WarmupCooldownManager(plan: Plan, timeProvider: () => Long = () => System.
   private val LOGGER = Logger.getLogger(getClass.getName)
 
   private val testConfig: Option[TestConfig] = plan.testConfig
-  private val warmupDurationMs: Long = testConfig.flatMap(_.warmup).map(parseDuration).getOrElse(0L)
-  private val cooldownDurationMs: Long = testConfig.flatMap(_.cooldown).map(parseDuration).getOrElse(0L)
+  private val warmupDurationMs: Long = testConfig.flatMap(_.warmup).map(GeneratorUtil.parseDurationToMillis).getOrElse(0L)
+  private val cooldownDurationMs: Long = testConfig.flatMap(_.cooldown).map(GeneratorUtil.parseDurationToMillis).getOrElse(0L)
 
   private var testStartTime: Option[Long] = None
   private var warmupEndTime: Option[Long] = None
@@ -70,7 +71,7 @@ class WarmupCooldownManager(plan: Plan, timeProvider: () => Long = () => System.
    */
   def isInWarmupPhase: Boolean = {
     (testStartTime, warmupEndTime) match {
-      case (Some(start), Some(warmupEnd)) =>
+      case (Some(_), Some(warmupEnd)) =>
         val now = timeProvider()
         now < warmupEnd
       case _ => false
@@ -82,7 +83,7 @@ class WarmupCooldownManager(plan: Plan, timeProvider: () => Long = () => System.
    */
   def isInCooldownPhase: Boolean = {
     (executionEndTime, testStartTime) match {
-      case (Some(execEnd), Some(start)) if hasCooldown =>
+      case (Some(execEnd), Some(_)) if hasCooldown =>
         val now = timeProvider()
         val cooldownEnd = execEnd + cooldownDurationMs
         now >= execEnd && now < cooldownEnd
@@ -161,29 +162,6 @@ class WarmupCooldownManager(plan: Plan, timeProvider: () => Long = () => System.
         math.max(0, cooldownEnd - now)
       case _ => 0L
     }
-  }
-
-  /**
-   * Parse duration string to milliseconds.
-   * Supports formats like: "30s", "5m", "1h", "2h30m15s"
-   */
-  private def parseDuration(duration: String): Long = {
-    val pattern = """(\d+)([smh])""".r
-    val matches = pattern.findAllMatchIn(duration.toLowerCase)
-
-    val seconds = matches.foldLeft(0.0) { (total, m) =>
-      val value = m.group(1).toDouble
-      val unit = m.group(2)
-      val secs = unit match {
-        case "s" => value
-        case "m" => value * 60
-        case "h" => value * 3600
-        case _ => 0.0
-      }
-      total + secs
-    }
-
-    (seconds * 1000).toLong
   }
 
   /**

@@ -16,8 +16,6 @@ import org.apache.log4j.Logger
  * - Stages execute sequentially in order
  * - Tasks within a stage can execute in parallel (existing behavior)
  * - Metrics are collected per stage
- *
- * Phase 3 feature.
  */
 class StageCoordinator(tasks: List[(TaskSummary, Task)]) {
 

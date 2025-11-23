@@ -25,7 +25,7 @@ class BatchDataProcessor(connectionConfigsByName: Map[String, Map[String, String
 
   private val LOGGER = Logger.getLogger(getClass.getName)
   private lazy val sinkFactory = new SinkFactory(flagsConfig, metadataConfig, foldersConfig)
-  private lazy val sinkRouter = new SinkRouter(foldersConfig)
+  private lazy val sinkRouter = new SinkRouter()
   private lazy val recordTrackingProcessor = new RecordTrackingProcessor(foldersConfig.recordTrackingFolderPath)
   private lazy val validationRecordTrackingProcessor = new RecordTrackingProcessor(foldersConfig.recordTrackingForValidationFolderPath)
 
@@ -125,7 +125,7 @@ class BatchDataProcessor(connectionConfigsByName: Map[String, Map[String, String
         0L
       }
 
-      val sinkResults = pushDataToSinks(plan, executableTasks, sinkDf, currentBatch, numBatches, startTime, optValidations, executionStrategy)
+      val sinkResults = pushDataToSinks(plan, executableTasks, sinkDf, currentBatch, numBatches, startTime, optValidations)
       dataSourceResults = dataSourceResults ++ sinkResults
 
       sinkDf.foreach(_._2.unpersist())
@@ -186,8 +186,8 @@ class BatchDataProcessor(connectionConfigsByName: Map[String, Map[String, String
           LOGGER.info(s"Generating data for streaming, data-source=${task._1.dataSourceName}, step-name=${step.name}")
           
           // Calculate total records to generate based on duration and rate
-          val totalRecords: Long = durationSeconds * rate.toLong
-          LOGGER.info(s"Generating $totalRecords records for streaming (${durationSeconds}s @ ${rate}/sec)")
+          val totalRecords: Long = (durationSeconds * rate).toLong
+          LOGGER.info(s"Generating $totalRecords records for streaming (${durationSeconds}s @ $rate/sec)")
           
           val genDf = stepDataCoordinator.generateAllUpfront(task, step, totalRecords)
           
@@ -220,7 +220,7 @@ class BatchDataProcessor(connectionConfigsByName: Map[String, Map[String, String
       .getOrElse(generatedDataWithPaths.map(t => (t._1, t._2)))
 
     // Route to appropriate sink writers based on format and configuration
-    val dataSourceResults = routeAndPushToSinks(sinkDf, plan, executableTasks, startTime, optValidations, executionStrategy, generatedDataWithPaths.map(_._3))
+    val dataSourceResults = routeAndPushToSinks(sinkDf, plan, executableTasks, startTime, optValidations, executionStrategy)
 
     // Cleanup temp storage
     generatedDataWithPaths.foreach { case (_, df, optTempPath) =>
@@ -252,8 +252,7 @@ class BatchDataProcessor(connectionConfigsByName: Map[String, Map[String, String
     executableTasks: List[(TaskSummary, Task)],
     startTime: LocalDateTime,
     optValidations: Option[List[ValidationConfiguration]],
-    executionStrategy: ExecutionStrategy,
-    tempPaths: List[Option[String]]
+    executionStrategy: ExecutionStrategy
   )(implicit sparkSession: SparkSession): List[DataSourceResult] = {
     val stepAndTaskByDataSourceName = executableTasks.flatMap(task =>
       task._2.steps.map(s => (getDataSourceName(task._1, s), (s, task._2)))
@@ -280,7 +279,7 @@ class BatchDataProcessor(connectionConfigsByName: Map[String, Map[String, String
         val optionsWithRate = executionStrategy match {
           case dbs: DurationBasedExecutionStrategy if dbs.getTargetRate.isDefined =>
             stepWithConfig.options + ("hasRateControl" -> "true")
-          case pbs: PatternBasedExecutionStrategy =>
+          case _: PatternBasedExecutionStrategy =>
             stepWithConfig.options + ("hasRateControl" -> "true")
           case _ => stepWithConfig.options
         }
@@ -328,8 +327,7 @@ class BatchDataProcessor(connectionConfigsByName: Map[String, Map[String, String
     batchNum: Int,
     numBatches: Int,
     startTime: LocalDateTime,
-    optValidations: Option[List[ValidationConfiguration]],
-    executionStrategy: ExecutionStrategy
+    optValidations: Option[List[ValidationConfiguration]]
   ): List[DataSourceResult] = {
     val stepAndTaskByDataSourceName = executableTasks.flatMap(task =>
       task._2.steps.map(s => (getDataSourceName(task._1, s), (s, task._2)))
@@ -391,21 +389,6 @@ class BatchDataProcessor(connectionConfigsByName: Map[String, Map[String, String
         .map(_.get)
       (baseDataSourcesWithValidation ++ dataSourcesUsedAsUpstreamValidation).distinct
     })).getOrElse(List())
-  }
-
-  private def getUniqueGeneratedRecords(
-                                         uniqueFieldUtil: UniqueFieldsUtil,
-                                         dataSourceStepName: String,
-                                         genDf: DataFrame,
-                                         step: Step
-                                       ): DataFrame = {
-    if (uniqueFieldUtil.uniqueFieldsDf.exists(u => u._1.getDataSourceName == dataSourceStepName)) {
-      LOGGER.debug(s"Ensuring field values are unique since there are fields with isUnique or isPrimaryKey set to true " +
-        s"or is defined within foreign keys, data-source-step-name=$dataSourceStepName")
-      uniqueFieldUtil.getUniqueFieldsValues(dataSourceStepName, genDf, step)
-    } else {
-      genDf
-    }
   }
 
   private def checkSaveMode(batchNum: Int, step: Step): Step = {

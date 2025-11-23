@@ -5,7 +5,6 @@ import io.github.datacatering.datacaterer.api.model.{DataCatererConfiguration, D
 import io.github.datacatering.datacaterer.api.{ConnectionConfigWithTaskBuilder, FieldBuilder, HttpMethodEnum, HttpQueryParameterStyleEnum, ValidationBuilder}
 import io.github.datacatering.datacaterer.core.exception.DataValidationMissingUpstreamDataSourceException
 import io.github.datacatering.datacaterer.core.generator.provider.OneOfDataGenerator
-import io.github.datacatering.datacaterer.core.plan.ConnectionResolver
 import io.github.datacatering.datacaterer.core.util.FileUtil.{getFileContentFromFileSystem, isCloudStoragePath}
 import io.github.datacatering.datacaterer.core.util.PlanImplicits.FieldOps
 import io.github.datacatering.datacaterer.core.util.{FileUtil, ObjectMapperUtil}
@@ -27,15 +26,15 @@ object PlanParser {
    * Enhanced version that allows custom folder paths for testing
    */
   def getPlanTasksFromYaml(
-    dataCatererConfiguration: DataCatererConfiguration,
-    enabledOnly: Boolean = true,
-    planName: Option[String] = None,
-    customTaskFolderPath: Option[String] = None,
-    customValidationFolderPath: Option[String] = None
-  )(implicit sparkSession: SparkSession): (Plan, List[Task], Option[List[ValidationConfiguration]]) = {
+                            dataCatererConfiguration: DataCatererConfiguration,
+                            enabledOnly: Boolean = true,
+                            planName: Option[String] = None,
+                            customTaskFolderPath: Option[String] = None,
+                            customValidationFolderPath: Option[String] = None
+                          )(implicit sparkSession: SparkSession): (Plan, List[Task], Option[List[ValidationConfiguration]]) = {
     val effectiveTaskFolderPath = customTaskFolderPath.getOrElse(dataCatererConfiguration.foldersConfig.taskFolderPath)
     val effectiveValidationFolderPath = customValidationFolderPath.getOrElse(dataCatererConfiguration.foldersConfig.validationFolderPath)
-    
+
     getPlanTasksFromYamlWithPaths(
       dataCatererConfiguration,
       enabledOnly,
@@ -46,12 +45,12 @@ object PlanParser {
   }
 
   private def getPlanTasksFromYamlWithPaths(
-    dataCatererConfiguration: DataCatererConfiguration,
-    enabledOnly: Boolean,
-    planName: Option[String],
-    taskFolderPath: String,
-    validationFolderPath: String
-  )(implicit sparkSession: SparkSession): (Plan, List[Task], Option[List[ValidationConfiguration]]) = {
+                                             dataCatererConfiguration: DataCatererConfiguration,
+                                             enabledOnly: Boolean,
+                                             planName: Option[String],
+                                             taskFolderPath: String,
+                                             validationFolderPath: String
+                                           )(implicit sparkSession: SparkSession): (Plan, List[Task], Option[List[ValidationConfiguration]]) = {
     val parsedPlan = planName match {
       case Some(name) =>
         findYamlPlanFile(dataCatererConfiguration.foldersConfig.planFilePath, name) match {
@@ -64,27 +63,13 @@ object PlanParser {
     }
 
     LOGGER.debug(s"Parsed plan from YAML: name=${parsedPlan.name}, num-tasks=${parsedPlan.tasks.size}, task-names=${parsedPlan.tasks.map(_.name).mkString(", ")}")
-
-    // Extract inline tasks from plan (unified YAML format)
-    val inlineTasksFromPlan = extractInlineTasksFromPlan(parsedPlan)
-    LOGGER.debug(s"Extracted inline tasks from plan: num-inline-tasks=${inlineTasksFromPlan.size}, inline-task-names=${inlineTasksFromPlan.map(_.name).mkString(", ")}")
-
-    // Parse tasks from folder (legacy format)
-    val tasksFromFolder = parseTasksFromFolder(taskFolderPath)
-    LOGGER.debug(s"Parsed tasks from folder: task-folder=$taskFolderPath, num-tasks=${tasksFromFolder.size}, task-names=${tasksFromFolder.map(_.name).mkString(", ")}")
-
-    // Combine inline tasks and folder tasks (inline takes priority)
-    val inlineTaskNames = inlineTasksFromPlan.map(_.name).toSet
-    val folderTasksNotInline = tasksFromFolder.filterNot(t => inlineTaskNames.contains(t.name))
-    val allTasks = (inlineTasksFromPlan ++ folderTasksNotInline).toList
-    LOGGER.debug(s"Combined tasks: num-total-tasks=${allTasks.size}, task-names=${allTasks.map(_.name).mkString(", ")}")
-
-    // Filter by enabled status
     val enabledPlannedTasks = if (enabledOnly) parsedPlan.tasks.filter(_.enabled) else parsedPlan.tasks
     val enabledTaskMap = enabledPlannedTasks.map(t => (t.name, t)).toMap
     val planWithEnabledTasks = parsedPlan.copy(tasks = enabledPlannedTasks)
 
-    val enabledTasks = allTasks.filter(t => enabledTaskMap.contains(t.name)).toList
+    val tasks = parseTasksFromFolder(taskFolderPath)
+    LOGGER.debug(s"Parsed tasks from folder: task-folder=$taskFolderPath, num-tasks=${tasks.length}, task-names=${tasks.map(_.name).mkString(", ")}")
+    val enabledTasks = tasks.filter(t => enabledTaskMap.contains(t.name)).toList
     LOGGER.debug(s"Filtered enabled tasks: num-enabled-tasks=${enabledTasks.size}, enabled-task-names=${enabledTasks.map(_.name).mkString(", ")}")
 
     val validations = if (dataCatererConfiguration.flagsConfig.enableValidation) {
@@ -94,29 +79,6 @@ object PlanParser {
   }
 
   // ==================== Plan Parsing ====================
-
-  /**
-   * Extract inline task definitions from plan's tasks array.
-   * Converts TaskSummary with steps into full Task objects.
-   */
-  private def extractInlineTasksFromPlan(plan: Plan)(implicit sparkSession: SparkSession): Array[Task] = {
-    plan.tasks.flatMap { taskSummary =>
-      taskSummary.steps match {
-        case Some(steps) =>
-          // This is an inline task definition - convert TaskSummary to Task
-          val task = Task(
-            name = taskSummary.name,
-            steps = steps,
-            transformation = taskSummary.transformation
-          )
-          // Apply field conversion and specific field transformations
-          Some(convertToSpecificFields(convertTaskNumbersToString(task)))
-        case None =>
-          // Just a task reference, will be loaded from folder
-          None
-      }
-    }.toArray
-  }
 
   /**
    * Parse a plan file without requiring SparkSession (for simpler use cases)
@@ -143,18 +105,8 @@ object PlanParser {
       OBJECT_MAPPER.readValue(planFile, classOf[Plan])
     }
     LOGGER.debug(s"Found plan file and parsed successfully, plan-file-path=$planFilePath, plan-name=${parsedPlan.name}, plan-description=${parsedPlan.description}")
-
-    // Apply environment variable interpolation if plan has connections
-    parsedPlan.connections match {
-      case Some(connections) =>
-        LOGGER.info(s"Found ${connections.size} connections in plan, applying environment variable interpolation")
-        val interpolatedConnections = connections.map(ConnectionResolver.interpolateConnection)
-        parsedPlan.copy(connections = Some(interpolatedConnections))
-      case None =>
-        parsedPlan
-    }
+    parsedPlan
   }
-
 
   // ==================== Task Parsing ====================
 
@@ -175,7 +127,7 @@ object PlanParser {
   /**
    * Parse a single YAML task file with full field conversion (default behavior)
    */
-  def parseTaskFile(taskFile: File)(implicit sparkSession: SparkSession): Task = {
+  def parseTaskFile(taskFile: File): Task = {
     val rawTask = OBJECT_MAPPER.readValue(taskFile, classOf[Task])
     val convertedTask = convertTaskNumbersToString(rawTask)
     convertToSpecificFields(convertedTask)
@@ -238,14 +190,6 @@ object PlanParser {
   def findTaskByName(taskName: String, taskFolderPath: String)(implicit sparkSession: SparkSession): Option[Task] = {
     val allTasks = parseTasksFromFolder(taskFolderPath)
     allTasks.find(_.name == taskName)
-  }
-
-  /**
-   * Find all tasks matching a predicate with custom folder path
-   */
-  def findTasksWhere(predicate: Task => Boolean, taskFolderPath: String)(implicit sparkSession: SparkSession): Array[Task] = {
-    val allTasks = parseTasksFromFolder(taskFolderPath)
-    allTasks.filter(predicate)
   }
 
   // ==================== Validation Parsing ====================
@@ -435,7 +379,7 @@ object PlanParser {
   /**
    * Find all YAML files in a directory (including subdirectories)
    */
-  def findYamlFiles(folderPath: String, recursive: Boolean = true): List[File] = {
+  private def findYamlFiles(folderPath: String, recursive: Boolean = true): List[File] = {
     val directory = findDirectory(folderPath).getOrElse(FileUtil.getDirectory(folderPath))
     if (!directory.isDirectory) {
       LOGGER.warn(s"Folder is not a directory, unable to list files, path=${directory.getPath}")
@@ -455,10 +399,10 @@ object PlanParser {
   def findYamlPlanFile(configuredPlanPath: String, planName: String)(implicit sparkSession: SparkSession): Option[String] = {
     val planFile = findDirectory(configuredPlanPath).getOrElse(new File(configuredPlanPath))
     val planDirPath = if (planFile.isDirectory) planFile.getAbsolutePath else planFile.getParent
-    
+
     // Use existing findYamlFiles method instead of manual file filtering
     val yamlFiles = findYamlFiles(planDirPath, recursive = false)
-    
+
     yamlFiles.find(file => {
       Try {
         val parsed = parsePlan(file.getAbsolutePath)

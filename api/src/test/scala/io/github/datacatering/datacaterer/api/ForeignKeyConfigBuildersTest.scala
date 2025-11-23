@@ -1,6 +1,5 @@
 package io.github.datacatering.datacaterer.api
 
-import io.github.datacatering.datacaterer.api.model.{CardinalityConfig, NullabilityConfig}
 import org.scalatest.funsuite.AnyFunSuite
 
 class ForeignKeyConfigBuildersTest extends AnyFunSuite {

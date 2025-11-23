@@ -97,22 +97,6 @@ case class PlanBuilder(plan: Plan = Plan(), tasks: List[TasksBuilder] = List()) 
                                 relations: java.util.List[(ConnectionTaskBuilder[_], java.util.List[String])]): PlanBuilder =
     addForeignKeyRelationship(foreignKey, toScalaList(relations).map(r => toForeignKeyRelation(r._1, toScalaList(r._2))): _*)
 
-  def addForeignKeyRelationship(foreignKey: ForeignKeyRelation,
-                                generationLinks: List[ForeignKeyRelation],
-                                cardinality: CardinalityConfigBuilder): PlanBuilder =
-    this.modify(_.plan.sinkOptions).setTo(Some(getSinkOpt.foreignKey(foreignKey, generationLinks, cardinality).sinkOptions))
-
-  def addForeignKeyRelationship(foreignKey: ForeignKeyRelation,
-                                generationLinks: List[ForeignKeyRelation],
-                                nullability: NullabilityConfigBuilder): PlanBuilder =
-    this.modify(_.plan.sinkOptions).setTo(Some(getSinkOpt.foreignKey(foreignKey, generationLinks, nullability).sinkOptions))
-
-  def addForeignKeyRelationship(foreignKey: ForeignKeyRelation,
-                                generationLinks: List[ForeignKeyRelation],
-                                cardinality: CardinalityConfigBuilder,
-                                nullability: NullabilityConfigBuilder): PlanBuilder =
-    this.modify(_.plan.sinkOptions).setTo(Some(getSinkOpt.foreignKey(foreignKey, generationLinks, cardinality, nullability).sinkOptions))
-
   private def toForeignKeyRelation(connectionTaskBuilder: ConnectionTaskBuilder[_], fields: List[String], isDeleteFk: Boolean = false): ForeignKeyRelation = {
     val dataSource = connectionTaskBuilder.connectionConfigWithTaskBuilder.dataSourceName
     val fieldNames = fields.mkString(",")

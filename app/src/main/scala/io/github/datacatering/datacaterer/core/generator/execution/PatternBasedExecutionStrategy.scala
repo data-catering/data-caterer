@@ -1,10 +1,11 @@
 package io.github.datacatering.datacaterer.core.generator.execution
 
-import io.github.datacatering.datacaterer.api.model.{GenerationConfig, Plan, Task, TaskSummary}
+import io.github.datacatering.datacaterer.api.model.{Task, TaskSummary}
 import io.github.datacatering.datacaterer.core.generator.execution.pattern.LoadPattern
 import io.github.datacatering.datacaterer.core.generator.execution.rate.{DurationTracker, RateLimiter}
 import io.github.datacatering.datacaterer.core.generator.metrics.{PerformanceMetrics, PerformanceMetricsCollector}
 import io.github.datacatering.datacaterer.core.parser.LoadPatternParser
+import io.github.datacatering.datacaterer.core.util.GeneratorUtil
 import org.apache.log4j.Logger
 
 /**
@@ -12,9 +13,7 @@ import org.apache.log4j.Logger
  * Supports various load patterns: ramp, spike, stepped, wave, breaking point.
  */
 class PatternBasedExecutionStrategy(
-                                     plan: Plan,
-                                     executableTasks: List[(TaskSummary, Task)],
-                                     generationConfig: GenerationConfig
+                                     executableTasks: List[(TaskSummary, Task)]
                                    ) extends ExecutionStrategy {
 
   private val LOGGER = Logger.getLogger(getClass.getName)
@@ -23,12 +22,11 @@ class PatternBasedExecutionStrategy(
   // Extract pattern configuration from first step with pattern configured
   private val (duration, loadPattern, rateUnit) = extractPatternConfig(executableTasks)
 
-  private val totalDurationSeconds = parseDuration(duration)
+  private val totalDurationSeconds = GeneratorUtil.parseDurationToSeconds(duration)
   private val durationTracker = new DurationTracker(duration)
 
   // We'll dynamically create rate limiters as needed based on the current pattern rate
   private var currentRateLimiter: Option[RateLimiter] = None
-  private var lastRateUpdate: Long = 0
   private var currentRate: Int = 0
 
   private var currentBatchStartTime: Option[java.time.LocalDateTime] = None
@@ -94,7 +92,7 @@ class PatternBasedExecutionStrategy(
     if (shouldUpdate) {
       currentRate = targetRate
       currentRateLimiter = Some(new RateLimiter(targetRate, rateUnit))
-      LOGGER.debug(s"Updated rate to $targetRate records/${rateUnit} at ${elapsedSeconds.toInt}s elapsed")
+      LOGGER.debug(s"Updated rate to $targetRate records/$rateUnit at ${elapsedSeconds.toInt}s elapsed")
     }
   }
 
@@ -125,27 +123,6 @@ class PatternBasedExecutionStrategy(
 
       case None =>
         throw new IllegalArgumentException("No step with pattern configuration found")
-    }
-  }
-
-  /**
-   * Parse duration string to seconds.
-   * Supports formats like: "30s", "5m", "1h", "2h30m15s"
-   */
-  private def parseDuration(duration: String): Double = {
-    val pattern = """(\d+)([smh])""".r
-    val matches = pattern.findAllMatchIn(duration.toLowerCase)
-
-    matches.foldLeft(0.0) { (total, m) =>
-      val value = m.group(1).toDouble
-      val unit = m.group(2)
-      val seconds = unit match {
-        case "s" => value
-        case "m" => value * 60
-        case "h" => value * 3600
-        case _ => 0.0
-      }
-      total + seconds
     }
   }
 }

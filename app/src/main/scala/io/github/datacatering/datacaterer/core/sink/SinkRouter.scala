@@ -1,6 +1,5 @@
 package io.github.datacatering.datacaterer.core.sink
 
-import io.github.datacatering.datacaterer.api.model.FoldersConfig
 import io.github.datacatering.datacaterer.core.generator.execution.GenerationMode
 import org.apache.log4j.Logger
 
@@ -8,7 +7,7 @@ import org.apache.log4j.Logger
  * Routes data to appropriate sink writers based on format, generation mode, and configuration.
  * Centralizes routing logic that was previously scattered across BatchDataProcessor, SinkFactory, and sink writers.
  */
-class SinkRouter(foldersConfig: FoldersConfig) {
+class SinkRouter {
 
   private val LOGGER = Logger.getLogger(getClass.getName)
 
@@ -36,7 +35,7 @@ class SinkRouter(foldersConfig: FoldersConfig) {
     stepOptions: Map[String, String]
   ): SinkStrategy = {
     val isRealTimeFormat = REAL_TIME_FORMATS.contains(format.toLowerCase)
-    val hasRateControl = stepOptions.get("rowsPerSecond").isDefined || stepOptions.get("hasRateControl").contains("true")
+    val hasRateControl = stepOptions.contains("rowsPerSecond") || stepOptions.get("hasRateControl").contains("true")
 
     val strategy = (isRealTimeFormat, generationMode, hasRateControl) match {
       case (true, GenerationMode.AllUpfront, true) =>
@@ -56,13 +55,6 @@ class SinkRouter(foldersConfig: FoldersConfig) {
     }
 
     strategy
-  }
-
-  /**
-   * Check if a format is a real-time format that supports streaming
-   */
-  def isRealTimeFormat(format: String): Boolean = {
-    REAL_TIME_FORMATS.contains(format.toLowerCase)
   }
 }
 
