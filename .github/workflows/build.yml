@@ -99,7 +99,7 @@ jobs:
           path: "DataCaterer-1.0.0.exe"
           overwrite: true
 
-  linux:
+  linux-amd64:
     needs: build
     runs-on: [ubuntu-latest]
 
@@ -120,13 +120,65 @@ jobs:
         with:
           name: jars
           path: app/build/libs/
-      - name: Package jar as debian package
+      - name: Package jar as debian package (amd64)
         run: 'jpackage --main-jar data-caterer.jar "@misc/jpackage/jpackage.cfg" "@misc/jpackage/jpackage-linux.cfg"'
       - name: List directory
         run: ls -lart
-      - name: Upload deb
+      - name: Upload deb (amd64)
         uses: actions/upload-artifact@v4
         with:
-          name: data-caterer-linux
+          name: data-caterer-linux-amd64
           path: "datacaterer_1.0.0_amd64.deb"
+          overwrite: true
+
+  linux-arm64:
+    needs: build
+    runs-on: [ubuntu-latest]
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - name: Set version
+        run: echo "APP_VERSION=$(grep version gradle.properties | cut -d= -f2)" >> $GITHUB_ENV
+
+      # Set up QEMU for cross-platform builds
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: arm64
+
+      # Set up Docker Buildx
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Download fat jar
+        uses: actions/download-artifact@v4
+        with:
+          name: jars
+          path: app/build/libs/
+
+      # Use Docker container with ARM64 JDK for jpackage
+      - name: Package jar as debian package (arm64)
+        run: |
+          docker run --rm --platform linux/arm64 \
+            -v $(pwd):/workspace \
+            -w /workspace \
+            arm64v8/eclipse-temurin:21-jdk \
+            bash -c "jpackage --main-jar data-caterer.jar '@misc/jpackage/jpackage.cfg' '@misc/jpackage/jpackage-linux.cfg'"
+
+      - name: List directory
+        run: ls -lart
+
+      - name: Rename output to indicate arm64
+        run: |
+          if [ -f "datacaterer_1.0.0_amd64.deb" ]; then
+            mv datacaterer_1.0.0_amd64.deb datacaterer_1.0.0_arm64.deb
+          fi
+
+      - name: Upload deb (arm64)
+        uses: actions/upload-artifact@v4
+        with:
+          name: data-caterer-linux-arm64
+          path: "datacaterer_1.0.0_arm64.deb"
           overwrite: true
