@@ -190,8 +190,11 @@ jobs:
         run: 'jpackage --main-jar data-caterer.jar "@misc/jpackage/jpackage.cfg" "@misc/jpackage/jpackage-linux.cfg"'
       - name: Rename deb with version
         run: |
-          if [ -f "datacaterer_*_amd64.deb" ]; then
-            mv datacaterer_*_amd64.deb datacaterer_${{ env.APP_VERSION }}_amd64.deb
+          DEB_FILE=$(ls datacaterer_*_amd64.deb 2>/dev/null | head -n 1)
+          if [ -n "$DEB_FILE" ]; then
+            echo "Found deb file: $DEB_FILE"
+            mv "$DEB_FILE" datacaterer_${{ env.APP_VERSION }}_amd64.deb
+            echo "Renamed to: datacaterer_${{ env.APP_VERSION }}_amd64.deb"
           else
             echo "No deb file found"
             echo "Current directory:"
@@ -248,8 +251,11 @@ jobs:
             bash -c "apt-get update && apt-get install -y fakeroot && jpackage --main-jar data-caterer.jar '@misc/jpackage/jpackage.cfg' '@misc/jpackage/jpackage-linux.cfg'"
       - name: Rename output to indicate version and architecture (arm64)
         run: |
-          if [ -f "datacaterer_*_arm64.deb" ]; then
-            mv datacaterer_*_arm64.deb datacaterer_${{ env.APP_VERSION }}_arm64.deb
+          DEB_FILE=$(ls datacaterer_*_arm64.deb 2>/dev/null | head -n 1)
+          if [ -n "$DEB_FILE" ]; then
+            echo "Found deb file: $DEB_FILE"
+            mv "$DEB_FILE" datacaterer_${{ env.APP_VERSION }}_arm64.deb
+            echo "Renamed to: datacaterer_${{ env.APP_VERSION }}_arm64.deb"
           else
             echo "No deb file found"
             echo "Current directory:"
