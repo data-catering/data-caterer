@@ -4,6 +4,8 @@ on:
   push:
     branches:
       - main
+      - 'feature/**'
+      - 'bugfix/**'
 
 jobs:
   build:
@@ -13,6 +15,21 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 2
+      - name: Set version based on branch
+        id: version
+        run: |
+          BASE_VERSION=$(grep version gradle.properties | cut -d= -f2)
+          COMMIT_HASH=$(git rev-parse --short HEAD)
+
+          if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+            VERSION="$BASE_VERSION"
+          else
+            VERSION="$BASE_VERSION-$COMMIT_HASH"
+          fi
+
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Building version: $VERSION"
       - uses: actions/setup-java@v4
         with:
           java-version: '17'
@@ -27,6 +44,8 @@ jobs:
       - name: Build and push images
         run: bash docker-action.sh
         env:
+          VERSION: ${{ env.VERSION }}
+          GITHUB_REF: ${{ github.ref }}
           PACKAGE_TOKEN: ${{ secrets.PACKAGE_TOKEN }}
           MAVEN_USERNAME: ${{ secrets.MAVEN_USERNAME }}
           MAVEN_PASSWORD: ${{ secrets.MAVEN_PASSWORD }}
@@ -58,7 +77,18 @@ jobs:
         with:
           fetch-depth: 2
       - name: Set version
-        run: echo "APP_VERSION=$(grep version gradle.properties | cut -d= -f2)" >> $GITHUB_ENV
+        run: |
+          BASE_VERSION=$(grep version gradle.properties | cut -d= -f2)
+          COMMIT_HASH=$(git rev-parse --short HEAD)
+
+          if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+            APP_VERSION="$BASE_VERSION"
+          else
+            APP_VERSION="$BASE_VERSION-$COMMIT_HASH"
+          fi
+
+          echo "APP_VERSION=$APP_VERSION" >> $GITHUB_ENV
+          echo "Building version: $APP_VERSION"
       - uses: actions/setup-java@v4
         with:
           java-version: '21'
@@ -90,7 +120,18 @@ jobs:
         with:
           fetch-depth: 2
       - name: Set version
-        run: echo "APP_VERSION=$(grep version gradle.properties | cut -d= -f2)" >> $env:GITHUB_ENV
+        run: |
+          $BASE_VERSION = (Get-Content gradle.properties | Select-String '^version=' | ForEach-Object { $_ -replace 'version=','' }).Trim()
+          $COMMIT_HASH = git rev-parse --short HEAD
+
+          if ("${{ github.ref }}" -eq "refs/heads/main") {
+            $APP_VERSION = $BASE_VERSION
+          } else {
+            $APP_VERSION = "$BASE_VERSION-$COMMIT_HASH"
+          }
+
+          echo "APP_VERSION=$APP_VERSION" >> $env:GITHUB_ENV
+          Write-Output "Building version: $APP_VERSION"
       - uses: actions/setup-java@v4
         with:
           java-version: '21'
@@ -115,23 +156,25 @@ jobs:
 
   linux-amd64:
     needs: build
-    strategy:
-      matrix:
-        include:
-          - runner: ubuntu-latest
-            arch: x64
-            arch_name: amd64
-          - runner: ubuntu-latest
-            arch: aarch64
-            arch_name: arm64
-    runs-on: ${{ matrix.runner }}
+    runs-on: [ubuntu-latest]
 
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 2
       - name: Set version
-        run: echo "APP_VERSION=$(grep version gradle.properties | cut -d= -f2)" >> $GITHUB_ENV
+        run: |
+          BASE_VERSION=$(grep version gradle.properties | cut -d= -f2)
+          COMMIT_HASH=$(git rev-parse --short HEAD)
+
+          if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+            APP_VERSION="$BASE_VERSION"
+          else
+            APP_VERSION="$BASE_VERSION-$COMMIT_HASH"
+          fi
+
+          echo "APP_VERSION=$APP_VERSION" >> $GITHUB_ENV
+          echo "Building version: $APP_VERSION"
       - uses: actions/setup-java@v4
         with:
           java-version: '21'
@@ -173,7 +216,18 @@ jobs:
         with:
           fetch-depth: 2
       - name: Set version
-        run: echo "APP_VERSION=$(grep version gradle.properties | cut -d= -f2)" >> $GITHUB_ENV
+        run: |
+          BASE_VERSION=$(grep version gradle.properties | cut -d= -f2)
+          COMMIT_HASH=$(git rev-parse --short HEAD)
+
+          if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+            APP_VERSION="$BASE_VERSION"
+          else
+            APP_VERSION="$BASE_VERSION-$COMMIT_HASH"
+          fi
+
+          echo "APP_VERSION=$APP_VERSION" >> $GITHUB_ENV
+          echo "Building version: $APP_VERSION"
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
         with:
