@@ -115,7 +115,16 @@ jobs:
 
   linux-amd64:
     needs: build
-    runs-on: [ubuntu-latest]
+    strategy:
+      matrix:
+        include:
+          - runner: ubuntu-latest
+            arch: x64
+            arch_name: amd64
+          - runner: ubuntu-latest
+            arch: aarch64
+            arch_name: arm64
+    runs-on: ${{ matrix.runner }}
 
     steps:
       - uses: actions/checkout@v4
@@ -127,7 +136,7 @@ jobs:
         with:
           java-version: '21'
           java-package: jdk
-          architecture: x64
+          architecture: ${{ matrix.arch }}
           distribution: oracle
       - name: Download fat jar
         uses: actions/download-artifact@v4
