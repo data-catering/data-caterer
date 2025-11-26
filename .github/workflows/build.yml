@@ -146,7 +146,7 @@ jobs:
       - name: Package jar as debian package (amd64)
         run: 'jpackage --main-jar data-caterer.jar "@misc/jpackage/jpackage.cfg" "@misc/jpackage/jpackage-linux.cfg"'
       - name: Rename deb with version
-        run: 
+        run: |
           if [ -f "datacaterer_*.deb" ]; then
             mv datacaterer_*.deb datacaterer_${{ env.APP_VERSION }}_amd64.deb
           else
