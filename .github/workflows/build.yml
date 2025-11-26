@@ -113,18 +113,9 @@ jobs:
           path: "DataCaterer-${{ env.APP_VERSION }}-windows-x86_64.exe"
           overwrite: true
 
-  linux:
+  linux-amd64:
     needs: build
-    strategy:
-      matrix:
-        include:
-          - runner: ubuntu-latest
-            arch: x64
-            arch_name: amd64
-          - runner: ubuntu-latest
-            arch: aarch64
-            arch_name: arm64
-    runs-on: ${{ matrix.runner }}
+    runs-on: [ubuntu-latest]
 
     steps:
       - uses: actions/checkout@v4
@@ -136,20 +127,77 @@ jobs:
         with:
           java-version: '21'
           java-package: jdk
-          architecture: ${{ matrix.arch }}
+          architecture: x64
           distribution: oracle
       - name: Download fat jar
         uses: actions/download-artifact@v4
         with:
           name: jars
           path: app/build/libs/
-      - name: Package jar as debian package
+      - name: Package jar as debian package (amd64)
         run: 'jpackage --main-jar data-caterer.jar "@misc/jpackage/jpackage.cfg" "@misc/jpackage/jpackage-linux.cfg"'
-      - name: Rename DEB with architecture
-        run: mv datacaterer_*_*.deb datacaterer_${{ env.APP_VERSION }}_${{ matrix.arch_name }}.deb
-      - name: Upload deb
+      - name: Rename deb with version
+        run: 
+          if [ -f "datacaterer_*.deb" ]; then
+            mv datacaterer_*.deb datacaterer_${{ env.APP_VERSION }}_amd64.deb
+          else
+            echo "No deb file found"
+            echo "Current directory:"
+            pwd
+            echo "Files in current directory:"
+            ls -lart
+            exit 1
+          fi
+      - name: Upload deb (amd64)
         uses: actions/upload-artifact@v4
         with:
-          name: data-caterer-linux-${{ matrix.arch_name }}
-          path: "datacaterer_${{ env.APP_VERSION }}_${{ matrix.arch_name }}.deb"
+          name: data-caterer-linux-amd64
+          path: "datacaterer_${{ env.APP_VERSION }}_amd64.deb"
+          overwrite: true
+
+  linux-arm64:
+    needs: build
+    runs-on: [ubuntu-latest]
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - name: Set version
+        run: echo "APP_VERSION=$(grep version gradle.properties | cut -d= -f2)" >> $GITHUB_ENV
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: arm64
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Download fat jar
+        uses: actions/download-artifact@v4
+        with:
+          name: jars
+          path: app/build/libs/
+      - name: Package jar as debian package (arm64)
+        run: |
+          docker run --rm --platform linux/arm64 \
+            -v $(pwd):/workspace \
+            -w /workspace \
+            arm64v8/eclipse-temurin:21-jdk \
+            bash -c "apt-get update && apt-get install -y fakeroot && jpackage --main-jar data-caterer.jar '@misc/jpackage/jpackage.cfg' '@misc/jpackage/jpackage-linux.cfg'"
+      - name: Rename output to indicate version and architecture (arm64)
+        run: |
+          if [ -f "datacaterer_*.deb" ]; then
+            mv datacaterer_*.deb datacaterer_${{ env.APP_VERSION }}_arm64.deb
+          else
+            echo "No deb file found"
+            echo "Current directory:"
+            pwd
+            echo "Files in current directory:"
+            ls -lart
+            exit 1
+          fi
+      - name: Upload deb (arm64)
+        uses: actions/upload-artifact@v4
+        with:
+          name: data-caterer-linux-arm64
+          path: "datacaterer_${{ env.APP_VERSION }}_arm64.deb"
           overwrite: true

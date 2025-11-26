@@ -1,4 +1,5 @@
 import {createToast} from "./shared.js";
+import {apiFetch} from "./config.js";
 
 const loginButton = document.getElementById("login-button");
 const loginSaveButton = document.getElementById("login-save-button");
@@ -40,7 +41,7 @@ export async function saveCredentials() {
     const token = tokenInput.value;
 
     // send to save credentials endpoint
-    await fetch(`http://localhost:9898/credentials`, {
+    await apiFetch(`/credentials`, {
         method: "POST",
         headers: {"Content-Type": "application/json"},
         body: JSON.stringify({"userId": username, "token": token})

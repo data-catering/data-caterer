@@ -42,6 +42,7 @@ import {createValidationFromPlan, getValidations} from "./helper-validation.js";
 import {createCountElementsFromPlan, createRecordCount, getRecordCount} from "./helper-record-count.js";
 import {configurationOptionsMap, reportConfigKeys} from "./configuration-data.js";
 import {initLoginButton, initLoginCloseButton, initLoginSaveButton} from "./login.js";
+import {apiFetch} from "./config.js";
 
 const addTaskButton = document.getElementById("add-task-button");
 const tasksDiv = document.getElementById("tasks-details-body");
@@ -376,7 +377,7 @@ function savePlan() {
     savePlanButton.addEventListener("click", function () {
         let form = document.getElementById("plan-form");
         let {planName, requestBody} = getPlanDetails(form);
-        fetch("http://localhost:9898/plan", {
+        apiFetch("/plan", {
             method: "POST",
             headers: {"Content-Type": "application/json"},
             body: JSON.stringify(requestBody)
@@ -413,7 +414,7 @@ const currUrlParams = window.location.search.substring(1);
 if (currUrlParams.includes("plan-name=")) {
     // then get the plan details and fill in the form
     let planName = currUrlParams.substring(currUrlParams.indexOf("=") + 1);
-    await fetch(`http://localhost:9898/plan/${planName}`, {method: "GET"})
+    await apiFetch(`/plan/${planName}`, {method: "GET"})
         .then(r => {
             if (r.ok) {
                 return r.json();

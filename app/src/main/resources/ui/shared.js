@@ -5,6 +5,7 @@ import {
     validationTypeDisplayNameMap,
     validationTypeOptionsMap
 } from "./configuration-data.js";
+import {apiFetch} from "./config.js";
 import {
     addFieldValidationBlock,
     incValidations,
@@ -593,8 +594,8 @@ export function createToast(header, message, type, delay = 5000) {
 }
 
 export function executePlan(requestBody, planName, runId, runType) {
-    let url = runType === "delete" ? "http://localhost:9898/run/delete-data" : "http://localhost:9898/run";
-    fetch(url, {
+    let endpoint = runType === "delete" ? "/run/delete-data" : "/run";
+    apiFetch(endpoint, {
         method: "POST",
         headers: {"Content-Type": "application/json"},
         body: JSON.stringify(requestBody)
@@ -621,7 +622,7 @@ export function executePlan(requestBody, planName, runId, runType) {
             // poll every 1 second for status of plan run
             let currentStatus = "started";
             while (currentStatus !== "finished" && currentStatus !== "failed") {
-                await fetch(`http://localhost:9898/run/status/${runId}`, {
+                await apiFetch(`/run/status/${runId}`, {
                     method: "GET",
                     headers: {Accept: "application/json"}
                 })
@@ -703,7 +704,7 @@ export function syntaxHighlight(json) {
 
 export async function getDataConnectionsAndAddToSelect(dataConnectionSelect, baseTaskDiv, groupType) {
     //get list of existing data connections
-    return await fetch(`http://localhost:9898/connections?groupType=${groupType}`, {method: "GET"})
+    return await apiFetch(`/connections?groupType=${groupType}`, {method: "GET"})
         .then(r => {
             if (r.ok) {
                 return r.json();
@@ -756,7 +757,7 @@ export function createTooltip() {
 }
 
 export function addConnectionOverrideOptions(connectionName, iconDiv, overrideOptionsContainer, propertyClass, index) {
-    return fetch(`http://localhost:9898/connection/${connectionName}`, {method: "GET"})
+    return apiFetch(`/connection/${connectionName}`, {method: "GET"})
         .then(r => {
             if (r.ok) {
                 return r.json();
@@ -988,7 +989,7 @@ export async function createAutoFromMetadata(autoFromMetadataContainer, dataSour
 function addMetadataConnectionOverrideOptions(metadataConnectionSelect, overrideOptionsContainer, index) {
     metadataConnectionSelect.addEventListener("change", (event) => {
         let metadataSourceName = event.target.value;
-        fetch(`http://localhost:9898/connection/${metadataSourceName}`, {method: "GET"})
+        apiFetch(`/connection/${metadataSourceName}`, {method: "GET"})
             .then(r => {
                 if (r.ok) {
                     return r.json();

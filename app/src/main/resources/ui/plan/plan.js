@@ -6,6 +6,7 @@ import {
     executePlan,
     syntaxHighlight
 } from "../shared.js";
+import {apiFetch} from "../config.js";
 
 const planList = document.getElementById("plan-list");
 let numPlans = 0;
@@ -13,7 +14,7 @@ let numPlans = 0;
 getExistingPlans();
 
 function getExistingPlans() {
-    fetch("http://localhost:9898/plans", {
+    apiFetch("/plans", {
         method: "GET"
     })
         .then(r => {
@@ -38,7 +39,7 @@ function getExistingPlans() {
                 let deleteButton = createButton(`plan-delete-${numPlans}`, "Plan delete", "btn btn-danger", "Delete");
 
                 editButton.addEventListener("click", function() {
-                    location.href = `http://localhost:9898/?plan-name=${planName}`;
+                    location.href = `/?plan-name=${planName}`;
                 });
                 executeButton.addEventListener("click", function () {
                     let runId = crypto.randomUUID();
@@ -46,7 +47,7 @@ function getExistingPlans() {
                     executePlan(plan, planName, runId);
                 });
                 deleteButton.addEventListener("click", async function () {
-                    await fetch(`http://localhost:9898/plan/${planName}`, {method: "DELETE"});
+                    await apiFetch(`/plan/${planName}`, {method: "DELETE"});
                     createToast(plan.name, `Plan ${planName} deleted!`, "success");
                     planList.removeChild(accordionItem);
                 });

@@ -11,6 +11,7 @@ import {
     syntaxHighlight
 } from "../shared.js";
 import {dataSourcePropertiesMap} from "../configuration-data.js";
+import {apiFetch} from "../config.js";
 
 const addDataSourceButton = document.getElementById("add-data-source-button");
 const dataSourceConfigRow = document.getElementById("add-data-source-config-row");
@@ -55,7 +56,7 @@ submitConnectionButton.addEventListener("click", async function () {
         newConnections.push(currConnection);
     }
     //save data to file(s)
-    await fetch("http://localhost:9898/connection", {
+    await apiFetch("/connection", {
         method: "POST",
         headers: {
             "Content-Type": "application/json"
@@ -87,7 +88,7 @@ submitConnectionButton.addEventListener("click", async function () {
 //TODO allow for Slack and metadata source connections to be created here
 async function getExistingConnections() {
     accordionConnections.replaceChildren();
-    fetch("http://localhost:9898/connections", {
+    apiFetch("/connections", {
         method: "GET",
     })
         .then(r => {
@@ -109,7 +110,7 @@ async function getExistingConnections() {
                 let deleteButton = createButton(`connection-delete-${connection.name}`, "Connection delete", "btn btn-danger", "Delete");
 
                 deleteButton.addEventListener("click", async function () {
-                    await fetch(`http://localhost:9898/connection/${connection.name}`, {method: "DELETE"});
+                    await apiFetch(`/connection/${connection.name}`, {method: "DELETE"});
                     accordionConnections.removeChild(accordionItem);
                     createToast(`${connection.name}`, `Connection ${connection.name} deleted!`, "success");
                 });
