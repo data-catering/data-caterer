@@ -10,6 +10,8 @@ import io.github.datacatering.datacaterer.core.util.{ObjectMapperUtil, SparkProv
 import org.apache.log4j.Logger
 import org.apache.pekko.actor.typed.scaladsl.AskPattern.{Askable, schedulerFromActorSystem}
 import org.apache.pekko.actor.typed.{ActorRef, ActorSystem}
+import org.apache.pekko.http.scaladsl.model.HttpMethods._
+import org.apache.pekko.http.scaladsl.model.headers._
 import org.apache.pekko.http.scaladsl.model.{ContentType, HttpEntity, HttpResponse, MediaTypes, StatusCodes}
 import org.apache.pekko.http.scaladsl.server.{Directives, ExceptionHandler, Route}
 import org.apache.pekko.util.Timeout
@@ -35,6 +37,30 @@ class PlanRoutes(
   implicit val timeout: Timeout = 3.seconds
   implicit val ec: ExecutionContextExecutor = ExecutionContext.global
   implicit val objectMapper: ObjectMapper = ObjectMapperUtil.jsonObjectMapper
+
+  /**
+   * CORS configuration to allow cross-origin requests from any origin.
+   * This is necessary for the UI to communicate with the API when running
+   * in different network contexts (Docker, remote access, etc.)
+   */
+  private val corsHeaders = List(
+    `Access-Control-Allow-Origin`.*,
+    `Access-Control-Allow-Methods`(GET, POST, PUT, DELETE, OPTIONS),
+    `Access-Control-Allow-Headers`("Content-Type", "Authorization", "X-Requested-With"),
+    `Access-Control-Max-Age`(86400) // 24 hours
+  )
+
+  /**
+   * Directive to add CORS headers to all responses
+   */
+  private def corsHandler(route: Route): Route = {
+    respondWithHeaders(corsHeaders) {
+      options {
+        // Handle preflight OPTIONS requests
+        complete(StatusCodes.OK)
+      } ~ route
+    }
+  }
 
   /**
    * Helper method to convert format string to Pekko HTTP ContentType
@@ -112,7 +138,7 @@ class PlanRoutes(
         }
     }
 
-  lazy val planRoutes: Route = concat(
+  lazy val planRoutes: Route = corsHandler(concat(
     path("") {
       get {
         getFromResource("ui/index.html")
@@ -427,6 +453,6 @@ class PlanRoutes(
       }
       complete("Data Caterer shutdown completed")
     }
-  )
+  ))
 
 }
