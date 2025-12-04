@@ -3,7 +3,8 @@ package io.github.datacatering.datacaterer.core.ui.plan
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.github.pjfanning.pekkohttpjackson.JacksonSupport
 import io.github.datacatering.datacaterer.api.model.Step
-import io.github.datacatering.datacaterer.core.ui.model.{EnhancedPlanRunRequest, PlanRunRequest, SaveConnectionsRequest, SchemaSampleRequest}
+import io.github.datacatering.datacaterer.core.ui.model.{Connection, ConnectionTestResult, EnhancedPlanRunRequest, MultiSchemaSampleResponse, PlanRunRequest, SampleError, SampleMetadata, SaveConnectionsRequest, SchemaSampleRequest, TestConnectionRequest}
+import io.github.datacatering.datacaterer.core.ui.service.ConnectionTestService
 import io.github.datacatering.datacaterer.core.ui.resource.SparkSessionManager
 import io.github.datacatering.datacaterer.core.ui.sample.FastSampleGenerator
 import io.github.datacatering.datacaterer.core.util.{ObjectMapperUtil, SparkProvider}
@@ -95,7 +96,7 @@ class PlanRoutes(
   /**
    * Helper method to complete with error response
    */
-  private def completeWithError(error: io.github.datacatering.datacaterer.core.ui.model.SampleError): Route = {
+  private def completeWithError(error: SampleError): Route = {
     complete(HttpResponse(
       status = StatusCodes.BadRequest,
       entity = HttpEntity(ContentType(MediaTypes.`application/json`),
@@ -107,20 +108,20 @@ class PlanRoutes(
    * Helper method to build MultiSchemaSampleResponse from results map
    */
   private def buildMultiSchemaResponse(
-    results: Map[String, (io.github.datacatering.datacaterer.api.model.Step, FastSampleGenerator.SampleResponseWithDataFrame)],
+    results: Map[String, (Step, FastSampleGenerator.SampleResponseWithDataFrame)],
     size: Int,
     fast: Boolean,
     relationships: Boolean = false
-  ): io.github.datacatering.datacaterer.core.ui.model.MultiSchemaSampleResponse = {
+  ): MultiSchemaSampleResponse = {
     val samplesMap = results.map { case (key, (_, responseWithDf)) =>
       (key, responseWithDf.response.sampleData.getOrElse(List()))
     }
 
-    io.github.datacatering.datacaterer.core.ui.model.MultiSchemaSampleResponse(
+    MultiSchemaSampleResponse(
       success = true,
       executionId = java.util.UUID.randomUUID().toString.split("-").head,
       samples = samplesMap,
-      metadata = Some(io.github.datacatering.datacaterer.core.ui.model.SampleMetadata(
+      metadata = Some(SampleMetadata(
         sampleSize = size,
         actualRecords = samplesMap.values.map(_.size).sum,
         generatedInMs = 0L,
@@ -178,8 +179,16 @@ class PlanRoutes(
         path("delete-data") {
           post {
             entity(as[PlanRunRequest]) { runInfo =>
-              planRepository ! PlanRepository.RunPlanDeleteData(runInfo, planResponseHandler)
-              complete("Plan delete data started")
+              LOGGER.info(s"Received request to delete data for plan, plan-name=${runInfo.plan.name}, run-id=${runInfo.id}")
+              try {
+                planRepository ! PlanRepository.RunPlanDeleteData(runInfo, planResponseHandler)
+                LOGGER.info(s"Plan delete data initiated, plan-name=${runInfo.plan.name}, run-id=${runInfo.id}")
+                complete(s"Plan '${runInfo.plan.name}' delete data started with run ID: ${runInfo.id}")
+              } catch {
+                case ex: Exception =>
+                  LOGGER.error(s"Failed to initiate plan delete data, plan-name=${runInfo.plan.name}", ex)
+                  complete(StatusCodes.InternalServerError, s"Failed to start delete data: ${ex.getMessage}")
+              }
             }
           }
         },
@@ -271,18 +280,84 @@ class PlanRoutes(
         // Legacy endpoint - run from request body
         post {
           entity(as[PlanRunRequest]) { runInfo =>
-            planRepository ! PlanRepository.RunPlan(runInfo, planResponseHandler)
-            complete("Plan started")
+            LOGGER.info(s"Received request to run plan, plan-name=${runInfo.plan.name}, run-id=${runInfo.id}, tasks=${runInfo.tasks.size}")
+            try {
+              planRepository ! PlanRepository.RunPlan(runInfo, planResponseHandler)
+              LOGGER.info(s"Plan run initiated, plan-name=${runInfo.plan.name}, run-id=${runInfo.id}")
+              complete(s"Plan '${runInfo.plan.name}' started with run ID: ${runInfo.id}")
+            } catch {
+              case ex: Exception =>
+                LOGGER.error(s"Failed to initiate plan run, plan-name=${runInfo.plan.name}", ex)
+                complete(StatusCodes.InternalServerError, s"Failed to start plan: ${ex.getMessage}")
+            }
           }
         }
       )
     },
     pathPrefix("connection") {
       concat(
-        post {
-          entity(as[SaveConnectionsRequest]) { connections =>
-            connectionRepository ! ConnectionRepository.SaveConnections(connections)
-            complete(connections.connections.map(_.name).mkString(", "))
+        pathEnd {
+          post {
+            entity(as[SaveConnectionsRequest]) { connections =>
+              LOGGER.info(s"Saving connections via POST /connection, count=${connections.connections.size}")
+              connectionRepository ! ConnectionRepository.SaveConnections(connections)
+              complete(connections.connections.map(_.name).mkString(", "))
+            }
+          }
+        },
+        path("test") {
+          post {
+            entity(as[Connection]) { connection =>
+              LOGGER.info(s"Testing connection, name=${connection.name}, type=${connection.`type`}")
+              try {
+                val result = ConnectionTestService.testConnection(connection)
+                if (result.success) {
+                  complete(result)
+                } else {
+                  complete(StatusCodes.BadRequest, result)
+                }
+              } catch {
+                case ex: Exception =>
+                  LOGGER.error(s"Connection test failed with exception, name=${connection.name}", ex)
+                  complete(StatusCodes.InternalServerError, ConnectionTestResult(
+                    success = false,
+                    message = s"Connection test failed: ${ex.getMessage}",
+                    details = Some(ex.getClass.getName)
+                  ))
+              }
+            }
+          }
+        },
+        path("""[A-Za-z0-9-_]+""".r / "test") { connectionName =>
+          post {
+            // Test an existing saved connection by name
+            val connectionFuture = connectionRepository.ask(a => ConnectionRepository.GetConnection(connectionName, a))
+            onComplete(connectionFuture) {
+              case Success(connection) =>
+                try {
+                  // Get unmasked connection for testing
+                  val unmaskedConnection = ConnectionRepository.getConnection(connectionName, masking = false)
+                  val result = ConnectionTestService.testConnection(unmaskedConnection)
+                  if (result.success) {
+                    complete(result)
+                  } else {
+                    complete(StatusCodes.BadRequest, result)
+                  }
+                } catch {
+                  case ex: Exception =>
+                    LOGGER.error(s"Connection test failed with exception, name=$connectionName", ex)
+                    complete(StatusCodes.InternalServerError, ConnectionTestResult(
+                      success = false,
+                      message = s"Connection test failed: ${ex.getMessage}",
+                      details = Some(ex.getClass.getName)
+                    ))
+                }
+              case Failure(_) =>
+                complete(StatusCodes.NotFound, ConnectionTestResult(
+                  success = false,
+                  message = s"Connection not found: $connectionName"
+                ))
+            }
           }
         },
         path("""[A-Za-z0-9-_]+""".r) { connectionName =>
@@ -295,8 +370,18 @@ class PlanRoutes(
               }
             },
             delete {
-              connectionRepository ! ConnectionRepository.RemoveConnection(connectionName)
-              complete("Removed")
+              val removeResult = connectionRepository.ask((replyTo: ActorRef[ConnectionRepository.ConnectionResponse]) => 
+                ConnectionRepository.RemoveConnection(connectionName, Some(replyTo)))
+              onComplete(removeResult) {
+                case Success(ConnectionRepository.ConnectionRemoved(name, true)) => 
+                  complete(s"Connection '$name' removed successfully")
+                case Success(ConnectionRepository.ConnectionRemoved(name, false)) => 
+                  complete(StatusCodes.BadRequest, s"Cannot delete connection '$name'. It may be a default connection from application.conf that cannot be deleted via the UI.")
+                case Success(_) =>
+                  complete(StatusCodes.InternalServerError, s"Unexpected response when removing connection")
+                case Failure(ex) => 
+                  complete(StatusCodes.InternalServerError, s"Failed to remove connection: ${ex.getMessage}")
+              }
             }
           )
         }
@@ -315,8 +400,19 @@ class PlanRoutes(
       concat(
         post {
           entity(as[PlanRunRequest]) { runInfo =>
-            planRepository ! PlanRepository.SavePlan(runInfo)
-            complete("Plan saved")
+            LOGGER.info(s"Saving plan, name=${runInfo.plan.name}")
+            val saveResult = planRepository.ask((replyTo: ActorRef[PlanRepository.PlanResponse]) => 
+              PlanRepository.SavePlan(runInfo, Some(replyTo)))
+            onComplete(saveResult) {
+              case Success(PlanRepository.PlanSaved(name)) =>
+                LOGGER.info(s"Plan saved successfully, name=$name")
+                complete(s"Plan '$name' saved successfully")
+              case Success(_) =>
+                complete(StatusCodes.InternalServerError, "Unexpected response when saving plan")
+              case Failure(ex) =>
+                LOGGER.error(s"Failed to save plan, name=${runInfo.plan.name}", ex)
+                complete(StatusCodes.InternalServerError, s"Failed to save plan: ${ex.getMessage}")
+            }
           }
         },
         path("""[A-Za-z0-9-_]+""".r) { planName =>
@@ -329,8 +425,18 @@ class PlanRoutes(
               }
             },
             delete {
-              planRepository ! PlanRepository.RemovePlan(planName)
-              complete("Plan removed")
+              val removeResult = planRepository.ask((replyTo: ActorRef[PlanRepository.PlanResponse]) =>
+                PlanRepository.RemovePlan(planName, Some(replyTo)))
+              onComplete(removeResult) {
+                case Success(PlanRepository.PlanRemoved(name, true)) =>
+                  complete(s"Plan '$name' removed successfully")
+                case Success(PlanRepository.PlanRemoved(name, false)) =>
+                  complete(StatusCodes.NotFound, s"Plan '$name' not found or could not be removed")
+                case Success(_) =>
+                  complete(StatusCodes.InternalServerError, "Unexpected response when removing plan")
+                case Failure(ex) =>
+                  complete(StatusCodes.InternalServerError, s"Failed to remove plan: ${ex.getMessage}")
+              }
             }
           )
         }

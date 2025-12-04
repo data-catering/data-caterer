@@ -119,6 +119,41 @@ class ConnectionRepositoryTest extends AnyFunSuiteLike with BeforeAndAfterAll wi
     probe.expectMessage(ConnectionRepository.ConnectionRemoved("nonExistentConnection", false))
   }
 
+  test("saved connections should have source=file when retrieved") {
+    cleanFolder()
+    val connection = Connection("testSourceConnection", "csv", Some(CONNECTION_GROUP_DATA_SOURCE), Map("key" -> "value"))
+    val probe = testKit.createTestProbe[ConnectionRepository.ConnectionResponse]()
+
+    connectionRepository ! ConnectionRepository.SaveConnections(SaveConnectionsRequest(List(connection)), Some(probe.ref))
+    probe.expectMessage(ConnectionRepository.ConnectionsSaved(1))
+
+    val connectionSaveFolder = s"$tempTestDirectory/connection"
+    val retrievedConnection = ConnectionRepository.getConnection("testSourceConnection", connectionSaveFolder)
+    
+    // Connections loaded from files should have source = "file"
+    retrievedConnection.source shouldEqual "file"
+    retrievedConnection.isFromFile shouldBe true
+    retrievedConnection.isFromConfig shouldBe false
+  }
+
+  test("getAllConnections should return connections with correct source field") {
+    cleanFolder()
+    val connection = Connection("testSourceConnection2", "csv", Some(CONNECTION_GROUP_DATA_SOURCE), Map("key" -> "value"))
+    val saveProbe = testKit.createTestProbe[ConnectionRepository.ConnectionResponse]()
+
+    connectionRepository ! ConnectionRepository.SaveConnections(SaveConnectionsRequest(List(connection)), Some(saveProbe.ref))
+    saveProbe.expectMessage(ConnectionRepository.ConnectionsSaved(1))
+
+    val getProbe = testKit.createTestProbe[GetConnectionsResponse]()
+    connectionRepository ! ConnectionRepository.GetConnections(Some(CONNECTION_GROUP_DATA_SOURCE), getProbe.ref)
+
+    val response = getProbe.receiveMessage()
+    val fileConnections = response.connections.filter(_.name == "testSourceConnection2")
+    fileConnections should have size 1
+    fileConnections.head.source shouldEqual "file"
+    fileConnections.head.isFromFile shouldBe true
+  }
+
   private def cleanFolder(folder: String = "connection"): Unit = {
     val path = Paths.get(s"$tempTestDirectory/$folder").toFile
     if (path.exists()) {

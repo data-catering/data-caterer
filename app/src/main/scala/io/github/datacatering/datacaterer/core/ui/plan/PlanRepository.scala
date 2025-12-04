@@ -98,8 +98,16 @@ object PlanRepository {
           runEnhancedPlan(request, replyTo, executionSaveFolder, planSaveFolder)
           Behaviors.same
         case SavePlan(planRunRequest, replyTo) =>
-          savePlan(planRunRequest, planSaveFolder)
-          replyTo.foreach(_ ! PlanSaved(planRunRequest.plan.name))
+          try {
+            LOGGER.info(s"Saving plan, plan-name=${planRunRequest.plan.name}")
+            savePlan(planRunRequest, planSaveFolder)
+            LOGGER.info(s"Plan saved successfully, plan-name=${planRunRequest.plan.name}")
+            replyTo.foreach(_ ! PlanSaved(planRunRequest.plan.name))
+          } catch {
+            case ex: Exception =>
+              LOGGER.error(s"Failed to save plan, plan-name=${planRunRequest.plan.name}", ex)
+              throw ex // Re-throw to let supervisor handle it
+          }
           Behaviors.same
         case GetPlans(replyTo) =>
           replyTo ! getPlans(planSaveFolder)

@@ -1,5 +1,6 @@
 package io.github.datacatering.datacaterer.core.ui.model
 
+import com.fasterxml.jackson.annotation.JsonIgnore
 import io.github.datacatering.datacaterer.api.model.Constants.{PLAN_RUN_EXECUTION_DELIMITER, PLAN_RUN_EXECUTION_DELIMITER_REGEX, PLAN_RUN_SUMMARY_DELIMITER}
 import io.github.datacatering.datacaterer.api.model.{Plan, Step, YamlValidationConfiguration}
 import io.github.datacatering.datacaterer.core.exception.InvalidConnectionException
@@ -88,15 +89,51 @@ object PlanRunExecution {
 
 case class GetConnectionsResponse(connections: List[Connection])
 
+/**
+ * Result of a connection test operation
+ * @param success Whether the connection test was successful
+ * @param message Human-readable message describing the result
+ * @param details Optional detailed information (e.g., database version, error stack trace)
+ * @param durationMs Optional duration of the test in milliseconds
+ */
+case class ConnectionTestResult(
+  success: Boolean,
+  message: String,
+  details: Option[String] = None,
+  durationMs: Option[Long] = None
+)
+
+/**
+ * Request to test a connection
+ * @param connection The connection details to test
+ */
+case class TestConnectionRequest(connection: Connection)
+
 case class SaveConnectionsRequest(connections: List[Connection])
 
 case class CredentialsRequest(userId: String, token: String)
 
-case class Connection(name: String, `type`: String, groupType: Option[String], options: Map[String, String]) {
+/**
+ * Connection model representing a data source connection.
+ * @param name Unique name of the connection
+ * @param `type` Connection type (e.g., postgres, cassandra, kafka)
+ * @param groupType Optional group type for categorization
+ * @param options Connection options/configuration
+ * @param source Source of the connection: "file" for user-created connections, "config" for application.conf connections
+ */
+case class Connection(name: String, `type`: String, groupType: Option[String], options: Map[String, String], source: String = "file") {
   override def toString: String = {
     val parsedGroupType = groupType.getOrElse(CONNECTION_GROUP_TYPE_MAP.getOrElse(`type`, CONNECTION_GROUP_DATA_SOURCE))
     (List(name, `type`, parsedGroupType) ++ options.map(x => s"${x._1}:${x._2}").toList).mkString(PLAN_RUN_EXECUTION_DELIMITER)
   }
+  
+  /** Returns true if this connection was loaded from application.conf and cannot be deleted */
+  @JsonIgnore
+  def isFromConfig: Boolean = source == "config"
+  
+  /** Returns true if this connection was created by the user and can be deleted */
+  @JsonIgnore
+  def isFromFile: Boolean = source == "file"
 }
 
 object Connection {
