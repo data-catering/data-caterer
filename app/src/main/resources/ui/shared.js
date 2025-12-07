@@ -25,6 +25,175 @@ Map.prototype.toJSON = function () {
 let numAddAttributeButton = 0;
 let numMenuButton = 0;
 
+// Toast history management
+const TOAST_HISTORY_KEY = "toastHistory";
+const MAX_TOAST_HISTORY = 50;
+
+function loadToastHistory() {
+    try {
+        const stored = localStorage.getItem(TOAST_HISTORY_KEY);
+        return stored ? JSON.parse(stored) : [];
+    } catch (e) {
+        console.warn("Failed to load toast history from localStorage", e);
+        return [];
+    }
+}
+
+function saveToastHistory(history) {
+    try {
+        localStorage.setItem(TOAST_HISTORY_KEY, JSON.stringify(history));
+    } catch (e) {
+        console.warn("Failed to save toast history to localStorage", e);
+    }
+}
+
+const toastHistory = loadToastHistory();
+
+export function getToastHistory() {
+    return toastHistory;
+}
+
+export function clearToastHistory() {
+    toastHistory.length = 0;
+    saveToastHistory(toastHistory);
+    updateToastHistoryBadge();
+}
+
+function addToHistory(header, message, type, timestamp) {
+    toastHistory.unshift({header, message, type, timestamp});
+    if (toastHistory.length > MAX_TOAST_HISTORY) {
+        toastHistory.pop();
+    }
+    saveToastHistory(toastHistory);
+    updateToastHistoryBadge();
+}
+
+function updateToastHistoryBadge() {
+    const badge = document.getElementById("toast-history-badge");
+    if (badge) {
+        const unreadCount = toastHistory.filter(t => !t.read).length;
+        badge.textContent = unreadCount > 0 ? unreadCount : "";
+        badge.style.display = unreadCount > 0 ? "inline" : "none";
+    }
+}
+
+function updateToastHistoryModalContent() {
+    const body = document.getElementById("toast-history-body");
+    if (!body) {
+        return;
+    }
+
+    // Mark all as read
+    toastHistory.forEach(t => t.read = true);
+    updateToastHistoryBadge();
+
+    if (toastHistory.length === 0) {
+        body.innerHTML = '<p class="text-muted text-center">No notifications yet</p>';
+    } else {
+        body.innerHTML = toastHistory.map(t => {
+            let iconClass, iconColor;
+            if (t.type === "success") {
+                iconClass = "bi-check-square-fill";
+                iconColor = "green";
+            } else if (t.type === "fail") {
+                iconClass = "bi-exclamation-square-fill";
+                iconColor = "red";
+            } else {
+                iconClass = "bi-caret-right-square-fill";
+                iconColor = "orange";
+            }
+            const timeStr = new Date(t.timestamp).toLocaleTimeString();
+            const isLongMessage = t.message.length > 200;
+            const displayMessage = isLongMessage ? t.message.substring(0, 200) + "..." : t.message;
+
+            return `
+                <div class="toast-history-item border-bottom pb-2 mb-2">
+                    <div class="d-flex align-items-center">
+                        <i class="bi ${iconClass} me-2" style="color: ${iconColor}"></i>
+                        <strong>${escapeHtml(t.header)}</strong>
+                        <small class="text-muted ms-auto">${timeStr}</small>
+                    </div>
+                    <div class="mt-1 toast-history-message ${isLongMessage ? 'expandable' : ''}"
+                         data-full-message="${escapeHtml(t.message)}"
+                         data-truncated="${isLongMessage}">
+                        ${escapeHtml(displayMessage)}
+                        ${isLongMessage ? '<a href="#" class="expand-message-link ms-1">Show more</a>' : ''}
+                    </div>
+                </div>
+            `;
+        }).join("");
+
+        // Add click handlers for expand links - open error detail modal with full message
+        body.querySelectorAll(".expand-message-link").forEach(link => {
+            link.addEventListener("click", (e) => {
+                e.preventDefault();
+                const container = e.target.closest(".toast-history-message");
+                const fullMessage = container.dataset.fullMessage;
+                const headerEl = e.target.closest(".toast-history-item").querySelector("strong");
+                const header = headerEl ? headerEl.textContent : "Error Details";
+                showErrorDetailModal(header, fullMessage);
+            });
+        });
+    }
+}
+
+export function showToastHistoryModal() {
+    const modal = document.getElementById("toast-history-modal");
+    if (!modal) {
+        return;
+    }
+    updateToastHistoryModalContent();
+    // Use getOrCreateInstance to avoid issues with multiple modal instances
+    const bsModal = bootstrap.Modal.getOrCreateInstance(modal);
+    bsModal.show();
+}
+
+function escapeHtml(text) {
+    const div = document.createElement("div");
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+export function initToastHistoryListeners() {
+    const modal = document.getElementById("toast-history-modal");
+    const clearBtn = document.getElementById("clear-toast-history");
+    const copyBtn = document.getElementById("copy-error-btn");
+
+    // Update badge on page load to show unread notifications from localStorage
+    updateToastHistoryBadge();
+
+    // Use Bootstrap's modal show event to update content when modal is opened
+    if (modal) {
+        modal.addEventListener("show.bs.modal", () => {
+            updateToastHistoryModalContent();
+        });
+    }
+
+    if (clearBtn) {
+        clearBtn.addEventListener("click", () => {
+            clearToastHistory();
+            const body = document.getElementById("toast-history-body");
+            if (body) {
+                body.innerHTML = '<p class="text-muted text-center">No notifications yet</p>';
+            }
+        });
+    }
+
+    if (copyBtn) {
+        copyBtn.addEventListener("click", () => {
+            const errorBody = document.getElementById("error-detail-body");
+            if (errorBody) {
+                navigator.clipboard.writeText(errorBody.textContent).then(() => {
+                    copyBtn.innerHTML = '<i class="bi bi-check me-1"></i>Copied!';
+                    setTimeout(() => {
+                        copyBtn.innerHTML = '<i class="bi bi-clipboard me-1"></i>Copy to Clipboard';
+                    }, 2000);
+                });
+            }
+        });
+    }
+}
+
 export function camelize(str) {
     return str.replace(/(?:^\w|[A-Z]|\b\w|\s+)/g, function (match, index) {
         if (+match === 0) return "";
@@ -558,12 +727,19 @@ export function addAccordionCloseButton(accordionItem) {
 }
 
 export function createToast(header, message, type, delay = 5000) {
+    const timestamp = Date.now();
+    addToHistory(header, message, type, timestamp);
+
+    // Error messages show longer (15 seconds) unless explicitly set
+    const effectiveDelay = type === "fail" && delay === 5000 ? 15000 : delay;
+
     let toast = document.createElement("div");
     toast.setAttribute("class", "toast");
     toast.setAttribute("role", "alert");
-    toast.setAttribute("data-bd-delay", delay);
+    toast.setAttribute("data-bs-delay", effectiveDelay);
     toast.setAttribute("aria-live", "assertive");
     toast.setAttribute("aria-atomic", "true");
+
     let toastHeader = document.createElement("div");
     toastHeader.setAttribute("class", "toast-header mr-2");
     let icon = document.createElement("i");
@@ -584,13 +760,51 @@ export function createToast(header, message, type, delay = 5000) {
     small.innerText = "Now";
     let button = createButton("", "Close", "btn-close");
     button.setAttribute("data-bs-dismiss", "toast");
+
     let toastBody = document.createElement("div");
     toastBody.setAttribute("class", "toast-body");
-    toastBody.innerText = message;
+
+    // For long error messages, show truncated with "Show more" button
+    const maxLength = 150;
+    if (type === "fail" && message.length > maxLength) {
+        const truncatedText = message.substring(0, maxLength) + "...";
+
+        let textSpan = document.createElement("span");
+        textSpan.innerText = truncatedText;
+
+        let showMoreBtn = document.createElement("button");
+        showMoreBtn.setAttribute("class", "btn btn-link btn-sm p-0 ms-1 toast-show-more");
+        showMoreBtn.innerText = "Show more";
+        showMoreBtn.addEventListener("click", () => {
+            showErrorDetailModal(header, message);
+        });
+
+        toastBody.append(textSpan, showMoreBtn);
+    } else {
+        toastBody.innerText = message;
+    }
+
     toastHeader.append(icon, strong, small, button);
     toast.append(toastHeader, toastBody);
     document.getElementById("toast-container").append(toast);
     new bootstrap.Toast(toast).show();
+}
+
+function showErrorDetailModal(header, message) {
+    const modal = document.getElementById("error-detail-modal");
+    if (!modal) return;
+
+    const titleEl = document.getElementById("error-detail-title");
+    const bodyEl = document.getElementById("error-detail-body");
+
+    if (titleEl) titleEl.textContent = header;
+    if (bodyEl) {
+        bodyEl.textContent = message;
+        bodyEl.style.whiteSpace = "pre-wrap";
+        bodyEl.style.wordBreak = "break-word";
+    }
+
+    new bootstrap.Modal(modal).show();
 }
 
 export function executePlan(requestBody, planName, runId, runType) {
@@ -658,19 +872,19 @@ export function executePlan(requestBody, planName, runId, runType) {
                                         msg = `Successfully completed ${planName}.`;
                                     } else if (currentStatus === "failed") {
                                         type = "fail";
-                                        let failReason = respJson.failedReason.length > 200 ? respJson.failedReason.substring(0, 200) + "..." : respJson.failedReason;
                                         if (respJson.failedReason.includes("User not found")) {
                                             showLoginBox(true);
                                         } else if (respJson.failedReason.includes("Invalid user credentials")) {
                                             showLoginBox(true, false);
                                         }
-                                        msg = `Plan ${planName} failed! Error: ${failReason}`;
+                                        msg = `Plan ${planName} failed! Error: ${respJson.failedReason}`;
                                     }
                                     createToast(planName, msg, type, 10000);
                                 }
                             }
                         } else {
-                            throw Error("No response found");
+                            currentStatus = "failed";
+                            createToast(planName, `Failed to get status for plan ${planName}! No response from server.`, "fail");
                         }
                     });
                 await wait(500);

@@ -136,3 +136,47 @@ pre {outline: 1px solid #ccc; padding: 5px; margin: 5px; }
 .null { color: magenta; }
 .key { color: red; }
 
+/* Toast history button */
+#toast-history-btn {
+    transition: all 0.2s ease;
+    background-color: #ff6e42;
+    border-color: #ff6e42;
+    color: white;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    font-size: 1.2rem;
+}
+
+#toast-history-btn:hover {
+    background-color: #ff9100;
+    border-color: #ff9100;
+    color: white;
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);
+    transform: scale(1.05);
+}
+
+/* Toast show more button */
+.toast-show-more {
+    text-decoration: underline;
+    vertical-align: baseline;
+}
+
+/* Toast history items */
+.toast-history-item:last-child {
+    border-bottom: none !important;
+    margin-bottom: 0 !important;
+    padding-bottom: 0 !important;
+}
+
+.toast-history-message {
+    font-size: 0.9rem;
+    color: #555;
+}
+
+/* Error detail modal body */
+#error-detail-body {
+    font-family: monospace;
+    font-size: 0.85rem;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+

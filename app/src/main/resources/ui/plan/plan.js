@@ -4,6 +4,7 @@ import {
     createButtonGroup,
     createToast,
     executePlan,
+    initToastHistoryListeners,
     syntaxHighlight
 } from "../shared.js";
 import {apiFetch} from "../config.js";
@@ -11,6 +12,7 @@ import {apiFetch} from "../config.js";
 const planList = document.getElementById("plan-list");
 let numPlans = 0;
 
+initToastHistoryListeners();
 getExistingPlans();
 
 function getExistingPlans() {

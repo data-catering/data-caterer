@@ -1,7 +1,8 @@
-import {createAccordionItem, createButton, createButtonGroup, createToast} from "../shared.js";
+import {createAccordionItem, createButton, createButtonGroup, createToast, initToastHistoryListeners} from "../shared.js";
 import {apiFetch} from "../config.js";
 
 let historyContainer = document.getElementById("history-container");
+initToastHistoryListeners();
 const tableHeaders = [{
     field: "status",
     title: "Status",

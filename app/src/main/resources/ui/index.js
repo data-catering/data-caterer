@@ -27,6 +27,7 @@ import {
     executePlan,
     getDataConnectionsAndAddToSelect,
     getOverrideConnectionOptionsAsMap,
+    initToastHistoryListeners,
     manualContainerDetails,
     wait
 } from "./shared.js";
@@ -58,6 +59,7 @@ let numDataSources = 1;
 initLoginButton();
 initLoginSaveButton();
 initLoginCloseButton();
+initToastHistoryListeners();
 tasksDiv.append(await createDataSourceForPlan(numDataSources));
 foreignKeysDiv.append(createForeignKeys());
 configurationDiv.append(createConfiguration());
@@ -339,6 +341,7 @@ function checkFormValidity(form) {
         return true;
     } else {
         form.reportValidity();
+        createToast("Validation", "Please fix the highlighted fields before submitting.", "fail");
         return false;
     }
 }
@@ -387,10 +390,13 @@ function savePlan() {
                 createToast(planName, `Plan save failed! Error: ${err}`, "fail");
             })
             .then(r => {
-                if (r.ok) {
+                if (!r) {
+                    createToast(planName, `Plan ${planName} save failed! Check if server is running.`, "fail");
+                    throw new Error("No response from server");
+                } else if (r.ok) {
                     return r.text();
                 } else {
-                    r.text().then(text => {
+                    return r.text().then(text => {
                         createToast(planName, `Plan ${planName} save failed! Error: ${text}`, "fail");
                         throw new Error(text);
                     });
@@ -405,6 +411,10 @@ function savePlan() {
                     }
                 }
             })
+            .catch(err => {
+                // Error already handled with toast, just log for debugging
+                console.error("Save plan error:", err);
+            });
     });
 }
 
@@ -415,12 +425,19 @@ if (currUrlParams.includes("plan-name=")) {
     // then get the plan details and fill in the form
     let planName = currUrlParams.substring(currUrlParams.indexOf("=") + 1);
     await apiFetch(`/plan/${planName}`, {method: "GET"})
+        .catch(err => {
+            console.error(err);
+            createToast(planName, `Failed to load plan ${planName}! Error: ${err}`, "fail");
+        })
         .then(r => {
-            if (r.ok) {
+            if (!r) {
+                createToast(planName, `Failed to load plan ${planName}! Check if server is running.`, "fail");
+                throw new Error("No response from server");
+            } else if (r.ok) {
                 return r.json();
             } else {
-                r.text().then(text => {
-                    createToast(planName, `Plan ${planName} failed! Error: ${text}`, "fail");
+                return r.text().then(text => {
+                    createToast(planName, `Failed to load plan ${planName}! Error: ${text}`, "fail");
                     throw new Error(text);
                 });
             }
@@ -480,6 +497,7 @@ if (currUrlParams.includes("plan-name=")) {
                 await createForeignKeysFromPlan(respJson.plan.sinkOptions.foreignKeys);
             }
             createConfigurationFromPlan(respJson);
+            createToast(planName, `Plan ${planName} loaded successfully.`, "success");
             wait(500).then(r => $(document).find('button[aria-controls="report-body"]:not(.collapsed),button[aria-controls="configuration-body"]:not(.collapsed)').click());
         });
 }

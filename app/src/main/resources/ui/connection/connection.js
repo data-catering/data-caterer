@@ -8,6 +8,7 @@ import {
     createInput,
     createSelect,
     createToast,
+    initToastHistoryListeners,
     syntaxHighlight
 } from "../shared.js";
 import {dataSourcePropertiesMap} from "../configuration-data.js";
@@ -79,37 +80,29 @@ async function testExistingConnection(connectionName, button) {
         });
         
         const result = await response.json();
-        // Limit to 100 characters, show ellipsis if truncated
-        const resultDetails = result.details ? ` - ${truncateString(result.details, 100)}` : "";
         if (result.success) {
             createToast(
                 `Test: ${connectionName}`,
-                `${result.message}${resultDetails}`,
+                `${result.message} ${result.details}`,
                 "success"
             );
         } else {
             createToast(
                 `Test: ${connectionName}`,
-                `${result.message}${resultDetails}`,
+                `${result.message} ${result.details}`,
                 "fail"
             );
         }
     } catch (err) {
-        // Limit to 100 characters, show ellipsis if truncated
-        const resultDetails = err.message ? ` - ${truncateString(err.message, 100)}` : "";
         createToast(
             `Test: ${connectionName}`,
-            `Connection test failed: ${resultDetails}`,
+            `Connection test failed: ${err.message}`,
             "fail"
         );
     } finally {
         button.innerText = originalText;
         button.disabled = false;
     }
-}
-
-function truncateString(str, maxLength) {
-    return str.length > maxLength ? str.substring(0, maxLength) + "..." : str;
 }
 
 /**
@@ -148,6 +141,7 @@ let numDataSources = 1;
 let numExistingConnections = 0;
 
 dataSourceConfigRow.append(createDataSourceElement(numDataSources));
+initToastHistoryListeners();
 addDataSourceButton.addEventListener("click", function () {
     numDataSources += 1;
     let divider = document.createElement("hr");
@@ -261,19 +255,9 @@ async function getExistingConnections() {
                         createToast(`${connection.name}`, `Cannot delete default connection. Modify application.conf or environment variables to remove.`, "fail");
                         return;
                     }
-                    
-                    try {
-                        const response = await apiFetch(`/connection/${connection.name}`, {method: "DELETE"});
-                        if (response.ok) {
-                            accordionConnections.removeChild(accordionItem);
-                            createToast(`${connection.name}`, `Connection ${connection.name} deleted!`, "success");
-                        } else {
-                            const errorText = await response.text();
-                            createToast(`${connection.name}`, `Failed to delete connection: ${errorText}`, "fail");
-                        }
-                    } catch (err) {
-                        createToast(`${connection.name}`, `Failed to delete connection: ${err.message}`, "fail");
-                    }
+
+                    // Show confirmation modal
+                    showDeleteConfirmation(connection.name, accordionItem);
                 });
 
                 let buttonGroup = createButtonGroup(testButton, deleteButton);
@@ -376,3 +360,48 @@ function createOptGroup(label) {
     metadataSourceGroup.setAttribute("label", label);
     return metadataSourceGroup;
 }
+
+// Delete confirmation modal handling
+let pendingDeleteConnection = null;
+let pendingDeleteAccordionItem = null;
+
+function showDeleteConfirmation(connectionName, accordionItem) {
+    pendingDeleteConnection = connectionName;
+    pendingDeleteAccordionItem = accordionItem;
+
+    const nameElement = document.getElementById("delete-connection-name");
+    if (nameElement) {
+        nameElement.textContent = connectionName;
+    }
+
+    const modal = new bootstrap.Modal(document.getElementById("delete-confirm-modal"));
+    modal.show();
+}
+
+// Set up the confirm delete button handler
+document.getElementById("confirm-delete-btn")?.addEventListener("click", async function () {
+    if (!pendingDeleteConnection) return;
+
+    const connectionName = pendingDeleteConnection;
+    const accordionItem = pendingDeleteAccordionItem;
+
+    // Close the modal
+    const modal = bootstrap.Modal.getInstance(document.getElementById("delete-confirm-modal"));
+    modal.hide();
+
+    try {
+        const response = await apiFetch(`/connection/${connectionName}`, {method: "DELETE"});
+        if (response.ok) {
+            accordionConnections.removeChild(accordionItem);
+            createToast(`${connectionName}`, `Connection ${connectionName} deleted!`, "success");
+        } else {
+            const errorText = await response.text();
+            createToast(`${connectionName}`, `Failed to delete connection: ${errorText}`, "fail");
+        }
+    } catch (err) {
+        createToast(`${connectionName}`, `Failed to delete connection: ${err.message}`, "fail");
+    } finally {
+        pendingDeleteConnection = null;
+        pendingDeleteAccordionItem = null;
+    }
+});
