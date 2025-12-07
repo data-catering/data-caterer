@@ -49,7 +49,9 @@ async function createForeignKeyLinksFromPlan(newForeignKey, foreignKey, linkType
         foreignKeyLinkSources.removeChild(foreignKeyLinkSources.querySelectorAll(`.foreign-key-${linkType}-link-source`)[0]);
     }
     // Support both backend format (generate/delete) and legacy format (generationLinks/deleteLinks)
-    let links = foreignKey[linkType] || foreignKey[`${linkType}Links`] || [];
+    // Map linkType to the backend property name: "generation" -> "generate", "delete" -> "delete"
+    let backendPropertyName = linkType === "generation" ? "generate" : linkType;
+    let links = foreignKey[backendPropertyName] || foreignKey[linkType] || foreignKey[`${linkType}Links`] || [];
     for (const fkLink of Array.from(links)) {
         let newForeignKeyLink = await createForeignKeyInput(numForeignKeysLinks, `foreign-key-${linkType}-link`);
         foreignKeyLinkSources.insertBefore(newForeignKeyLink, foreignKeyLinkSources.lastChild);

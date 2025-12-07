@@ -1,9 +1,8 @@
 package io.github.datacatering.datacaterer.core.ui.service
 
 import io.github.datacatering.datacaterer.api.model.Constants._
-import io.github.datacatering.datacaterer.core.config.ConfigParser
 import io.github.datacatering.datacaterer.core.ui.model.{Connection, ConnectionTestResult}
-import io.github.datacatering.datacaterer.core.util.SparkProvider
+import io.github.datacatering.datacaterer.core.ui.resource.SparkSessionManager
 import org.apache.log4j.Logger
 import org.apache.spark.sql.SparkSession
 
@@ -339,17 +338,11 @@ object ConnectionTestService {
   }
 
   /**
-   * Helper to create a temporary SparkSession for connection testing
+   * Helper to use the shared SparkSession for connection testing
    */
   private def withSparkSession[T](f: SparkSession => T): T = {
-    val config = ConfigParser.toDataCatererConfiguration
-    val sparkProvider = new SparkProvider(config.master, config.runtimeConfig)
-    val spark = sparkProvider.getSparkSession
-    try {
-      f(spark)
-    } finally {
-      // Don't stop the session as it might be shared
-    }
+    val spark = SparkSessionManager.getOrCreate()
+    f(spark)
   }
 
   private def getStackTraceAsString(ex: Throwable): String = {

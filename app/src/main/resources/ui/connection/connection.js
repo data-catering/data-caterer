@@ -34,28 +34,24 @@ async function testConnection(connection, button) {
         });
         
         const result = await response.json();
-        // Limit to 100 characters, show ellipsis if truncated
-        const resultDetails = result.details ? ` - ${truncateString(result.details, 100)}` : "";
         
         if (result.success) {
             createToast(
                 `Test: ${connection.name}`,
-                `${result.message}${resultDetails}`,
+                `${result.message} ${result.details}`,
                 "success"
             );
         } else {
             createToast(
                 `Test: ${connection.name}`,
-                `${result.message}${resultDetails}`,
+                `${result.message} ${result.details}`,
                 "fail"
             );
         }
     } catch (err) {
-        // Limit to 100 characters, show ellipsis if truncated
-        const resultDetails = err.message ? ` - ${truncateString(err.message, 100)}` : "";
         createToast(
             `Test: ${connection.name}`,
-            `Connection test failed: ${resultDetails}`,
+            `Connection test failed: ${err.message}`,
             "fail"
         );
     } finally {

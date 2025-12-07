@@ -3,6 +3,7 @@ package io.github.datacatering.datacaterer.core.ui.plan
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.github.pjfanning.pekkohttpjackson.JacksonSupport
 import io.github.datacatering.datacaterer.api.model.Step
+import io.github.datacatering.datacaterer.core.ui.config.UiConfiguration
 import io.github.datacatering.datacaterer.core.ui.model.{Connection, ConnectionTestResult, EnhancedPlanRunRequest, MultiSchemaSampleResponse, PlanRunRequest, SampleError, SampleMetadata, SaveConnectionsRequest, SchemaSampleRequest, TestConnectionRequest}
 import io.github.datacatering.datacaterer.core.ui.service.ConnectionTestService
 import io.github.datacatering.datacaterer.core.ui.resource.SparkSessionManager
@@ -13,7 +14,7 @@ import org.apache.pekko.actor.typed.scaladsl.AskPattern.{Askable, schedulerFromA
 import org.apache.pekko.actor.typed.{ActorRef, ActorSystem}
 import org.apache.pekko.http.scaladsl.model.HttpMethods._
 import org.apache.pekko.http.scaladsl.model.headers._
-import org.apache.pekko.http.scaladsl.model.{ContentType, HttpEntity, HttpResponse, MediaTypes, StatusCodes}
+import org.apache.pekko.http.scaladsl.model.{ContentType, HttpEntity, HttpResponse, MediaTypes, StatusCodes, HttpHeader}
 import org.apache.pekko.http.scaladsl.server.{Directives, ExceptionHandler, Route}
 import org.apache.pekko.util.Timeout
 
@@ -39,17 +40,46 @@ class PlanRoutes(
   implicit val ec: ExecutionContextExecutor = ExecutionContext.global
   implicit val objectMapper: ObjectMapper = ObjectMapperUtil.jsonObjectMapper
 
+  // Log CORS configuration at startup
+  UiConfiguration.Cors.logConfiguration()
+  
   /**
-   * CORS configuration to allow cross-origin requests from any origin.
-   * This is necessary for the UI to communicate with the API when running
-   * in different network contexts (Docker, remote access, etc.)
+   * CORS configuration to allow cross-origin requests.
+   * Configurable via environment variables:
+   * - DATA_CATERER_CORS_ALLOWED_ORIGINS: Allowed origins (default: "*")
+   * - DATA_CATERER_CORS_ALLOWED_METHODS: Allowed methods (default: "GET,POST,PUT,DELETE,OPTIONS")
+   * - DATA_CATERER_CORS_ALLOWED_HEADERS: Allowed headers (default: "Content-Type,Authorization,X-Requested-With")
+   * - DATA_CATERER_CORS_MAX_AGE: Preflight cache duration in seconds (default: 86400)
    */
-  private val corsHeaders = List(
-    `Access-Control-Allow-Origin`.*,
-    `Access-Control-Allow-Methods`(GET, POST, PUT, DELETE, OPTIONS),
-    `Access-Control-Allow-Headers`("Content-Type", "Authorization", "X-Requested-With"),
-    `Access-Control-Max-Age`(86400) // 24 hours
-  )
+  private val corsHeaders: List[HttpHeader] = {
+    val corsConfig = UiConfiguration.Cors
+    
+    val originHeader = if (corsConfig.allowedOrigins == "*") {
+      `Access-Control-Allow-Origin`.*
+    } else {
+      // For specific origins, we'll use the first one as default
+      // Note: For multiple origins, you'd need to check the request origin header
+      `Access-Control-Allow-Origin`(HttpOrigin(corsConfig.allowedOrigins.split(",").head.trim))
+    }
+    
+    val methodsHeader = `Access-Control-Allow-Methods`(
+      corsConfig.allowedMethods.flatMap {
+        case "GET" => Some(GET)
+        case "POST" => Some(POST)
+        case "PUT" => Some(PUT)
+        case "DELETE" => Some(DELETE)
+        case "OPTIONS" => Some(OPTIONS)
+        case "HEAD" => Some(HEAD)
+        case "PATCH" => Some(PATCH)
+        case _ => None
+      }: _*
+    )
+    
+    val headersHeader = `Access-Control-Allow-Headers`(corsConfig.allowedHeaders: _*)
+    val maxAgeHeader = `Access-Control-Max-Age`(corsConfig.maxAge)
+    
+    List(originHeader, methodsHeader, headersHeader, maxAgeHeader)
+  }
 
   /**
    * Directive to add CORS headers to all responses
