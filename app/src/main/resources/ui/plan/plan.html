@@ -23,19 +23,17 @@
     <a href="/connection">Connection</a>
     <a href="/plan">Plan</a>
     <a href="/history">History</a>
-    <a href="/shutdown" class="btn btn-danger" style="float: right; margin-right: 5px">Shutdown</a>
+    <button class="btn btn-danger" style="float: right; margin-right: 5px" data-bs-toggle="modal" data-bs-target="#shutdown-confirm-modal">Shutdown</button>
+    <button id="toast-history-btn" class="btn btn-outline-light" style="float: right; margin-right: 5px; position: relative;" title="View notification history" data-bs-toggle="modal" data-bs-target="#toast-history-modal">
+        <i class="bi bi-bell"></i>
+        <span id="toast-history-badge" class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style="display: none; font-size: 0.6rem;"></span>
+    </button>
 </nav>
 <div>
     <h2>Plans</h2>
     <a id="create-plan" class="btn btn-primary m-3" href="/">Create new plan</a>
     <div class="accordion" id="plan-list"></div>
 </div>
-<!-- Toast History Button -->
-<button id="toast-history-btn" class="btn btn-outline-secondary position-fixed" style="bottom: 20px; right: 80px; z-index: 1050; border-radius: 50%; width: 45px; height: 45px; padding: 0;" title="View notification history" data-bs-toggle="modal" data-bs-target="#toast-history-modal">
-    <i class="bi bi-bell"></i>
-    <span id="toast-history-badge" class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style="display: none; font-size: 0.6rem;"></span>
-</button>
-
 <!-- Toast History Modal -->
 <div class="modal fade" id="toast-history-modal" tabindex="-1" aria-labelledby="toast-history-modal-label" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-scrollable">
@@ -69,6 +67,26 @@
             <div class="modal-footer">
                 <button type="button" class="btn btn-outline-secondary" id="copy-error-btn"><i class="bi bi-clipboard me-1"></i>Copy to Clipboard</button>
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Shutdown Confirmation Modal -->
+<div class="modal fade" id="shutdown-confirm-modal" tabindex="-1" aria-labelledby="shutdown-confirm-modal-label" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title" id="shutdown-confirm-modal-label"><i class="bi bi-exclamation-triangle me-2"></i>Confirm Shutdown</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to shutdown the Data Caterer server?</p>
+                <p class="text-muted mb-0">Any running processes will be terminated.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <a href="/shutdown" class="btn btn-danger">Shutdown</a>
             </div>
         </div>
     </div>

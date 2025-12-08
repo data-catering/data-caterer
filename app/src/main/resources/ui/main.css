@@ -136,22 +136,21 @@ pre {outline: 1px solid #ccc; padding: 5px; margin: 5px; }
 .null { color: magenta; }
 .key { color: red; }
 
-/* Toast history button */
+/* Toast history button in nav bar */
 #toast-history-btn {
     transition: all 0.2s ease;
-    background-color: #ff6e42;
-    border-color: #ff6e42;
+    border-color: rgba(255, 255, 255, 0.5);
     color: white;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-    font-size: 1.2rem;
+    font-size: 1rem;
+    padding: 4px 10px;
+    margin-top: 7px;
+    margin-right: 10px;
 }
 
 #toast-history-btn:hover {
     background-color: #ff9100;
     border-color: #ff9100;
     color: white;
-    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);
-    transform: scale(1.05);
 }
 
 /* Toast show more button */

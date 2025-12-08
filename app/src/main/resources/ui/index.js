@@ -42,7 +42,6 @@ import {createGenerationElements, getGenerationYaml} from "./helper-generation.j
 import {createValidationFromPlan, getValidations} from "./helper-validation.js";
 import {createCountElementsFromPlan, createRecordCount, getRecordCount} from "./helper-record-count.js";
 import {configurationOptionsMap, reportConfigKeys} from "./configuration-data.js";
-import {initLoginButton, initLoginCloseButton, initLoginSaveButton} from "./login.js";
 import {apiFetch} from "./config.js";
 
 const addTaskButton = document.getElementById("add-task-button");
@@ -56,9 +55,6 @@ const perFieldExampleSwitch = document.getElementById("showPerFieldExample");
 const planName = document.getElementById("plan-name");
 let numDataSources = 1;
 
-initLoginButton();
-initLoginSaveButton();
-initLoginCloseButton();
 initToastHistoryListeners();
 tasksDiv.append(await createDataSourceForPlan(numDataSources));
 foreignKeysDiv.append(createForeignKeys());
@@ -385,10 +381,6 @@ function savePlan() {
             headers: {"Content-Type": "application/json"},
             body: JSON.stringify(requestBody)
         })
-            .catch(err => {
-                console.error(err);
-                createToast(planName, `Plan save failed! Error: ${err}`, "fail");
-            })
             .then(r => {
                 if (!r) {
                     createToast(planName, `Plan ${planName} save failed! Check if server is running.`, "fail");
@@ -425,10 +417,6 @@ if (currUrlParams.includes("plan-name=")) {
     // then get the plan details and fill in the form
     let planName = currUrlParams.substring(currUrlParams.indexOf("=") + 1);
     await apiFetch(`/plan/${planName}`, {method: "GET"})
-        .catch(err => {
-            console.error(err);
-            createToast(planName, `Failed to load plan ${planName}! Error: ${err}`, "fail");
-        })
         .then(r => {
             if (!r) {
                 createToast(planName, `Failed to load plan ${planName}! Check if server is running.`, "fail");
