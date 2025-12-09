@@ -14,6 +14,7 @@ import org.apache.pekko.actor.typed.scaladsl.AskPattern.{Askable, schedulerFromA
 import org.apache.pekko.actor.typed.{ActorRef, ActorSystem}
 import org.apache.pekko.http.scaladsl.model.HttpMethods._
 import org.apache.pekko.http.scaladsl.model.headers._
+import org.apache.pekko.http.scaladsl.model.headers.CacheDirectives.{`max-age`, `must-revalidate`}
 import org.apache.pekko.http.scaladsl.model.{ContentType, HttpEntity, HttpResponse, MediaTypes, StatusCodes, HttpHeader}
 import org.apache.pekko.http.scaladsl.server.{Directives, ExceptionHandler, Route}
 import org.apache.pekko.util.Timeout
@@ -42,6 +43,9 @@ class PlanRoutes(
 
   // Log CORS configuration at startup
   UiConfiguration.Cors.logConfiguration()
+
+  // Cache control for static UI resources (1 day max-age with must-revalidate)
+  private val uiCacheControl = `Cache-Control`(`max-age`(86400), `must-revalidate`)
   
   /**
    * CORS configuration to allow cross-origin requests.
@@ -172,35 +176,47 @@ class PlanRoutes(
   lazy val planRoutes: Route = corsHandler(concat(
     path("") {
       get {
-        getFromResource("ui/index.html")
+        respondWithHeader(uiCacheControl) {
+          getFromResource("ui/index.html")
+        }
       }
     },
     path("connection") {
       get {
-        getFromResource("ui/connection/connection.html")
+        respondWithHeader(uiCacheControl) {
+          getFromResource("ui/connection/connection.html")
+        }
       }
     },
     path("plan") {
       get {
-        getFromResource("ui/plan/plan.html")
+        respondWithHeader(uiCacheControl) {
+          getFromResource("ui/plan/plan.html")
+        }
       }
     },
     path("history") {
       get {
-        getFromResource("ui/history/history.html")
+        respondWithHeader(uiCacheControl) {
+          getFromResource("ui/history/history.html")
+        }
       }
     },
     path("ui" / Segments(1, 2)) { fileName =>
       val hasOnlyAlphanumericAndDash = fileName.forall(_.matches("[0-9a-z-]+(\\.(html|css|js))?"))
       if (hasOnlyAlphanumericAndDash) {
-        getFromResource(s"ui/${fileName.mkString("/")}")
+        respondWithHeader(uiCacheControl) {
+          getFromResource(s"ui/${fileName.mkString("/")}")
+        }
       } else {
         complete(HttpResponse(StatusCodes.BadRequest, entity = s"Unable to fetch resource for request"))
       }
     },
     path("data_catering_transparent.svg") {
       get {
-        getFromResource("report/data_catering_transparent.svg")
+        respondWithHeader(uiCacheControl) {
+          getFromResource("report/data_catering_transparent.svg")
+        }
       }
     },
     pathPrefix("run") {
