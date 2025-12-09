@@ -48,7 +48,7 @@ export async function saveCredentials() {
     })
         .catch(err => {
             createToast("Login", `Login failed!`, "fail");
-            reject("Login failed");
+            throw new Error("Login failed");
         })
         .then(r => {
             console.log(r);

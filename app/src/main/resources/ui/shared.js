@@ -842,7 +842,7 @@ export function executePlan(requestBody, planName, runId, runType) {
                 })
                     .catch(err => {
                         createToast(planName, `Plan ${planName} failed! Error: ${err}`, "fail");
-                        reject("Plan run failed");
+                        throw new Error("Plan run failed");
                     })
                     .then(resp => {
                         if (resp.ok) {
