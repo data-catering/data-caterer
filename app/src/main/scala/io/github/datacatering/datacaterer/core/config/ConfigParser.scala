@@ -1,7 +1,7 @@
 package io.github.datacatering.datacaterer.core.config
 
 import com.typesafe.config.{Config, ConfigFactory, ConfigValueType}
-import io.github.datacatering.datacaterer.api.model.Constants.FORMAT
+import io.github.datacatering.datacaterer.api.model.Constants.{DRIVER, FORMAT, JDBC, MYSQL, MYSQL_DRIVER, POSTGRES, POSTGRES_DRIVER}
 import io.github.datacatering.datacaterer.api.model.{AlertConfig, DataCatererConfiguration, FlagsConfig, FoldersConfig, GenerationConfig, MetadataConfig, ValidationConfig}
 import io.github.datacatering.datacaterer.core.model.Constants.{APPLICATION_CONFIG_PATH, RUNTIME_MASTER, SUPPORTED_CONNECTION_FORMATS}
 import io.github.datacatering.datacaterer.core.util.ObjectMapperUtil
@@ -47,7 +47,15 @@ object ConfigParser {
   }
 
   def getConnectionConfigsByName: Map[String, Map[String, String]] = {
-    SUPPORTED_CONNECTION_FORMATS.map(format => {
+    // Map of connection types that need special format/driver handling
+    // These are not directly supported Spark formats but need to be mapped to JDBC
+    val jdbcConnectionTypes: Map[String, Map[String, String]] = Map(
+      POSTGRES -> Map(FORMAT -> JDBC, DRIVER -> POSTGRES_DRIVER),
+      MYSQL -> Map(FORMAT -> JDBC, DRIVER -> MYSQL_DRIVER)
+    )
+    
+    // Parse standard connection formats (csv, json, jdbc, etc.)
+    val standardConnections = SUPPORTED_CONNECTION_FORMATS.map(format => {
       val tryBaseConfig = Try(config.getConfig(format))
       tryBaseConfig.map(baseConfig => {
         val connectionNames = baseConfig.root().keySet().asScala
@@ -64,6 +72,34 @@ object ConfigParser {
         }).toMap
       }).getOrElse(Map())
     }).reduce((x, y) => x ++ y)
+    
+    // Parse JDBC-based connection types (postgres, mysql) that need format/driver mapping
+    val jdbcBasedConnections = jdbcConnectionTypes.keys.toList.map(connType => {
+      val tryBaseConfig = Try(config.getConfig(connType))
+      tryBaseConfig.map(baseConfig => {
+        val connectionNames = baseConfig.root().keySet().asScala
+        connectionNames.flatMap(name => {
+          baseConfig.getValue(name).valueType() match {
+            case ConfigValueType.OBJECT =>
+              val connectionConfig = baseConfig.getConfig(name)
+              val configValueMap = connectionConfig.entrySet().asScala
+                .map(e => (e.getKey, e.getValue.render().replaceAll("\"", "")))
+                .toMap
+              // Add format and driver from the mapping, but allow config to override driver if specified
+              val additionalConfig = jdbcConnectionTypes(connType)
+              val finalConfig = if (configValueMap.contains(DRIVER)) {
+                configValueMap ++ Map(FORMAT -> JDBC)
+              } else {
+                configValueMap ++ additionalConfig
+              }
+              Map(name -> finalConfig)
+            case _ => Map[String, Map[String, String]]()
+          }
+        }).toMap
+      }).getOrElse(Map())
+    }).foldLeft(Map[String, Map[String, String]]())((x, y) => x ++ y)
+    
+    standardConnections ++ jdbcBasedConnections
   }
 
   def getSparkConnectionConfig: Map[String, String] = {
