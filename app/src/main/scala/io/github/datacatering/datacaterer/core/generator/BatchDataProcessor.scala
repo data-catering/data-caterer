@@ -167,11 +167,12 @@ class BatchDataProcessor(connectionConfigsByName: Map[String, Map[String, String
         // Recursive function to generate additional records
         @tailrec
         def generateRecordsRecursively(currentDf: DataFrame, currentRecordCount: Long, currentBaseRecordCount: Long, retries: Int): (DataFrame, Long) = {
-          LOGGER.debug(s"Record count does not reach expected num records for batch, generating more records until reached, " +
-            s"target-num-records=$targetNumRecords, actual-num-records=$currentRecordCount, num-retries=$retries, max-retries=$maxRetries")
           if (targetNumRecords == currentRecordCount || retries >= maxRetries) {
+            LOGGER.debug(s"Reached expected num records for batch or max retries, target-num-records=$targetNumRecords, actual-num-records=$currentRecordCount, num-retries=$retries, max-retries=$maxRetries")
             (currentDf, currentRecordCount)
           } else {
+            LOGGER.debug(s"Record count does not reach expected num records for batch, generating more records until reached, " +
+            s"target-num-records=$targetNumRecords, actual-num-records=$currentRecordCount, num-retries=$retries, max-retries=$maxRetries")
             val (newDf, newRecordCount, newBaseRecordCount) = generateAdditionalRecords(currentDf, currentRecordCount, currentBaseRecordCount)
             generateRecordsRecursively(newDf, newRecordCount, newBaseRecordCount, retries + 1)
           }

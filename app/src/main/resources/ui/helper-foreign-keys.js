@@ -48,10 +48,16 @@ async function createForeignKeyLinksFromPlan(newForeignKey, foreignKey, linkType
     if (foreignKeyLinkSources.length) {
         foreignKeyLinkSources.removeChild(foreignKeyLinkSources.querySelectorAll(`.foreign-key-${linkType}-link-source`)[0]);
     }
-    for (const fkLink of Array.from(foreignKey[`${linkType}Links`])) {
+    // Support both backend format (generate/delete) and legacy format (generationLinks/deleteLinks)
+    // Map linkType to the backend property name: "generation" -> "generate", "delete" -> "delete"
+    let backendPropertyName = linkType === "generation" ? "generate" : linkType;
+    let links = foreignKey[backendPropertyName] || foreignKey[linkType] || foreignKey[`${linkType}Links`] || [];
+    for (const fkLink of Array.from(links)) {
         let newForeignKeyLink = await createForeignKeyInput(numForeignKeysLinks, `foreign-key-${linkType}-link`);
         foreignKeyLinkSources.insertBefore(newForeignKeyLink, foreignKeyLinkSources.lastChild);
-        let updatedForeignKeyTaskName = $(newForeignKeyLink).find(`select.foreign-key-${linkType}-link`).selectpicker("val", fkLink.taskName);
+        // Support both 'step' (backend format) and 'taskName' (legacy format)
+        let taskName = fkLink.step || fkLink.taskName;
+        let updatedForeignKeyTaskName = $(newForeignKeyLink).find(`select.foreign-key-${linkType}-link`).selectpicker("val", taskName);
         dispatchEvent(updatedForeignKeyTaskName, "change");
         let updatedForeignKeyFields = $(newForeignKeyLink).find(`input.foreign-key-${linkType}-link`).val(fkLink.fields);
         dispatchEvent(updatedForeignKeyFields, "input");
@@ -77,7 +83,9 @@ export async function createForeignKeysFromPlan(respJson) {
             foreignKeysAccordion.append(newForeignKey);
 
             if (foreignKey.source) {
-                let updatedTaskName = $(newForeignKey).find("select.foreign-key-source").selectpicker("val", foreignKey.source.taskName);
+                // Support both 'step' (backend format) and 'taskName' (legacy format)
+                let taskName = foreignKey.source.step || foreignKey.source.taskName;
+                let updatedTaskName = $(newForeignKey).find("select.foreign-key-source").selectpicker("val", taskName);
                 dispatchEvent(updatedTaskName, "change");
                 let updatedFields = $(newForeignKey).find("input.foreign-key-source").val(foreignKey.source.fields);
                 dispatchEvent(updatedFields, "input");
@@ -93,10 +101,11 @@ export async function createForeignKeysFromPlan(respJson) {
                 }
             }
 
-            if (foreignKey.generationLinks) {
+            // Support both backend format (generate/delete) and legacy format (generationLinks/deleteLinks)
+            if (foreignKey.generate || foreignKey.generationLinks) {
                 await createForeignKeyLinksFromPlan(newForeignKey, foreignKey, "generation");
             }
-            if (foreignKey.deleteLinks) {
+            if (foreignKey.delete || foreignKey.deleteLinks) {
                 await createForeignKeyLinksFromPlan(newForeignKey, foreignKey, "delete");
             }
         }
