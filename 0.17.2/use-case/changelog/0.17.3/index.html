@@ -3800,11 +3800,30 @@
 <h1 id="0173">0.17.3</h1>
 <p>Deployed: 19-11-2025</p>
 <p>Latest features and fixes for Data Caterer include fixing the connection details required to connect to JDBC resource via UI.</p>
+<h2 id="features">Features</h2>
+<ul>
+<li>Added connection testing functionality in the UI, allowing users to test connections before saving.</li>
+<li>Connections now display their source (file or config) to indicate whether they can be deleted.</li>
+<li>Added test buttons for existing saved connections in the UI.</li>
+<li>CORS is now configurable via environment variables for stricter security settings.</li>
+<li>Moved toast notification history button to the navigation bar header for better accessibility and to prevent overlapping with page content.</li>
+<li>Added shutdown confirmation modal to prevent accidental server shutdowns.</li>
+<li>Removed unused login button from the UI.</li>
+</ul>
 <h2 id="bugfix">Bugfix</h2>
 <ul>
 <li>Add in <code>dbtable</code> as combination of <code>schema</code> and <code>table</code> from UI connection definition into step options.</li>
+<li>Add CORS headers to API endpoints to fix "Failed to fetch" errors when accessing UI from different hosts/networks.</li>
 <li>Build for macOS x86_64, linux arm64</li>
 <li>Fix the nightly links to downloads by pushing when main branch is updated instead of tag push.</li>
+<li>Fix the hostname resolution for the UI when running on a different machine than the API.</li>
+<li>Updated docker-action.sh to determine version based on branch and commit hash.</li>
+<li>Added conditional logic to publish to Maven only on the main branch.</li>
+<li>Modified build.yml to set version dynamically based on the branch, supporting feature and bugfix branches.</li>
+<li>Fixed JSON serialization issue with Connection model that caused POST /connection endpoint to fail.</li>
+<li>Fixed route matching for POST /connection endpoint to properly handle path conflicts.</li>
+<li>Fixed foreign key property name mismatch between backend (<code>generate</code>/<code>delete</code>) and UI (<code>generation</code>/<code>delete</code>) causing foreign key links to not load correctly when editing saved plans.</li>
+<li>Connection test service now uses the shared SparkSession instead of creating a new one, improving performance and resource usage.</li>
 </ul>
 
 

@@ -2,354 +2,354 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
     <url>
          <loc>https://data.catering/0.17.2/</loc>
-         <lastmod>2025-11-19</lastmod>
+         <lastmod>2025-12-10</lastmod>
     </url>
     <url>
          <loc>https://data.catering/0.17.2/about/</loc>
-         <lastmod>2025-11-19</lastmod>
+         <lastmod>2025-12-10</lastmod>
     </url>
     <url>
          <loc>https://data.catering/0.17.2/demo/</loc>
-         <lastmod>2025-11-19</lastmod>
+         <lastmod>2025-12-10</lastmod>
     </url>
     <url>
          <loc>https://data.catering/0.17.2/use-case/</loc>
-         <lastmod>2025-11-19</lastmod>
+         <lastmod>2025-12-10</lastmod>
     </url>
     <url>
          <loc>https://data.catering/0.17.2/docs/</loc>
-         <lastmod>2025-11-19</lastmod>
+         <lastmod>2025-12-10</lastmod>
     </url>
     <url>
          <loc>https://data.catering/0.17.2/docs/advanced/</loc>
-         <lastmod>2025-11-19</lastmod>
+         <lastmod>2025-12-10</lastmod>
     </url>
     <url>
          <loc>https://data.catering/0.17.2/docs/api/</loc>
-         <lastmod>2025-11-19</lastmod>
+         <lastmod>2025-12-10</lastmod>
     </url>
     <url>
          <loc>https://data.catering/0.17.2/docs/configuration/</loc>
-         <lastmod>2025-11-19</lastmod>
+         <lastmod>2025-12-10</lastmod>
     </url>
     <url>
          <loc>https://data.catering/0.17.2/docs/connection/</loc>
-         <lastmod>2025-11-19</lastmod>
+         <lastmod>2025-12-10</lastmod>
     </url>
     <url>
          <loc>https://data.catering/0.17.2/docs/delete-data/</loc>
-         <lastmod>2025-11-19</lastmod>
+         <lastmod>2025-12-10</lastmod>
     </url>
     <url>
          <loc>https://data.catering/0.17.2/docs/deployment/</loc>
-         <lastmod>2025-11-19</lastmod>
+         <lastmod>2025-12-10</lastmod>
     </url>
     <url>
          <loc>https://data.catering/0.17.2/docs/design/</loc>
-         <lastmod>2025-11-19</lastmod>
+         <lastmod>2025-12-10</lastmod>
     </url>
     <url>
          <loc>https://data.catering/0.17.2/docs/validation/</loc>
-         <lastmod>2025-11-19</lastmod>
+         <lastmod>2025-12-10</lastmod>
     </url>
     <url>
          <loc>https://data.catering/0.17.2/docs/generator/count/</loc>
-         <lastmod>2025-11-19</lastmod>
+         <lastmod>2025-12-10</lastmod>
     </url>
     <url>
          <loc>https://data.catering/0.17.2/docs/generator/data-generator/</loc>
-         <lastmod>2025-11-19</lastmod>
+         <lastmod>2025-12-10</lastmod>
     </url>
     <url>
          <loc>https://data.catering/0.17.2/docs/generator/foreign-key/</loc>
-         <lastmod>2025-11-19</lastmod>
+         <lastmod>2025-12-10</lastmod>
     </url>
     <url>
          <loc>https://data.catering/0.17.2/docs/generator/transformation/</loc>
-         <lastmod>2025-11-19</lastmod>
+         <lastmod>2025-12-10</lastmod>
     </url>
     <url>
          <loc>https://data.catering/0.17.2/docs/guide/</loc>
-         <lastmod>2025-11-19</lastmod>
+         <lastmod>2025-12-10</lastmod>
     </url>
     <url>
          <loc>https://data.catering/0.17.2/docs/guide/data-source/database/bigquery/</loc>
-         <lastmod>2025-11-19</lastmod>
+         <lastmod>2025-12-10</lastmod>
     </url>
     <url>
          <loc>https://data.catering/0.17.2/docs/guide/data-source/database/cassandra/</loc>
-         <lastmod>2025-11-19</lastmod>
+         <lastmod>2025-12-10</lastmod>
     </url>
     <url>
          <loc>https://data.catering/0.17.2/docs/guide/data-source/database/mysql/</loc>
-         <lastmod>2025-11-19</lastmod>
+         <lastmod>2025-12-10</lastmod>
     </url>
     <url>
          <loc>https://data.catering/0.17.2/docs/guide/data-source/database/postgres/</loc>
-         <lastmod>2025-11-19</lastmod>
+         <lastmod>2025-12-10</lastmod>
     </url>
     <url>
          <loc>https://data.catering/0.17.2/docs/guide/data-source/file/csv/</loc>
-         <lastmod>2025-11-19</lastmod>
+         <lastmod>2025-12-10</lastmod>
     </url>
     <url>
          <loc>https://data.catering/0.17.2/docs/guide/data-source/file/delta-lake/</loc>
-         <lastmod>2025-11-19</lastmod>
+         <lastmod>2025-12-10</lastmod>
     </url>
     <url>
          <loc>https://data.catering/0.17.2/docs/guide/data-source/file/iceberg/</loc>
-         <lastmod>2025-11-19</lastmod>
+         <lastmod>2025-12-10</lastmod>
     </url>
     <url>
          <loc>https://data.catering/0.17.2/docs/guide/data-source/file/json/</loc>
-         <lastmod>2025-11-19</lastmod>
+         <lastmod>2025-12-10</lastmod>
     </url>
     <url>
          <loc>https://data.catering/0.17.2/docs/guide/data-source/file/orc/</loc>
-         <lastmod>2025-11-19</lastmod>
+         <lastmod>2025-12-10</lastmod>
     </url>
     <url>
          <loc>https://data.catering/0.17.2/docs/guide/data-source/file/parquet/</loc>
-         <lastmod>2025-11-19</lastmod>
+         <lastmod>2025-12-10</lastmod>
     </url>
     <url>
          <loc>https://data.catering/0.17.2/docs/guide/data-source/http/http/</loc>
-         <lastmod>2025-11-19</lastmod>
+         <lastmod>2025-12-10</lastmod>
     </url>
     <url>
          <loc>https://data.catering/0.17.2/docs/guide/data-source/messaging/kafka/</loc>
-         <lastmod>2025-11-19</lastmod>
+         <lastmod>2025-12-10</lastmod>
     </url>
     <url>
          <loc>https://data.catering/0.17.2/docs/guide/data-source/messaging/rabbitmq/</loc>
-         <lastmod>2025-11-19</lastmod>
+         <lastmod>2025-12-10</lastmod>
     </url>
     <url>
          <loc>https://data.catering/0.17.2/docs/guide/data-source/messaging/solace/</loc>
-         <lastmod>2025-11-19</lastmod>
+         <lastmod>2025-12-10</lastmod>
     </url>
     <url>
          <loc>https://data.catering/0.17.2/docs/guide/data-source/metadata/data-contract-cli/</loc>
-         <lastmod>2025-11-19</lastmod>
+         <lastmod>2025-12-10</lastmod>
     </url>
     <url>
          <loc>https://data.catering/0.17.2/docs/guide/data-source/metadata/great-expectations/</loc>
-         <lastmod>2025-11-19</lastmod>
+         <lastmod>2025-12-10</lastmod>
     </url>
     <url>
          <loc>https://data.catering/0.17.2/docs/guide/data-source/metadata/json-schema/</loc>
-         <lastmod>2025-11-19</lastmod>
+         <lastmod>2025-12-10</lastmod>
     </url>
     <url>
          <loc>https://data.catering/0.17.2/docs/guide/data-source/metadata/marquez/</loc>
-         <lastmod>2025-11-19</lastmod>
+         <lastmod>2025-12-10</lastmod>
     </url>
     <url>
          <loc>https://data.catering/0.17.2/docs/guide/data-source/metadata/open-data-contract-standard/</loc>
-         <lastmod>2025-11-19</lastmod>
+         <lastmod>2025-12-10</lastmod>
     </url>
     <url>
          <loc>https://data.catering/0.17.2/docs/guide/data-source/metadata/open-metadata/</loc>
-         <lastmod>2025-11-19</lastmod>
+         <lastmod>2025-12-10</lastmod>
     </url>
     <url>
          <loc>https://data.catering/0.17.2/docs/guide/data-source/metadata/yaml-configurations/</loc>
-         <lastmod>2025-11-19</lastmod>
+         <lastmod>2025-12-10</lastmod>
     </url>
     <url>
          <loc>https://data.catering/0.17.2/docs/guide/scenario/auto-generate-connection/</loc>
-         <lastmod>2025-11-19</lastmod>
+         <lastmod>2025-12-10</lastmod>
     </url>
     <url>
          <loc>https://data.catering/0.17.2/docs/guide/scenario/batch-and-event/</loc>
-         <lastmod>2025-11-19</lastmod>
+         <lastmod>2025-12-10</lastmod>
     </url>
     <url>
          <loc>https://data.catering/0.17.2/docs/guide/scenario/data-generation/</loc>
-         <lastmod>2025-11-19</lastmod>
+         <lastmod>2025-12-10</lastmod>
     </url>
     <url>
          <loc>https://data.catering/0.17.2/docs/guide/scenario/data-validation/</loc>
-         <lastmod>2025-11-19</lastmod>
+         <lastmod>2025-12-10</lastmod>
     </url>
     <url>
          <loc>https://data.catering/0.17.2/docs/guide/scenario/delete-generated-data/</loc>
-         <lastmod>2025-11-19</lastmod>
+         <lastmod>2025-12-10</lastmod>
     </url>
     <url>
          <loc>https://data.catering/0.17.2/docs/guide/scenario/first-data-generation/</loc>
-         <lastmod>2025-11-19</lastmod>
+         <lastmod>2025-12-10</lastmod>
     </url>
     <url>
          <loc>https://data.catering/0.17.2/docs/guide/scenario/records-per-field/</loc>
-         <lastmod>2025-11-19</lastmod>
+         <lastmod>2025-12-10</lastmod>
     </url>
     <url>
          <loc>https://data.catering/0.17.2/docs/report/alert/</loc>
-         <lastmod>2025-11-19</lastmod>
+         <lastmod>2025-12-10</lastmod>
     </url>
     <url>
          <loc>https://data.catering/0.17.2/docs/report/html-report/</loc>
-         <lastmod>2025-11-19</lastmod>
+         <lastmod>2025-12-10</lastmod>
     </url>
     <url>
          <loc>https://data.catering/0.17.2/docs/validation/basic-validation/</loc>
-         <lastmod>2025-11-19</lastmod>
+         <lastmod>2025-12-10</lastmod>
     </url>
     <url>
          <loc>https://data.catering/0.17.2/docs/validation/external-source-validation/</loc>
-         <lastmod>2025-11-19</lastmod>
+         <lastmod>2025-12-10</lastmod>
     </url>
     <url>
          <loc>https://data.catering/0.17.2/docs/validation/field-name-validation/</loc>
-         <lastmod>2025-11-19</lastmod>
+         <lastmod>2025-12-10</lastmod>
     </url>
     <url>
          <loc>https://data.catering/0.17.2/docs/validation/group-by-validation/</loc>
-         <lastmod>2025-11-19</lastmod>
+         <lastmod>2025-12-10</lastmod>
     </url>
     <url>
          <loc>https://data.catering/0.17.2/docs/validation/upstream-data-source-validation/</loc>
-         <lastmod>2025-11-19</lastmod>
+         <lastmod>2025-12-10</lastmod>
     </url>
     <url>
          <loc>https://data.catering/0.17.2/get-started/quick-start/</loc>
-         <lastmod>2025-11-19</lastmod>
+         <lastmod>2025-12-10</lastmod>
     </url>
     <url>
          <loc>https://data.catering/0.17.2/sample/demo/demo-index/</loc>
-         <lastmod>2025-11-19</lastmod>
+         <lastmod>2025-12-10</lastmod>
     </url>
     <url>
          <loc>https://data.catering/0.17.2/use-case/business-value/</loc>
-         <lastmod>2025-11-19</lastmod>
+         <lastmod>2025-12-10</lastmod>
     </url>
     <url>
          <loc>https://data.catering/0.17.2/use-case/comparison/</loc>
-         <lastmod>2025-11-19</lastmod>
+         <lastmod>2025-12-10</lastmod>
     </url>
     <url>
          <loc>https://data.catering/0.17.2/use-case/roadmap/</loc>
-         <lastmod>2025-11-19</lastmod>
+         <lastmod>2025-12-10</lastmod>
     </url>
     <url>
          <loc>https://data.catering/0.17.2/use-case/blog/a-year-of-getting-paid-from-medium-articles/</loc>
-         <lastmod>2025-11-19</lastmod>
+         <lastmod>2025-12-10</lastmod>
     </url>
     <url>
          <loc>https://data.catering/0.17.2/use-case/blog/rethinking-shift-left-for-data-pipelines/</loc>
-         <lastmod>2025-11-19</lastmod>
+         <lastmod>2025-12-10</lastmod>
     </url>
     <url>
          <loc>https://data.catering/0.17.2/use-case/blog/shift-left-data-quality/</loc>
-         <lastmod>2025-11-19</lastmod>
+         <lastmod>2025-12-10</lastmod>
     </url>
     <url>
          <loc>https://data.catering/0.17.2/use-case/changelog/0.14.2/</loc>
-         <lastmod>2025-11-19</lastmod>
+         <lastmod>2025-12-10</lastmod>
     </url>
     <url>
          <loc>https://data.catering/0.17.2/use-case/changelog/0.14.3/</loc>
-         <lastmod>2025-11-19</lastmod>
+         <lastmod>2025-12-10</lastmod>
     </url>
     <url>
          <loc>https://data.catering/0.17.2/use-case/changelog/0.14.4/</loc>
-         <lastmod>2025-11-19</lastmod>
+         <lastmod>2025-12-10</lastmod>
     </url>
     <url>
          <loc>https://data.catering/0.17.2/use-case/changelog/0.14.5/</loc>
-         <lastmod>2025-11-19</lastmod>
+         <lastmod>2025-12-10</lastmod>
     </url>
     <url>
          <loc>https://data.catering/0.17.2/use-case/changelog/0.14.6/</loc>
-         <lastmod>2025-11-19</lastmod>
+         <lastmod>2025-12-10</lastmod>
     </url>
     <url>
          <loc>https://data.catering/0.17.2/use-case/changelog/0.14.7/</loc>
-         <lastmod>2025-11-19</lastmod>
+         <lastmod>2025-12-10</lastmod>
     </url>
     <url>
          <loc>https://data.catering/0.17.2/use-case/changelog/0.15.0/</loc>
-         <lastmod>2025-11-19</lastmod>
+         <lastmod>2025-12-10</lastmod>
     </url>
     <url>
          <loc>https://data.catering/0.17.2/use-case/changelog/0.15.1/</loc>
-         <lastmod>2025-11-19</lastmod>
+         <lastmod>2025-12-10</lastmod>
     </url>
     <url>
          <loc>https://data.catering/0.17.2/use-case/changelog/0.15.2/</loc>
-         <lastmod>2025-11-19</lastmod>
+         <lastmod>2025-12-10</lastmod>
     </url>
     <url>
          <loc>https://data.catering/0.17.2/use-case/changelog/0.15.3/</loc>
-         <lastmod>2025-11-19</lastmod>
+         <lastmod>2025-12-10</lastmod>
     </url>
     <url>
          <loc>https://data.catering/0.17.2/use-case/changelog/0.15.4/</loc>
-         <lastmod>2025-11-19</lastmod>
+         <lastmod>2025-12-10</lastmod>
     </url>
     <url>
          <loc>https://data.catering/0.17.2/use-case/changelog/0.16.0/</loc>
-         <lastmod>2025-11-19</lastmod>
+         <lastmod>2025-12-10</lastmod>
     </url>
     <url>
          <loc>https://data.catering/0.17.2/use-case/changelog/0.16.1/</loc>
-         <lastmod>2025-11-19</lastmod>
+         <lastmod>2025-12-10</lastmod>
     </url>
     <url>
          <loc>https://data.catering/0.17.2/use-case/changelog/0.16.10/</loc>
-         <lastmod>2025-11-19</lastmod>
+         <lastmod>2025-12-10</lastmod>
     </url>
     <url>
          <loc>https://data.catering/0.17.2/use-case/changelog/0.16.11/</loc>
-         <lastmod>2025-11-19</lastmod>
+         <lastmod>2025-12-10</lastmod>
     </url>
     <url>
          <loc>https://data.catering/0.17.2/use-case/changelog/0.16.2/</loc>
-         <lastmod>2025-11-19</lastmod>
+         <lastmod>2025-12-10</lastmod>
     </url>
     <url>
          <loc>https://data.catering/0.17.2/use-case/changelog/0.16.3/</loc>
-         <lastmod>2025-11-19</lastmod>
+         <lastmod>2025-12-10</lastmod>
     </url>
     <url>
          <loc>https://data.catering/0.17.2/use-case/changelog/0.16.4/</loc>
-         <lastmod>2025-11-19</lastmod>
+         <lastmod>2025-12-10</lastmod>
     </url>
     <url>
          <loc>https://data.catering/0.17.2/use-case/changelog/0.16.5/</loc>
-         <lastmod>2025-11-19</lastmod>
+         <lastmod>2025-12-10</lastmod>
     </url>
     <url>
          <loc>https://data.catering/0.17.2/use-case/changelog/0.16.6/</loc>
-         <lastmod>2025-11-19</lastmod>
+         <lastmod>2025-12-10</lastmod>
     </url>
     <url>
          <loc>https://data.catering/0.17.2/use-case/changelog/0.16.7/</loc>
-         <lastmod>2025-11-19</lastmod>
+         <lastmod>2025-12-10</lastmod>
     </url>
     <url>
          <loc>https://data.catering/0.17.2/use-case/changelog/0.16.8/</loc>
-         <lastmod>2025-11-19</lastmod>
+         <lastmod>2025-12-10</lastmod>
     </url>
     <url>
          <loc>https://data.catering/0.17.2/use-case/changelog/0.16.9/</loc>
-         <lastmod>2025-11-19</lastmod>
+         <lastmod>2025-12-10</lastmod>
     </url>
     <url>
          <loc>https://data.catering/0.17.2/use-case/changelog/0.17.0/</loc>
-         <lastmod>2025-11-19</lastmod>
+         <lastmod>2025-12-10</lastmod>
     </url>
     <url>
          <loc>https://data.catering/0.17.2/use-case/changelog/0.17.1/</loc>
-         <lastmod>2025-11-19</lastmod>
+         <lastmod>2025-12-10</lastmod>
     </url>
     <url>
          <loc>https://data.catering/0.17.2/use-case/changelog/0.17.2/</loc>
-         <lastmod>2025-11-19</lastmod>
+         <lastmod>2025-12-10</lastmod>
     </url>
     <url>
          <loc>https://data.catering/0.17.2/use-case/changelog/0.17.3/</loc>
-         <lastmod>2025-11-19</lastmod>
+         <lastmod>2025-12-10</lastmod>
     </url>
 </urlset>
