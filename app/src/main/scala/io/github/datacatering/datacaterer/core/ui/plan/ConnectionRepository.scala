@@ -73,13 +73,13 @@ object ConnectionRepository {
     // First try to get from saved connections file
     val connectionFile = Path.of(s"$connectionSaveFolder/$name.csv")
     val tryConnectionFromFile = if (connectionFile.toFile.exists()) {
-      Try(Connection.fromString(Files.readString(connectionFile), name, masking))
+      Try(Connection.fromString(Files.readString(connectionFile), name, masking).copy(source = "file"))
     } else {
       Failure(new IllegalArgumentException(s"Connection file not found: $name"))
     }
 
     tryConnectionFromFile match {
-      case Success(connection) => connection.copy(options = connection.options)
+      case Success(connection) => connection
       case Failure(fileException) =>
         // If not found in file, try to get from application.conf
         LOGGER.debug(s"Connection not found in file, checking application.conf, connection-name=$name")
@@ -108,7 +108,8 @@ object ConnectionRepository {
         } else {
           config
         }
-        Connection(name, format, Some("data-source"), options - FORMAT)
+        // Mark this connection as coming from config (not deletable)
+        Connection(name, format, Some("data-source"), options - FORMAT, source = "config")
       case None =>
         throw new IllegalArgumentException(s"Connection not found in application.conf: $name")
     }
@@ -117,14 +118,14 @@ object ConnectionRepository {
   private def getAllConnections(optConnectionGroupType: Option[String], connectionSaveFolder: String, masking: Boolean = true): GetConnectionsResponse = {
     LOGGER.debug(s"Getting all connection details, connection-group=${optConnectionGroupType.getOrElse("")}")
 
-    // Get connections from files
+    // Get connections from files (user-created, deletable)
     val connectionPath = Path.of(connectionSaveFolder)
     if (!connectionPath.toFile.exists()) connectionPath.toFile.mkdirs()
     val fileConnections = Files.list(connectionPath)
       .iterator()
       .asScala
       .map(file => {
-        val tryParse = Try(Connection.fromString(Files.readString(file), file.toFile.getName, masking))
+        val tryParse = Try(Connection.fromString(Files.readString(file), file.toFile.getName, masking).copy(source = "file"))
         if (tryParse.isFailure) {
           LOGGER.error(s"Failed to parse connection details from file, file=$file, error=${tryParse.failed.get.getMessage}")
         }
@@ -134,7 +135,7 @@ object ConnectionRepository {
       .map(_.get)
       .toList
 
-    // Get connections from application.conf
+    // Get connections from application.conf (default connections, not deletable)
     val configConnections = getConnectionsFromConfig(masking)
 
     // Merge connections, with file connections taking priority (deduplicating by name)
@@ -163,18 +164,36 @@ object ConnectionRepository {
       } else {
         config
       }
-      Connection(name, format, Some("data-source"), options - FORMAT)
+      // Mark this connection as coming from config (not deletable)
+      Connection(name, format, Some("data-source"), options - FORMAT, source = "config")
     }.toList
   }
 
   private def removeConnection(connectionName: String, connectionSaveFolder: String): Boolean = {
-    LOGGER.warn(s"Removing connections details from file system, connection-name=$connectionName")
-    val connectionFile = Path.of(s"$connectionSaveFolder/$connectionName.csv").toFile
-    if (connectionFile.exists()) {
-      connectionFile.delete()
+    // First check if this is a config-based connection (not deletable)
+    val configConnections = ConfigParser.connectionConfigsByName
+    if (configConnections.contains(connectionName)) {
+      // Check if there's also a file-based override for this connection
+      val connectionFile = Path.of(s"$connectionSaveFolder/$connectionName.csv").toFile
+      if (connectionFile.exists()) {
+        LOGGER.info(s"Removing user-created connection that overrides config connection, connection-name=$connectionName")
+        connectionFile.delete()
+      } else {
+        LOGGER.warn(s"Cannot delete connection from application.conf, connection-name=$connectionName. " +
+          "This is a default connection defined in the application configuration. " +
+          "To remove it, modify the application.conf file or set appropriate environment variables.")
+        false
+      }
     } else {
-      LOGGER.warn(s"Connection file does not exist, unable to delete, connection-name=$connectionName")
-      false
+      // Regular file-based connection
+      LOGGER.info(s"Removing connection from file system, connection-name=$connectionName")
+      val connectionFile = Path.of(s"$connectionSaveFolder/$connectionName.csv").toFile
+      if (connectionFile.exists()) {
+        connectionFile.delete()
+      } else {
+        LOGGER.warn(s"Connection file does not exist, unable to delete, connection-name=$connectionName")
+        false
+      }
     }
   }
 }

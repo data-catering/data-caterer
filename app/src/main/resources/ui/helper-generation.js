@@ -9,6 +9,10 @@ import {
     findNextLevelNodesByClass
 } from "./shared.js";
 import {dataTypeOptionsMap} from "./configuration-data.js";
+import {
+    getGenerationCheckboxStates,
+    buildGenerationOptions
+} from "./data-transformers.js";
 
 export let numFields = 0;
 
@@ -52,17 +56,24 @@ async function createGenerationFields(dataSourceFields, manualSchema) {
 
 export async function createGenerationElements(dataSource, newDataSource, numDataSources) {
     let dataSourceGenContainer = $(newDataSource).find("#data-source-generation-config-container");
-    // TODO check if there is auto schema defined
-    // check if there is auto schema from metadata source defined
-    if (dataSource.options["metadataSourceName"]) {
+    
+    // Use pure function to determine checkbox states
+    const checkboxStates = getGenerationCheckboxStates(dataSource);
+    
+    // Apply checkbox states to DOM
+    if (checkboxStates.auto) {
+        $(dataSourceGenContainer).find("[id^=auto-generation-checkbox]").prop("checked", true);
+    }
+    
+    if (checkboxStates.autoFromMetadata) {
         $(dataSourceGenContainer).find("[id^=auto-from-metadata-source-generation-checkbox]").prop("checked", true);
         let autoFromMetadataSchema = await createAutoFromMetadataSourceContainer(numDataSources);
         $(dataSourceGenContainer).find(".manual").after(autoFromMetadataSchema);
 
         await createAutoFromMetadata(autoFromMetadataSchema, dataSource);
     }
-    // check if there is manual schema defined
-    if (dataSource.fields && dataSource.fields.length > 0) {
+    
+    if (checkboxStates.manual) {
         let manualSchema = createManualContainer(numFields, "generation");
         dataSourceGenContainer[0].insertBefore(manualSchema, dataSourceGenContainer[0].lastElementChild);
         $(dataSourceGenContainer).find("[id^=manual-generation-checkbox]").prop("checked", true);

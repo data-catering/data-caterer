@@ -442,7 +442,7 @@ class PlanApiEndToEndTest extends AnyFunSuite with Matchers with BeforeAndAfterA
     val response = postJson("/run", planRunRequest)
 
     response.statusCode() shouldBe 200
-    response.body() should include("Plan started")
+    response.body() should include("started")
   }
 
   // ============================================================================

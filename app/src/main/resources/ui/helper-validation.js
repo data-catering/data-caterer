@@ -20,6 +20,10 @@ import {
     findNextLevelNodesByClass,
 } from "./shared.js";
 import {validationTypeOptionsMap} from "./configuration-data.js";
+import {
+    getValidationCheckboxStates,
+    buildValidationOptions
+} from "./data-transformers.js";
 
 export let numValidations = 0;
 
@@ -91,7 +95,15 @@ async function createValidationsFromDataSource(validations, validationOpts, manu
 export async function createValidationFromPlan(dataSource, newDataSource, numDataSources) {
     let dataSourceValidationContainer = $(newDataSource).find("#data-source-validation-config-container");
 
-    if (dataSource.validations && dataSource.options["metadataSourceName"]) {
+    // Use pure function to determine checkbox states
+    const checkboxStates = getValidationCheckboxStates(dataSource);
+    
+    // Apply checkbox states to DOM
+    if (checkboxStates.auto) {
+        $(dataSourceValidationContainer).find("[id^=auto-validation-checkbox]").prop("checked", true);
+    }
+    
+    if (checkboxStates.autoFromMetadata) {
         $(dataSourceValidationContainer).find("[id^=auto-from-metadata-source-validation-checkbox]").prop("checked", true);
         let autoFromMetadataSchema = await createAutoFromMetadataSourceContainer(numDataSources);
         $(dataSourceValidationContainer).find(".manual").after(autoFromMetadataSchema);
@@ -99,7 +111,7 @@ export async function createValidationFromPlan(dataSource, newDataSource, numDat
         await createAutoFromMetadata(autoFromMetadataSchema, dataSource);
     }
 
-    if (dataSource.validations && dataSource.validations.length > 0) {
+    if (checkboxStates.manual) {
         let manualValidation = createManualContainer(numValidations, "validation");
         let dataSourceGenContainer = $(newDataSource).find("#data-source-validation-config-container");
         dataSourceGenContainer.append(manualValidation);

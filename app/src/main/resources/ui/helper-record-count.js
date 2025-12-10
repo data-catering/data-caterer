@@ -7,6 +7,11 @@ import {
     createSelect,
     dispatchEvent
 } from "./shared.js";
+import {
+    buildCountFromUIState,
+    extractUIStateFromCount,
+    estimateRecordCountFromConfig
+} from "./data-transformers.js";
 
 
 export function createRecordCount(index) {
@@ -46,31 +51,40 @@ export function createRecordCount(index) {
 
 export function createCountElementsFromPlan(dataSource, newDataSource) {
     if (dataSource.count) {
-        let dsCount = dataSource.count;
-        if (dsCount.recordsMin && dsCount.recordsMax) {
+        // Use pure function to extract UI state from backend count format
+        const uiState = extractUIStateFromCount(dataSource.count);
+        
+        // Apply UI state to DOM elements
+        if (uiState.isRecordsBetween) {
             $(newDataSource).find(".generated-records-between").prop("checked", true);
-            $(newDataSource).find("[id^=min-gen-record-count]").val(dsCount.recordsMin);
-            $(newDataSource).find("[id^=max-gen-record-count]").val(dsCount.recordsMax);
-        } else {
+            $(newDataSource).find("[id^=min-gen-record-count]").val(uiState.recordsMin);
+            $(newDataSource).find("[id^=max-gen-record-count]").val(uiState.recordsMax);
+        } else if (uiState.records !== undefined) {
             $(newDataSource).find(".records").prop("checked", true);
-            $(newDataSource).find("[id^=base-record-count]").val(dsCount.records);
+            $(newDataSource).find("[id^=base-record-count]").val(uiState.records);
         }
 
-        if (dsCount.perFieldNames) {
-            $(newDataSource).find("[id^=per-field-names]").val(dsCount.perFieldNames.join(","));
-            if (dsCount.perFieldRecordsMin && dsCount.perFieldRecordsMax) {
+        // Apply per-field UI state
+        if (uiState.perFieldNames && uiState.perFieldNames.length > 0) {
+            $(newDataSource).find("[id^=per-field-names]").val(uiState.perFieldNames.join(","));
+            
+            if (uiState.isPerFieldBetween) {
                 $(newDataSource).find(".per-unique-set-of-values-between").prop("checked", true);
-                $(newDataSource).find("[id^=per-field-min-record-count]").val(dsCount.perFieldRecordsMin);
-                $(newDataSource).find("[id^=per-field-max-record-count]").val(dsCount.perFieldRecordsMax);
-            } else {
+                $(newDataSource).find("[id^=per-field-min-record-count]").val(uiState.perFieldMin);
+                $(newDataSource).find("[id^=per-field-max-record-count]").val(uiState.perFieldMax);
+            } else if (uiState.perFieldCount !== undefined) {
                 $(newDataSource).find(".per-unique-set-of-values").prop("checked", true);
-                $(newDataSource).find("[id^=per-field-record-count]").val(dsCount.perFieldRecords);
+                $(newDataSource).find("[id^=per-field-record-count]").val(uiState.perFieldCount);
             }
-            $(newDataSource).find("[id^=per-field-distribution-select]").selectpicker("val", dsCount.perFieldRecordsDistribution);
-            let updatedPerFieldDistribution = $(newDataSource).find("[id^=per-field-distribution-select]");
-            dispatchEvent(updatedPerFieldDistribution, "change");
-            if (dsCount.perFieldRecordsDistribution === "exponential") {
-                $(newDataSource).find("[id^=per-field-distribution-rate]").val(dsCount.perFieldRecordsDistributionRateParam);
+            
+            // Handle distribution settings
+            if (uiState.distribution) {
+                $(newDataSource).find("[id^=per-field-distribution-select]").selectpicker("val", uiState.distribution);
+                let updatedPerFieldDistribution = $(newDataSource).find("[id^=per-field-distribution-select]");
+                dispatchEvent(updatedPerFieldDistribution, "change");
+                if (uiState.distribution === "exponential" && uiState.rateParam !== undefined) {
+                    $(newDataSource).find("[id^=per-field-distribution-rate]").val(uiState.rateParam);
+                }
             }
         }
     }
@@ -166,47 +180,76 @@ function createBaseRecordCountContainer(index) {
     return createRadioButtons(index, "base-record-count-radio", baseRecordOptions);
 }
 
+/**
+ * Extracts UI state from DOM and builds backend-compatible count object.
+ * Uses pure function buildCountFromUIState for the data transformation.
+ */
 function estimateRecordCount(recordCountRow) {
-    let recordCountSummary = {};
-    let baseRecordCheck = $(recordCountRow).find("input.base-record-count-radio:checked").parent().find(".record-count-field");
-    let baseRecordCount;
-    if (baseRecordCheck.length > 1) {
-        let minBase = Number($(baseRecordCheck).filter("input[aria-label=Min]").val());
-        let maxBase = Number($(baseRecordCheck).filter("input[aria-label=Max]").val());
-        baseRecordCount = (maxBase + minBase) / 2;
-        recordCountSummary["recordsMin"] = minBase;
-        recordCountSummary["recordsMax"] = maxBase;
-    } else {
-        baseRecordCount = Number(baseRecordCheck.val());
-        recordCountSummary["records"] = baseRecordCount;
-    }
-
-    let perFieldCheck = $(recordCountRow).find("input.per-field-record-count-radio:checked").parent().find(".record-count-field");
-    let perFieldCount;
-    if (perFieldCheck.length > 1) {
-        let minPerCol = Number($(perFieldCheck).filter("input[aria-label=Min]").val());
-        let maxPerCol = Number($(perFieldCheck).filter("input[aria-label=Max]").val());
-        perFieldCount = (maxPerCol + minPerCol) / 2;
-        recordCountSummary["perFieldRecordsMin"] = minPerCol;
-        recordCountSummary["perFieldRecordsMax"] = maxPerCol;
-    } else if (perFieldCheck.length === 1) {
-        perFieldCount = Number(perFieldCheck.val());
-        recordCountSummary["perFieldRecords"] = perFieldCount;
-    } else {
-        perFieldCount = 1;
-    }
-    if (perFieldCheck.length >= 1) {
-        let perColumNames = $(recordCountRow).find("[id^=per-field-names]").val();
-        recordCountSummary["perFieldNames"] = perColumNames ? perColumNames.split(",") : [];
-    }
-    let perFieldDist = $(recordCountRow).find("[id^=per-field-distribution-select]").val();
-    if (perFieldDist !== "uniform") {
-        recordCountSummary["perFieldRecordsDistribution"] = perFieldDist;
-    }
-    recordCountSummary["perFieldRecordsDistributionRateParam"] = $(recordCountRow).find("[id^=per-field-distribution-rate-param]").val();
-
-    recordCountSummary["estimateRecords"] = baseRecordCount * perFieldCount;
+    // Extract UI state from DOM
+    const uiState = extractUIStateFromDOM(recordCountRow);
+    
+    // Use pure function to build backend-compatible count object
+    const recordCountSummary = buildCountFromUIState(uiState);
+    
+    // Calculate estimate using pure function
+    recordCountSummary.estimateRecords = estimateRecordCountFromConfig(recordCountSummary);
+    
     return recordCountSummary;
+}
+
+/**
+ * Extracts UI state from DOM elements.
+ * This is the DOM-dependent part, separated from the data transformation logic.
+ * 
+ * @param {HTMLElement} recordCountRow - The record count row element
+ * @returns {Object} UI state object for buildCountFromUIState
+ */
+export function extractUIStateFromDOM(recordCountRow) {
+    const uiState = {};
+    
+    // Extract base record count state
+    const baseRecordCheck = $(recordCountRow).find("input.base-record-count-radio:checked").parent().find(".record-count-field");
+    if (baseRecordCheck.length > 1) {
+        // "Generated records between" is selected
+        uiState.isRecordsBetween = true;
+        uiState.recordsMin = Number($(baseRecordCheck).filter("input[aria-label=Min]").val());
+        uiState.recordsMax = Number($(baseRecordCheck).filter("input[aria-label=Max]").val());
+    } else {
+        // Simple "Records" is selected
+        uiState.isRecordsBetween = false;
+        uiState.records = Number(baseRecordCheck.val());
+    }
+    
+    // Extract per-field state
+    const perFieldColumnNames = $(recordCountRow).find("[id^=per-field-names]").val();
+    if (perFieldColumnNames && perFieldColumnNames.trim().length > 0) {
+        uiState.perFieldNames = perFieldColumnNames.split(",").map(s => s.trim()).filter(s => s.length > 0);
+        
+        const perFieldCheck = $(recordCountRow).find("input.per-field-record-count-radio:checked").parent().find(".record-count-field");
+        if (perFieldCheck.length > 1) {
+            // "Per unique set of values between" is selected
+            uiState.isPerFieldBetween = true;
+            uiState.perFieldMin = Number($(perFieldCheck).filter("input[aria-label=Min]").val());
+            uiState.perFieldMax = Number($(perFieldCheck).filter("input[aria-label=Max]").val());
+        } else if (perFieldCheck.length === 1) {
+            // Simple "Per unique set of values" is selected
+            uiState.isPerFieldBetween = false;
+            uiState.perFieldCount = Number(perFieldCheck.val());
+        }
+        
+        // Extract distribution settings
+        const perFieldDist = $(recordCountRow).find("[id^=per-field-distribution-select]").val();
+        if (perFieldDist) {
+            uiState.distribution = perFieldDist;
+        }
+        
+        const rateParam = $(recordCountRow).find("[id^=per-field-distribution-rate-param]").val();
+        if (perFieldDist === "exponential" && rateParam) {
+            uiState.rateParam = Number(rateParam);
+        }
+    }
+    
+    return uiState;
 }
 
 function createRecordCountInput(index, name, label, value) {

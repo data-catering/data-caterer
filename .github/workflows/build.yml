@@ -2,7 +2,10 @@ name: Build docker images
 
 on:
   push:
-    tags: ["*"]
+    branches:
+      - main
+      - 'feature/**'
+      - 'bugfix/**'
 
 jobs:
   build:
@@ -12,6 +15,21 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 2
+      - name: Set version based on branch
+        id: version
+        run: |
+          BASE_VERSION=$(grep version gradle.properties | cut -d= -f2)
+          COMMIT_HASH=$(git rev-parse --short HEAD)
+
+          if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+            VERSION="$BASE_VERSION"
+          else
+            VERSION="$BASE_VERSION-$COMMIT_HASH"
+          fi
+
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Building version: $VERSION"
       - uses: actions/setup-java@v4
         with:
           java-version: '17'
@@ -26,6 +44,8 @@ jobs:
       - name: Build and push images
         run: bash docker-action.sh
         env:
+          VERSION: ${{ env.VERSION }}
+          GITHUB_REF: ${{ github.ref }}
           PACKAGE_TOKEN: ${{ secrets.PACKAGE_TOKEN }}
           MAVEN_USERNAME: ${{ secrets.MAVEN_USERNAME }}
           MAVEN_PASSWORD: ${{ secrets.MAVEN_PASSWORD }}
@@ -41,19 +61,39 @@ jobs:
 
   osx:
     needs: build
-    runs-on: [macos-latest]
+    strategy:
+      matrix:
+        include:
+          - runner: macos-13  # Intel x64
+            arch: x64
+            arch_name: x86_64
+          - runner: macos-14  # Apple Silicon arm64
+            arch: aarch64
+            arch_name: aarch64
+    runs-on: ${{ matrix.runner }}
 
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 2
       - name: Set version
-        run: echo "APP_VERSION=$(grep version gradle.properties | cut -d= -f2)" >> $GITHUB_ENV
+        run: |
+          BASE_VERSION=$(grep version gradle.properties | cut -d= -f2)
+          COMMIT_HASH=$(git rev-parse --short HEAD)
+
+          if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+            APP_VERSION="$BASE_VERSION"
+          else
+            APP_VERSION="$BASE_VERSION-$COMMIT_HASH"
+          fi
+
+          echo "APP_VERSION=$APP_VERSION" >> $GITHUB_ENV
+          echo "Building version: $APP_VERSION"
       - uses: actions/setup-java@v4
         with:
           java-version: '21'
           java-package: jdk
-          architecture: x64
+          architecture: ${{ matrix.arch }}
           distribution: oracle
       - name: Download fat jar
         uses: actions/download-artifact@v4
@@ -62,11 +102,13 @@ jobs:
           path: app/build/libs/
       - name: Package jar as dmg installer
         run: 'jpackage --main-jar data-caterer.jar "@misc/jpackage/jpackage.cfg" "@misc/jpackage/jpackage-mac.cfg"'
+      - name: Rename DMG with version and architecture
+        run: mv DataCaterer-*.dmg DataCaterer-${{ env.APP_VERSION }}-macos-${{ matrix.arch_name }}.dmg
       - name: Upload dmg
         uses: actions/upload-artifact@v4
         with:
-          name: data-caterer-mac
-          path: "DataCaterer-1.0.0.dmg"
+          name: data-caterer-macos-${{ matrix.arch_name }}
+          path: "DataCaterer-${{ env.APP_VERSION }}-macos-${{ matrix.arch_name }}.dmg"
           overwrite: true
 
   windows:
@@ -78,7 +120,18 @@ jobs:
         with:
           fetch-depth: 2
       - name: Set version
-        run: echo "APP_VERSION=$(grep version gradle.properties | cut -d= -f2)" >> $env:GITHUB_ENV
+        run: |
+          $BASE_VERSION = (Get-Content gradle.properties | Select-String '^version=' | ForEach-Object { $_ -replace 'version=','' }).Trim()
+          $COMMIT_HASH = git rev-parse --short HEAD
+
+          if ("${{ github.ref }}" -eq "refs/heads/main") {
+            $APP_VERSION = $BASE_VERSION
+          } else {
+            $APP_VERSION = "$BASE_VERSION-$COMMIT_HASH"
+          }
+
+          echo "APP_VERSION=$APP_VERSION" >> $env:GITHUB_ENV
+          Write-Output "Building version: $APP_VERSION"
       - uses: actions/setup-java@v4
         with:
           java-version: '21'
@@ -92,11 +145,13 @@ jobs:
           path: app/build/libs/
       - name: Package jar as exe
         run: 'jpackage --main-jar data-caterer.jar "@misc/jpackage/jpackage.cfg" "@misc/jpackage/jpackage-windows.cfg"'
+      - name: Rename EXE with version and architecture
+        run: mv DataCaterer-*.exe DataCaterer-$env:APP_VERSION-windows-x86_64.exe
       - name: Upload installer
         uses: actions/upload-artifact@v4
         with:
-          name: data-caterer-windows
-          path: "DataCaterer-1.0.0.exe"
+          name: data-caterer-windows-x86_64
+          path: "DataCaterer-${{ env.APP_VERSION }}-windows-x86_64.exe"
           overwrite: true
 
   linux-amd64:
@@ -108,12 +163,23 @@ jobs:
         with:
           fetch-depth: 2
       - name: Set version
-        run: echo "APP_VERSION=$(grep version gradle.properties | cut -d= -f2)" >> $GITHUB_ENV
+        run: |
+          BASE_VERSION=$(grep version gradle.properties | cut -d= -f2)
+          COMMIT_HASH=$(git rev-parse --short HEAD)
+
+          if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+            APP_VERSION="$BASE_VERSION"
+          else
+            APP_VERSION="$BASE_VERSION-$COMMIT_HASH"
+          fi
+
+          echo "APP_VERSION=$APP_VERSION" >> $GITHUB_ENV
+          echo "Building version: $APP_VERSION"
       - uses: actions/setup-java@v4
         with:
           java-version: '21'
           java-package: jdk
-          architecture: x64
+          architecture: ${{ matrix.arch }}
           distribution: oracle
       - name: Download fat jar
         uses: actions/download-artifact@v4
@@ -122,13 +188,26 @@ jobs:
           path: app/build/libs/
       - name: Package jar as debian package (amd64)
         run: 'jpackage --main-jar data-caterer.jar "@misc/jpackage/jpackage.cfg" "@misc/jpackage/jpackage-linux.cfg"'
-      - name: List directory
-        run: ls -lart
+      - name: Rename deb with version
+        run: |
+          DEB_FILE=$(ls datacaterer_*_amd64.deb 2>/dev/null | head -n 1)
+          if [ -n "$DEB_FILE" ]; then
+            echo "Found deb file: $DEB_FILE"
+            mv "$DEB_FILE" datacaterer_${{ env.APP_VERSION }}_amd64.deb
+            echo "Renamed to: datacaterer_${{ env.APP_VERSION }}_amd64.deb"
+          else
+            echo "No deb file found"
+            echo "Current directory:"
+            pwd
+            echo "Files in current directory:"
+            ls -lart
+            exit 1
+          fi
       - name: Upload deb (amd64)
         uses: actions/upload-artifact@v4
         with:
           name: data-caterer-linux-amd64
-          path: "datacaterer_1.0.0_amd64.deb"
+          path: "datacaterer_${{ env.APP_VERSION }}_amd64.deb"
           overwrite: true
 
   linux-arm64:
@@ -140,25 +219,29 @@ jobs:
         with:
           fetch-depth: 2
       - name: Set version
-        run: echo "APP_VERSION=$(grep version gradle.properties | cut -d= -f2)" >> $GITHUB_ENV
+        run: |
+          BASE_VERSION=$(grep version gradle.properties | cut -d= -f2)
+          COMMIT_HASH=$(git rev-parse --short HEAD)
 
-      # Set up QEMU for cross-platform builds
+          if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+            APP_VERSION="$BASE_VERSION"
+          else
+            APP_VERSION="$BASE_VERSION-$COMMIT_HASH"
+          fi
+
+          echo "APP_VERSION=$APP_VERSION" >> $GITHUB_ENV
+          echo "Building version: $APP_VERSION"
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
         with:
           platforms: arm64
-
-      # Set up Docker Buildx
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
-
       - name: Download fat jar
         uses: actions/download-artifact@v4
         with:
           name: jars
           path: app/build/libs/
-
-      # Use Docker container with ARM64 JDK for jpackage
       - name: Package jar as debian package (arm64)
         run: |
           docker run --rm --platform linux/arm64 \
@@ -166,19 +249,24 @@ jobs:
             -w /workspace \
             arm64v8/eclipse-temurin:21-jdk \
             bash -c "apt-get update && apt-get install -y fakeroot && jpackage --main-jar data-caterer.jar '@misc/jpackage/jpackage.cfg' '@misc/jpackage/jpackage-linux.cfg'"
-
-      - name: List directory
-        run: ls -lart
-
-      - name: Rename output to indicate arm64
+      - name: Rename output to indicate version and architecture (arm64)
         run: |
-          if [ -f "datacaterer_1.0.0_amd64.deb" ]; then
-            mv datacaterer_1.0.0_amd64.deb datacaterer_1.0.0_arm64.deb
+          DEB_FILE=$(ls datacaterer_*_arm64.deb 2>/dev/null | head -n 1)
+          if [ -n "$DEB_FILE" ]; then
+            echo "Found deb file: $DEB_FILE"
+            mv "$DEB_FILE" datacaterer_${{ env.APP_VERSION }}_arm64.deb
+            echo "Renamed to: datacaterer_${{ env.APP_VERSION }}_arm64.deb"
+          else
+            echo "No deb file found"
+            echo "Current directory:"
+            pwd
+            echo "Files in current directory:"
+            ls -lart
+            exit 1
           fi
-
       - name: Upload deb (arm64)
         uses: actions/upload-artifact@v4
         with:
           name: data-caterer-linux-arm64
-          path: "datacaterer_1.0.0_arm64.deb"
+          path: "datacaterer_${{ env.APP_VERSION }}_arm64.deb"
           overwrite: true

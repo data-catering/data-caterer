@@ -1,6 +1,8 @@
-import {createAccordionItem, createButton, createButtonGroup, createToast} from "../shared.js";
+import {createAccordionItem, createButton, createButtonGroup, createToast, initToastHistoryListeners} from "../shared.js";
+import {apiFetch} from "../config.js";
 
 let historyContainer = document.getElementById("history-container");
+initToastHistoryListeners();
 const tableHeaders = [{
     field: "status",
     title: "Status",
@@ -31,7 +33,7 @@ const tableHeaders = [{
     title: "Report",
 }];
 
-fetch("http://localhost:9898/run/history", {
+apiFetch("/run/history", {
     method: "GET"
 })
     .then(r => {
@@ -64,7 +66,7 @@ fetch("http://localhost:9898/run/history", {
                 let latestRunUpdate = runUpdates[runUpdates.length - 1];
                 latestRunUpdate["createdTs"] = new Date(latestRunUpdate["createdTs"]).toISOString();
                 latestRunUpdate["updatedTs"] = new Date(latestRunUpdate["updatedTs"]).toISOString();
-                let reportHref = `http://localhost:9898/report/${latestRunUpdate["id"]}/index.html`;
+                let reportHref = `/report/${latestRunUpdate["id"]}/index.html`;
                 latestRunUpdate["reportLink"] = latestRunUpdate["reportLink"] === "" ? "" : `<a href=${reportHref} target="_blank" rel="noopener noreferrer">Report</a>`;
                 let generationSummary = Array.from(latestRunUpdate["generationSummary"])
                     .filter(g => g.length > 3 && g[0] !== "")
@@ -84,7 +86,7 @@ fetch("http://localhost:9898/run/history", {
 
             let editButton = createButton(`plan-edit-${planRunsByIdTableId}`, "Plan edit", "btn btn-primary", "Edit");
             editButton.addEventListener("click", function() {
-                location.href = `http://localhost:9898/?plan-name=${planName}`;
+                location.href = `/?plan-name=${planName}`;
             });
             let buttonGroup = createButtonGroup(editButton);
             let header = planHistoryContainer.querySelector(".accordion-header");

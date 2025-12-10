@@ -91,21 +91,34 @@ cd example && ./run.sh simple-json.yaml
 
 ### Mac
 
-1. [Mac download](https://nightly.link/data-catering/data-caterer/workflows/build/main/data-caterer-mac.zip)
+Choose the download for your Mac architecture:
+
+- **Intel (x86_64)**: [Download](https://nightly.link/data-catering/data-caterer/workflows/build/main/data-caterer-macos-x86_64.zip)
+- **Apple Silicon (M1/M2/M3)**: [Download](https://nightly.link/data-catering/data-caterer/workflows/build/main/data-caterer-macos-aarch64.zip)
+
+1. Download the appropriate version for your Mac
 2. Drag Data Caterer to your Applications folder and double-click to run
 3. If your browser doesn't open, go to [http://localhost:9898](http://localhost:9898) in your preferred browser
 
 ### Windows
 
-1. [Windows download](https://nightly.link/data-catering/data-caterer/workflows/build/main/data-caterer-windows.zip)
-2. Click on 'More info' then at the bottom, click 'Run anyway'
-3. Go to '/Program Files/DataCaterer' folder and run DataCaterer application
-4. If your browser doesn't open, go to [http://localhost:9898](http://localhost:9898) in your preferred browser
+1. [Windows x64 download](https://nightly.link/data-catering/data-caterer/workflows/build/main/data-caterer-windows-x86_64.zip)
+2. After downloading, go to 'Downloads' folder and 'Extract All' from data-caterer-windows-x86_64
+3. Double-click the installer to install Data Caterer
+4. Click on 'More info' then at the bottom, click 'Run anyway'
+5. Go to '/Program Files/DataCaterer' folder and run DataCaterer application
+6. If your browser doesn't open, go to [http://localhost:9898](http://localhost:9898) in your preferred browser
 
 ### Linux
 
-1. [Linux download](https://nightly.link/data-catering/data-caterer/workflows/build/main/data-caterer-linux.zip)
-2. If your browser doesn't open, go to [http://localhost:9898](http://localhost:9898) in your preferred browser
+Choose the download for your Linux architecture:
+
+- **amd64 (x86_64)**: [Download](https://nightly.link/data-catering/data-caterer/workflows/build/main/data-caterer-linux-amd64.zip)
+- **arm64 (aarch64)**: [Download](https://nightly.link/data-catering/data-caterer/workflows/build/main/data-caterer-linux-arm64.zip)
+
+1. Download the appropriate version for your Linux system
+2. Extract and install the debian package
+3. If your browser doesn't open, go to [http://localhost:9898](http://localhost:9898) in your preferred browser
 
 #### Report
 

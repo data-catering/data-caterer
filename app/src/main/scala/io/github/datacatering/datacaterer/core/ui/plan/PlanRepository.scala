@@ -11,6 +11,7 @@ import io.github.datacatering.datacaterer.core.parser.PlanParser
 import io.github.datacatering.datacaterer.core.plan.{PlanProcessor, YamlPlanRun}
 import io.github.datacatering.datacaterer.core.ui.config.UiConfiguration.INSTALL_DIRECTORY
 import io.github.datacatering.datacaterer.core.ui.mapper.ConfigurationMapper.configurationMapping
+import io.github.datacatering.datacaterer.core.ui.mapper.StepOptionsMapper
 import io.github.datacatering.datacaterer.core.ui.model.{ConfigurationRequest, Connection, EnhancedPlanRunRequest, PlanRunExecution, PlanRunRequest, PlanRunRequests, SampleResponse, SchemaSampleRequest}
 import io.github.datacatering.datacaterer.core.ui.plan.PlanResponseHandler.{KO, OK, Response}
 import io.github.datacatering.datacaterer.core.ui.resource.SparkSessionManager
@@ -97,8 +98,16 @@ object PlanRepository {
           runEnhancedPlan(request, replyTo, executionSaveFolder, planSaveFolder)
           Behaviors.same
         case SavePlan(planRunRequest, replyTo) =>
-          savePlan(planRunRequest, planSaveFolder)
-          replyTo.foreach(_ ! PlanSaved(planRunRequest.plan.name))
+          try {
+            LOGGER.info(s"Saving plan, plan-name=${planRunRequest.plan.name}")
+            savePlan(planRunRequest, planSaveFolder)
+            LOGGER.info(s"Plan saved successfully, plan-name=${planRunRequest.plan.name}")
+            replyTo.foreach(_ ! PlanSaved(planRunRequest.plan.name))
+          } catch {
+            case ex: Exception =>
+              LOGGER.error(s"Failed to save plan, plan-name=${planRunRequest.plan.name}", ex)
+              throw ex // Re-throw to let supervisor handle it
+          }
           Behaviors.same
         case GetPlans(replyTo) =>
           replyTo ! getPlans(planSaveFolder)
@@ -195,7 +204,7 @@ object PlanRepository {
       .map(t => t.name -> t.dataSourceName)
       .toMap
 
-    val dataSourceConnectionInfo = getConnectionDetails(taskToDataSourceMap)
+    val dataSourceConnectionInfo = getConnectionDetails(taskToDataSourceMap, baseDirectory)
       .map(c => {
         val additionalConfig = c.`type` match {
           case POSTGRES => Map(FORMAT -> JDBC, DRIVER -> POSTGRES_DRIVER)
@@ -207,8 +216,8 @@ object PlanRepository {
       .toMap
 
     //find tasks and validation using data source connection
-    val updatedValidation = validationWithConnectionInfo(parsedRequest, dataSourceConnectionInfo)
-    val updatedTasks = tasksWithConnectionInfo(parsedRequest, taskToDataSourceMap, dataSourceConnectionInfo)
+    val updatedValidation = validationWithConnectionInfo(parsedRequest, dataSourceConnectionInfo, baseDirectory)
+    val updatedTasks = tasksWithConnectionInfo(parsedRequest, taskToDataSourceMap, dataSourceConnectionInfo, baseDirectory)
     val updatedConfiguration = parsedRequest.configuration
       .map(c => configurationMapping(c, baseDirectory))
       .getOrElse(DataCatererConfigurationBuilder())
@@ -218,14 +227,15 @@ object PlanRepository {
 
   private def validationWithConnectionInfo(
                                             parsedRequest: PlanRunRequest,
-                                            dataSourceConnectionInfo: Map[String, Map[String, String]]
+                                            dataSourceConnectionInfo: Map[String, Map[String, String]],
+                                            baseDirectory: String
                                           ): List[ValidationConfiguration] = {
     parsedRequest.validation.map(yamlV => {
       val updatedDataSources = yamlV.dataSources.map(ds => {
         val dataSourceName = ds._1
         val connectionInfo = dataSourceConnectionInfo(dataSourceName)
         val updatedValidationOptions = ds._2.map(yamlDs => {
-          val metadataOpts = getMetadataSourceInfo(dataSourceConnectionInfo, yamlDs.options)
+          val metadataOpts = getMetadataSourceInfo(dataSourceConnectionInfo, yamlDs.options, baseDirectory)
           val allOpts = yamlDs.options ++ connectionInfo ++ metadataOpts
           val listValidationBuilders = yamlDs.validations.map {
             case yamlUpstreamDataSourceValidation: YamlUpstreamDataSourceValidation =>
@@ -245,7 +255,8 @@ object PlanRepository {
   private def tasksWithConnectionInfo(
                                        parsedRequest: PlanRunRequest,
                                        taskToDataSourceMap: Map[String, String],
-                                       dataSourceConnectionInfo: Map[String, Map[String, String]]
+                                       dataSourceConnectionInfo: Map[String, Map[String, String]],
+                                       baseDirectory: String
                                      ): List[Task] = {
     val updatedTasks = parsedRequest.tasks.map(s => {
       val taskName = s.name
@@ -254,23 +265,29 @@ object PlanRepository {
       }
       val dataSourceName = taskToDataSourceMap(taskName)
       val connectionInfo = dataSourceConnectionInfo(dataSourceName)
-      val metadataOpts = getMetadataSourceInfo(dataSourceConnectionInfo, s.options)
-      val updatedStep = s.copy(options = s.options ++ connectionInfo ++ metadataOpts)
+      val metadataOpts = getMetadataSourceInfo(dataSourceConnectionInfo, s.options, baseDirectory)
+      
+      // Map UI options to data source format using StepOptionsMapper
+      val format = connectionInfo.getOrElse(FORMAT, "")
+
+      val baseOptions = s.options ++ connectionInfo ++ metadataOpts
+      val mappedOptions = StepOptionsMapper.mapStepOptions(baseOptions, format)
+      val updatedStep = s.copy(options = mappedOptions)
       Task(taskName, List(updatedStep))
     })
     updatedTasks
   }
 
-  private def getMetadataSourceInfo(dataSourceConnectionInfo: Map[String, Map[String, String]], options: Map[String, String]): Map[String, String] = {
+  private def getMetadataSourceInfo(dataSourceConnectionInfo: Map[String, Map[String, String]], options: Map[String, String], baseDirectory: String): Map[String, String] = {
     if (options.contains(METADATA_SOURCE_NAME)) {
-      ConnectionService.getMetadataSourceInfo(options(METADATA_SOURCE_NAME), dataSourceConnectionInfo)
+      ConnectionService.getMetadataSourceInfo(options(METADATA_SOURCE_NAME), dataSourceConnectionInfo, baseDirectory)
     } else {
       Map()
     }
   }
 
-  private def getConnectionDetails(taskToDataSourceMap: Map[String, String]): List[Connection] = {
-    ConnectionService.getConnections(taskToDataSourceMap.values.toList, masking = false)
+  private def getConnectionDetails(taskToDataSourceMap: Map[String, String], baseDirectory: String): List[Connection] = {
+    ConnectionService.getConnections(taskToDataSourceMap.values.toList, masking = false, baseDirectory)
   }
 
   private def savePlanRunExecution(

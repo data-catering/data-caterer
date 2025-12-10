@@ -44,6 +44,8 @@ api_validation_report.txt
 # UI
 ui/node_modules
 ui/coverage
+.playwright*
+node_modules/
 
 # Docs build caches
 .docs
