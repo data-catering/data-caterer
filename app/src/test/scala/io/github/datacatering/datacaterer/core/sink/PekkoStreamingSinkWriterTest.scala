@@ -213,12 +213,12 @@ class PekkoStreamingSinkWriterTest extends SparkSuite with Matchers with BeforeA
     implicit val as: ActorSystem = ActorSystem()
     implicit val materializer: Materializer = Materializer(as)
     implicit val ec: scala.concurrent.ExecutionContext = scala.concurrent.ExecutionContext.global
-    
+
     try {
       val emptyData = List.empty[Int]
       val rate = 10
       val processedCount = new AtomicInteger(0)
-      
+
       val result = Source(emptyData)
         .throttle(rate, 1.second)
         .mapAsync(parallelism = Math.min(rate, 100)) { item =>
@@ -228,16 +228,33 @@ class PekkoStreamingSinkWriterTest extends SparkSuite with Matchers with BeforeA
           }
         }
         .runWith(PekkoSink.ignore)
-      
+
       Await.result(result, 5.seconds)
-      
+
       // Should process 0 records without error
       processedCount.get() shouldBe 0
-      
+
       LOGGER.info("Empty source handled gracefully")
-      
+
     } finally {
       as.terminate()
+    }
+  }
+
+  test("Shared ActorSystem - writer can be constructed with shared system") {
+    val sharedSystem = ActorSystem("SharedTestSystem")
+
+    try {
+      // Verify writer can be constructed with a shared actor system
+      val writerWithShared = new PekkoStreamingSinkWriter(foldersConfig, Some(sharedSystem))
+
+      // Verify writer can also be constructed without a shared system (backwards compatibility)
+      val writerWithoutShared = new PekkoStreamingSinkWriter(foldersConfig)
+
+      LOGGER.info("PekkoStreamingSinkWriter constructed successfully with both shared and non-shared ActorSystem")
+
+    } finally {
+      sharedSystem.terminate()
     }
   }
 }

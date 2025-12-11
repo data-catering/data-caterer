@@ -17,19 +17,42 @@ import scala.util.{Failure, Success, Try}
 
 /**
  * Pekko-based streaming sink writer with rate control for real-time sinks.
- * 
+ *
  * SinkRouter ensures only real-time formats (HTTP, JMS, Kafka, databases) reach this writer.
  * Streams rows with Pekko throttle for precise rate control.
+ *
+ * Note: This class accepts an optional shared ActorSystem to avoid the overhead of
+ * creating/destroying actor systems per call. If no ActorSystem is provided, one will
+ * be created and terminated for each call (backwards-compatible behavior).
+ *
+ * @param foldersConfig Configuration for folder paths
+ * @param sharedActorSystem Optional shared ActorSystem for reuse across calls
+ * @param sparkSession Implicit SparkSession
  */
-class PekkoStreamingSinkWriter(foldersConfig: FoldersConfig)(implicit val sparkSession: SparkSession) {
+class PekkoStreamingSinkWriter(
+  foldersConfig: FoldersConfig,
+  sharedActorSystem: Option[ActorSystem] = None
+)(implicit val sparkSession: SparkSession) {
 
   private val LOGGER = Logger.getLogger(getClass.getName)
 
   /**
+   * Maximum parallelism for async operations. Limits concurrent requests to prevent
+   * overwhelming downstream services and manage memory usage from in-flight requests.
+   */
+  private val MAX_ASYNC_PARALLELISM = 100
+
+  /**
+   * Maximum timeout duration in seconds for streaming operations.
+   * Caps the dynamic timeout to prevent indefinitely long waits.
+   */
+  private val MAX_STREAMING_TIMEOUT_SECONDS = 300
+
+  /**
    * Saves data with Pekko throttling for rate control to real-time sinks.
-   * 
+   *
    * Note: SinkRouter ensures only real-time formats are routed here.
-   * 
+   *
    * @param dataSourceName Name of the data source
    * @param df DataFrame containing pre-generated data
    * @param format Data format/sink type (HTTP, JMS, Kafka, etc.)
@@ -48,7 +71,13 @@ class PekkoStreamingSinkWriter(foldersConfig: FoldersConfig)(implicit val sparkS
     rate: Int,
     startTime: LocalDateTime
   ): SinkResult = {
-    implicit val as: ActorSystem = ActorSystem()
+    // Use shared actor system if provided, otherwise create a new one
+    val (actorSystem, ownsActorSystem) = sharedActorSystem match {
+      case Some(as) => (as, false)
+      case None => (ActorSystem("PekkoStreamingSinkWriter"), true)
+    }
+
+    implicit val as: ActorSystem = actorSystem
     implicit val materializer: Materializer = Materializer(as)
     implicit val ec: scala.concurrent.ExecutionContext = as.dispatcher
     val executionStartTime = System.currentTimeMillis()
@@ -68,7 +97,7 @@ class PekkoStreamingSinkWriter(foldersConfig: FoldersConfig)(implicit val sparkS
           val httpProcessor = sinkProcessor.asInstanceOf[http.HttpSinkProcessor]
           Source(dataToPush)
             .throttle(permitsPerSecond, 1.second)
-            .mapAsync(parallelism = Math.min(permitsPerSecond, 100)) { row =>
+            .mapAsync(parallelism = Math.min(permitsPerSecond, MAX_ASYNC_PARALLELISM)) { row =>
               httpProcessor.pushRowToSinkAsync(row).transform(
                 success => { responses += Success(success); success },
                 failure => { responses += Failure(failure); throw failure }
@@ -80,7 +109,7 @@ class PekkoStreamingSinkWriter(foldersConfig: FoldersConfig)(implicit val sparkS
           val jmsProcessor = sinkProcessor.asInstanceOf[jms.JmsSinkProcessor]
           Source(dataToPush)
             .throttle(permitsPerSecond, 1.second)
-            .mapAsync(parallelism = Math.min(permitsPerSecond, 100)) { row =>
+            .mapAsync(parallelism = Math.min(permitsPerSecond, MAX_ASYNC_PARALLELISM)) { row =>
               jmsProcessor.pushRowToSinkAsync(row).transform(
                 success => { responses += Success("{}"); success },
                 failure => { responses += Failure(failure); throw failure }
@@ -106,7 +135,7 @@ class PekkoStreamingSinkWriter(foldersConfig: FoldersConfig)(implicit val sparkS
       } else {
         10.0
       }
-      val timeoutDuration = Math.min(estimatedDurationSeconds.toInt, 300).seconds // Cap at 5 minutes
+      val timeoutDuration = Math.min(estimatedDurationSeconds.toInt, MAX_STREAMING_TIMEOUT_SECONDS).seconds
       LOGGER.debug(s"Calculated timeout for streaming: ${timeoutDuration.toSeconds}s (records=${dataToPush.size}, rate=$permitsPerSecond/sec)")
 
       Await.result(sourceResult, timeoutDuration)
@@ -160,6 +189,20 @@ class PekkoStreamingSinkWriter(foldersConfig: FoldersConfig)(implicit val sparkS
           isSuccess = false
         )
     } finally {
+      // Only terminate the actor system if we created it (not shared)
+      if (ownsActorSystem) {
+        as.terminate()
+      }
+    }
+  }
+
+  /**
+   * Shutdown the shared actor system if one was provided.
+   * Should be called when the writer is no longer needed.
+   */
+  def shutdown(): Unit = {
+    sharedActorSystem.foreach { as =>
+      LOGGER.info("Shutting down shared actor system")
       as.terminate()
     }
   }

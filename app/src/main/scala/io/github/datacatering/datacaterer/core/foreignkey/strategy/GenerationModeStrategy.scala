@@ -125,17 +125,34 @@ class GenerationModeStrategy(generationMode: String = "all-exist") extends Forei
       val shouldInvalidate = (col("_combination_id") % totalCombinations).bitwiseAND(1 << fieldIdx) === 0
 
       // Generate random invalid values for this field
+      // Use hash-based approach when seed is provided for deterministic behavior across environments
+      // (Spark's rand(seed) is partition-dependent and not truly deterministic)
       val dataType = result.schema(targetField).dataType
-      val randExpr = relation.config.seed.map(s => rand(s)).getOrElse(rand())
       val invalidValue = dataType match {
         case StringType =>
           // Use deterministic hash-based approach when seed is available
           relation.config.seed match {
-            case Some(s) => concat(lit("INVALID_"), expr(s"MD5(CONCAT('$s', CAST(monotonically_increasing_id() AS STRING)))"))
+            case Some(s) =>
+              val allCols = result.columns.map(col)
+              concat(lit("INVALID_"), substring(md5(concat(allCols :+ lit(s): _*)), 1, 8))
             case None => concat(lit("INVALID_"), expr("uuid()"))
           }
-        case IntegerType => (randExpr * 999999999).cast(IntegerType)
-        case LongType => (randExpr * 999999999999L).cast(LongType)
+        case IntegerType =>
+          relation.config.seed match {
+            case Some(s) =>
+              val allCols = result.columns.map(col)
+              val hashExpr = xxhash64(allCols :+ lit(s) :+ lit(fieldIdx): _*)
+              (abs(hashExpr) % 999999999).cast(IntegerType)
+            case None => (rand() * 999999999).cast(IntegerType)
+          }
+        case LongType =>
+          relation.config.seed match {
+            case Some(s) =>
+              val allCols = result.columns.map(col)
+              val hashExpr = xxhash64(allCols :+ lit(s) :+ lit(fieldIdx): _*)
+              abs(hashExpr) % 999999999999L
+            case None => (rand() * 999999999999L).cast(LongType)
+          }
         case _ => lit(null).cast(dataType)
       }
 

@@ -12,6 +12,17 @@ import scala.reflect.io.Directory
 
 class SinkFactoryTest extends SparkSuite {
 
+  // Helper to create temp file path with given suffix
+  private def createTempFilePath(prefix: String, suffix: String): String = {
+    val tempDir = Files.createTempDirectory(prefix)
+    s"${tempDir.toString}/$prefix$suffix"
+  }
+
+  // Helper to create temp directory path
+  private def createTempDirPath(prefix: String): String = {
+    Files.createTempDirectory(prefix).toString
+  }
+
   private val sampleData = Seq(
     Transaction("acc123", "peter", "txn1", Date.valueOf("2020-01-01"), 10.0),
     Transaction("acc123", "peter", "txn2", Date.valueOf("2020-01-01"), 50.0),
@@ -32,8 +43,7 @@ class SinkFactoryTest extends SparkSuite {
   }
 
   test("Can save data in Delta Lake format") {
-    val path = "/tmp/delta-test"
-    new Directory(new File(path)).deleteRecursively()
+    val path = createTempDirPath("delta-test")
     val sinkFactory = new SinkFactory(FlagsConfig(), MetadataConfig(), FoldersConfig())
     val step = Step(options = Map(FORMAT -> DELTA, PATH -> path))
     val res = sinkFactory.pushToSink(df, "delta-data-source", step, LocalDateTime.now())
@@ -46,7 +56,8 @@ class SinkFactoryTest extends SparkSuite {
 
   test("Should provide helpful error message when format is missing from step options") {
     val sinkFactory = new SinkFactory(FlagsConfig(), MetadataConfig(), FoldersConfig())
-    val stepWithoutFormat = Step(options = Map(PATH -> "/tmp/test-path", SAVE_MODE -> "overwrite"))
+    val testPath = createTempDirPath("test-path")
+    val stepWithoutFormat = Step(options = Map(PATH -> testPath, SAVE_MODE -> "overwrite"))
     
     val exception = intercept[IllegalArgumentException] {
       sinkFactory.pushToSink(df, "test-data-source", stepWithoutFormat, LocalDateTime.now())
@@ -81,7 +92,7 @@ class SinkFactoryTest extends SparkSuite {
   }
 
   test("Should consolidate part files into single JSON file when path has .json suffix") {
-    val filePath = "/tmp/output_test.json"
+    val filePath = createTempFilePath("output_test", ".json")
     val path = Paths.get(filePath)
 
     // Clean up any existing file
@@ -119,7 +130,7 @@ class SinkFactoryTest extends SparkSuite {
   }
 
   test("Should consolidate part files into single CSV file when path has .csv suffix") {
-    val filePath = "/tmp/output_test.csv"
+    val filePath = createTempFilePath("output_test", ".csv")
     val path = Paths.get(filePath)
 
     // Clean up any existing file
@@ -166,7 +177,7 @@ class SinkFactoryTest extends SparkSuite {
   }
 
   test("Should consolidate part files from multiple batches into single JSON file") {
-    val filePath = "/tmp/multibatch_output_test.json"
+    val filePath = createTempFilePath("multibatch_output_test", ".json")
     val path = Paths.get(filePath)
 
     // Clean up any existing file
@@ -214,7 +225,7 @@ class SinkFactoryTest extends SparkSuite {
   }
 
   test("Should consolidate part files into single Parquet file when path has .parquet suffix") {
-    val filePath = "/tmp/output_test.parquet"
+    val filePath = createTempFilePath("output_test", ".parquet")
     val path = Paths.get(filePath)
 
     // Clean up any existing file
@@ -251,7 +262,7 @@ class SinkFactoryTest extends SparkSuite {
   }
 
   test("Should handle finalizePendingConsolidations when batches are incomplete") {
-    val filePath = "/tmp/incomplete_batch_test.json"
+    val filePath = createTempFilePath("incomplete_batch_test", ".json")
     val path = Paths.get(filePath)
 
     // Clean up any existing file
@@ -288,9 +299,8 @@ class SinkFactoryTest extends SparkSuite {
   }
 
   test("Should NOT consolidate when path has no file suffix (directory mode)") {
-    val dirPath = "/tmp/output_test_directory"
+    val dirPath = createTempDirPath("output_test_directory")
     val directory = new Directory(new File(dirPath))
-    directory.deleteRecursively()
 
     val sinkFactory = new SinkFactory(FlagsConfig(), MetadataConfig(), FoldersConfig())
     val step = Step(options = Map(FORMAT -> JSON, PATH -> dirPath))
@@ -317,7 +327,7 @@ class SinkFactoryTest extends SparkSuite {
   }
 
   test("Should consolidate CSV with headers and only include header once") {
-    val filePath = "/tmp/output_test_with_headers.csv"
+    val filePath = createTempFilePath("output_test_with_headers", ".csv")
     val path = Paths.get(filePath)
 
     // Clean up any existing file
@@ -375,7 +385,7 @@ class SinkFactoryTest extends SparkSuite {
   }
 
   test("Should handle CSV without headers when consolidating multiple part files") {
-    val filePath = "/tmp/output_test_no_headers.csv"
+    val filePath = createTempFilePath("output_test_no_headers", ".csv")
     val path = Paths.get(filePath)
 
     // Clean up any existing file
@@ -420,7 +430,7 @@ class SinkFactoryTest extends SparkSuite {
   }
 
   test("Should handle CSV with headers when only single partition exists") {
-    val filePath = "/tmp/output_test_single_partition.csv"
+    val filePath = createTempFilePath("output_test_single_partition", ".csv")
     val path = Paths.get(filePath)
 
     // Clean up any existing file

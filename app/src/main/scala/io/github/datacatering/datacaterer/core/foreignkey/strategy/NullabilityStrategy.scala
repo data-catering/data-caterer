@@ -92,10 +92,24 @@ class NullabilityStrategy extends PostProcessingStrategy {
     }
 
     // Add a column to determine which records get null FKs
+    // For deterministic behavior with seed, we use a hash-based approach instead of rand()
+    // because Spark's rand(seed) is partition-dependent and not truly deterministic across environments
     val withNullFlag = strategy match {
       case "random" =>
-        val randExpr = uniqueSeed.map(s => rand(s)).getOrElse(rand())
-        targetDf.withColumn("_should_null_fk", randExpr < percentage)
+        uniqueSeed match {
+          case Some(s) =>
+            // Use hash-based deterministic selection: hash all columns + seed, then check if < percentage
+            // This ensures the same rows are selected regardless of partitioning
+            val allCols = targetDf.columns.map(col)
+            // Use xxhash64 for better distribution (returns Long), then normalize to [0, 1)
+            val hashExpr = xxhash64(allCols :+ lit(s): _*)
+            // Convert to unsigned by bitwise AND with max long, then normalize
+            val normalizedHash = (hashExpr.bitwiseAND(lit(Long.MaxValue))).cast("double") / lit(Long.MaxValue.toDouble)
+            targetDf.withColumn("_should_null_fk", normalizedHash < percentage)
+          case None =>
+            // No seed provided - use non-deterministic rand()
+            targetDf.withColumn("_should_null_fk", rand() < percentage)
+        }
 
       case "head" =>
         // First N% of records get null FKs
@@ -117,8 +131,15 @@ class NullabilityStrategy extends PostProcessingStrategy {
 
       case _ =>
         LOGGER.warn(s"Unknown nullability strategy: $strategy, using random")
-        val randExpr = uniqueSeed.map(s => rand(s)).getOrElse(rand())
-        targetDf.withColumn("_should_null_fk", randExpr < percentage)
+        uniqueSeed match {
+          case Some(s) =>
+            val allCols = targetDf.columns.map(col)
+            val hashExpr = xxhash64(allCols :+ lit(s): _*)
+            val normalizedHash = (hashExpr.bitwiseAND(lit(Long.MaxValue))).cast("double") / lit(Long.MaxValue.toDouble)
+            targetDf.withColumn("_should_null_fk", normalizedHash < percentage)
+          case None =>
+            targetDf.withColumn("_should_null_fk", rand() < percentage)
+        }
     }
 
     // Apply nulls to target fields

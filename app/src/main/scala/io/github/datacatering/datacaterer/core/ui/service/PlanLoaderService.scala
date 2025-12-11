@@ -51,7 +51,7 @@ object PlanLoaderService {
         plan
       case Failure(_) =>
         // Try YAML
-        val tryYaml = loadYamlPlanByName(planName)
+        val tryYaml = loadYamlPlanByName(planName, planDirectory)
         tryYaml match {
           case Success(plan) =>
             LOGGER.debug(s"Loaded YAML plan, plan-name=$planName")
@@ -81,11 +81,14 @@ object PlanLoaderService {
 
   /**
    * Load a YAML plan by plan name (searches all YAML plan files for matching name)
+   *
+   * @param planName Name of the plan to load
+   * @param planDirectory Optional custom plan directory (defaults to configured planFilePath)
    */
-  def loadYamlPlanByName(planName: String)(implicit sparkSession: SparkSession): Try[PlanRunRequest] = {
+  def loadYamlPlanByName(planName: String, planDirectory: Option[String] = None)(implicit sparkSession: SparkSession): Try[PlanRunRequest] = {
     Try {
       // First try finding a specific YAML plan file by name using enhanced resolution
-      val planFilePath = ConfigParser.foldersConfig.planFilePath
+      val planFilePath = planDirectory.getOrElse(ConfigParser.foldersConfig.planFilePath)
       val yamlPlanFilePath = PlanParser.findYamlPlanFile(planFilePath, planName)
 
       yamlPlanFilePath match {
@@ -94,9 +97,11 @@ object PlanLoaderService {
           val parsedPlan = PlanParser.parsePlan(planPath)
           convertYamlPlanToPlanRunRequest(parsedPlan, planName)
         case None =>
-          // Fallback to searching all YAML plans
+          // Fallback to searching all YAML plans in the specified directory
           LOGGER.debug(s"YAML plan file not found by name search, scanning all YAML plans, plan-name=$planName")
-          val allYamlPlans = getAllYamlPlansAsPlanRunRequests()
+          // When a custom directory is provided, don't also search the configured path
+          val includeConfiguredPath = planDirectory.isEmpty
+          val allYamlPlans = getAllYamlPlansAsPlanRunRequests(planDirectory, includeConfiguredPath)
           allYamlPlans.find(_.plan.name == planName) match {
             case Some(plan) => plan
             case None => throw new java.io.FileNotFoundException(s"YAML plan not found with name: $planName")

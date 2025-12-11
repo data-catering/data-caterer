@@ -6,7 +6,7 @@ object UiConfiguration {
 
   private val LOGGER = Logger.getLogger(getClass.getName)
 
-  val INSTALL_DIRECTORY: String = getInstallDirectory
+  def INSTALL_DIRECTORY: String = getInstallDirectory
 
   /**
    * CORS Configuration

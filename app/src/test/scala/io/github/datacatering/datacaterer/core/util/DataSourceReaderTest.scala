@@ -9,14 +9,16 @@ import java.nio.file.{Files, Paths}
 
 class DataSourceReaderTest extends SparkSuite with BeforeAndAfterEach {
 
-  private val testDataPath = "/tmp/data-caterer-test"
-  private val csvTestFile = s"$testDataPath/reference.csv"
-  private val jsonTestFile = s"$testDataPath/reference.json"
+  private var testDataPath: String = _
+  private var csvTestFile: String = _
+  private var jsonTestFile: String = _
 
   override def beforeEach(): Unit = {
     super.beforeEach()
-    // Create test directory
-    new File(testDataPath).mkdirs()
+    // Create test directory using temp directory
+    testDataPath = Files.createTempDirectory("data-caterer-test").toString
+    csvTestFile = s"$testDataPath/reference.csv"
+    jsonTestFile = s"$testDataPath/reference.json"
     
     // Create test CSV file
     val csvContent = "name,email\nAlice,alice@example.com\nBob,bob@example.com\nCharlie,charlie@example.com"

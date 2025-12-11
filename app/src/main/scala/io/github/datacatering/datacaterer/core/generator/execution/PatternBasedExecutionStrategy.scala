@@ -17,6 +17,12 @@ class PatternBasedExecutionStrategy(
                                    ) extends ExecutionStrategy {
 
   private val LOGGER = Logger.getLogger(getClass.getName)
+
+  /**
+   * Threshold for rate change detection. Only update the rate limiter when the rate
+   * changes by more than this fraction (10%) to avoid excessive rate limiter recreation.
+   */
+  private val RATE_CHANGE_THRESHOLD = 0.1
   private val metricsCollector = new PerformanceMetricsCollector()
 
   // Extract pattern configuration from first step with pattern configured
@@ -85,9 +91,9 @@ class PatternBasedExecutionStrategy(
     val elapsedSeconds = durationTracker.getElapsedTimeMs / 1000.0
     val targetRate = loadPattern.getRateAt(elapsedSeconds, totalDurationSeconds)
 
-    // Only create a new rate limiter if the rate has changed significantly (>10% change or first time)
+    // Only create a new rate limiter if the rate has changed significantly or this is the first time
     val shouldUpdate = currentRateLimiter.isEmpty ||
-      math.abs(targetRate - currentRate).toDouble / currentRate > 0.1
+      math.abs(targetRate - currentRate).toDouble / currentRate > RATE_CHANGE_THRESHOLD
 
     if (shouldUpdate) {
       currentRate = targetRate

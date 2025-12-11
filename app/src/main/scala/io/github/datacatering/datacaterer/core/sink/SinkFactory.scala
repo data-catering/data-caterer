@@ -2,6 +2,7 @@ package io.github.datacatering.datacaterer.core.sink
 
 import io.github.datacatering.datacaterer.api.model.Constants.{DELTA, DELTA_LAKE_SPARK_CONF, DRIVER, FORMAT, ICEBERG, ICEBERG_SPARK_CONF, JDBC, POSTGRES_DRIVER, ROWS_PER_SECOND}
 import io.github.datacatering.datacaterer.api.model.{FlagsConfig, FoldersConfig, MetadataConfig, SinkResult, Step}
+import org.apache.pekko.actor.ActorSystem
 import io.github.datacatering.datacaterer.api.util.ConfigUtil
 import io.github.datacatering.datacaterer.core.exception.FailedSaveDataException
 import io.github.datacatering.datacaterer.core.model.Constants.{BATCH, DEFAULT_ROWS_PER_SECOND, FAILED, FINISHED, STARTED}
@@ -36,7 +37,10 @@ class SinkFactory(
   private val fileConsolidator = FileConsolidator()
   private val transformationApplicator = TransformationApplicator()
   private val batchSinkWriter = new BatchSinkWriter(fileConsolidator, transformationApplicator)
-  private val pekkoStreamingSinkWriter = new PekkoStreamingSinkWriter(foldersConfig)
+
+  // Shared ActorSystem for PekkoStreamingSinkWriter to avoid expensive per-call creation
+  private lazy val sharedActorSystem = ActorSystem("SinkFactoryPekkoStreaming")
+  private lazy val pekkoStreamingSinkWriter = new PekkoStreamingSinkWriter(foldersConfig, Some(sharedActorSystem))
 
   /**
    * Main entry point for pushing data to a sink (single-batch mode).
@@ -180,5 +184,14 @@ class SinkFactory(
    */
   def finalizePendingConsolidations(): Unit = {
     batchSinkWriter.finalizePendingConsolidations()
+  }
+
+  /**
+   * Shutdown resources including the shared actor system.
+   * Should be called when the SinkFactory is no longer needed.
+   */
+  def shutdown(): Unit = {
+    LOGGER.info("Shutting down SinkFactory resources")
+    pekkoStreamingSinkWriter.shutdown()
   }
 }

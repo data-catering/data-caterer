@@ -68,9 +68,17 @@ class DistributedSamplingStrategy extends ForeignKeyStrategy {
         .withColumn("_fk_idx", row_number().over(windowSpec) - 1)
 
       // Assign random index to each target row (0 to sourceCount-1)
-      val randExpr = config.seed.map(s => rand(s)).getOrElse(rand())
-      val targetWithIndex = targetDf
-        .withColumn("_fk_idx", floor(randExpr * sourceCount).cast(LongType))
+      // Use hash-based approach when seed is provided for deterministic behavior across environments
+      // (Spark's rand(seed) is partition-dependent and not truly deterministic)
+      val targetWithIndex = config.seed match {
+        case Some(s) =>
+          val allCols = targetDf.columns.map(col)
+          val hashExpr = xxhash64(allCols :+ lit(s): _*)
+          // Use absolute hash value modulo sourceCount for uniform distribution
+          targetDf.withColumn("_fk_idx", abs(hashExpr) % sourceCount)
+        case None =>
+          targetDf.withColumn("_fk_idx", floor(rand() * sourceCount).cast(LongType))
+      }
 
       // Rename source fields to avoid ambiguity
       val renamedSource = sourceFields.foldLeft(sourceWithIndex) { case (df, field) =>

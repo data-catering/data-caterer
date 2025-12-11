@@ -393,8 +393,14 @@ class ForeignKeyEndToEndIntegrationTest extends SparkSuite {
 
     // Count null FKs (violations)
     val nullCount = updatedReviewsDf.filter(updatedReviewsDf("product_id").isNull).count()
+    val nullRowIds = updatedReviewsDf.filter(updatedReviewsDf("product_id").isNull)
+      .select("review_id").collect().map(_.getString(0)).sorted.toList
 
-    // With seed=1 and 25% ratio, expect exactly 4 nulls out of 12 records
+    // With seed=1 and 25% nullability ratio on 12 records, we get exactly these null rows
+    // This verifies the hash-based approach is deterministic across environments
+    val expectedNullRows = List("REV004", "REV007", "REV008", "REV011")
+    assert(nullRowIds == expectedNullRows,
+      s"Expected exactly $expectedNullRows to be null with seed=1, but got $nullRowIds")
     assert(nullCount == 4, s"Expected exactly 4 nulls with seed=1, got $nullCount")
 
     // Verify non-null FKs are valid
@@ -565,11 +571,15 @@ class ForeignKeyEndToEndIntegrationTest extends SparkSuite {
 
     // Count nulls
     val nullCount = updatedSalesDf.filter(updatedSalesDf("store_id").isNull).count()
+    val nullRowIds = updatedSalesDf.filter(updatedSalesDf("store_id").isNull)
+      .select("sale_id").collect().map(_.getString(0)).sorted.toList
 
-    // With seed=12349 and 20% ratio, we expect around 2 nulls out of 10 records
-    // Exact count depends on seed randomness
-    assert(nullCount >= 0 && nullCount <= 4,
-      s"Expected 0-4 nulls with 20% ratio (seed variance), got $nullCount")
+    // With seed=12349 and 20% nullability ratio on 10 records, we get exactly these null rows
+    // This verifies the hash-based approach is deterministic across environments
+    val expectedNullRows = List("SALE001", "SALE004")
+    assert(nullRowIds == expectedNullRows,
+      s"Expected exactly $expectedNullRows to be null with seed=12349, but got $nullRowIds")
+    assert(nullCount == 2, s"Expected exactly 2 nulls with seed=12349, got $nullCount")
 
     // Non-null values should be valid store IDs
     val validStoreIds = storesDf.select("store_id").collect().map(_.getString(0)).toSet

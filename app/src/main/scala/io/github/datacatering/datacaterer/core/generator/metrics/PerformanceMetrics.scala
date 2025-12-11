@@ -76,7 +76,7 @@ case class PerformanceMetrics(
 
   /**
    * Calculate percentile using exact or approximate method based on dataset size.
-   * For large datasets (>100k samples), uses T-Digest for memory efficiency.
+   * For large datasets (>100k samples), uses SimplePercentileCalculator for memory efficiency.
    * For smaller datasets, uses exact sorting.
    * Phase 3 optimization.
    */
@@ -85,10 +85,10 @@ case class PerformanceMetrics(
 
     val latencies = batchMetrics.map(_.batchDurationMs.toDouble)
 
-    // Use T-Digest for large datasets (Phase 3 optimization)
-    if (latencies.size > TDigest.LARGE_DATASET_THRESHOLD) {
-      val digest = TDigest.fromValues(latencies)
-      digest.quantile(percentile)
+    // Use SimplePercentileCalculator for large datasets (Phase 3 optimization)
+    if (latencies.size > SimplePercentileCalculator.LARGE_DATASET_THRESHOLD) {
+      val calculator = SimplePercentileCalculator.fromValues(latencies)
+      calculator.quantile(percentile)
     } else {
       // Exact calculation for smaller datasets
       val sorted = latencies.sorted

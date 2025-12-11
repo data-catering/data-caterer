@@ -24,6 +24,9 @@ class CardinalityStrategy extends ForeignKeyStrategy {
 
   private val LOGGER = Logger.getLogger(getClass.getName)
 
+  /** Minimum source count required for modulo operations to avoid division by zero */
+  private val MIN_SOURCE_COUNT_FOR_MODULO = 1L
+
   override def name: String = "CardinalityStrategy"
 
   /**
@@ -102,6 +105,12 @@ class CardinalityStrategy extends ForeignKeyStrategy {
 
     LOGGER.info(s"Source has $sourceCount distinct parent records")
 
+    // Guard against empty source DataFrame to prevent division by zero in modulo operations
+    if (sourceCount == 0) {
+      LOGGER.warn("Source DataFrame has no records - cannot apply cardinality. Returning target DataFrame unchanged.")
+      return targetDf
+    }
+
     // Check if target has perField config that creates grouping structure
     // If so, use group-based approach which preserves the generated groups
     val hasMatchingPerFieldConfig = targetPerFieldCount.exists { pfc =>
@@ -127,8 +136,10 @@ class CardinalityStrategy extends ForeignKeyStrategy {
           1.0
       }
 
-      LOGGER.info(s"Using INDEX-BASED approach: assigning FKs by row position (${recordsPerParent} records per parent)")
-      applyCardinalityWithIndex(sourceDf, targetDf, sourceFields, targetFields, sourceCount, recordsPerParent.toLong)
+      // Use ceil to match calculateRequiredCount behavior and avoid generating fewer records than expected
+      val recordsPerParentCeiled = math.ceil(recordsPerParent).toLong
+      LOGGER.info(s"Using INDEX-BASED approach: assigning FKs by row position ($recordsPerParentCeiled records per parent)")
+      applyCardinalityWithIndex(sourceDf, targetDf, sourceFields, targetFields, sourceCount, recordsPerParentCeiled)
     }
   }
 

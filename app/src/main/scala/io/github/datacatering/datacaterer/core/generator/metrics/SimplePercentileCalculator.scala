@@ -4,26 +4,28 @@ import scala.collection.mutable
 
 /**
  * Simple percentile calculator for performance metrics.
- * 
- * This is a simplified implementation that stores values directly.
- * For datasets > 100k values, we sample to keep memory bounded.
- * 
- * TODO: Optimize with proper T-Digest algorithm for very large datasets.
+ *
+ * This is a simplified implementation that stores values directly in memory.
+ * For datasets > 100k values, values beyond the limit are dropped (sampling effect).
+ *
+ * Note: This is NOT a true T-Digest streaming sketch algorithm. For very large
+ * datasets requiring constant memory with streaming support, consider using
+ * a proper T-Digest library like com.tdunning:t-digest.
  */
-class TDigest(compression: Double = 100.0) {
+class SimplePercentileCalculator(compression: Double = 100.0) {
 
   private val values = mutable.ArrayBuffer[Double]()
   private var totalCount: Long = 0
   private val maxStoredValues = 100000 // Keep memory bounded
-  
+
   /**
-   * Add a single value to the digest
+   * Add a single value to the calculator
    */
   def add(value: Double, weight: Long = 1): Unit = {
     if (value.isNaN || value.isInfinite) return
-    
+
     totalCount += weight
-    
+
     // Add the value 'weight' times (up to limit)
     var i = 0L
     while (i < weight && values.size < maxStoredValues) {
@@ -33,7 +35,7 @@ class TDigest(compression: Double = 100.0) {
   }
 
   /**
-   * Add multiple values to the digest
+   * Add multiple values to the calculator
    */
   def addAll(vals: Seq[Double]): Unit = {
     vals.foreach(add(_))
@@ -49,17 +51,17 @@ class TDigest(compression: Double = 100.0) {
     }
 
     if (values.isEmpty) return 0.0
-    
+
     val sorted = values.sorted
-    
+
     if (q == 0) return sorted.head
     if (q == 1) return sorted.last
-    
+
     // Standard percentile calculation
     val index = q * (sorted.length - 1)
     val lower = index.floor.toInt
     val upper = index.ceil.toInt
-    
+
     if (lower == upper) {
       sorted(lower)
     } else {
@@ -84,7 +86,7 @@ class TDigest(compression: Double = 100.0) {
         val index = q * (sorted.length - 1)
         val lower = index.floor.toInt
         val upper = index.ceil.toInt
-        
+
         if (lower == upper) {
           sorted(lower)
         } else {
@@ -96,17 +98,17 @@ class TDigest(compression: Double = 100.0) {
   }
 
   /**
-   * Get the number of values added to the digest
+   * Get the number of values added to the calculator
    */
   def count: Long = totalCount
 
   /**
-   * Get the number of centroids (for debugging/monitoring)
+   * Get the number of stored values (for debugging/monitoring)
    */
-  def centroidCount: Int = values.size
+  def storedCount: Int = values.size
 
   /**
-   * Get memory efficiency ratio (values per centroid)
+   * Get compression ratio (total values / stored values)
    */
   def compressionRatio: Double = {
     if (values.isEmpty) 0.0
@@ -119,12 +121,12 @@ class TDigest(compression: Double = 100.0) {
   def summary: String = {
     val min = if (values.isEmpty) 0.0 else values.min
     val max = if (values.isEmpty) 0.0 else values.max
-    s"TDigest(count=$totalCount, stored=${values.size}, " +
+    s"SimplePercentileCalculator(count=$totalCount, stored=${values.size}, " +
       s"compression=${compressionRatio.toInt}:1, min=$min, max=$max)"
   }
 
   /**
-   * Reset the digest
+   * Reset the calculator
    */
   def reset(): Unit = {
     values.clear()
@@ -132,26 +134,25 @@ class TDigest(compression: Double = 100.0) {
   }
 }
 
-object TDigest {
+object SimplePercentileCalculator {
 
   /**
-   * Create a new T-Digest with default compression
+   * Create a new calculator with default settings
    */
-  def apply(): TDigest = new TDigest()
+  def apply(): SimplePercentileCalculator = new SimplePercentileCalculator()
 
   /**
-   * Create a new T-Digest with custom compression
-   * Higher compression = more accuracy but more memory
+   * Create a new calculator with custom compression (currently unused but kept for API compatibility)
    */
-  def apply(compression: Double): TDigest = new TDigest(compression)
+  def apply(compression: Double): SimplePercentileCalculator = new SimplePercentileCalculator(compression)
 
   /**
-   * Create a T-Digest from a sequence of values
+   * Create a calculator from a sequence of values
    */
-  def fromValues(values: Seq[Double], compression: Double = 100.0): TDigest = {
-    val digest = new TDigest(compression)
-    digest.addAll(values)
-    digest
+  def fromValues(values: Seq[Double], compression: Double = 100.0): SimplePercentileCalculator = {
+    val calc = new SimplePercentileCalculator(compression)
+    calc.addAll(values)
+    calc
   }
 
   /**
@@ -160,9 +161,26 @@ object TDigest {
   val LARGE_DATASET_THRESHOLD: Int = 100000
 
   /**
-   * Recommended compression values for different use cases
+   * Compression constants (kept for API compatibility, currently unused)
    */
-  val COMPRESSION_LOW: Double = 50.0      // Less accurate, more memory efficient
-  val COMPRESSION_MEDIUM: Double = 100.0  // Balanced (default)
-  val COMPRESSION_HIGH: Double = 200.0    // More accurate, more memory
+  val COMPRESSION_LOW: Double = 50.0
+  val COMPRESSION_MEDIUM: Double = 100.0
+  val COMPRESSION_HIGH: Double = 200.0
+}
+
+/**
+ * Type alias for backwards compatibility.
+ * @deprecated Use SimplePercentileCalculator instead
+ */
+@deprecated("Use SimplePercentileCalculator instead", "1.0")
+object TDigest {
+  def apply(): SimplePercentileCalculator = SimplePercentileCalculator()
+  def apply(compression: Double): SimplePercentileCalculator = SimplePercentileCalculator(compression)
+  def fromValues(values: Seq[Double], compression: Double = 100.0): SimplePercentileCalculator =
+    SimplePercentileCalculator.fromValues(values, compression)
+
+  val LARGE_DATASET_THRESHOLD: Int = SimplePercentileCalculator.LARGE_DATASET_THRESHOLD
+  val COMPRESSION_LOW: Double = SimplePercentileCalculator.COMPRESSION_LOW
+  val COMPRESSION_MEDIUM: Double = SimplePercentileCalculator.COMPRESSION_MEDIUM
+  val COMPRESSION_HIGH: Double = SimplePercentileCalculator.COMPRESSION_HIGH
 }
