@@ -4,134 +4,214 @@ description: "Quick start for Data Catering data generation and testing tool tha
 image: "https://data.catering/diagrams/logo/data_catering_logo.svg"
 ---
 
-# Run Data Caterer
+# Quick Start
 
-## Quick start
+Get started with Data Caterer in minutes. Choose your preferred approach:
 
 <div class="grid cards" markdown>
 
--   :material-language-java: :simple-scala: __[Java/Scala]__
+-   :material-language-java: :simple-scala: __[Java/Scala API (Recommended)]__
 
     ---
 
-    Instructions for using Java/Scala API via Docker
+    Full programmatic control for complex scenarios and test integration.
 
 -   :simple-yaml: __[YAML]__
 
     ---
 
-    Instructions for using YAML via Docker
+    Configuration-based approach. Great for CI/CD pipelines.
 
--   :material-docker: __[UI App - Docker]__
-
-    ---
-
-    Instructions for Docker download
-
--   :material-apple: __[UI App - Mac]__
+-   :material-monitor-dashboard: __[UI]__
 
     ---
 
-    Instructions for Mac download
-
--   :material-microsoft-windows: __[UI App - Windows]__
-
-    ---
-
-    Instructions for Windows download
-
--   :material-linux: __[UI App - Linux]__
-
-    ---
-
-    Instructions for Linux download
+    Point-and-click interface. No coding required.
 
 </div>
 
-  [Java/Scala]: #javascala-api
+  [Java/Scala API (Recommended)]: #javascala-api
   [YAML]: #yaml
-  [UI App - Docker]: #docker
-  [UI App - Mac]: #mac
-  [UI App - Linux]: #linux
-  [UI App - Windows]: #windows
+  [UI]: #ui
 
-### Java/Scala API
+---
 
-```shell
-git clone git@github.com:data-catering/data-caterer.git
-cd example && ./run.sh
-#check results under example/docker/sample/report/index.html folder
-#If you want to run any other examples, check the class names under src/scala or src/java
-#And then run with ./run.sh <class_name>
-#i.e. ./run.sh CsvPlan
-```
+## Java/Scala API
 
-### YAML
+The recommended approach for full control over data generation. Write your data generation logic in Scala or Java.
+
+### Run
 
 ```shell
 git clone git@github.com:data-catering/data-caterer.git
-cd example && ./run.sh simple-json.yaml
-#check results under example/docker/sample/report/index.html folder
-#check example YAML files under:
-# - docker/data/custom/plan
-# - docker/data/custom/task
-# - docker/data/custom/validation
-#If you want to run any other examples, check the files under docker/data/custom/plan
-#And then run with ./run.sh <file_name>
-#i.e. ./run.sh parquet.yaml
+cd data-caterer/example
+./run.sh
 ```
 
-### Docker
+Press Enter to run the default example, or enter a class name (e.g., `CsvPlan`).
 
-1. Docker
-   ```shell
-   docker run -d -i -p 9898:9898 -e DEPLOY_MODE=standalone --name datacaterer datacatering/data-caterer:0.18.0
-   ```
-2. [Open localhost:9898](http://localhost:9898)
+### What Happens
 
-### Mac
+1. Builds your Scala/Java code into a JAR
+2. Runs it via Docker with the Data Caterer engine
+3. Generates data and reports to `docker/sample/`
 
-Choose the download for your Mac architecture:
+### Example Code
 
-- **Intel (x86_64)**: [Download](https://nightly.link/data-catering/data-caterer/workflows/build/main/data-caterer-macos-x86_64.zip)
-- **Apple Silicon (M1/M2/M3)**: [Download](https://nightly.link/data-catering/data-caterer/workflows/build/main/data-caterer-macos-aarch64.zip)
+```scala
+class CsvPlan extends PlanRun {
+  val accountTask = csv("accounts", "/opt/app/data/accounts", Map("header" -> "true"))
+    .fields(
+      field.name("account_id").regex("ACC[0-9]{8}").unique(true),
+      field.name("name").expression("#{Name.name}"),
+      field.name("balance").`type`(DoubleType).min(10).max(1000),
+      field.name("status").oneOf("open", "closed", "pending")
+    )
+    .count(count.records(100))
 
-1. Download the appropriate version for your Mac
-2. Drag Data Caterer to your Applications folder and double-click to run
-3. If your browser doesn't open, go to [http://localhost:9898](http://localhost:9898) in your preferred browser
+  execute(accountTask)
+}
+```
 
-### Windows
+### More Examples
 
-1. [Windows x64 download](https://nightly.link/data-catering/data-caterer/workflows/build/main/data-caterer-windows-x86_64.zip)
-2. After downloading, go to 'Downloads' folder and 'Extract All' from data-caterer-windows-x86_64
-3. Double-click the installer to install Data Caterer
-4. Click on 'More info' then at the bottom, click 'Run anyway'
-5. Go to '/Program Files/DataCaterer' folder and run DataCaterer application
-6. If your browser doesn't open, go to [http://localhost:9898](http://localhost:9898) in your preferred browser
+| Class | Description |
+|-------|-------------|
+| `DocumentationPlanRun` | JSON + CSV with foreign keys (default) |
+| `CsvPlan` | CSV files with relationships |
+| `PostgresPlanRun` | PostgreSQL tables |
+| `KafkaPlanRun` | Kafka messages |
+| `ValidationPlanRun` | Generate and validate data |
 
-### Linux
+Run any example: `./run.sh <ClassName>`
 
-Choose the download for your Linux architecture:
+All example classes are in `src/main/scala/io/github/datacatering/plan/`.
 
-- **amd64 (x86_64)**: [Download](https://nightly.link/data-catering/data-caterer/workflows/build/main/data-caterer-linux-amd64.zip)
-- **arm64 (aarch64)**: [Download](https://nightly.link/data-catering/data-caterer/workflows/build/main/data-caterer-linux-arm64.zip)
+---
 
-1. Download the appropriate version for your Linux system
-2. Extract and install the debian package
-3. If your browser doesn't open, go to [http://localhost:9898](http://localhost:9898) in your preferred browser
+## YAML
 
-#### Report
+Define data generation using YAML configuration files.
 
-Check the report generated under `example/docker/data/custom/report/index.html`.
+### Run
 
-[**Sample report can also be seen here**](../sample/report/html/index.html).
+```shell
+git clone git@github.com:data-catering/data-caterer.git
+cd data-caterer/example
+./run.sh csv.yaml
+```
 
-## Gradual start
+### What Happens
 
-If you prefer a step-by-step approach to learning the capabilities of Data Caterer, there are a number of guides that
-take you through the various data sources and approaches that can be taken when using the tool.
+1. Builds the example JAR
+2. Runs the YAML plan via Docker
+3. Generates data and reports to `docker/data/custom/`
 
-- [**Check out the starter guide here**](../docs/guide/scenario/first-data-generation.md) that will take your through
-step by step
-- You can also check the other guides [**here**](../docs/guide/index.md) to see the other possibilities of
-what Data Caterer can achieve for you.
+### Example YAML
+
+**Plan file** (`docker/data/custom/plan/csv.yaml`):
+```yaml
+name: "csv_example_plan"
+description: "Create transaction data in CSV file"
+tasks:
+  - name: "csv_transaction_file"
+    dataSourceName: "csv"
+    enabled: true
+```
+
+**Task file** (`docker/data/custom/task/file/csv/`):
+```yaml
+name: "csv_transaction_file"
+steps:
+  - name: "transactions"
+    type: "csv"
+    options:
+      path: "/opt/app/data/transactions"
+      header: "true"
+    count:
+      records: 1000
+    fields:
+      - name: "account_id"
+        options:
+          regex: "ACC[0-9]{8}"
+      - name: "amount"
+        type: "double"
+        options:
+          min: 10
+          max: 1000
+```
+
+### More Examples
+
+| Plan File | Description |
+|-----------|-------------|
+| `csv.yaml` | CSV files |
+| `parquet.yaml` | Parquet files |
+| `postgres.yaml` | PostgreSQL tables |
+| `kafka.yaml` | Kafka messages |
+| `foreign-key.yaml` | Data with relationships |
+| `validation.yaml` | Generate and validate |
+
+Run any example: `./run.sh <filename>.yaml`
+
+All plan files are in `docker/data/custom/plan/`. Task definitions are in `docker/data/custom/task/`.
+
+---
+
+## UI
+
+A web interface for creating and running data generation plans.
+
+### Run
+
+```shell
+docker run -d -p 9898:9898 -e DEPLOY_MODE=standalone --name datacaterer datacatering/data-caterer:0.18.0
+```
+
+Open [http://localhost:9898](http://localhost:9898) in your browser.
+
+### What You Can Do
+
+- Create connections to databases, files, Kafka, and more
+- Define data schemas with field types and constraints
+- Generate test data with a single click
+- View results and reports in the browser
+
+[**Try the UI demo**](https://data.catering/latest/sample/ui/)
+
+---
+
+## View Results
+
+After running, check the generated report:
+
+- **Java/Scala examples:** `docker/sample/report/index.html`
+- **YAML examples:** `docker/data/custom/report/index.html`
+
+[**Sample report preview**](../sample/report/html/index.html)
+
+---
+
+## Next Steps
+
+<div class="grid cards" markdown>
+
+-   :material-school: __Step-by-Step Guide__
+
+    ---
+
+    [First data generation guide](../docs/guide/scenario/first-data-generation.md) - learn Data Caterer's full capabilities.
+
+-   :material-book-open: __All Guides__
+
+    ---
+
+    [Browse all guides](../docs/guide/index.md) for specific use cases and data sources.
+
+-   :material-connection: __Data Sources__
+
+    ---
+
+    [Supported connections](../docs/connection/index.md) - databases, files, messaging, and HTTP.
+
+</div>

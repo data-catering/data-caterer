@@ -32,19 +32,10 @@ repositories {
 }
 
 val basicImpl: Configuration by configurations.creating
-val jpackageDep: Configuration by configurations.creating
 
 configurations {
-    compileOnly {
-        if (System.getenv("JPACKAGE_BUILD") != "true") {
-            extendsFrom(jpackageDep)
-        }
-    }
     implementation {
         extendsFrom(basicImpl)
-        if (System.getenv("JPACKAGE_BUILD") == "true") {
-            extendsFrom(jpackageDep)
-        }
     }
 }
 

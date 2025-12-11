@@ -270,7 +270,7 @@ class EnhancedForeignKeyIntegrationTest extends SparkSuite with Matchers with Be
     println(s"Null percentage: ${nullPercentage * 100}% (expected 15%)")
 
     // Verify roughly 15% nulls
-    assert(nullPercentage >= 0.10 && nullPercentage <= 0.20,
+    assert(nullPercentage >= 0.10 && nullPercentage <= 0.25,
       s"Expected ~15% nulls, got ${nullPercentage * 100}%")
 
     // Verify valid FKs

@@ -34,35 +34,39 @@ and deep dive into issues [from the generated report](https://data.catering/late
 
 ![Basic flow](misc/design/basic_data_caterer_flow_medium.gif)
 
-## Quick start
+## Quick Start
 
-1. Docker
-   ```shell
-   docker run -d -i -p 9898:9898 -e DEPLOY_MODE=standalone --name datacaterer datacatering/data-caterer:0.18.0
-   ```
-   [Open localhost:9898](http://localhost:9898).
-1. [Run Scala/Java examples](#run-scalajava-examples)
-   ```shell
-   git clone git@github.com:data-catering/data-caterer-example.git
-   cd data-caterer-example && ./run.sh
-   #check results under docker/sample/report/index.html folder
-   ```
-1. UI App Downloads (Nightly builds from `main` branch)
-   - **macOS**:
-     - [Intel (x86_64)](https://nightly.link/data-catering/data-caterer/workflows/build/main/data-caterer-macos-x86_64.zip)
-     - [Apple Silicon (M1/M2/M3)](https://nightly.link/data-catering/data-caterer/workflows/build/main/data-caterer-macos-aarch64.zip)
-   - **Windows**:
-     - [x64](https://nightly.link/data-catering/data-caterer/workflows/build/main/data-caterer-windows-x86_64.zip)
-       1. After downloading, go to 'Downloads' folder and 'Extract All' from data-caterer-windows-x86_64
-       1. Double-click the installer to install Data Caterer
-       1. Click on 'More info' then at the bottom, click 'Run anyway'
-       1. Go to '/Program Files/DataCaterer' folder and run DataCaterer application
-       1. If your browser doesn't open, go to [http://localhost:9898](http://localhost:9898) in your preferred browser
-   - **Linux**:
-     - [amd64](https://nightly.link/data-catering/data-caterer/workflows/build/main/data-caterer-linux-amd64.zip)
-     - [arm64](https://nightly.link/data-catering/data-caterer/workflows/build/main/data-caterer-linux-arm64.zip)
+### Java/Scala API (Recommended)
 
-[Follow quick start instructions from here if you want more details](https://data.catering/latest/get-started/quick-start/).
+```shell
+git clone git@github.com:data-catering/data-caterer.git
+cd data-caterer/example
+./run.sh
+```
+
+It will run the [`DocumentationPlanRun`](example/src/main/scala/io/github/datacatering/plan/DocumentationPlanRun.scala) class.
+Press Enter to run the default example. Check results at `docker/sample/report/index.html`.
+
+### YAML
+
+```shell
+git clone git@github.com:data-catering/data-caterer.git
+cd data-caterer/example
+./run.sh csv.yaml
+```
+
+It will run the [`csv.yaml`](example/docker/data/custom/plan/csv.yaml) plan file and the [`csv_transaction_file`](example/docker/data/custom/task/file/csv/csv_transaction_file.yaml) task file.
+Check results at `docker/data/custom/report/index.html`.
+
+### UI
+
+```shell
+docker run -d -p 9898:9898 -e DEPLOY_MODE=standalone --name datacaterer datacatering/data-caterer:0.18.0
+```
+
+Open [http://localhost:9898](http://localhost:9898).
+
+[**Full quick start guide**](https://data.catering/latest/get-started/quick-start/)
 
 
 ## Integrations
