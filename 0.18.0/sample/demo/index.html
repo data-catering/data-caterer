@@ -1,0 +1,87 @@
+<html lang="en">
+<head>
+    <link rel="stylesheet" href="main.css" type="text/css"/>
+    <title>Data Caterer Demo</title>
+</head>
+<body>
+<span class="center-content">
+<button type="button" id="generate-button" class="md-button md-button--primary button-spaced">Generate</button>
+<button type="button" id="validate-button" class="md-button md-button--primary button-spaced">Validate</button>
+<button type="button" id="cleanup-button" class="md-button md-button--primary button-spaced">Cleanup</button>
+</span>
+<div id="raw-transaction-container" class="raw-transaction-container"></div>
+<svg width="250" height="250">
+    <path
+            d="M 125 0 L 125 95 M 125 155 L 125 250"
+            stroke-miterlimit="10"
+            fill="none"
+            stroke="black"
+            stroke-width="2"
+            stroke-dasharray="10"
+            stroke-dashoffset="1">
+        <animate
+                attributeName="stroke-dashoffset"
+                values="100;0"
+                dur="1.5s"
+                calcMode="linear"
+                repeatCount="indefinite"/>
+    </path>
+    <g>
+        <rect width="120" height="60" x="65" y="95" rx="10" ry="10" fill="#E1D5E7" stroke="#9673A6" stroke-width="1px"/>
+        <text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-size="12px" font-family="Helvetica">
+            Data Consumer
+        </text>
+    </g>
+</svg>
+<div id="result-container">
+    <div id="transaction-card-container" class="all-card-container"></div>
+    <div id="validation-container"></div>
+</div>
+<div id="data-generation-container" class="scenario-container">
+    <div class="table-container">
+        <h3>Accounts</h3>
+        <table id="data-generation-table-1">
+            <thead>
+            <tr>
+                <th>account_id</th>
+                <th>status</th>
+                <th>open_date</th>
+            </tr>
+            </thead>
+            <tbody>
+            </tbody>
+        </table>
+    </div>
+    <div class="table-container">
+        <h3>Transactions</h3>
+        <table id="data-generation-table-2">
+            <thead>
+            <tr>
+                <th>account_id</th>
+                <th>amount</th>
+            </tr>
+            </thead>
+            <tbody>
+            </tbody>
+        </table>
+    </div>
+</div>
+<div id="data-validation-container">
+
+</div>
+<div id="data-cleanup-container">
+
+</div>
+<script type="module" src="index.js"></script>
+</body>
+</html>
+
+<style type="text/css">@media (prefers-color-scheme: dark) {
+    svg.ge-export-svg-auto {
+        filter: invert(100%) hue-rotate(180deg);
+    }
+
+    svg.ge-export-svg-auto foreignObject img, svg.ge-export-svg-auto image:not(svg.ge-export-svg-auto switch image), svg.ge-export-svg-auto svg {
+        filter: invert(100%) hue-rotate(180deg)
+    }
+}</style>
