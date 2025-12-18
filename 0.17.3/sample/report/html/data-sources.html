@@ -1,0 +1,178 @@
+<html>
+      <head>
+        <title>
+          Data Source Details - Data Caterer
+        </title><script src="https://ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js"></script><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jquery.tablesorter/2.31.3/css/theme.default.min.css" type="text/css"/><script src="https://cdnjs.cloudflare.com/ajax/libs/jquery.tablesorter/2.31.3/js/jquery.tablesorter.min.js"></script><link rel="stylesheet" href="https://netdna.bootstrapcdn.com/bootstrap/3.0.3/css/bootstrap.min.css" type="text/css"/><script src="https://netdna.bootstrapcdn.com/bootstrap/3.0.3/js/bootstrap.min.js"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/Chart.js"></script><link rel="stylesheet" href="main.css" type="text/css"/><link rel="icon" href="data_catering_transparent.svg"/>
+      </head>
+      <body>
+        <div class="top-banner">
+      <a class="logo" href="index.html">
+        <img src="data_catering_transparent.svg" alt="logo"/>
+      </a>
+      <span>
+        <b>Data Caterer</b>
+      </span>
+    </div><nav class="topnav">
+        <a href="index.html">Overview</a>
+        <a href="data-sources.html">Data Source</a>
+        <a href="steps.html">Field</a>
+        <a href="validations.html">Validation</a>
+      </nav><h1>Data Sources</h1>
+        <table class="tablesorter table table-striped" style="font-size: 13px">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Num Records</th>
+              <th>Success</th>
+              <th>Format</th>
+              <th>Options</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr id="my_json">
+              <td>
+                my_json
+              </td>
+              <td>
+                2000
+              </td>
+              <td>
+                &#9989;
+              </td>
+              <td>
+                json
+              </td>
+              <td>
+                <table class="table table-striped" style="font-size: 13px">
+        <tbody>
+        <tr>
+            <td>
+              <b>
+                saveMode
+              </b>
+            </td><td>
+              overwrite
+            </td>
+          </tr><tr>
+            <td>
+              <b>
+                format
+              </b>
+            </td><td>
+              json
+            </td>
+          </tr><tr>
+            <td>
+              <b>
+                path
+              </b>
+            </td><td>
+              /tmp/data/json
+            </td>
+          </tr>
+      </tbody>
+      </table>
+              </td>
+            </tr><tr id="my_csv">
+              <td>
+                my_csv
+              </td>
+              <td>
+                1000
+              </td>
+              <td>
+                &#9989;
+              </td>
+              <td>
+                json
+              </td>
+              <td>
+                <table class="table table-striped" style="font-size: 13px">
+        <tbody>
+        <tr>
+            <td>
+              <b>
+                saveMode
+              </b>
+            </td><td>
+              overwrite
+            </td>
+          </tr><tr>
+            <td>
+              <b>
+                format
+              </b>
+            </td><td>
+              json
+            </td>
+          </tr><tr>
+            <td>
+              <b>
+                path
+              </b>
+            </td><td>
+              /tmp/data/csv
+            </td>
+          </tr>
+      </tbody>
+      </table>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </body><script type="text/javascript">
+      
+function showFieldMetadata(step, e) {
+  var newFieldMetadata = document.getElementById('field-metadata-' + step).cloneNode(true);
+  var currentFieldMetadata = document.getElementById('current-field-metadata');
+  collapseOnClick(newFieldMetadata);
+  console.log(newFieldMetadata);
+  console.log(currentFieldMetadata);
+  currentFieldMetadata.replaceChild(newFieldMetadata, currentFieldMetadata.children[0])
+
+  var closestCell = e.parentElement,
+      activeCell = document.getElementsByClassName('selected-row');
+
+  if (activeCell !== null && activeCell.length !== 0) {
+    activeCell[0].classList.remove('selected-row');
+  }
+  closestCell.classList.add('selected-row');
+}
+
+let block = document.querySelector(".top-container"),
+  slider = document.querySelector(".slider");
+
+slider.onmousedown = function dragMouseDown(e) {
+  let dragX = e.clientY;
+  document.onmousemove = function onMouseMove(e) {
+    block.style.height = block.offsetHeight + e.clientY - dragX + "px";
+    dragX = e.clientY;
+  }
+  document.onmouseup = () => document.onmousemove = document.onmouseup = null;
+}
+
+    </script><script type="text/javascript">
+        
+$(document).ready(function() {$(".tablesorter").tablesorter();});
+
+function collapseOnClick(element) {
+  var coll = element.getElementsByClassName("collapsible");
+  var i;
+
+  for (i = 0; i < coll.length; i++) {
+    coll[i].addEventListener("click", function() {
+      this.classList.toggle("active");
+       var content = this.nextElementSibling;
+       if (content.style.maxHeight){
+         content.style.maxHeight = null;
+       } else {
+         content.style.maxHeight = content.scrollHeight + "px";
+       }
+    });
+  }
+};
+
+collapseOnClick(document);
+
+      </script>
+    </html>
