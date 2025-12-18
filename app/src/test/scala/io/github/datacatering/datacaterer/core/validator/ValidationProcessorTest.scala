@@ -6,6 +6,7 @@ import io.github.datacatering.datacaterer.api.{PreFilterBuilder, ValidationBuild
 import io.github.datacatering.datacaterer.core.util.{SparkSuite, Transaction}
 
 import java.io.File
+import java.nio.file.Files
 import java.sql.Date
 import scala.reflect.io.Directory
 
@@ -58,8 +59,7 @@ class ValidationProcessorTest extends SparkSuite {
   }
 
   test("Can read Delta Lake data for validation") {
-    val path = "/tmp/delta-validation-test"
-    new Directory(new File(path)).deleteRecursively()
+    val path = Files.createTempDirectory("delta-validation-test").toString
     DELTA_LAKE_SPARK_CONF.foreach(conf => df.sqlContext.setConf(conf._1, conf._2))
     df.write.format("delta").mode("overwrite").save(path)
     val validationProcessor = setupValidationProcessor(Map(FORMAT -> DELTA, PATH -> path))
@@ -68,8 +68,7 @@ class ValidationProcessorTest extends SparkSuite {
   }
 
   test("Can read validations from YAML file") {
-    val path = "/tmp/yaml-validation-json-test"
-    new Directory(new File(path)).deleteRecursively()
+    val path = Files.createTempDirectory("yaml-validation-json-test").toString
     df.write.format("json").mode("overwrite").save(path)
     val validationProcessor = new ValidationProcessor(
       Map("json" -> Map(FORMAT -> "json")),

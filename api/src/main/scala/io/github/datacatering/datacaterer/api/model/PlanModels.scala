@@ -13,7 +13,9 @@ case class Plan(
                  sinkOptions: Option[SinkOptions] = None,
                  validations: List[String] = List(),
                  runId: Option[String] = Some(UUID.randomUUID().toString),
-                 runInterface: Option[String] = None
+                 runInterface: Option[String] = None,
+                 testType: Option[String] = None,
+                 testConfig: Option[TestConfig] = None
                )
 
 case class SinkOptions(
@@ -25,7 +27,10 @@ case class SinkOptions(
 case class ForeignKeyRelation(
                                dataSource: String = DEFAULT_DATA_SOURCE_NAME,
                                step: String = DEFAULT_STEP_NAME,
-                               fields: List[String] = List()
+                               fields: List[String] = List(),
+                               cardinality: Option[CardinalityConfig] = None,
+                               nullability: Option[NullabilityConfig] = None,
+                               generationMode: Option[String] = None
                              ) {
 
   def this(dataSource: String, step: String, field: String) = this(dataSource, step, List(field))
@@ -36,13 +41,46 @@ case class ForeignKeyRelation(
 case class ForeignKey(
                        source: ForeignKeyRelation = ForeignKeyRelation(),
                        generate: List[ForeignKeyRelation] = List(),
-                       delete: List[ForeignKeyRelation] = List(),
+                       delete: List[ForeignKeyRelation] = List()
                      )
+
+/**
+ * Configuration for controlling the cardinality of foreign key relationships.
+ * Useful for specifying one-to-one, one-to-many ratios, and distribution patterns.
+ *
+ * @param min          Minimum number of related records per parent (default: no minimum)
+ * @param max          Maximum number of related records per parent (default: no maximum)
+ * @param ratio        Average ratio of child records per parent (e.g., 2.5 orders per customer)
+ * @param distribution Distribution pattern for cardinality: "uniform", "normal", "zipf", "power"
+ */
+case class CardinalityConfig(
+                              min: Option[Int] = None,
+                              max: Option[Int] = None,
+                              ratio: Option[Double] = None,
+                              distribution: String = "uniform"
+                            ) {
+}
+
+/**
+ * Configuration for controlling nullable foreign keys (partial relationships).
+ * Allows generating records where some have FKs and others don't.
+ *
+ * @param nullPercentage Percentage of records that should have null FK (0.0 to 1.0)
+ * @param strategy       Strategy for selecting which records get null: "random", "head", "tail"
+ */
+case class NullabilityConfig(
+                              nullPercentage: Double = 0.0,
+                              strategy: String = "random"
+                            ) {
+  require(nullPercentage >= 0.0 && nullPercentage <= 1.0, "nullPercentage must be between 0.0 and 1.0")
+}
 
 case class TaskSummary(
                         name: String,
                         dataSourceName: String,
-                        enabled: Boolean = DEFAULT_TASK_SUMMARY_ENABLE
+                        enabled: Boolean = DEFAULT_TASK_SUMMARY_ENABLE,
+                        weight: Option[Int] = None,
+                        stage: Option[String] = None
                       )
 
 case class Task(
@@ -64,7 +102,11 @@ case class Step(
 case class Count(
                   @JsonDeserialize(contentAs = classOf[java.lang.Long]) records: Option[Long] = Some(DEFAULT_COUNT_RECORDS),
                   perField: Option[PerFieldCount] = None,
-                  options: Map[String, Any] = Map()
+                  options: Map[String, Any] = Map(),
+                  duration: Option[String] = None,
+                  rate: Option[Int] = None,
+                  rateUnit: Option[String] = None,
+                  pattern: Option[LoadPattern] = None
                 )
 
 case class PerFieldCount(
@@ -81,3 +123,31 @@ case class Field(
                   static: Option[String] = None,
                   fields: List[Field] = List()
                 )
+
+case class TestConfig(
+                       executionMode: Option[String] = None,
+                       warmup: Option[String] = None,
+                       cooldown: Option[String] = None
+                     )
+
+case class LoadPattern(
+                        `type`: String,
+                        startRate: Option[Int] = None,
+                        endRate: Option[Int] = None,
+                        baseRate: Option[Int] = None,
+                        spikeRate: Option[Int] = None,
+                        spikeStart: Option[Double] = None,
+                        spikeDuration: Option[Double] = None,
+                        steps: Option[List[LoadPatternStep]] = None,
+                        amplitude: Option[Int] = None,
+                        frequency: Option[Double] = None,
+                        rateIncrement: Option[Int] = None,
+                        incrementInterval: Option[String] = None,
+                        maxRate: Option[Int] = None
+                      )
+
+case class LoadPatternStep(
+                            rate: Int,
+                            duration: String
+                          )
+

@@ -5,27 +5,38 @@ import io.github.datacatering.datacaterer.api.model.{ForeignKey, ForeignKeyRelat
 import io.github.datacatering.datacaterer.core.util.SparkSuite
 import org.apache.spark.sql.{Encoder, Encoders, SaveMode}
 import org.scalamock.scalatest.MockFactory
+import org.scalatest.BeforeAndAfterEach
 import org.scalatest.matchers.should.Matchers
 
-class DeleteRecordProcessorTest extends SparkSuite with MockFactory with Matchers {
+import java.nio.file.Files
+
+class DeleteRecordProcessorTest extends SparkSuite with MockFactory with Matchers with BeforeAndAfterEach {
 
   private implicit val encoder: Encoder[SampleData] = Encoders.kryo[SampleData]
-  private val recordTrackingFolderPath: String = "/tmp/recordTracking"
-  private val dataSource1Path = s"$recordTrackingFolderPath/dataSource1"
-  private val dataSource2Path = s"$recordTrackingFolderPath/dataSource2"
-  private val dataSource1RecordTrackingPath = s"$recordTrackingFolderPath/default_plan/csv/dataSource1/tmp/recordTracking/dataSource1"
-  private val dataSource2RecordTrackingPath = s"$recordTrackingFolderPath/default_plan/csv/dataSource2/tmp/recordTracking/dataSource2"
-  private val connectionConfigsByName: Map[String, Map[String, String]] = Map(
-    "dataSource1" -> Map(FORMAT -> "csv", PATH -> dataSource1Path, "header" -> "true"),
-    "dataSource2" -> Map(FORMAT -> "csv", PATH -> dataSource2Path, "header" -> "true")
-  )
+  private var recordTrackingFolderPath: String = _
+  private var dataSource1Path: String = _
+  private var dataSource2Path: String = _
+  private var dataSource1RecordTrackingPath: String = _
+  private var dataSource2RecordTrackingPath: String = _
+  private var connectionConfigsByName: Map[String, Map[String, String]] = _
+
+  override def beforeEach(): Unit = {
+    super.beforeEach()
+    recordTrackingFolderPath = Files.createTempDirectory("recordTracking").toString
+    dataSource1Path = s"$recordTrackingFolderPath/dataSource1"
+    dataSource2Path = s"$recordTrackingFolderPath/dataSource2"
+    dataSource1RecordTrackingPath = s"$recordTrackingFolderPath/default_plan/csv/dataSource1$recordTrackingFolderPath/dataSource1"
+    dataSource2RecordTrackingPath = s"$recordTrackingFolderPath/default_plan/csv/dataSource2$recordTrackingFolderPath/dataSource2"
+    connectionConfigsByName = Map(
+      "dataSource1" -> Map(FORMAT -> "csv", PATH -> dataSource1Path, "header" -> "true"),
+      "dataSource2" -> Map(FORMAT -> "csv", PATH -> dataSource2Path, "header" -> "true")
+    )
+  }
   private val sampleData = Seq(
     SampleData("1", "John Doe", 30),
     SampleData("2", "Jane Smith", 25),
     SampleData("3", "Bob Johnson", 40)
   )
-
-  private val processor = new DeleteRecordProcessor(connectionConfigsByName, recordTrackingFolderPath)
 
   test("deleteGeneratedRecords should delete records with foreign keys in reverse order") {
     createSampleCsv(dataSource1Path)
@@ -42,6 +53,7 @@ class DeleteRecordProcessorTest extends SparkSuite with MockFactory with Matcher
       (TaskSummary("my-task2", "dataSource2"), Task("my-task2", List(Step("step2")))),
     )
 
+    val processor = new DeleteRecordProcessor(connectionConfigsByName, recordTrackingFolderPath)
     processor.deleteGeneratedRecords(plan, stepsByName, summaryWithTask)
 
     // Verify the deletion logic

@@ -1,0 +1,19 @@
+---
+name: "csv_shared_e2e_test"
+description: "End-to-end test for CSV generation with shared connection"
+tasks: []
+sinkOptions:
+  foreignKeys: []
+validations: []
+runId: "79e9ce65-1c48-437c-8e2e-5efa6b8129e1"
+connections:
+- name: "csv_output"
+  type: "csv"
+  options:
+    path: "/tmp/data-caterer-integration-test-2daa3bbb/csv-shared-test"
+    header: "true"
+configuration:
+  flags:
+    enableValidation: true
+  folders:
+    generatedReportsFolderPath: "/tmp/data-caterer-integration-test-2daa3bbb/reports"

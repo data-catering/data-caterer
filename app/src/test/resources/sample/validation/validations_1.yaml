@@ -1,0 +1,29 @@
+---
+- name: "metric_pass_validation"
+  description: "Validate metrics with achievable thresholds"
+  dataSources:
+    csv_orders:
+    - options:
+        path: "/tmp/metric-pass-test"
+      waitCondition:
+        pauseInSeconds: 0
+        isRetryable: false
+        maxRetries: 10
+        waitBeforeRetrySeconds: 2
+      validations:
+      - {}
+      - {}
+- name: "metric_fail_validation"
+  description: "Validate metrics with unachievable thresholds"
+  dataSources:
+    csv_orders:
+    - options:
+        path: "/tmp/metric-fail-test"
+      waitCondition:
+        pauseInSeconds: 0
+        isRetryable: false
+        maxRetries: 10
+        waitBeforeRetrySeconds: 2
+      validations:
+      - {}
+      - {}

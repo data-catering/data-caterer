@@ -8,7 +8,7 @@ import io.github.datacatering.datacaterer.core.ui.model.{Connection, ConnectionT
 import io.github.datacatering.datacaterer.core.ui.service.ConnectionTestService
 import io.github.datacatering.datacaterer.core.ui.resource.SparkSessionManager
 import io.github.datacatering.datacaterer.core.ui.sample.FastSampleGenerator
-import io.github.datacatering.datacaterer.core.util.{ObjectMapperUtil, SparkProvider}
+import io.github.datacatering.datacaterer.core.util.ObjectMapperUtil
 import org.apache.log4j.Logger
 import org.apache.pekko.actor.typed.scaladsl.AskPattern.{Askable, schedulerFromActorSystem}
 import org.apache.pekko.actor.typed.{ActorRef, ActorSystem}
@@ -30,7 +30,6 @@ class PlanRoutes(
                   connectionRepository: ActorRef[ConnectionRepository.ConnectionCommand],
                 )(implicit system: ActorSystem[_]) extends Directives with JacksonSupport {
 
-  import io.github.datacatering.datacaterer.api.model.Constants.{DEFAULT_MASTER, DEFAULT_RUNTIME_CONFIG}
   import org.apache.spark.sql.SparkSession
 
   private val LOGGER = Logger.getLogger(getClass.getName)

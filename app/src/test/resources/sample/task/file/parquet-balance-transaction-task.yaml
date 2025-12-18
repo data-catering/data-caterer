@@ -1,0 +1,42 @@
+name: "parquet_balance_and_transactions"
+steps:
+  - name: "balances"
+    type: "parquet"
+    count:
+      records: 1000
+    options:
+      path: "/tmp/data-caterer-parquet-fk-test/balances"
+    fields:
+      - name: "account_number"
+        options:
+          regex: "ACC1[0-9]{5,10}"
+          isUnique: true
+      - name: "create_time"
+        type: "timestamp"
+      - name: "account_status"
+        type: "string"
+        options:
+          oneOf:
+            - "open"
+            - "closed"
+            - "suspended"
+      - name: "balance"
+        type: "double"
+  - name: "transactions"
+    type: "parquet"
+    count:
+      perField:
+        fieldNames:
+          - "account_number"
+        count: 5
+    options:
+      path: "/tmp/data-caterer-parquet-fk-test/transactions"
+    fields:
+      - name: "account_number"
+      - name: "create_time"
+        type: "timestamp"
+      - name: "transaction_id"
+        options:
+          regex: "txn-[0-9]{10}"
+      - name: "amount"
+        type: "double"

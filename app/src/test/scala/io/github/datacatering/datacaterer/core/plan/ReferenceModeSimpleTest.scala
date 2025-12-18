@@ -9,14 +9,18 @@ import java.nio.file.{Files, Paths}
 
 class ReferenceModeSimpleTest extends SparkSuite with BeforeAndAfterEach {
 
-  private val testDataPath = "/tmp/data-caterer-reference-simple-test"
-  private val referenceCSVPath = s"$testDataPath/reference.csv"
-  private val outputJSONPath = s"$testDataPath/output.json"
+  private var testDataPath: String = _
+  private var referenceCSVPath: String = _
+  private var outputJSONPath: String = _
+  private var reportPath: String = _
 
   override def beforeEach(): Unit = {
     super.beforeEach()
-    // Create test directory
-    new File(testDataPath).mkdirs()
+    // Create test directory using temp directory
+    testDataPath = Files.createTempDirectory("data-caterer-reference-simple-test").toString
+    referenceCSVPath = s"$testDataPath/reference.csv"
+    outputJSONPath = s"$testDataPath/output.json"
+    reportPath = s"$testDataPath/report"
     
     // Create reference CSV file
     val csvContent = "name,email\nAlice,alice@test.com\nBob,bob@test.com\nCharlie,charlie@test.com"
@@ -64,7 +68,7 @@ class ReferenceModeSimpleTest extends SparkSuite with BeforeAndAfterEach {
 
       val conf = configuration
         .enableGeneratePlanAndTasks(false)
-        .generatedReportsFolderPath("/tmp/data-caterer-reference-simple-report")
+        .generatedReportsFolderPath(reportPath)
 
       execute(relation, conf, mainData, referenceTable)
     }

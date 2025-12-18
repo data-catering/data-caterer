@@ -1,11 +1,12 @@
 package io.github.datacatering.datacaterer.core.sink
 
-import io.github.datacatering.datacaterer.api.model.Constants.{DELTA, DELTA_LAKE_SPARK_CONF, DRIVER, FORMAT, ICEBERG, ICEBERG_SPARK_CONF, JDBC, POSTGRES_DRIVER}
+import io.github.datacatering.datacaterer.api.model.Constants.{DELTA, DELTA_LAKE_SPARK_CONF, DRIVER, FORMAT, ICEBERG, ICEBERG_SPARK_CONF, JDBC, POSTGRES_DRIVER, ROWS_PER_SECOND}
 import io.github.datacatering.datacaterer.api.model.{FlagsConfig, FoldersConfig, MetadataConfig, SinkResult, Step}
+import org.apache.pekko.actor.ActorSystem
 import io.github.datacatering.datacaterer.api.util.ConfigUtil
-import io.github.datacatering.datacaterer.core.util.DataFrameOmitUtil
 import io.github.datacatering.datacaterer.core.exception.FailedSaveDataException
-import io.github.datacatering.datacaterer.core.model.Constants.{BATCH, FAILED, FINISHED, STARTED}
+import io.github.datacatering.datacaterer.core.model.Constants.{BATCH, DEFAULT_ROWS_PER_SECOND, FAILED, FINISHED, STARTED}
+import io.github.datacatering.datacaterer.core.util.DataFrameOmitUtil
 import io.github.datacatering.datacaterer.core.util.GeneratorUtil.determineSaveTiming
 import io.github.datacatering.datacaterer.core.util.MetadataUtil.getFieldMetadata
 import org.apache.log4j.Logger
@@ -20,7 +21,7 @@ import java.time.LocalDateTime
  * This class has been refactored to delegate specific responsibilities to specialized components:
  * - FileConsolidator: Handles consolidation of Spark part files into single files
  * - BatchSinkWriter: Handles batch data writes with support for multiple formats
- * - RealTimeSinkWriter: Handles real-time/streaming writes with rate limiting
+ * - PekkoStreamingSinkWriter: Handles real-time/streaming writes with rate limiting
  * - TransformationApplicator: Applies post-write transformations
  */
 class SinkFactory(
@@ -36,7 +37,10 @@ class SinkFactory(
   private val fileConsolidator = FileConsolidator()
   private val transformationApplicator = TransformationApplicator()
   private val batchSinkWriter = new BatchSinkWriter(fileConsolidator, transformationApplicator)
-  private val realTimeSinkWriter = new RealTimeSinkWriter(foldersConfig)
+
+  // Shared ActorSystem for PekkoStreamingSinkWriter to avoid expensive per-call creation
+  private lazy val sharedActorSystem = ActorSystem("SinkFactoryPekkoStreaming")
+  private lazy val pekkoStreamingSinkWriter = new PekkoStreamingSinkWriter(foldersConfig, Some(sharedActorSystem))
 
   /**
    * Main entry point for pushing data to a sink (single-batch mode).
@@ -113,7 +117,11 @@ class SinkFactory(
     } else if (saveTiming.equalsIgnoreCase(BATCH)) {
       batchSinkWriter.saveBatchData(dataSourceName, df, saveMode, connectionConfig, count, startTime, step, isMultiBatch, isLastBatch)
     } else {
-      realTimeSinkWriter.saveRealTimeData(dataSourceName, df, format, connectionConfig, step, count, startTime)
+      // Use PekkoStreamingSinkWriter for real-time sinks (HTTP, JMS)
+      val rowsPerSecond = step.options.getOrElse(ROWS_PER_SECOND, connectionConfig.getOrElse(ROWS_PER_SECOND, DEFAULT_ROWS_PER_SECOND))
+      val rate = Math.max(rowsPerSecond.toInt, 1)
+      LOGGER.info(s"Rows per second for generating data, rows-per-second=$rate")
+      pekkoStreamingSinkWriter.saveWithRateControl(dataSourceName, df, format, connectionConfig, step, rate, startTime)
     }
 
     val finalSinkResult = (sinkResult.isSuccess, sinkResult.exception) match {
@@ -176,5 +184,14 @@ class SinkFactory(
    */
   def finalizePendingConsolidations(): Unit = {
     batchSinkWriter.finalizePendingConsolidations()
+  }
+
+  /**
+   * Shutdown resources including the shared actor system.
+   * Should be called when the SinkFactory is no longer needed.
+   */
+  def shutdown(): Unit = {
+    LOGGER.info("Shutting down SinkFactory resources")
+    pekkoStreamingSinkWriter.shutdown()
   }
 }

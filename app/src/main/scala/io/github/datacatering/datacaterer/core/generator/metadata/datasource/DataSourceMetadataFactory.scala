@@ -4,10 +4,11 @@ import io.github.datacatering.datacaterer.api.model.Constants.METADATA_SOURCE_TY
 import io.github.datacatering.datacaterer.api.model.{DataCatererConfiguration, DataSourceValidation, Field, Plan, Task, ValidationConfiguration}
 import io.github.datacatering.datacaterer.api.util.ConfigUtil
 import io.github.datacatering.datacaterer.api.{PlanRun, ValidationBuilder}
+import io.github.datacatering.datacaterer.core.foreignkey.util.ForeignKeyMetadataHelper
 import io.github.datacatering.datacaterer.core.generator.metadata.PlanGenerator.writeToFiles
 import io.github.datacatering.datacaterer.core.model.{ForeignKeyRelationship, ValidationConfigurationHelper}
 import io.github.datacatering.datacaterer.core.util.MetadataUtil.getMetadataFromConnectionConfig
-import io.github.datacatering.datacaterer.core.util.{ForeignKeyUtil, MetadataUtil, SchemaHelper, TaskHelper}
+import io.github.datacatering.datacaterer.core.util.{MetadataUtil, SchemaHelper, TaskHelper}
 import org.apache.log4j.Logger
 import org.apache.spark.sql.types.StructType
 import org.apache.spark.sql.{Dataset, SparkSession}
@@ -38,7 +39,7 @@ class DataSourceMetadataFactory(dataCatererConfiguration: DataCatererConfigurati
       val stepMapping = generatedTasksFromMetadata.flatMap(_._2._2)
       val generatedTasks = generatedTasksFromMetadata.map(x => (x._1, x._2._1))
 
-      val allForeignKeys = ForeignKeyUtil.getAllForeignKeyRelationships(metadataPerConnection.map(_._2), Some(updatedPlanRun), stepMapping.toMap)
+      val allForeignKeys = ForeignKeyMetadataHelper.getAllForeignKeyRelationships(metadataPerConnection.map(_._2), Some(updatedPlanRun), stepMapping.toMap)
       val validationConfig = getValidationConfiguration(metadataPerConnection, Some(updatedPlanRun))
       connectionMetadata.foreach(_.close())
 

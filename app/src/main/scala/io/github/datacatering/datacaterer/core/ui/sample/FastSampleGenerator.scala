@@ -4,17 +4,13 @@ import io.github.datacatering.datacaterer.api.model.{Count, Field, Plan, Step, T
 import io.github.datacatering.datacaterer.core.config.ConfigParser
 import io.github.datacatering.datacaterer.core.generator.DataGeneratorFactory
 import io.github.datacatering.datacaterer.core.parser.PlanParser
-import io.github.datacatering.datacaterer.core.transformer.{PerRecordTransformer, WholeFileTransformer}
 import io.github.datacatering.datacaterer.core.ui.model._
-import io.github.datacatering.datacaterer.core.ui.service.{DataFrameManager, PlanLoaderService, TaskLoaderService}
-import io.github.datacatering.datacaterer.core.util.{DataFrameOmitUtil, ForeignKeyUtil, ObjectMapperUtil}
+import io.github.datacatering.datacaterer.core.ui.service.{PlanLoaderService, TaskLoaderService}
 import net.datafaker.Faker
 import org.apache.log4j.Logger
 import org.apache.spark.sql.{DataFrame, SparkSession}
 
-import java.nio.file.{Files, Paths}
-import java.util.{Locale, UUID}
-import scala.jdk.CollectionConverters._
+import java.util.Locale
 import scala.util.{Failure, Success, Try}
 
 object FastSampleGenerator {
@@ -193,13 +189,12 @@ object FastSampleGenerator {
     sampleSize: Option[Int],
     fastMode: Boolean,
     enableRelationships: Boolean,
-    taskDirectory: Option[String] = None,
-    useV2: Boolean = true
+    taskDirectory: Option[String] = None
   )(implicit sparkSession: SparkSession): Map[String, (Step, SampleResponseWithDataFrame)] = {
     val factory = getFactory(fastMode)
     RelationshipAwareSampleGenerator.generateSamplesWithRelationships(
       plan, requestedSteps, sampleSize, fastMode, enableRelationships,
-      factory, taskDirectory, useV2
+      factory, taskDirectory
     )
   }
 
@@ -280,8 +275,7 @@ object FastSampleGenerator {
                             fastMode: Boolean = true,
                             enableRelationships: Boolean = false,
                             planDirectory: Option[String] = None,
-                            taskDirectory: Option[String] = None,
-                            useV2: Boolean = true
+                            taskDirectory: Option[String] = None
                           )(implicit sparkSession: SparkSession): Either[SampleError, Map[String, (Step, SampleResponseWithDataFrame)]] = {
     LOGGER.info(s"Generating samples from plan task: plan=$planName, task=$taskName, enableRelationships=$enableRelationships")
 
@@ -316,7 +310,6 @@ object FastSampleGenerator {
         fastMode = fastMode,
         enableRelationships = enableRelationships,
         taskDirectory = taskDirectory,
-        useV2 = useV2
       )
 
       // Convert key format from "dataSource/stepName" to "planName/stepName" for backward compatibility
@@ -336,7 +329,7 @@ object FastSampleGenerator {
    * Generate sample data from all tasks in a plan
    * Note: In PlanRunRequest, "tasks" is actually List[Step] where each Step represents a task definition
    */
-  def generateFromPlan(planName: String, sampleSize: Option[Int] = None, fastMode: Boolean = true, enableRelationships: Boolean = false, planDirectory: Option[String] = None, taskDirectory: Option[String] = None, useV2: Boolean = true)(implicit sparkSession: SparkSession): Either[SampleError, Map[String, (Step, SampleResponseWithDataFrame)]] = {
+  def generateFromPlan(planName: String, sampleSize: Option[Int] = None, fastMode: Boolean = true, enableRelationships: Boolean = false, planDirectory: Option[String] = None, taskDirectory: Option[String] = None)(implicit sparkSession: SparkSession): Either[SampleError, Map[String, (Step, SampleResponseWithDataFrame)]] = {
     LOGGER.info(s"Generating samples from plan: plan=$planName, enableRelationships=$enableRelationships")
 
     Try {
@@ -375,7 +368,6 @@ object FastSampleGenerator {
         fastMode = fastMode,
         enableRelationships = enableRelationships,
         taskDirectory = taskDirectory,
-        useV2 = useV2
       )
 
       // Convert key format from "dataSource/stepName" to "planName/stepName" for backward compatibility

@@ -1,9 +1,8 @@
 package io.github.datacatering.datacaterer.api
 
-import io.github.datacatering.datacaterer.api.model.Constants.ALL_COMBINATIONS
+import io.github.datacatering.datacaterer.api.model.Constants.{ALL_COMBINATIONS, ENABLE_REFERENCE_MODE}
 import io.github.datacatering.datacaterer.api.model.{DataCatererConfiguration, ExpressionValidation, ForeignKeyRelation, PauseWaitCondition}
 import org.scalatest.funsuite.AnyFunSuite
-import io.github.datacatering.datacaterer.api.model.Constants.ENABLE_REFERENCE_MODE
 
 class PlanBuilderTest extends AnyFunSuite {
 

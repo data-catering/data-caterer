@@ -26,15 +26,15 @@ object PlanParser {
    * Enhanced version that allows custom folder paths for testing
    */
   def getPlanTasksFromYaml(
-    dataCatererConfiguration: DataCatererConfiguration,
-    enabledOnly: Boolean = true,
-    planName: Option[String] = None,
-    customTaskFolderPath: Option[String] = None,
-    customValidationFolderPath: Option[String] = None
-  )(implicit sparkSession: SparkSession): (Plan, List[Task], Option[List[ValidationConfiguration]]) = {
+                            dataCatererConfiguration: DataCatererConfiguration,
+                            enabledOnly: Boolean = true,
+                            planName: Option[String] = None,
+                            customTaskFolderPath: Option[String] = None,
+                            customValidationFolderPath: Option[String] = None
+                          )(implicit sparkSession: SparkSession): (Plan, List[Task], Option[List[ValidationConfiguration]]) = {
     val effectiveTaskFolderPath = customTaskFolderPath.getOrElse(dataCatererConfiguration.foldersConfig.taskFolderPath)
     val effectiveValidationFolderPath = customValidationFolderPath.getOrElse(dataCatererConfiguration.foldersConfig.validationFolderPath)
-    
+
     getPlanTasksFromYamlWithPaths(
       dataCatererConfiguration,
       enabledOnly,
@@ -45,17 +45,17 @@ object PlanParser {
   }
 
   private def getPlanTasksFromYamlWithPaths(
-    dataCatererConfiguration: DataCatererConfiguration,
-    enabledOnly: Boolean,
-    planName: Option[String],
-    taskFolderPath: String,
-    validationFolderPath: String
-  )(implicit sparkSession: SparkSession): (Plan, List[Task], Option[List[ValidationConfiguration]]) = {
+                                             dataCatererConfiguration: DataCatererConfiguration,
+                                             enabledOnly: Boolean,
+                                             planName: Option[String],
+                                             taskFolderPath: String,
+                                             validationFolderPath: String
+                                           )(implicit sparkSession: SparkSession): (Plan, List[Task], Option[List[ValidationConfiguration]]) = {
     val parsedPlan = planName match {
-      case Some(name) => 
+      case Some(name) =>
         findYamlPlanFile(dataCatererConfiguration.foldersConfig.planFilePath, name) match {
           case Some(planPath) => parsePlan(planPath)
-          case None => 
+          case None =>
             LOGGER.warn(s"YAML plan file not found for plan name: $name, using default plan file: ${dataCatererConfiguration.foldersConfig.planFilePath}")
             parsePlan(dataCatererConfiguration.foldersConfig.planFilePath)
         }
@@ -68,9 +68,10 @@ object PlanParser {
     val planWithEnabledTasks = parsedPlan.copy(tasks = enabledPlannedTasks)
 
     val tasks = parseTasksFromFolder(taskFolderPath)
-    LOGGER.debug(s"Parsed tasks from folder: task-folder=$taskFolderPath, num-tasks=${tasks.size}, task-names=${tasks.map(_.name).mkString(", ")}")
+    LOGGER.debug(s"Parsed tasks from folder: task-folder=$taskFolderPath, num-tasks=${tasks.length}, task-names=${tasks.map(_.name).mkString(", ")}")
     val enabledTasks = tasks.filter(t => enabledTaskMap.contains(t.name)).toList
     LOGGER.debug(s"Filtered enabled tasks: num-enabled-tasks=${enabledTasks.size}, enabled-task-names=${enabledTasks.map(_.name).mkString(", ")}")
+
     val validations = if (dataCatererConfiguration.flagsConfig.enableValidation) {
       Some(parseValidations(validationFolderPath, dataCatererConfiguration.connectionConfigByName))
     } else None
@@ -107,7 +108,6 @@ object PlanParser {
     parsedPlan
   }
 
-
   // ==================== Task Parsing ====================
 
   /**
@@ -127,7 +127,7 @@ object PlanParser {
   /**
    * Parse a single YAML task file with full field conversion (default behavior)
    */
-  def parseTaskFile(taskFile: File)(implicit sparkSession: SparkSession): Task = {
+  def parseTaskFile(taskFile: File): Task = {
     val rawTask = OBJECT_MAPPER.readValue(taskFile, classOf[Task])
     val convertedTask = convertTaskNumbersToString(rawTask)
     convertToSpecificFields(convertedTask)
@@ -190,14 +190,6 @@ object PlanParser {
   def findTaskByName(taskName: String, taskFolderPath: String)(implicit sparkSession: SparkSession): Option[Task] = {
     val allTasks = parseTasksFromFolder(taskFolderPath)
     allTasks.find(_.name == taskName)
-  }
-
-  /**
-   * Find all tasks matching a predicate with custom folder path
-   */
-  def findTasksWhere(predicate: Task => Boolean, taskFolderPath: String)(implicit sparkSession: SparkSession): Array[Task] = {
-    val allTasks = parseTasksFromFolder(taskFolderPath)
-    allTasks.filter(predicate)
   }
 
   // ==================== Validation Parsing ====================
@@ -387,7 +379,7 @@ object PlanParser {
   /**
    * Find all YAML files in a directory (including subdirectories)
    */
-  def findYamlFiles(folderPath: String, recursive: Boolean = true): List[File] = {
+  private def findYamlFiles(folderPath: String, recursive: Boolean = true): List[File] = {
     val directory = findDirectory(folderPath).getOrElse(FileUtil.getDirectory(folderPath))
     if (!directory.isDirectory) {
       LOGGER.warn(s"Folder is not a directory, unable to list files, path=${directory.getPath}")
@@ -407,10 +399,10 @@ object PlanParser {
   def findYamlPlanFile(configuredPlanPath: String, planName: String)(implicit sparkSession: SparkSession): Option[String] = {
     val planFile = findDirectory(configuredPlanPath).getOrElse(new File(configuredPlanPath))
     val planDirPath = if (planFile.isDirectory) planFile.getAbsolutePath else planFile.getParent
-    
+
     // Use existing findYamlFiles method instead of manual file filtering
     val yamlFiles = findYamlFiles(planDirPath, recursive = false)
-    
+
     yamlFiles.find(file => {
       Try {
         val parsed = parsePlan(file.getAbsolutePath)

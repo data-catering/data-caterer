@@ -2,7 +2,7 @@ package io.github.datacatering.datacaterer.core.sink
 
 import io.github.datacatering.datacaterer.api.model.Constants.{FORMAT, ICEBERG, JSON, PARTITIONS, PARTITION_BY, PATH, TABLE, UNWRAP_TOP_LEVEL_ARRAY}
 import io.github.datacatering.datacaterer.api.model.{SinkResult, Step}
-import io.github.datacatering.datacaterer.core.exception.FailedSaveDataDataFrameV2Exception
+import io.github.datacatering.datacaterer.core.exception.FailedSaveDataDataFrameException
 import org.apache.log4j.Logger
 import org.apache.spark.sql.catalyst.analysis.TableAlreadyExistsException
 import org.apache.spark.sql.functions.col
@@ -304,7 +304,7 @@ class BatchSinkWriter(
               LOGGER.debug(s"Table already exists, appending to existing table, table-name=$tableName")
               baseDf.append()
             } else {
-              throw FailedSaveDataDataFrameV2Exception(tableName, saveMode.name(), exception)
+              throw FailedSaveDataDataFrameException(tableName, saveMode.name(), exception)
             }
           case Success(_) =>
             LOGGER.debug(s"Successfully created partitioned table, table-name=$tableName")

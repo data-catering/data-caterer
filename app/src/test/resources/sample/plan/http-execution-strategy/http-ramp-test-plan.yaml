@@ -1,0 +1,7 @@
+name: "http_ramp_test_plan"
+description: "Test ramp load pattern with HTTP sink"
+tasks:
+  - name: "http_ramp_task"
+    connection: "http_orders"
+    enabled: true
+

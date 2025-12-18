@@ -1,20 +1,15 @@
 ---
 title: "Deployment"
-description: "Data Caterer can be deployed/run as an application, docker image or helm chart."
+description: "Data Caterer can be deployed/run as a Docker image or Helm chart."
 image: "https://data.catering/diagrams/logo/data_catering_logo.svg"
 ---
 
 # Deployment
 
-Three main ways to deploy and run Data Caterer:
+Two main ways to deploy and run Data Caterer:
 
-- Application
 - Docker
 - Helm
-
-## Application
-
-Run the OS native application from [downloading the specific OS application here](../get-started/quick-start.md#quick-start).
 
 ## Docker
 

@@ -1,0 +1,7 @@
+name: "http_stepped_test_plan"
+description: "Test stepped load pattern with HTTP sink"
+tasks:
+  - name: "http_stepped_task"
+    connection: "http_orders"
+    enabled: true
+

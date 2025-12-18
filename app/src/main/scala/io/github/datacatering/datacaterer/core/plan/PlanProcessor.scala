@@ -1,7 +1,7 @@
 package io.github.datacatering.datacaterer.core.plan
 
 import io.github.datacatering.datacaterer.api.PlanRun
-import io.github.datacatering.datacaterer.api.model.Constants.{DATA_CATERER_INTERFACE_JAVA, DATA_CATERER_INTERFACE_SCALA, DATA_CATERER_INTERFACE_YAML, PLAN_CLASS, PLAN_STAGE_EXTRACT_METADATA, PLAN_STAGE_PARSE_PLAN, PLAN_STAGE_PRE_PLAN_PROCESSORS}
+import io.github.datacatering.datacaterer.api.model.Constants.{DATA_CATERER_INTERFACE_JAVA, DATA_CATERER_INTERFACE_SCALA, DATA_CATERER_INTERFACE_YAML, PLAN_CLASS, PLAN_STAGE_EXTRACT_METADATA, PLAN_STAGE_PARSE_PLAN}
 import io.github.datacatering.datacaterer.api.model.{DataCatererConfiguration, Plan, Task, ValidationConfiguration}
 import io.github.datacatering.datacaterer.core.activity.{PlanRunPostPlanProcessor, PlanRunPrePlanProcessor}
 import io.github.datacatering.datacaterer.core.config.ConfigParser
@@ -78,15 +78,32 @@ object PlanProcessor {
 
     val (planRun, resolvedInterface) = parsePlan(dataCatererConfiguration, optPlan, interface)
     try {
-      applyPrePlanProcessors(planRun, dataCatererConfiguration, resolvedInterface)
-
+      // Step 1: Extract metadata if configured (this may generate new plan/tasks)
       val optPlanWithTasks = extractMetadata(dataCatererConfiguration, planRun)
-      val dataGeneratorProcessor = new DataGeneratorProcessor(dataCatererConfiguration)
 
-      (optPlanWithTasks, planRun) match {
-        case (Some((genPlan, genTasks, genValidation)), _) => dataGeneratorProcessor.generateData(genPlan, genTasks, Some(genValidation))
-        case (_, plan) => dataGeneratorProcessor.generateData(plan._plan, plan._tasks, Some(plan._validations))
+      // Step 2: Determine which plan/tasks to use (metadata-generated or original)
+      val (basePlan, baseTasks, baseValidations) = optPlanWithTasks match {
+        case Some((genPlan, genTasks, genValidation)) if genTasks.nonEmpty =>
+          LOGGER.info(s"Using metadata-generated tasks: num-tasks=${genTasks.size}")
+          (genPlan, genTasks, genValidation)
+        case Some(_) =>
+          LOGGER.info(s"Metadata extraction returned empty tasks, using plan's tasks instead: num-tasks=${planRun._tasks.size}")
+          (planRun._plan, planRun._tasks, planRun._validations)
+        case None =>
+          LOGGER.debug(s"No metadata extraction performed, using plan's tasks: num-tasks=${planRun._tasks.size}")
+          (planRun._plan, planRun._tasks, planRun._validations)
       }
+
+      // Step 3: Apply pre-processors to modify plan/tasks (e.g., cardinality count adjustments)
+      val (finalPlan, finalTasks, finalValidations) = applyMutatingPrePlanProcessors(
+        basePlan, baseTasks, baseValidations, dataCatererConfiguration, resolvedInterface
+      )
+
+      LOGGER.info(s"After pre-processors: num-tasks=${finalTasks.size}")
+
+      // Step 4: Generate data with the final modified plan/tasks
+      val dataGeneratorProcessor = new DataGeneratorProcessor(dataCatererConfiguration)
+      dataGeneratorProcessor.generateData(finalPlan, finalTasks, Some(finalValidations))
     } catch {
       case ex: Exception => throw ex
     }
@@ -210,15 +227,59 @@ object PlanProcessor {
     }
   }
 
-  private def applyPrePlanProcessors(planRun: PlanRun, dataCatererConfiguration: DataCatererConfiguration, interface: String): Unit = {
+  /**
+   * Apply mutating pre-plan processors that can modify plan/tasks/validations.
+   * These run after metadata extraction and before data generation.
+   *
+   * @return Tuple of (modified plan, modified tasks, modified validations)
+   */
+  private def applyMutatingPrePlanProcessors(
+                                              plan: Plan,
+                                              tasks: List[Task],
+                                              validations: List[ValidationConfiguration],
+                                              dataCatererConfiguration: DataCatererConfiguration,
+                                              interface: String
+                                            ): (Plan, List[Task], List[ValidationConfiguration]) = {
     try {
-      val prePlanProcessors = List(new PlanRunPrePlanProcessor(dataCatererConfiguration))
-      prePlanProcessors.foreach(prePlanProcessor => {
-        if (prePlanProcessor.enabled) prePlanProcessor.apply(planRun._plan.copy(runInterface = Some(interface)), planRun._tasks, planRun._validations)
+      // Read-only processors (for logging, monitoring, etc.)
+      val readOnlyProcessors = List(new PlanRunPrePlanProcessor(dataCatererConfiguration))
+
+      // Mutating processors (can modify plan/tasks/validations)
+      // Order matters: uniqueness should be applied BEFORE cardinality adjustment
+      val mutatingProcessors = List(
+        new ForeignKeyUniquenessProcessor(dataCatererConfiguration),
+        new CardinalityCountAdjustmentProcessor(dataCatererConfiguration)
+      )
+
+      val planWithInterface = plan.copy(runInterface = Some(interface))
+
+      // Apply read-only processors first (don't mutate)
+      readOnlyProcessors.foreach(processor => {
+        if (processor.enabled) {
+          processor.apply(planWithInterface, tasks, validations)
+        }
       })
+
+      // Apply mutating processors in sequence
+      var currentPlan = planWithInterface
+      var currentTasks = tasks
+      var currentValidations = validations
+
+      mutatingProcessors.foreach(processor => {
+        if (processor.enabled) {
+          val (updatedPlan, updatedTasks, updatedValidations) =
+            processor.apply(currentPlan, currentTasks, currentValidations)
+          currentPlan = updatedPlan
+          currentTasks = updatedTasks
+          currentValidations = updatedValidations
+        }
+      })
+
+      (currentPlan, currentTasks, currentValidations)
+
     } catch {
       case preProcessorException: Exception =>
-        handleException(preProcessorException, PLAN_STAGE_PRE_PLAN_PROCESSORS, Some(dataCatererConfiguration), Some(planRun))
+        LOGGER.error(s"Error in pre-plan processors: ${preProcessorException.getMessage}", preProcessorException)
         throw preProcessorException
     }
   }

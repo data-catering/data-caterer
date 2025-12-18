@@ -1,7 +1,7 @@
 package io.github.datacatering.datacaterer.api.model
 
-import io.github.datacatering.datacaterer.api.model.Constants.{DEFAULT_DATA_SOURCE_NAME, GENERATION_FORMAT, GENERATION_IS_SUCCESS, GENERATION_NAME, GENERATION_NUM_RECORDS, GENERATION_OPTIONS, GENERATION_TIME_TAKEN_SECONDS, PLAN_STAGE_FINISHED, VALIDATION_DATA_SOURCE_NAME, VALIDATION_DESCRIPTION, VALIDATION_DETAILS, VALIDATION_ERROR_THRESHOLD, VALIDATION_ERROR_VALIDATIONS, VALIDATION_IS_SUCCESS, VALIDATION_NAME, VALIDATION_NUM_ERRORS, VALIDATION_NUM_SUCCESS, VALIDATION_NUM_VALIDATIONS, VALIDATION_OPTIONS, VALIDATION_SAMPLE_ERRORS, VALIDATION_SUCCESS_RATE}
-import io.github.datacatering.datacaterer.api.util.ConfigUtil.{cleanseAdditionalOptions, cleanseOptions}
+import io.github.datacatering.datacaterer.api.model.Constants._
+import io.github.datacatering.datacaterer.api.util.ConfigUtil.cleanseAdditionalOptions
 import io.github.datacatering.datacaterer.api.util.ResultWriterUtil.getSuccessSymbol
 
 import java.time.{Duration, LocalDateTime}

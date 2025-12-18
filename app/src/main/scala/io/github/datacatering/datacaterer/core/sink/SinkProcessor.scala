@@ -4,8 +4,6 @@ import io.github.datacatering.datacaterer.api.model.Constants.{HTTP, JMS}
 import io.github.datacatering.datacaterer.api.model.Step
 import io.github.datacatering.datacaterer.core.exception.UnsupportedRealTimeDataSourceFormat
 import io.github.datacatering.datacaterer.core.model.RealTimeSinkResult
-import io.github.datacatering.datacaterer.core.sink.http.HttpSinkProcessor
-import io.github.datacatering.datacaterer.core.sink.jms.JmsSinkProcessor
 import org.apache.spark.sql.Row
 import org.apache.spark.sql.types.StructType
 
@@ -66,16 +64,16 @@ object SinkProcessor {
 
   def getConnection(format: String, connectionConfig: Map[String, String], step: Step): SinkProcessor[_] = {
     format match {
-      case HTTP => HttpSinkProcessor.createConnections(connectionConfig, step)
-      case JMS => JmsSinkProcessor.createConnections(connectionConfig, step)
+      case HTTP => new http.HttpSinkProcessor().createConnections(connectionConfig, step)
+      case JMS => new jms.JmsSinkProcessor().createConnections(connectionConfig, step)
       case x => throw UnsupportedRealTimeDataSourceFormat(x)
     }
   }
 
   def validateSchema(format: String, schema: StructType): Unit = {
     format match {
-      case HTTP => HttpSinkProcessor.validate(schema)
-      case JMS => JmsSinkProcessor.validate(schema)
+      case HTTP => new http.HttpSinkProcessor().validate(schema)
+      case JMS => new jms.JmsSinkProcessor().validate(schema)
       case _ => //do nothing
     }
   }

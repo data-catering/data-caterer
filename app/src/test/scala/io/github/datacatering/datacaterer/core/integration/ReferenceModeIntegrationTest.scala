@@ -11,14 +11,16 @@ import java.nio.file.{Files, Paths}
 
 class ReferenceModeIntegrationTest extends SparkSuite with BeforeAndAfterEach {
 
-  private val testDataPath = "/tmp/data-caterer-reference-test"
-  private val creditorTablePath = s"$testDataPath/creditor_reference.csv"
-  private val outputPath = s"$testDataPath/output"
+  private var testDataPath: String = _
+  private var creditorTablePath: String = _
+  private var outputPath: String = _
 
   override def beforeEach(): Unit = {
     super.beforeEach()
-    // Create test directory
-    new File(testDataPath).mkdirs()
+    // Create test directory using temp directory
+    testDataPath = Files.createTempDirectory("data-caterer-reference-test").toString
+    creditorTablePath = s"$testDataPath/creditor_reference.csv"
+    outputPath = s"$testDataPath/output"
     new File(outputPath).mkdirs()
     
     // Create creditor reference table as mentioned in user's example

@@ -2,7 +2,6 @@ package io.github.datacatering.datacaterer.core.util
 
 import io.github.datacatering.datacaterer.api.PlanRun
 import io.github.datacatering.datacaterer.core.plan.PlanProcessor
-import io.github.datacatering.datacaterer.core.util.ForeignKeyUtilV2.ForeignKeyConfig
 import org.apache.log4j.Logger
 import org.apache.spark.sql.functions._
 import org.apache.spark.sql.types._

@@ -1,7 +1,7 @@
 package io.github.datacatering.plan
 
-import io.github.datacatering.datacaterer.api.{HttpMethodEnum, HttpQueryParameterStyleEnum, PlanRun}
 import io.github.datacatering.datacaterer.api.model.{ArrayType, DoubleType, IntegerType}
+import io.github.datacatering.datacaterer.api.{HttpMethodEnum, HttpQueryParameterStyleEnum, PlanRun}
 
 class FastGenerationAndReferencePlanRun extends PlanRun {
 

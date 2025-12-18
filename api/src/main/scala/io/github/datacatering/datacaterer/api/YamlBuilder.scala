@@ -1,9 +1,7 @@
 package io.github.datacatering.datacaterer.api
 
 import com.softwaremill.quicklens.ModifyPimp
-import io.github.datacatering.datacaterer.api.converter.Converters.toScalaMap
 import io.github.datacatering.datacaterer.api.model.Constants.{YAML_PLAN_FILE, YAML_STEP_NAME, YAML_TASK_FILE, YAML_TASK_NAME}
-import io.github.datacatering.datacaterer.api.model.{Plan, Task}
 
 /**
  * Builds configurations by loading existing YAML plan or task files and allowing override of specific configurations.

@@ -1,0 +1,16 @@
+name: "parquet_balance_and_transactions_create_plan"
+description: "Create balances and transactions in Parquet files"
+tasks:
+  - name: "parquet_balance_and_transactions"
+    dataSourceName: "parquet"
+
+sinkOptions:
+  foreignKeys:
+    - source:
+        dataSource: "parquet"
+        step: "balances"
+        fields: [ "account_number" ]
+      generate:
+        - dataSource: "parquet"
+          step: "transactions"
+          fields: [ "account_number" ]

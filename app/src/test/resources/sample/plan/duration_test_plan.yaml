@@ -1,0 +1,8 @@
+---
+name: "duration_test_plan"
+description: "Test duration-based execution"
+tasks: []
+sinkOptions:
+  foreignKeys: []
+validations: []
+runId: "1c076bee-8efe-47da-a48b-024294d15365"

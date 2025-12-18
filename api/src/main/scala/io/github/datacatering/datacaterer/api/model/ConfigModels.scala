@@ -17,7 +17,6 @@ case class FlagsConfig(
                         enableAlerts: Boolean = DEFAULT_ENABLE_ALERTS,
                         enableUniqueCheckOnlyInBatch: Boolean = DEFAULT_ENABLE_UNIQUE_CHECK_ONLY_WITHIN_BATCH,
                         enableFastGeneration: Boolean = DEFAULT_ENABLE_FAST_GENERATION,
-                        enableForeignKeyV2: Boolean = DEFAULT_ENABLE_FOREIGN_KEY_V2
                       )
 
 case class FoldersConfig(

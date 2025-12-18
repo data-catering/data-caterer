@@ -1,7 +1,7 @@
 package io.github.datacatering.plan
 
 import io.github.datacatering.datacaterer.api.PlanRun
-import io.github.datacatering.datacaterer.api.model.{DecimalType, DateType, TimestampType}
+import io.github.datacatering.datacaterer.api.model.{DateType, DecimalType, TimestampType}
 
 /**
  * Example demonstrating how to use custom transformations to modify generated data.

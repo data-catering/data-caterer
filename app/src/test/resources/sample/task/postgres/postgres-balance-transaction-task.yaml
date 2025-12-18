@@ -9,7 +9,7 @@ steps:
     fields:
       - name: "account_number"
         options:
-          regex: "ACC1[0-9]{5,10}"
+          regex: "ACC1[0-9]{10}"
       - name: "create_time"
         type: "timestamp"
       - name: "account_status"

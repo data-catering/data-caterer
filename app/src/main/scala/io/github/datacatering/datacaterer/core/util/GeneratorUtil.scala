@@ -33,6 +33,22 @@ object GeneratorUtil {
     val hasRegex = structField.metadata.contains(REGEX_GENERATOR)
     val hasOneOf = structField.metadata.contains(ONE_OF_GENERATOR)
 
+    getDataGenerator(structField, faker, enableFastGeneration, hasSql, hasExpression, hasRegex, hasOneOf)
+  }
+
+  /**
+   * Get data generator with fast mode support and generator options.
+   */
+  def getDataGenerator(generatorOpts: Map[String, Any], structField: StructField, faker: Faker, enableFastGeneration: Boolean): DataGenerator[_] = {
+    val hasOneOfGenerator = generatorOpts.contains(ONE_OF_GENERATOR)
+    val hasRegex = generatorOpts.contains(REGEX_GENERATOR)
+    val hasExpression = generatorOpts.contains(EXPRESSION)
+    val hasSql = generatorOpts.contains(SQL_GENERATOR)
+
+    getDataGenerator(structField, faker, enableFastGeneration, hasSql, hasExpression, hasRegex, hasOneOfGenerator)
+  }
+
+  private def getDataGenerator(structField: StructField, faker: Faker, enableFastGeneration: Boolean, hasSql: Boolean, hasExpression: Boolean, hasRegex: Boolean, hasOneOf: Boolean) = {
     if (hasOneOf) {
       OneOfDataGenerator.getGenerator(structField, faker)
     } else if (hasRegex) {
@@ -54,25 +70,6 @@ object GeneratorUtil {
     }
   }
 
-  /**
-   * Get data generator with fast mode support and generator options.
-   */
-  def getDataGenerator(generatorOpts: Map[String, Any], structField: StructField, faker: Faker, enableFastGeneration: Boolean): DataGenerator[_] = {
-    if (generatorOpts.contains(ONE_OF_GENERATOR)) {
-      OneOfDataGenerator.getGenerator(structField, faker)
-    } else if (generatorOpts.contains(REGEX_GENERATOR)) {
-      // Always use FastRegexDataGenerator for regex patterns (it falls back to UDF for unsupported patterns)
-      new FastRegexDataGenerator(structField, faker)
-    } else {
-      // For string fields in fast mode, use fast generator
-      if (enableFastGeneration && structField.dataType.typeName == "string") {
-        new FastStringDataGenerator(structField, faker)
-      } else {
-        RandomDataGenerator.getGeneratorForStructField(structField, faker)
-      }
-    }
-  }
-
   def zipWithIndex(df: DataFrame, colName: String): DataFrame = {
     df.sqlContext.createDataFrame(
       df.rdd.zipWithIndex.map(ln =>
@@ -85,7 +82,12 @@ object GeneratorUtil {
   }
 
   def getDataSourceName(taskSummary: TaskSummary, step: Step): String = {
-    s"${taskSummary.dataSourceName}.${step.name}"
+    val dsName = if (taskSummary.dataSourceName.isEmpty) {
+      throw new IllegalStateException("Task summary cannot have empty dataSourceName")
+    } else {
+      taskSummary.dataSourceName
+    }
+    s"$dsName.${step.name}"
   }
 
   def applySqlExpressions(df: DataFrame, foreignKeyFields: List[String] = List(), isIgnoreForeignColExists: Boolean = true): DataFrame = {
@@ -151,7 +153,7 @@ object GeneratorUtil {
     }
     
     // Separate array element expressions from regular expressions
-    val (arrayElementExpressions, regularExpressions) = sqlExpressions.partition(_._1.contains(".element."))
+    val (_, regularExpressions) = sqlExpressions.partition(_._1.contains(".element."))
     
     // Step 1: Add temporary columns for non-array element SQL expressions only
     val sqlExpressionsWithoutForeignKeys = regularExpressions.filter {
@@ -216,7 +218,7 @@ object GeneratorUtil {
       if (!isIdentityExpr) {
         val rewired = rewriteWithTempRefs(sqlExpr, path)
         val finalExpr = lookupDataType(path) match {
-          case Some(dt) if dt.typeName == "string" => s"CAST((${rewired}) AS STRING)"
+          case Some(dt) if dt.typeName == "string" => s"CAST(($rewired) AS STRING)"
           case _ => rewired
         }
         LOGGER.debug(s"Adding temp SQL column [$tempColName] for path=[$path], expr=[$finalExpr]")
@@ -243,7 +245,7 @@ object GeneratorUtil {
     if (level0.nonEmpty) {
       val existingColumns = resultDf.columns.map(c => s"`$c`")
       val level0Exprs = level0.map { case (name, expr, _) => s"($expr) AS `$name`" }
-      resultDf = resultDf.selectExpr((existingColumns ++ level0Exprs): _*)
+      resultDf = resultDf.selectExpr(existingColumns ++ level0Exprs: _*)
     }
 
     // Apply level 1 expressions one at a time (they may have lateral dependencies)
@@ -255,7 +257,7 @@ object GeneratorUtil {
     // and inline processing for array element expressions
     // Build columns only for original schema fields, not for temporary helper columns
     val newColumns = df.schema.fields.map { field =>
-      buildColumnWithSqlResolution(field, resultDf, sqlExpressions, arrayElementExpressions, identityPaths, tempNameByPath)
+      buildColumnWithSqlResolution(field, resultDf, sqlExpressions, identityPaths, tempNameByPath)
     }
     
     // Step 3: Select the new columns
@@ -276,7 +278,7 @@ object GeneratorUtil {
     
     // Create a regex pattern to match array field references
     // This matches patterns like "transaction_history.field_name"
-    val arrayFieldPattern = s"\\b${arrayFieldName}\\.(\\w+)\\b".r
+    val arrayFieldPattern = s"\\b$arrayFieldName\\.(\\w+)\\b".r
     
     // Replace array field references with element references
     val transformedExpr = arrayFieldPattern.replaceAllIn(sqlExpr, m => {
@@ -354,8 +356,6 @@ object GeneratorUtil {
     def inlineSameElementReferences(exprIn: String, visited: Set[String]): String = {
       // Matches same-array path prefix (supports dotted array roots) like `organizations.departments.field`
       val arrayRefPattern = ("(?i)(`?" + java.util.regex.Pattern.quote(arrayRootPathKey) + "`?\\.)([a-zA-Z0-9_`\\.]+)").r
-      // Generic path pattern capturing a dotted prefix and a remainder
-      val anyArrayPattern = "(?s)".r // placeholder, we'll use manual find logic
 
       // First replace arrayName.* references
       val replacedArrayRefs = arrayRefPattern.replaceAllIn(exprIn, m => {
@@ -363,7 +363,7 @@ object GeneratorUtil {
         val relPath = relPathRaw.replace("`", "")
         val expansion = expandField(relPath, visited)
         // Ensure proper grouping
-        s"(${expansion})"
+        s"($expansion)"
       })
 
       // Replace references to other arrays in scope, retarget to nearest scoped lambda
@@ -414,7 +414,7 @@ object GeneratorUtil {
   }
   
   // Helper function to build columns with SQL resolution
-  private def buildColumnWithSqlResolution(field: StructField, df: DataFrame, sqlExpressions: List[(String, String)], arrayElementExpressions: List[(String, String)] = List(), identityPaths: Set[String] = Set.empty, tempNameByPath: Map[String, String] = Map.empty): org.apache.spark.sql.Column = {
+  private def buildColumnWithSqlResolution(field: StructField, df: DataFrame, sqlExpressions: List[(String, String)], identityPaths: Set[String] = Set.empty, tempNameByPath: Map[String, String] = Map.empty): org.apache.spark.sql.Column = {
     
     // Allocate readable distinct lambda variable names by depth
     def allocateLambda(depth: Int): String = depth match {
@@ -511,7 +511,7 @@ object GeneratorUtil {
     
     // Check if the top-level field has a SQL expression
     sqlExpressions.find(_._1 == field.name) match {
-      case Some((_, sqlExpr)) =>
+      case Some((_, _)) =>
         // Always keep the original index column
         if (field.name == "__index_inc") {
           col(field.name)
@@ -611,4 +611,28 @@ object GeneratorUtil {
     }
   }
 
+  /**
+   * Parse duration string to seconds.
+   * Supports formats like: "30s", "5m", "1h", "2h30m15s"
+   */
+  def parseDurationToSeconds(duration: String): Double = {
+    val pattern = """(\d+)([smh])""".r
+    val matches = pattern.findAllMatchIn(duration.toLowerCase)
+
+    matches.foldLeft(0.0) { (total, m) =>
+      val value = m.group(1).toDouble
+      val unit = m.group(2)
+      val seconds = unit match {
+        case "s" => value
+        case "m" => value * 60
+        case "h" => value * 3600
+        case _ => 0.0
+      }
+      total + seconds
+    }
+  }
+
+  def parseDurationToMillis(duration: String): Long = {
+    (parseDurationToSeconds(duration) * 1000).toLong
+  }
 }

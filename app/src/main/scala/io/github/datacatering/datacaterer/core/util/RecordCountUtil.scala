@@ -85,33 +85,44 @@ object RecordCountUtil {
           s"data-source-name=${task._1.dataSourceName}, task-name=${task._2.name}, step-name=${step.name}, step-count=${step.count.numRecords}")
         step.count
       } else if (optGenerationForeignKey.isDefined) {
-        //then get the source of the foreign key
-        val sourceFk = optGenerationForeignKey.get.source
-        //then get the count of num records for the source step as it determines the count generation steps
-        val optSourceFkStep = allStepsWithDataSource.find(s => s._1._1.dataSourceName == sourceFk.dataSource && s._2.name == sourceFk.step)
-        //then pass via recursion
-        optSourceFkStep.map(sourceFkStep => {
-          // Check if the source step is in reference mode
-          val isSourceReferenceMode = sourceFkStep._2.options.get(io.github.datacatering.datacaterer.api.model.Constants.ENABLE_REFERENCE_MODE)
-            .map(_.toBoolean)
-            .getOrElse(io.github.datacatering.datacaterer.api.model.Constants.DEFAULT_ENABLE_REFERENCE_MODE)
+        // Check if any target in FK has cardinality configuration - if so, trust the adjusted count from CardinalityCountAdjustmentProcessor
+        val targetHasCardinality = optGenerationForeignKey.get.generate.exists { target =>
+          target.dataSource == task._1.dataSourceName && target.step == step.name && target.cardinality.isDefined
+        }
 
-          if (isSourceReferenceMode) {
-            // Source is in reference mode: DO NOT override target's count based on source's default count
-            // Instead, keep the target's explicitly configured count
-            LOGGER.debug(s"FK source step has reference mode enabled, NOT overriding target count, " +
-              s"source-data-source=${sourceFk.dataSource}, source-step=${sourceFk.step}, " +
-              s"target-data-source=${task._1.dataSourceName}, target-step=${step.name}, target-count=${step.count.numRecords}")
-            step.count
-          } else {
-            // Normal FK generation: derive count from source
-            val sourceFkRecords = getCountForStep(sourceFkStep._1, sourceFkStep._2)._2
-            LOGGER.debug(s"Deriving target count from FK source, " +
-              s"source-data-source=${sourceFk.dataSource}, source-step=${sourceFk.step}, source-count=$sourceFkRecords, " +
-              s"target-data-source=${task._1.dataSourceName}, target-step=${step.name}")
-            step.count.copy(records = Some(sourceFkRecords))
-          }
-        }).getOrElse(step.count)
+        if (targetHasCardinality) {
+          // Target has cardinality: use the step's count (already adjusted by CardinalityCountAdjustmentProcessor)
+          LOGGER.debug(s"FK has cardinality config, using step's adjusted count (not deriving from source), " +
+            s"target-data-source=${task._1.dataSourceName}, target-step=${step.name}, adjusted-count=${step.count.numRecords}")
+          step.count
+        } else {
+          // No cardinality: use old logic to derive from source (1:1 relationship)
+          val sourceFk = optGenerationForeignKey.get.source
+          val optSourceFkStep = allStepsWithDataSource.find(s => s._1._1.dataSourceName == sourceFk.dataSource && s._2.name == sourceFk.step)
+          
+          optSourceFkStep.map(sourceFkStep => {
+            // Check if the source step is in reference mode
+            val isSourceReferenceMode = sourceFkStep._2.options.get(io.github.datacatering.datacaterer.api.model.Constants.ENABLE_REFERENCE_MODE)
+              .map(_.toBoolean)
+              .getOrElse(io.github.datacatering.datacaterer.api.model.Constants.DEFAULT_ENABLE_REFERENCE_MODE)
+
+            if (isSourceReferenceMode) {
+              // Source is in reference mode: DO NOT override target's count based on source's default count
+              // Instead, keep the target's explicitly configured count
+              LOGGER.debug(s"FK source step has reference mode enabled, NOT overriding target count, " +
+                s"source-data-source=${sourceFk.dataSource}, source-step=${sourceFk.step}, " +
+                s"target-data-source=${task._1.dataSourceName}, target-step=${step.name}, target-count=${step.count.numRecords}")
+              step.count
+            } else {
+              // Normal FK generation: derive count from source (1:1)
+              val sourceFkRecords = getCountForStep(sourceFkStep._1, sourceFkStep._2)._2
+              LOGGER.debug(s"Deriving target count from FK source (1:1 relationship), " +
+                s"source-data-source=${sourceFk.dataSource}, source-step=${sourceFk.step}, source-count=$sourceFkRecords, " +
+                s"target-data-source=${task._1.dataSourceName}, target-step=${step.name}")
+              step.count.copy(records = Some(sourceFkRecords))
+            }
+          }).getOrElse(step.count)
+        }
       } else {
         step.count
       }

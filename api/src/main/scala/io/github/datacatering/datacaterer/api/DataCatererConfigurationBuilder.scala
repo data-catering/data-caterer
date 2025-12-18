@@ -3,7 +3,7 @@ package io.github.datacatering.datacaterer.api
 import com.softwaremill.quicklens.ModifyPimp
 import io.github.datacatering.datacaterer.api.connection.{BigQueryBuilder, CassandraBuilder, ConnectionTaskBuilder, FileBuilder, HttpBuilder, KafkaBuilder, MySqlBuilder, NoopBuilder, PostgresBuilder, RabbitmqBuilder, SolaceBuilder}
 import io.github.datacatering.datacaterer.api.converter.Converters.toScalaMap
-import io.github.datacatering.datacaterer.api.model.Constants.{BIGQUERY_WRITE_METHOD, _}
+import io.github.datacatering.datacaterer.api.model.Constants._
 import io.github.datacatering.datacaterer.api.model.DataCatererConfiguration
 
 import scala.annotation.varargs

@@ -14,6 +14,7 @@ import io.github.datacatering.datacaterer.api.{CombinationPreFilterBuilder, Vali
   new Type(value = classOf[FieldNamesValidation]),
   new Type(value = classOf[ExpressionValidation]),
   new Type(value = classOf[FieldValidations]),
+  new Type(value = classOf[MetricValidation]),
 ))
 @JsonTypeInfo(use = JsonTypeInfo.Id.DEDUCTION)
 @JsonIgnoreProperties(ignoreUnknown = true)
@@ -126,6 +127,16 @@ case class FieldValidations(
                            ) extends Validation {
   override def toOptions: List[List[String]] = List(
     List("field", field),
+    List("validation", validation.map(_.toString).mkString(",")),
+  ) ++ baseOptions
+}
+
+case class MetricValidation(
+                             metric: String = "",
+                             validation: List[FieldValidation] = List()
+                           ) extends Validation {
+  override def toOptions: List[List[String]] = List(
+    List("metric", metric),
     List("validation", validation.map(_.toString).mkString(",")),
   ) ++ baseOptions
 }

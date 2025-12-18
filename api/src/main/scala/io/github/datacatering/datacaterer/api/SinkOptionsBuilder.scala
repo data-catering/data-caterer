@@ -67,4 +67,5 @@ case class SinkOptionsBuilder(sinkOptions: SinkOptions = SinkOptions()) {
    */
   def foreignKey(foreignKey: ForeignKeyRelation, generationLinks: List[ForeignKeyRelation]): SinkOptionsBuilder =
     this.foreignKey(foreignKey, generationLinks: _*)
+
 }

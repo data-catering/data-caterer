@@ -5,11 +5,14 @@ import io.github.datacatering.datacaterer.api.model.ArrayType
 import io.github.datacatering.datacaterer.core.util.{ObjectMapperUtil, SparkSuite}
 import org.apache.spark.sql.Row
 
+import java.nio.file.Files
+
 class JsonUnwrapTopLevelTest extends SparkSuite {
 
   test("Unwrap top-level array outputs a bare JSON array") {
+    val tempDir = Files.createTempDirectory("json-unwrap-array").toString
     class TestUnwrapTopLevelArray extends PlanRun {
-      val jsonTask = json("unwrap_array_json", "/tmp/json/unwrap-array", Map("saveMode" -> "overwrite", "numPartitions" -> "1"))
+      val jsonTask = json("unwrap_array_json", tempDir, Map("saveMode" -> "overwrite", "numPartitions" -> "1"))
         .fields(
           field.name("records").`type`(ArrayType)
             .arrayMinLength(3)
@@ -27,7 +30,7 @@ class JsonUnwrapTopLevelTest extends SparkSuite {
 
     PlanProcessor.determineAndExecutePlan(Some(new TestUnwrapTopLevelArray()))
 
-    val written = sparkSession.read.text("/tmp/json/unwrap-array").collect().map(_.getString(0))
+    val written = sparkSession.read.text(tempDir).collect().map(_.getString(0))
     assert(written.nonEmpty, "Expected a single JSON array output line")
     val jsonArrayStr = written.head
     assert(jsonArrayStr.trim.startsWith("["), s"Expected top-level JSON array, got: ${jsonArrayStr.take(100)}...")
@@ -40,8 +43,9 @@ class JsonUnwrapTopLevelTest extends SparkSuite {
   }
 
   test("Default JSON remains object when unwrap not enabled") {
+    val tempDir = Files.createTempDirectory("json-keep-object").toString
     class TestKeepObject extends PlanRun {
-      val jsonTask = json("keep_object_json", "/tmp/json/keep-object", Map("saveMode" -> "overwrite", "numPartitions" -> "1"))
+      val jsonTask = json("keep_object_json", tempDir, Map("saveMode" -> "overwrite", "numPartitions" -> "1"))
         .fields(
           field.name("records").`type`(ArrayType)
             .arrayMinLength(2)
@@ -56,7 +60,7 @@ class JsonUnwrapTopLevelTest extends SparkSuite {
     }
 
     PlanProcessor.determineAndExecutePlan(Some(new TestKeepObject()))
-    val df = sparkSession.read.json("/tmp/json/keep-object")
+    val df = sparkSession.read.json(tempDir)
     assert(df.columns.contains("records"))
     val first = df.collect().head
     val arr = first.getAs[Seq[Row]]("records")
@@ -64,8 +68,9 @@ class JsonUnwrapTopLevelTest extends SparkSuite {
   }
 
   test("Unwrap is ignored when more than one top-level field exists") {
+    val tempDir = Files.createTempDirectory("json-multi-top").toString
     class TestMultipleTopLevel extends PlanRun {
-      val jsonTask = json("multi_top_json", "/tmp/json/multi-top", Map("saveMode" -> "overwrite", "numPartitions" -> "1"))
+      val jsonTask = json("multi_top_json", tempDir, Map("saveMode" -> "overwrite", "numPartitions" -> "1"))
         .fields(
           field.name("records").`type`(ArrayType)
             .arrayMinLength(1)
@@ -82,7 +87,7 @@ class JsonUnwrapTopLevelTest extends SparkSuite {
     }
 
     PlanProcessor.determineAndExecutePlan(Some(new TestMultipleTopLevel()))
-    val df = sparkSession.read.json("/tmp/json/multi-top")
+    val df = sparkSession.read.json(tempDir)
     assert(df.columns.toSet == Set("records", "extra"))
   }
 }

@@ -7,6 +7,8 @@ import io.github.datacatering.datacaterer.core.util.SparkSuite
 import org.apache.spark.sql.SaveMode
 import org.scalatest.matchers.should.Matchers
 
+import java.nio.file.Files
+
 class UpstreamDataSourceValidationOpsTest extends SparkSuite with Matchers {
 
   test("UpstreamDataSourceValidationOps can validate dataframe with upstream data validation") {
@@ -18,8 +20,8 @@ class UpstreamDataSourceValidationOpsTest extends SparkSuite with Matchers {
       (1, "foo1", 3.0),
       (2, "bar1", 4.0)
     )).toDF("id", "name", "value").repartition(1)
-    val csvPath = "/tmp/data-caterer-upstream-data-test-csv-1"
-    val recordTrackingPath = "/tmp/data-caterer-upstream-data-test-record-tracking"
+    val csvPath = Files.createTempDirectory("data-caterer-upstream-data-test-csv").toString
+    val recordTrackingPath = Files.createTempDirectory("data-caterer-upstream-data-test-record-tracking").toString
     upstreamDf.write.option("header", "true").mode(SaveMode.Overwrite).csv(csvPath)
     val upstreamDataSource = ConnectionConfigWithTaskBuilder().file("my-csv", CSV, csvPath, Map("header" -> "true"))
     val upstreamDataValidation = UpstreamDataSourceValidation(
@@ -46,8 +48,8 @@ class UpstreamDataSourceValidationOpsTest extends SparkSuite with Matchers {
       (1, "foo1", 3.0),
       (2, "bar1", 4.0)
     )).toDF("id", "name", "value").repartition(1)
-    val csvPath = "/tmp/data-caterer-upstream-data-test-csv-2"
-    val recordTrackingPath = "/tmp/data-caterer-upstream-data-test-record-tracking"
+    val csvPath = Files.createTempDirectory("data-caterer-upstream-data-test-csv").toString
+    val recordTrackingPath = Files.createTempDirectory("data-caterer-upstream-data-test-record-tracking").toString
     upstreamDf.write.option("header", "true").mode(SaveMode.Overwrite).csv(csvPath)
     val upstreamDataSource = ConnectionConfigWithTaskBuilder().file("my_csv", CSV, csvPath, Map("header" -> "true"))
     val upstreamDataValidation = UpstreamDataSourceValidation(

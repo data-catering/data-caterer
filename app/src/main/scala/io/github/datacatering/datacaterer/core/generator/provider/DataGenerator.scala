@@ -5,7 +5,7 @@ import io.github.datacatering.datacaterer.api.model.generator.BaseGenerator
 import io.github.datacatering.datacaterer.core.exception.ExhaustedUniqueValueGenerationException
 import io.github.datacatering.datacaterer.core.model.Constants.DATA_CATERER_RANDOM_LENGTH
 import net.datafaker.Faker
-import org.apache.spark.sql.functions.{expr, rand, when}
+import org.apache.spark.sql.functions.{expr, lit, monotonically_increasing_id, rand, when, xxhash64}
 import org.apache.spark.sql.types.StructField
 
 import java.util.regex.Pattern
@@ -35,11 +35,20 @@ trait DataGenerator[T] extends BaseGenerator[T] with Serializable {
       return s"'${optStatic.get}'"
     }
     val baseSqlExpression = replaceLambdaFunction(generateSqlExpression)
-    val caseRandom = optRandomSeed.map(s => rand(s)).getOrElse(rand())
+    // Use hash-based approach when seed is provided for deterministic behavior across environments
+    // (Spark's rand(seed) is partition-dependent and not truly deterministic)
+    // Note: Using xxhash64 with monotonically_increasing_id provides row-level determinism
+    val caseRandom = optRandomSeed match {
+      case Some(s) =>
+        // Hash row ID with seed, normalize to [0, 1)
+        val hashExpr = xxhash64(monotonically_increasing_id(), lit(s))
+        (hashExpr.bitwiseAND(lit(Long.MaxValue))).cast("double") / lit(Long.MaxValue.toDouble)
+      case None => rand()
+    }
     val expression = (enabledEdgeCases, enabledNull) match {
       case (true, true) =>
         when(caseRandom.leq(probabilityOfEdgeCases), edgeCases(random.nextInt(edgeCases.size)))
-          .otherwise(when(caseRandom.leq(probabilityOfEdgeCases + probabilityOfNull), null))
+          .when(caseRandom.leq(probabilityOfEdgeCases + probabilityOfNull), lit(null).cast(structField.dataType))
           .otherwise(expr(baseSqlExpression))
           .expr.sql
       case (true, false) =>
@@ -47,7 +56,7 @@ trait DataGenerator[T] extends BaseGenerator[T] with Serializable {
           .otherwise(expr(baseSqlExpression))
           .expr.sql
       case (false, true) =>
-        when(caseRandom.leq(probabilityOfNull), null)
+        when(caseRandom.leq(probabilityOfNull), lit(null).cast(structField.dataType))
           .otherwise(expr(baseSqlExpression))
           .expr.sql
       case _ => baseSqlExpression

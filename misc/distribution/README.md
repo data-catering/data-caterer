@@ -9,18 +9,6 @@ docker run -d -i -p 9898:9898 -e DEPLOY_MODE=standalone -v data-caterer-data:/op
 #open localhost:9898
 ```
 
-##### Jpackage
-
-```bash
-JPACKAGE_BUILD=true gradle clean :api:shadowJar :app:shadowJar
-# Mac
-jpackage "@misc/jpackage/jpackage.cfg" "@misc/jpackage/jpackage-mac.cfg"
-# Windows
-jpackage "@misc/jpackage/jpackage.cfg" "@misc/jpackage/jpackage-windows.cfg"
-# Linux
-jpackage "@misc/jpackage/jpackage.cfg" "@misc/jpackage/jpackage-linux.cfg"
-```
-
 ##### Java 17 VM Options
 
 ```shell

@@ -43,7 +43,7 @@ class DataGeneratorProcessor(dataCatererConfiguration: DataCatererConfiguration)
     result
   }
 
-  protected def generateDataWithResult(plan: Plan, summaryWithTask: List[(TaskSummary, Task)], optValidations: Option[List[ValidationConfiguration]]): PlanRunResults = {
+  private def generateDataWithResult(plan: Plan, summaryWithTask: List[(TaskSummary, Task)], optValidations: Option[List[ValidationConfiguration]]): PlanRunResults = {
     if (flagsConfig.enableDeleteGeneratedRecords && flagsConfig.enableGenerateData) {
       LOGGER.warn("Both enableGenerateData and enableDeleteGeneratedData are true. Please only enable one at a time. Will continue with generating data")
     }
@@ -55,18 +55,18 @@ class DataGeneratorProcessor(dataCatererConfiguration: DataCatererConfiguration)
       t._2.steps.count(s => if (s.fields.nonEmpty) true else false)
     ).sum
 
-    val generationResult = if (flagsConfig.enableGenerateData && numSteps > 0) {
+    val (generationResult, optPerformanceMetrics) = if (flagsConfig.enableGenerateData && numSteps > 0) {
       val stepNames = summaryWithTask.map(t => s"task=${t._2.name}, num-steps=${t._2.steps.size}, steps=${t._2.steps.map(_.name).mkString(",")}").mkString("||")
       LOGGER.debug(s"Following tasks are enabled and will be executed: num-tasks=${summaryWithTask.size}, tasks=$stepNames")
       runDataGeneration(plan, summaryWithTask, optValidations)
     } else {
       LOGGER.warn(s"No data will be generated as it is either disabled or there are no tasks defined with a schema, " +
         s"enable-generate-data=${flagsConfig.enableGenerateData}, num-steps=$numSteps")
-      List()
+      (List(), None)
     }
 
     val validationResults = if (flagsConfig.enableValidation) {
-      runDataValidation(optValidations, plan, generationResult)
+      runDataValidation(optValidations, plan, generationResult, optPerformanceMetrics)
     } else {
       LOGGER.debug("Data validations disabled by flag configuration")
       List()
@@ -91,9 +91,14 @@ class DataGeneratorProcessor(dataCatererConfiguration: DataCatererConfiguration)
     }
   }
 
-  private def runDataValidation(optValidations: Option[List[ValidationConfiguration]], plan: Plan, generationResults: List[DataSourceResult]): List[ValidationConfigResult] = {
+  private def runDataValidation(
+                                 optValidations: Option[List[ValidationConfiguration]],
+                                 plan: Plan,
+                                 generationResults: List[DataSourceResult],
+                                 optPerformanceMetrics: Option[io.github.datacatering.datacaterer.core.generator.metrics.PerformanceMetrics]
+                               ): List[ValidationConfigResult] = {
     try {
-      new ValidationProcessor(connectionConfigsByName, optValidations, dataCatererConfiguration.validationConfig, foldersConfig)
+      new ValidationProcessor(connectionConfigsByName, optValidations, dataCatererConfiguration.validationConfig, foldersConfig, optPerformanceMetrics)
         .executeValidations
     } catch {
       case exception: Exception =>
@@ -102,7 +107,7 @@ class DataGeneratorProcessor(dataCatererConfiguration: DataCatererConfiguration)
     }
   }
 
-  private def runDataGeneration(plan: Plan, summaryWithTask: List[(TaskSummary, Task)], optValidations: Option[List[ValidationConfiguration]]): List[DataSourceResult] = {
+  private def runDataGeneration(plan: Plan, summaryWithTask: List[(TaskSummary, Task)], optValidations: Option[List[ValidationConfiguration]]): (List[DataSourceResult], Option[io.github.datacatering.datacaterer.core.generator.metrics.PerformanceMetrics]) = {
     try {
       batchDataProcessor.splitAndProcess(plan, summaryWithTask, optValidations)
     } catch {

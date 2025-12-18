@@ -1,7 +1,5 @@
 package io.github.datacatering.datacaterer.api.model
 
-import java.util.UUID
-
 object Constants {
 
   lazy val PLAN_CLASS = "PLAN_CLASS"
@@ -232,10 +230,8 @@ object Constants {
   lazy val DEFAULT_ENABLE_VALIDATION = true
   lazy val DEFAULT_ENABLE_SUGGEST_VALIDATIONS = false
   lazy val DEFAULT_ENABLE_ALERTS = true
-  lazy val DEFAULT_ENABLE_TRACK_ACTIVITY = true
   lazy val DEFAULT_ENABLE_UNIQUE_CHECK_ONLY_WITHIN_BATCH = false
   lazy val DEFAULT_ENABLE_FAST_GENERATION = false
-  lazy val DEFAULT_ENABLE_FOREIGN_KEY_V2 = true
 
   //folders defaults
   lazy val DEFAULT_PLAN_FILE_PATH = "/opt/app/plan/customer-create-plan.yaml"
@@ -342,6 +338,31 @@ object Constants {
   lazy val FOREIGN_KEY_DELIMITER_REGEX = "\\|\\|"
   lazy val FOREIGN_KEY_PLAN_FILE_DELIMITER = "."
   lazy val FOREIGN_KEY_PLAN_FILE_DELIMITER_REGEX = "\\."
+
+  //foreign key relationship types
+  lazy val FOREIGN_KEY_RELATIONSHIP_ONE_TO_ONE = "one-to-one"
+  lazy val FOREIGN_KEY_RELATIONSHIP_ONE_TO_MANY = "one-to-many"
+  lazy val FOREIGN_KEY_RELATIONSHIP_MANY_TO_MANY = "many-to-many"
+  lazy val DEFAULT_FOREIGN_KEY_RELATIONSHIP_TYPE = FOREIGN_KEY_RELATIONSHIP_ONE_TO_MANY
+
+  //foreign key generation modes
+  lazy val FOREIGN_KEY_GENERATION_MODE_ALL_EXIST = "all-exist"
+  lazy val FOREIGN_KEY_GENERATION_MODE_ALL_COMBINATIONS = "all-combinations"
+  lazy val FOREIGN_KEY_GENERATION_MODE_PARTIAL = "partial"
+  lazy val DEFAULT_FOREIGN_KEY_GENERATION_MODE = FOREIGN_KEY_GENERATION_MODE_ALL_EXIST
+
+  //foreign key cardinality distribution types
+  lazy val CARDINALITY_DISTRIBUTION_UNIFORM = "uniform"
+  lazy val CARDINALITY_DISTRIBUTION_NORMAL = "normal"
+  lazy val CARDINALITY_DISTRIBUTION_ZIPF = "zipf"
+  lazy val CARDINALITY_DISTRIBUTION_POWER = "power"
+  lazy val DEFAULT_CARDINALITY_DISTRIBUTION = CARDINALITY_DISTRIBUTION_UNIFORM
+
+  //foreign key nullability strategies
+  lazy val NULLABILITY_STRATEGY_RANDOM = "random"
+  lazy val NULLABILITY_STRATEGY_HEAD = "head"
+  lazy val NULLABILITY_STRATEGY_TAIL = "tail"
+  lazy val DEFAULT_NULLABILITY_STRATEGY = NULLABILITY_STRATEGY_RANDOM
 
   //plan defaults
   lazy val DEFAULT_PLAN_NAME = "default_plan"
@@ -606,7 +627,6 @@ object Constants {
   lazy val CONFIG_FLAGS_ALERTS = "enableAlerts"
   lazy val CONFIG_FLAGS_UNIQUE_CHECK_ONLY_IN_BATCH = "enableUniqueCheckOnlyInBatch"
   lazy val CONFIG_FLAGS_FAST_GENERATION = "enableFastGeneration"
-  lazy val CONFIG_FLAGS_FOREIGN_KEY_V2 = "enableForeignKeyV2"
   //folder config
   lazy val CONFIG_FOLDER_PLAN_FILE_PATH = "planFilePath"
   lazy val CONFIG_FOLDER_TASK_FOLDER_PATH = "taskFolderPath"
