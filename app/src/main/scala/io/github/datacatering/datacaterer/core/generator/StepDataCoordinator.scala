@@ -211,12 +211,14 @@ class StepDataCoordinator(
     targetNumRecords: Long,
     retries: Int
   ): (DataFrame, Long) = {
-    LOGGER.debug(s"Record count does not reach expected num records for batch, generating more records until reached, " +
-      s"target-num-records=$targetNumRecords, actual-num-records=$currentRecordCount, num-retries=$retries, max-retries=$maxRetries")
     
     if (targetNumRecords == currentRecordCount || retries >= maxRetries) {
+      LOGGER.debug(s"Record count reaches expected num records for batch or reached max retries, stopping generation, " +
+        s"target-num-records=$targetNumRecords, actual-num-records=$currentRecordCount, num-retries=$retries, max-retries=$maxRetries")
       (currentDf, currentRecordCount)
     } else {
+      LOGGER.debug(s"Record count does not reach expected num records for batch, generating more records until reached, " +
+        s"target-num-records=$targetNumRecords, actual-num-records=$currentRecordCount, num-retries=$retries, max-retries=$maxRetries")
       val (newDf, newRecordCount, newBaseRecordCount) = generateAdditionalRecords(
         batch, step, task, dataSourceStepName, stepRecords, currentDf, currentRecordCount, currentBaseRecordCount, targetNumRecords
       )

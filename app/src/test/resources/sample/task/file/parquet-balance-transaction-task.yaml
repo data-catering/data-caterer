@@ -1,15 +1,16 @@
-name: "jdbc_customer_balance_and_transactions"
+name: "parquet_balance_and_transactions"
 steps:
   - name: "balances"
-    type: "postgres"
+    type: "parquet"
     count:
       records: 1000
     options:
-      dbtable: "account.balances"
+      path: "/tmp/data-caterer-parquet-fk-test/balances"
     fields:
       - name: "account_number"
         options:
-          regex: "ACC1[0-9]{10}"
+          regex: "ACC1[0-9]{5,10}"
+          isUnique: true
       - name: "create_time"
         type: "timestamp"
       - name: "account_status"
@@ -22,14 +23,14 @@ steps:
       - name: "balance"
         type: "double"
   - name: "transactions"
-    type: "postgres"
+    type: "parquet"
     count:
       perField:
         fieldNames:
           - "account_number"
         count: 5
     options:
-      dbtable: "account.transactions"
+      path: "/tmp/data-caterer-parquet-fk-test/transactions"
     fields:
       - name: "account_number"
       - name: "create_time"

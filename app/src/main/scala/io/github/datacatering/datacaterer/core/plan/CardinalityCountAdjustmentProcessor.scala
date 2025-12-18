@@ -65,10 +65,14 @@ class CardinalityCountAdjustmentProcessor(val dataCatererConfiguration: DataCate
 
       dataSourceNameOpt match {
         case Some(dataSourceName) =>
-          // Check if this task is a target in any FK relationship with cardinality
+          // Get all step names in this task to check if any are FK targets
+          val taskStepNames = task.steps.map(_.name).toSet
+          
+          // Check if any step in this task is a target in any FK relationship with cardinality
+          // Must match BOTH dataSource AND step name to avoid incorrect matching
           val targetRelationOpt = enhancedForeignKeys
             .flatMap(_.generate)
-            .find(target => target.dataSource == dataSourceName && target.cardinality.isDefined)
+            .find(target => target.dataSource == dataSourceName && target.cardinality.isDefined && taskStepNames.contains(target.step))
 
           targetRelationOpt match {
             case Some(targetRelation) =>
@@ -85,103 +89,109 @@ class CardinalityCountAdjustmentProcessor(val dataCatererConfiguration: DataCate
                     LOGGER.debug(s"Adjusting task count due to cardinality: data-source=$dataSourceName, " +
                       s"task=${task.name}, original-count=$originalCount, adjusted-count=$requiredCount")
 
-                    // Update the count for all steps in this task
-                    // Also set up perField configuration to match the cardinality grouping
+                    // Update only steps that are FK targets with cardinality config
+                    // DO NOT modify steps that are not FK targets (like the source step in the same task)
                     val updatedSteps = task.steps.map { step =>
                       // Get the target relation for this step from the foreign key config
                       val targetRelationOpt = enhancedForeignKeys
                         .flatMap(_.generate)
                         .find(target => target.dataSource == dataSourceName && target.step == step.name)
 
-                      val fkFieldNames = targetRelationOpt.map(_.fields).getOrElse(List()).distinct
+                      // Only process steps that are actual FK targets
+                      targetRelationOpt match {
+                        case None =>
+                          // This step is NOT a FK target - leave it unchanged
+                          LOGGER.debug(s"Step ${step.name} is not a FK target, leaving count unchanged: ${step.count.records}")
+                          step
+                          
+                        case Some(targetRel) =>
+                          val fkFieldNames = targetRel.fields.distinct
+                          val cardinalityConfigOpt = targetRel.cardinality
 
-                      // Get the cardinality configuration from the target relation
-                      val cardinalityConfigOpt = targetRelationOpt.flatMap(_.cardinality)
+                          // Get the source FK for this step
+                          val fkOpt = enhancedForeignKeys
+                            .find(fk => fk.generate.exists(g => g.dataSource == dataSourceName && g.step == step.name))
 
-                      // Get the source FK for this step
-                      val fkOpt = enhancedForeignKeys
-                        .find(fk => fk.generate.exists(g => g.dataSource == dataSourceName && g.step == step.name))
-
-                      val sourceCount = fkOpt
-                        .map { fk =>
-                          tasksByDataSource.get(fk.source.dataSource)
-                            .flatMap(_.steps.headOption)
-                            .flatMap(_.count.records)
-                            .getOrElse(1L)
-                        }
-                        .getOrElse(1L)
-
-                      // Check if step originally had perField config on FK fields (before our processing)
-                      val hadOriginalPerField = step.count.perField.exists { pfc =>
-                        fkFieldNames.exists(pfc.fieldNames.contains)
-                      }
-
-                      // Determine if we should set perField configuration
-                      // - If step HAD perField on FK fields: DON'T set it (causes double-grouping with random values)
-                      // - If step DIDN'T have perField: SET it (enables proper grouping during generation)
-                      val updatedCount = if (fkFieldNames.nonEmpty && cardinalityConfigOpt.isDefined && !hadOriginalPerField) {
-                        val cardinalityConfig = cardinalityConfigOpt.get
-
-                        cardinalityConfig match {
-                          case config if config.min.isDefined && config.max.isDefined =>
-                            // Bounded: set perField with min/max options
-                            LOGGER.debug(s"Setting perField config for step ${step.name}: fields=${fkFieldNames.mkString(",")}, " +
-                              s"records=$sourceCount, min=${config.min.get}, max=${config.max.get}, distribution=${config.distribution}")
-                            step.count.copy(
-                              records = Some(sourceCount), // Use source count for bounded
-                              perField = Some(io.github.datacatering.datacaterer.api.model.PerFieldCount(
-                                fieldNames = fkFieldNames,
-                                count = None,
-                                options = Map(
-                                  "min" -> config.min.get,
-                                  "max" -> config.max.get,
-                                  "distribution" -> config.distribution
-                                )
-                              ))
-                            )
-
-                          case config if config.ratio.isDefined =>
-                            // Ratio: set perField with fixed count
-                            // Use requiredCount for total records, perField count for records per parent
-                            val recordsPerParent = config.ratio.get.toInt
-                            LOGGER.debug(s"Setting perField config for step ${step.name}: fields=${fkFieldNames.mkString(",")}, " +
-                              s"records=$sourceCount, count=$recordsPerParent, distribution=${config.distribution}")
-
-                            if (config.distribution == "uniform") {
-                              step.count.copy(
-                                records = Some(sourceCount),
-                                perField = Some(io.github.datacatering.datacaterer.api.model.PerFieldCount(
-                                  fieldNames = fkFieldNames,
-                                  count = Some(recordsPerParent.toLong)
-                                ))
-                              )
-                            } else {
-                              step.count.copy(
-                                records = Some(sourceCount),
-                                perField = Some(io.github.datacatering.datacaterer.api.model.PerFieldCount(
-                                  fieldNames = fkFieldNames,
-                                  count = None,
-                                  options = Map(
-                                    "min" -> recordsPerParent,
-                                    "max" -> recordsPerParent,
-                                    "distribution" -> config.distribution
-                                  )
-                                ))
-                              )
+                          val sourceCount = fkOpt
+                            .map { fk =>
+                              tasksByDataSource.get(fk.source.dataSource)
+                                .flatMap(_.steps.find(_.name == fk.source.step))
+                                .flatMap(_.count.records)
+                                .getOrElse(1L)
                             }
+                            .getOrElse(1L)
 
-                          case _ =>
-                            step.count.copy(records = Some(sourceCount), perField = None)
-                        }
-                      } else if (hadOriginalPerField) {
-                        // Step had original perField on FK fields - remove it to avoid double-grouping
-                        LOGGER.debug(s"Removing original perField config from step ${step.name} to avoid double-grouping (FK fields: ${fkFieldNames.mkString(",")})")
-                        step.count.copy(records = Some(requiredCount), perField = None)
-                      } else {
-                        step.count.copy(records = Some(requiredCount))
+                          // Check if step originally had perField config on FK fields (before our processing)
+                          val hadOriginalPerField = step.count.perField.exists { pfc =>
+                            fkFieldNames.exists(pfc.fieldNames.contains)
+                          }
+
+                          // Determine if we should set perField configuration
+                          // - If step HAD perField on FK fields: DON'T set it (causes double-grouping with random values)
+                          // - If step DIDN'T have perField: SET it (enables proper grouping during generation)
+                          val updatedCount = if (fkFieldNames.nonEmpty && cardinalityConfigOpt.isDefined && !hadOriginalPerField) {
+                            val cardinalityConfig = cardinalityConfigOpt.get
+
+                            cardinalityConfig match {
+                              case config if config.min.isDefined && config.max.isDefined =>
+                                // Bounded: set perField with min/max options
+                                LOGGER.debug(s"Setting perField config for step ${step.name}: fields=${fkFieldNames.mkString(",")}, " +
+                                  s"records=$sourceCount, min=${config.min.get}, max=${config.max.get}, distribution=${config.distribution}")
+                                step.count.copy(
+                                  records = Some(sourceCount), // Use source count for bounded
+                                  perField = Some(io.github.datacatering.datacaterer.api.model.PerFieldCount(
+                                    fieldNames = fkFieldNames,
+                                    count = None,
+                                    options = Map(
+                                      "min" -> config.min.get,
+                                      "max" -> config.max.get,
+                                      "distribution" -> config.distribution
+                                    )
+                                  ))
+                                )
+
+                              case config if config.ratio.isDefined =>
+                                // Ratio: set perField with fixed count
+                                val recordsPerParent = config.ratio.get.toInt
+                                LOGGER.debug(s"Setting perField config for step ${step.name}: fields=${fkFieldNames.mkString(",")}, " +
+                                  s"records=$sourceCount, count=$recordsPerParent, distribution=${config.distribution}")
+
+                                if (config.distribution == "uniform") {
+                                  step.count.copy(
+                                    records = Some(sourceCount),
+                                    perField = Some(io.github.datacatering.datacaterer.api.model.PerFieldCount(
+                                      fieldNames = fkFieldNames,
+                                      count = Some(recordsPerParent.toLong)
+                                    ))
+                                  )
+                                } else {
+                                  step.count.copy(
+                                    records = Some(sourceCount),
+                                    perField = Some(io.github.datacatering.datacaterer.api.model.PerFieldCount(
+                                      fieldNames = fkFieldNames,
+                                      count = None,
+                                      options = Map(
+                                        "min" -> recordsPerParent,
+                                        "max" -> recordsPerParent,
+                                        "distribution" -> config.distribution
+                                      )
+                                    ))
+                                  )
+                                }
+
+                              case _ =>
+                                step.count.copy(records = Some(sourceCount), perField = None)
+                            }
+                          } else if (hadOriginalPerField) {
+                            // Step had original perField on FK fields - remove it to avoid double-grouping
+                            LOGGER.debug(s"Removing original perField config from step ${step.name} to avoid double-grouping (FK fields: ${fkFieldNames.mkString(",")})")
+                            step.count.copy(records = Some(requiredCount), perField = None)
+                          } else {
+                            step.count.copy(records = Some(requiredCount))
+                          }
+
+                          step.copy(count = updatedCount)
                       }
-
-                      step.copy(count = updatedCount)
                     }
                     task.copy(steps = updatedSteps)
                   } else {

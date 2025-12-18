@@ -1,0 +1,19 @@
+---
+name: "account_balance_and_transactions_create_plan"
+description: "Create balances and transactions in Parquet files"
+tasks: []
+sinkOptions:
+  foreignKeys:
+  - source:
+      dataSource: "parquet_ds"
+      step: "balances"
+      fields:
+      - "account_number"
+    generate:
+    - dataSource: "parquet_ds"
+      step: "transactions"
+      fields:
+      - "account_number"
+    delete: []
+validations: []
+runId: "92f4fb44-c6cc-41db-9a42-3988c08c1254"
