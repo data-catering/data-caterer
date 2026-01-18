@@ -220,9 +220,9 @@ object RandomDataGenerator {
         val numCompleteWeeks = s"CAST($remainingDays / 7 AS INT)"
 
         // Generate random week (0 to numCompleteWeeks-1) and weekday (0-4)
-        // Use separate RAND() calls for week and weekday to ensure proper independence
+        // Use separate seeded RAND calls for week and weekday to ensure proper independence
         val randWeek = s"CAST($sqlRandom * $numCompleteWeeks AS INT)"
-        val randWeekday = s"CAST(RAND() * 5 AS INT)"
+        val randWeekday = s"CAST(${sqlRandomWithOffset(1)} * 5 AS INT)"
 
         s"DATE_ADD($firstMonday, $randWeek * 7 + $randWeekday)"
       } else {
@@ -291,7 +291,7 @@ object RandomDataGenerator {
     }
 
     override def generateSqlExpression: String = {
-      s"TO_BINARY(ARRAY_JOIN(TRANSFORM(ARRAY_REPEAT(1, CAST($sqlRandom * ${maxLength - minLength} + $minLength AS INT)), i -> CHAR(ROUND($sqlRandom * 94 + 32, 0))), ''), 'utf-8')"
+      s"TO_BINARY(ARRAY_JOIN(TRANSFORM(ARRAY_REPEAT(1, CAST($sqlRandom * ${maxLength - minLength} + $minLength AS INT)), i -> CHAR(ROUND(${sqlRandomWithIndex("i")} * 94 + 32, 0))), ''), 'utf-8')"
     }
   }
 
@@ -303,7 +303,7 @@ object RandomDataGenerator {
     }
 
     override def generateSqlExpression: String = {
-      s"TO_BINARY(CHAR(ROUND($sqlRandom * 94 + 32, 0)))"
+      s"TO_BINARY(CHAR(ROUND($sqlRandom * 94 + 32, 0)), 'utf-8')"
     }
   }
 
@@ -385,7 +385,7 @@ object RandomDataGenerator {
       val arraySize = valuesStr.split(",").length
       val randomIndexExpr = s"CAST($sqlRandom * $arraySize + 1 AS INT)"
       val sizeExpr = s"CAST($sqlRandom * ${arrayMaxSize - arrayMinSize} + $arrayMinSize AS INT)"
-      val arrayExpr = s"TRANSFORM(ARRAY_REPEAT(1, $sizeExpr), i -> ELEMENT_AT($valuesArray, CAST(RAND() * $arraySize + 1 AS INT)))"
+      val arrayExpr = s"TRANSFORM(ARRAY_REPEAT(1, $sizeExpr), i -> ELEMENT_AT($valuesArray, CAST(${sqlRandomWithIndex("i")} * $arraySize + 1 AS INT)))"
 
       applyEmptyProbability(arrayExpr)
     }
@@ -406,22 +406,25 @@ object RandomDataGenerator {
 
       // Calculate cumulative weights
       val totalWeight = weightedPairs.map(_._2).sum
+      require(totalWeight > 0,
+        s"Invalid weights in field '${structField.name}': total weight must be greater than 0.")
       val normalizedWeights = weightedPairs.map { case (v, w) => (v, w / totalWeight) }
+      val cumulativeThresholds = normalizedWeights.scanLeft(0.0)(_ + _._2).tail
 
-      // Build CASE WHEN statement for weighted selection
-      // Use RAND() directly in each WHEN clause to avoid nested subquery
-      var cumulativeProb = 0.0
-      val caseStatements = normalizedWeights.zipWithIndex.map { case ((value, weight), idx) =>
-        val prevCumulativeProb = cumulativeProb
-        cumulativeProb += weight
-        if (idx == normalizedWeights.length - 1) {
-          s"ELSE $value"
-        } else {
-          s"WHEN RAND() < $cumulativeProb THEN $value"
-        }
-      }.mkString(" ")
+      val valuesArrayExpr = s"ARRAY(${normalizedWeights.map(_._1).mkString(",")})"
+      val thresholdsArrayExpr = s"ARRAY(${cumulativeThresholds.map(_.toString).mkString(",")})"
+      val zippedExpr = s"ZIP_WITH($valuesArrayExpr, $thresholdsArrayExpr, (v, t) -> named_struct('value', v, 'threshold', t))"
 
-      val weightedSelectExpr = s"(CASE $caseStatements END)"
+      // Use a single RAND() per element to compare against cumulative thresholds
+      val weightedSelectExpr =
+        s"""AGGREGATE(
+           |  $zippedExpr,
+           |  named_struct('r', ${sqlRandomWithIndex("i")}, 'picked', CAST(NULL AS ${dataType.sql})),
+           |  (acc, x) -> IF(acc.picked IS NOT NULL, acc,
+           |    IF(acc.r < x.threshold, named_struct('r', acc.r, 'picked', x.value), acc)
+           |  ),
+           |  acc -> acc.picked
+           |)""".stripMargin
       val sizeExpr = s"CAST($sqlRandom * ${arrayMaxSize - arrayMinSize} + $arrayMinSize AS INT)"
       val arrayExpr = s"TRANSFORM(ARRAY_REPEAT(1, $sizeExpr), i -> $weightedSelectExpr)"
 
@@ -442,17 +445,28 @@ object RandomDataGenerator {
     assert(mapMinSize <= mapMaxSize, s"mapMinSize has to be less than or equal to mapMaxSize, " +
       s"field-name=${structField.name}, mapMinSize=$mapMinSize, mapMaxSize=$mapMaxSize")
 
-    override def keyGenerator: DataGenerator[T] = getGeneratorForDataType(keyDataType).asInstanceOf[DataGenerator[T]]
+    private def seededMetadata: Metadata = optRandomSeed match {
+      case Some(seed) => new MetadataBuilder().putString(RANDOM_SEED, seed.toString).build()
+      case None => Metadata.empty
+    }
 
-    override def valueGenerator: DataGenerator[K] = getGeneratorForDataType(valueDataType).asInstanceOf[DataGenerator[K]]
+    override def keyGenerator: DataGenerator[T] =
+      getGeneratorForStructField(StructField(structField.name, keyDataType, nullable = true, seededMetadata), faker)
+        .asInstanceOf[DataGenerator[T]]
+
+    override def valueGenerator: DataGenerator[K] =
+      getGeneratorForStructField(StructField(structField.name, valueDataType, nullable = true, seededMetadata), faker)
+        .asInstanceOf[DataGenerator[K]]
 
     //how to make it empty map when size is 0
     override def generateSqlExpression: String = {
-      val keyDataGenerator = getGeneratorForDataType(keyDataType)
-      val valueDataGenerator = getGeneratorForDataType(valueDataType)
+      val keyDataGenerator = getGeneratorForStructField(StructField(structField.name, keyDataType, nullable = true, seededMetadata), faker)
+      val valueDataGenerator = getGeneratorForStructField(StructField(structField.name, valueDataType, nullable = true, seededMetadata), faker)
       val keySql = keyDataGenerator.generateSqlExpressionWrapper
       val valueSql = valueDataGenerator.generateSqlExpressionWrapper
-      s"STR_TO_MAP(CONCAT_WS(',', TRANSFORM(ARRAY_REPEAT(1, CAST($sqlRandom * ${mapMaxSize - mapMinSize} + $mapMinSize AS INT)), i -> CONCAT($keySql, '->', $valueSql))), '->', ',')"
+      val keySqlWithIndex = optRandomSeed.map(_ => keySql.replace(sqlRandom, sqlRandomWithIndex("i"))).getOrElse(keySql)
+      val valueSqlWithIndex = optRandomSeed.map(_ => valueSql.replace(sqlRandom, sqlRandomWithIndex("i"))).getOrElse(valueSql)
+      s"STR_TO_MAP(CONCAT_WS(',', TRANSFORM(ARRAY_REPEAT(1, CAST($sqlRandom * ${mapMaxSize - mapMinSize} + $mapMinSize AS INT)), i -> CONCAT($keySqlWithIndex, '->', $valueSqlWithIndex))), '->', ',')"
     }
   }
 

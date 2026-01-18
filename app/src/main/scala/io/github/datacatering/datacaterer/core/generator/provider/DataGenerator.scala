@@ -21,6 +21,12 @@ trait DataGenerator[T] extends BaseGenerator[T] with Serializable {
 
   lazy val optRandomSeed: Option[Long] = if (structField.metadata.contains(RANDOM_SEED)) Some(structField.metadata.getString(RANDOM_SEED).toLong) else None
   lazy val sqlRandom: String = optRandomSeed.map(seed => s"RAND($seed)").getOrElse("RAND()")
+  def sqlRandomWithOffset(offset: Long): String = optRandomSeed.map(seed => s"RAND(${seed + offset})").getOrElse("RAND()")
+  def sqlRandomWithIndex(indexExpr: String): String = optRandomSeed match {
+    case Some(seed) =>
+      s"(CAST((xxhash64(monotonically_increasing_id(), $seed, $indexExpr) & ${Long.MaxValue}) AS DOUBLE) / ${Long.MaxValue.toDouble})"
+    case None => "RAND()"
+  }
   lazy val random: Random = if (structField.metadata.contains(RANDOM_SEED)) new Random(structField.metadata.getString(RANDOM_SEED).toLong) else new Random()
   lazy val enabledNull: Boolean = if (structField.metadata.contains(ENABLED_NULL)) structField.metadata.getString(ENABLED_NULL).toBoolean else false
   lazy val enabledEdgeCases: Boolean = if (structField.metadata.contains(ENABLED_EDGE_CASE)) structField.metadata.getString(ENABLED_EDGE_CASE).toBoolean else false

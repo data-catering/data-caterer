@@ -102,7 +102,7 @@ object FastDataGenerator {
       parsedPattern match {
         case scala.util.Success(node) =>
           // Successfully parsed - use pure SQL generation
-          node.toSql
+          node.toSql(sqlRandom, sqlRandomWithIndex)
 
         case scala.util.Failure(_) =>
           // Parser failed - fall back to UDF (slower but correct)

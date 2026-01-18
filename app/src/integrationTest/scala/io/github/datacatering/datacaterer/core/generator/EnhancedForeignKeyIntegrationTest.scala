@@ -461,14 +461,14 @@ class EnhancedForeignKeyIntegrationTest extends SparkSuite with Matchers with Be
   class RatioCardinalityTestPlan(customersPath: String, ordersPath: String) extends PlanRun {
     val customers = csv("customers", customersPath, Map("saveMode" -> "overwrite", "header" -> "true"))
       .fields(
-        field.name("customer_id").regex("CUST[0-9]{6}"),
+        field.name("customer_id").regex("CUST[0-9]{10}"),
         field.name("name").expression("#{Name.name}")
       )
       .count(count.records(50))
 
     val orders = csv("orders", ordersPath, Map("saveMode" -> "overwrite", "header" -> "true"))
       .fields(
-        field.name("order_id").regex("ORD[0-9]{8}"),
+        field.name("order_id").regex("ORD[0-9]{10}"),
         field.name("customer_id"),
         field.name("amount").`type`(DoubleType).min(10.0).max(1000.0)
       )
