@@ -49,6 +49,19 @@ Press Enter to run the default example. Check results at `docker/sample/report/i
 
 ### YAML
 
+#### New Unified Format (v1.0+)
+
+```shell
+git clone git@github.com:data-catering/data-caterer.git
+cd data-caterer/example
+export YAML_FILE=misc/schema/examples/minimal.yaml
+./gradlew :app:run
+```
+
+Check the [unified YAML examples](misc/schema/examples/) for more configurations.
+
+#### Legacy Format (Still Supported)
+
 ```shell
 git clone git@github.com:data-catering/data-caterer.git
 cd data-caterer/example
@@ -58,10 +71,12 @@ cd data-caterer/example
 It will run the [`csv.yaml`](example/docker/data/custom/plan/csv.yaml) plan file and the [`csv_transaction_file`](example/docker/data/custom/task/file/csv/csv_transaction_file.yaml) task file.
 Check results at `docker/data/custom/report/index.html`.
 
+**📦 Migrating from Legacy to Unified Format?** See [Migration Guide](docs/migrations/yaml-unified-format/MIGRATION.md) for the automated migration tool.
+
 ### UI
 
 ```shell
-docker run -d -p 9898:9898 -e DEPLOY_MODE=standalone --name datacaterer datacatering/data-caterer:0.18.0
+docker run -d -p 9898:9898 -e DEPLOY_MODE=standalone --name datacaterer datacatering/data-caterer:0.19.0
 ```
 
 Open [http://localhost:9898](http://localhost:9898).

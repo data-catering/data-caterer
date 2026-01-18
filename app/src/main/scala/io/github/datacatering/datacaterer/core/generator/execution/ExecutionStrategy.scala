@@ -1,6 +1,6 @@
 package io.github.datacatering.datacaterer.core.generator.execution
 
-import io.github.datacatering.datacaterer.core.generator.metrics.PerformanceMetrics
+import io.github.datacatering.datacaterer.api.model.PerformanceMetrics
 
 /**
  * Strategy pattern for different execution modes (count-based, duration-based, pattern-based)
@@ -37,6 +37,12 @@ trait ExecutionStrategy {
    * Determines how data should be generated (per batch, all upfront, or progressively).
    */
   def getGenerationMode: GenerationMode = GenerationMode.Batched
+
+  /**
+   * Get the metrics collector for this strategy (if performance metrics are being collected).
+   * Used by streaming sink to collect timing data for pattern and duration strategies.
+   */
+  def getMetricsCollector: Option[io.github.datacatering.datacaterer.core.generator.metrics.PerformanceMetricsCollector] = None
 
 }
 

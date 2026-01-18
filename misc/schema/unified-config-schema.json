@@ -1,0 +1,1215 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://data-catering.github.io/schemas/unified-config-schema.json",
+  "title": "Data Caterer Unified Configuration",
+  "description": "Schema for Data Caterer unified YAML configuration files. Define data sources, connections, fields, foreign keys, validations, and runtime configuration in a single file.",
+  "type": "object",
+  "properties": {
+    "version": {
+      "type": "string",
+      "description": "Schema version for the configuration file",
+      "default": "1.0",
+      "examples": ["1.0"]
+    },
+    "name": {
+      "type": "string",
+      "description": "Unique name for this data generation plan",
+      "default": "unified_plan",
+      "examples": ["ecommerce_data_generation", "customer_test_data"]
+    },
+    "description": {
+      "type": "string",
+      "description": "Human-readable description of what this configuration does",
+      "examples": ["Generate realistic e-commerce test data with customers, orders, and products"]
+    },
+    "runId": {
+      "type": "string",
+      "description": "Optional execution run ID for tracking and identification"
+    },
+    "config": {
+      "$ref": "#/$defs/runtimeConfig"
+    },
+    "dataSources": {
+      "type": "array",
+      "description": "List of data sources with inline connection and step definitions",
+      "items": {
+        "$ref": "#/$defs/dataSource"
+      }
+    },
+    "foreignKeys": {
+      "type": "array",
+      "description": "Foreign key relationships between data sources for referential integrity",
+      "items": {
+        "$ref": "#/$defs/foreignKey"
+      }
+    },
+    "sinkOptions": {
+      "$ref": "#/$defs/sinkOptions"
+    }
+  },
+  "required": [],
+  "additionalProperties": true,
+  "$defs": {
+    "runtimeConfig": {
+      "type": "object",
+      "description": "Runtime configuration settings - replaces application.conf settings",
+      "properties": {
+        "flags": {
+          "$ref": "#/$defs/flagsConfig"
+        },
+        "folders": {
+          "$ref": "#/$defs/foldersConfig"
+        },
+        "generation": {
+          "$ref": "#/$defs/generationConfig"
+        },
+        "metadata": {
+          "$ref": "#/$defs/metadataConfig"
+        },
+        "validation": {
+          "$ref": "#/$defs/validationRuntimeConfig"
+        },
+        "alert": {
+          "$ref": "#/$defs/alertConfig"
+        },
+        "runtime": {
+          "$ref": "#/$defs/sparkConfig"
+        }
+      },
+      "additionalProperties": true
+    },
+    "flagsConfig": {
+      "type": "object",
+      "description": "Boolean flags controlling system behavior",
+      "properties": {
+        "enableCount": {
+          "type": "boolean",
+          "description": "Count generated records"
+        },
+        "enableGenerateData": {
+          "type": "boolean",
+          "description": "Enable data generation"
+        },
+        "enableRecordTracking": {
+          "type": "boolean",
+          "description": "Track generated records for cleanup"
+        },
+        "enableDeleteGeneratedRecords": {
+          "type": "boolean",
+          "description": "Enable cleanup mode to delete generated records"
+        },
+        "enableGeneratePlanAndTasks": {
+          "type": "boolean",
+          "description": "Auto-generate plan and tasks from metadata"
+        },
+        "enableFailOnError": {
+          "type": "boolean",
+          "description": "Fail execution on errors"
+        },
+        "enableUniqueCheck": {
+          "type": "boolean",
+          "description": "Validate uniqueness constraints"
+        },
+        "enableSinkMetadata": {
+          "type": "boolean",
+          "description": "Save metadata about generated data"
+        },
+        "enableSaveReports": {
+          "type": "boolean",
+          "description": "Generate execution reports"
+        },
+        "enableValidation": {
+          "type": "boolean",
+          "description": "Run validations after data generation"
+        },
+        "enableGenerateValidations": {
+          "type": "boolean",
+          "description": "Auto-suggest validations based on data"
+        },
+        "enableAlerts": {
+          "type": "boolean",
+          "description": "Send alerts on completion"
+        },
+        "enableUniqueCheckOnlyInBatch": {
+          "type": "boolean",
+          "description": "Check uniqueness only within batch (faster)"
+        },
+        "enableFastGeneration": {
+          "type": "boolean",
+          "description": "Use fast SQL-based generation (avoids UDFs)"
+        }
+      },
+      "additionalProperties": true
+    },
+    "foldersConfig": {
+      "type": "object",
+      "description": "Path configuration for input/output directories",
+      "properties": {
+        "planFilePath": {
+          "type": "string",
+          "description": "Plan file location"
+        },
+        "taskFolderPath": {
+          "type": "string",
+          "description": "Task definitions folder"
+        },
+        "generatedPlanAndTaskFolderPath": {
+          "type": "string",
+          "description": "Output folder for generated plans/tasks"
+        },
+        "generatedReportsFolderPath": {
+          "type": "string",
+          "description": "Reports output location",
+          "examples": ["/tmp/data-caterer/reports"]
+        },
+        "recordTrackingFolderPath": {
+          "type": "string",
+          "description": "Record tracking data storage"
+        },
+        "validationFolderPath": {
+          "type": "string",
+          "description": "Validation definitions folder"
+        },
+        "recordTrackingForValidationFolderPath": {
+          "type": "string",
+          "description": "Validation record tracking location"
+        }
+      },
+      "additionalProperties": true
+    },
+    "generationConfig": {
+      "type": "object",
+      "description": "Data generation parameters",
+      "properties": {
+        "numRecordsPerBatch": {
+          "type": "integer",
+          "description": "Records per batch (affects memory usage)",
+          "minimum": 1,
+          "examples": [100000]
+        },
+        "numRecordsPerStep": {
+          "type": "integer",
+          "description": "Default records per step/table",
+          "minimum": 1
+        },
+        "uniqueBloomFilterNumItems": {
+          "type": "integer",
+          "description": "Bloom filter capacity for uniqueness checking",
+          "minimum": 1
+        },
+        "uniqueBloomFilterFalsePositiveProbability": {
+          "type": "number",
+          "description": "Bloom filter accuracy (0-1, lower is more accurate)",
+          "minimum": 0,
+          "maximum": 1
+        }
+      },
+      "additionalProperties": true
+    },
+    "metadataConfig": {
+      "type": "object",
+      "description": "Metadata analysis settings",
+      "properties": {
+        "numRecordsFromDataSource": {
+          "type": "integer",
+          "description": "Sample size for metadata analysis",
+          "minimum": 1
+        },
+        "numRecordsForAnalysis": {
+          "type": "integer",
+          "description": "Records analyzed for pattern detection",
+          "minimum": 1
+        },
+        "oneOfDistinctCountVsCountThreshold": {
+          "type": "number",
+          "description": "Threshold for detecting oneOf fields (ratio)",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "oneOfMinCount": {
+          "type": "integer",
+          "description": "Minimum count for oneOf value detection",
+          "minimum": 1
+        },
+        "numGeneratedSamples": {
+          "type": "integer",
+          "description": "Number of samples for metadata suggestions",
+          "minimum": 1
+        }
+      },
+      "additionalProperties": true
+    },
+    "validationRuntimeConfig": {
+      "type": "object",
+      "description": "Validation execution settings",
+      "properties": {
+        "numSampleErrorRecords": {
+          "type": "integer",
+          "description": "Number of sample error records to report",
+          "minimum": 0
+        },
+        "enableDeleteRecordTrackingFiles": {
+          "type": "boolean",
+          "description": "Delete tracking files after validation"
+        }
+      },
+      "additionalProperties": true
+    },
+    "alertConfig": {
+      "type": "object",
+      "description": "Alert and notification settings",
+      "properties": {
+        "triggerOn": {
+          "type": "string",
+          "description": "When to trigger alerts",
+          "enum": ["all", "failure", "success"]
+        },
+        "slackToken": {
+          "type": "string",
+          "description": "Slack API token for notifications"
+        },
+        "slackChannels": {
+          "type": "array",
+          "description": "Slack channels to notify",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": true
+    },
+    "sparkConfig": {
+      "type": "object",
+      "description": "Apache Spark configuration",
+      "properties": {
+        "master": {
+          "type": "string",
+          "description": "Spark master URL",
+          "examples": ["local[*]", "local[4]", "spark://host:7077"]
+        },
+        "sparkConfig": {
+          "type": "object",
+          "description": "Spark configuration properties",
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": true
+    },
+    "dataSource": {
+      "type": "object",
+      "description": "Data source with inline connection and step definitions",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Unique name for this data source",
+          "examples": ["ecommerce_postgres", "analytics_json"]
+        },
+        "connection": {
+          "$ref": "#/$defs/connection"
+        },
+        "steps": {
+          "type": "array",
+          "description": "Tables, topics, or files to generate",
+          "items": {
+            "$ref": "#/$defs/step"
+          }
+        },
+        "enabled": {
+          "type": "boolean",
+          "description": "Enable or disable this data source",
+          "default": true
+        }
+      },
+      "required": ["name", "connection"],
+      "additionalProperties": true
+    },
+    "connection": {
+      "type": "object",
+      "description": "Connection configuration for the data source",
+      "properties": {
+        "type": {
+          "type": "string",
+          "description": "Connection type",
+          "enum": [
+            "postgres", "mysql", "cassandra", "bigquery",
+            "json", "csv", "parquet", "orc", "delta", "iceberg", "hudi",
+            "kafka", "jms", "rabbitmq", "solace",
+            "http"
+          ],
+          "examples": ["postgres", "json", "kafka"]
+        },
+        "options": {
+          "type": "object",
+          "description": "Connection-specific options. Use ${VAR_NAME} for environment variable substitution.",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "examples": [
+            {
+              "url": "jdbc:postgresql://localhost:5432/mydb",
+              "user": "postgres",
+              "password": "${POSTGRES_PASSWORD}"
+            },
+            {
+              "path": "/tmp/data/output"
+            },
+            {
+              "bootstrapServers": "localhost:9092",
+              "schemaRegistryUrl": "http://localhost:8081"
+            }
+          ]
+        }
+      },
+      "required": ["type"],
+      "additionalProperties": true
+    },
+    "step": {
+      "type": "object",
+      "description": "Step definition (table, topic, or file) with fields and validations",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Name of the table, topic, or file",
+          "examples": ["customers", "orders", "page_views"]
+        },
+        "type": {
+          "type": "string",
+          "description": "Optional type override for this step"
+        },
+        "count": {
+          "$ref": "#/$defs/count"
+        },
+        "options": {
+          "type": "object",
+          "description": "Step-specific options (e.g., dbtable, topic)",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "examples": [
+            {"dbtable": "public.customers"},
+            {"topic": "orders-topic"}
+          ]
+        },
+        "fields": {
+          "type": "array",
+          "description": "Field definitions for data generation",
+          "items": {
+            "$ref": "#/$defs/field"
+          }
+        },
+        "validations": {
+          "type": "array",
+          "description": "Inline validations for this step",
+          "items": {
+            "$ref": "#/$defs/validation"
+          }
+        },
+        "enabled": {
+          "type": "boolean",
+          "description": "Enable or disable this step",
+          "default": true
+        },
+        "transformation": {
+          "$ref": "#/$defs/transformation"
+        }
+      },
+      "required": ["name"],
+      "additionalProperties": true
+    },
+    "count": {
+      "type": "object",
+      "description": "Record count configuration",
+      "properties": {
+        "records": {
+          "type": "integer",
+          "description": "Total number of records to generate",
+          "minimum": 0,
+          "examples": [1000, 5000]
+        },
+        "perField": {
+          "$ref": "#/$defs/perFieldCount"
+        },
+        "options": {
+          "type": "object",
+          "description": "Custom count options",
+          "additionalProperties": true
+        },
+        "duration": {
+          "type": "string",
+          "description": "Time-based duration for streaming (e.g., '10m', '1h')",
+          "examples": ["10m", "1h", "30s"]
+        },
+        "rate": {
+          "type": "integer",
+          "description": "Records per time unit for streaming",
+          "minimum": 1
+        },
+        "rateUnit": {
+          "type": "string",
+          "description": "Time unit for rate",
+          "enum": ["second", "minute", "hour"]
+        },
+        "pattern": {
+          "$ref": "#/$defs/loadPattern"
+        }
+      },
+      "additionalProperties": true
+    },
+    "perFieldCount": {
+      "type": "object",
+      "description": "Per-field record distribution",
+      "properties": {
+        "fieldNames": {
+          "type": "array",
+          "description": "Fields to distribute records across",
+          "items": {
+            "type": "string"
+          }
+        },
+        "count": {
+          "type": "integer",
+          "description": "Count per field value",
+          "minimum": 0
+        },
+        "options": {
+          "type": "object",
+          "description": "Additional options",
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": true
+    },
+    "loadPattern": {
+      "type": "object",
+      "description": "Load pattern for streaming data generation",
+      "properties": {
+        "type": {
+          "type": "string",
+          "description": "Pattern type",
+          "enum": ["ramp", "spike", "sine", "steps"],
+          "default": "ramp"
+        },
+        "startRate": {
+          "type": "integer",
+          "description": "Starting rate for ramp pattern",
+          "minimum": 0
+        },
+        "endRate": {
+          "type": "integer",
+          "description": "Ending rate for ramp pattern",
+          "minimum": 0
+        },
+        "baseRate": {
+          "type": "integer",
+          "description": "Base rate for spike pattern",
+          "minimum": 0
+        },
+        "spikeRate": {
+          "type": "integer",
+          "description": "Spike rate",
+          "minimum": 0
+        },
+        "spikeStart": {
+          "type": "number",
+          "description": "When spike starts (0-1 ratio of duration)",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "spikeDuration": {
+          "type": "number",
+          "description": "Spike duration in seconds"
+        },
+        "steps": {
+          "type": "array",
+          "description": "Custom load pattern steps",
+          "items": {
+            "$ref": "#/$defs/loadPatternStep"
+          }
+        },
+        "amplitude": {
+          "type": "integer",
+          "description": "Amplitude for sine pattern"
+        },
+        "frequency": {
+          "type": "number",
+          "description": "Frequency for sine pattern"
+        },
+        "rateIncrement": {
+          "type": "integer",
+          "description": "Rate increment per interval for ramp"
+        },
+        "incrementInterval": {
+          "type": "string",
+          "description": "Interval for rate increment"
+        },
+        "maxRate": {
+          "type": "integer",
+          "description": "Maximum rate cap"
+        }
+      },
+      "additionalProperties": true
+    },
+    "loadPatternStep": {
+      "type": "object",
+      "description": "Custom load pattern step",
+      "properties": {
+        "rate": {
+          "type": "integer",
+          "description": "Rate for this step",
+          "minimum": 0
+        },
+        "duration": {
+          "type": "string",
+          "description": "Duration for this step",
+          "examples": ["10s", "1m", "5m"]
+        }
+      },
+      "required": ["rate", "duration"],
+      "additionalProperties": true
+    },
+    "field": {
+      "type": "object",
+      "description": "Field definition with generation options",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Field/column name",
+          "examples": ["customer_id", "email", "created_at"]
+        },
+        "type": {
+          "type": "string",
+          "description": "Data type for the field",
+          "enum": [
+            "string", "integer", "long", "double", "float", "decimal",
+            "boolean", "date", "timestamp", "binary", "array", "struct", "map"
+          ],
+          "default": "string"
+        },
+        "options": {
+          "type": "object",
+          "description": "Generation options for the field",
+          "properties": {
+            "regex": {
+              "type": "string",
+              "description": "Regex pattern for data generation",
+              "examples": ["CUST[0-9]{8}", "[A-Z]{3}-[0-9]{4}"]
+            },
+            "expression": {
+              "type": "string",
+              "description": "DataFaker expression for realistic data",
+              "examples": [
+                "#{Internet.emailAddress}",
+                "#{Name.firstName}",
+                "#{Address.fullAddress}",
+                "#{Commerce.productName}"
+              ]
+            },
+            "oneOf": {
+              "type": "array",
+              "description": "Choose randomly from a list of values",
+              "items": {},
+              "examples": [
+                ["active", "inactive", "pending"],
+                ["Electronics", "Clothing", "Books"]
+              ]
+            },
+            "min": {
+              "description": "Minimum value for numeric or date fields",
+              "examples": [0, 9.99, "2024-01-01"]
+            },
+            "max": {
+              "description": "Maximum value for numeric or date fields",
+              "examples": [1000, 999.99, "2024-12-31"]
+            },
+            "isPrimaryKey": {
+              "type": "boolean",
+              "description": "Mark field as primary key"
+            },
+            "isUnique": {
+              "type": "boolean",
+              "description": "Enforce uniqueness constraint"
+            },
+            "sql": {
+              "type": "string",
+              "description": "SQL expression for computed fields"
+            },
+            "omit": {
+              "type": "boolean",
+              "description": "Omit this field from output"
+            },
+            "seed": {
+              "type": "integer",
+              "description": "Random seed for reproducibility"
+            },
+            "arrayType": {
+              "type": "string",
+              "description": "Element type for array fields"
+            },
+            "arrayMinLength": {
+              "type": "integer",
+              "description": "Minimum array length"
+            },
+            "arrayMaxLength": {
+              "type": "integer",
+              "description": "Maximum array length"
+            },
+            "arrayEmptyProbability": {
+              "type": "number",
+              "description": "Probability of generating an empty array",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "arrayWeightedOneOf": {
+              "type": ["string", "array"],
+              "description": "Weighted array element selection",
+              "examples": ["HIGH:0.2,MEDIUM:0.5,LOW:0.3"]
+            },
+            "email": {
+              "type": ["string", "object", "boolean"],
+              "description": "Generate realistic email addresses (optional domain)"
+            },
+            "phone": {
+              "type": ["string", "object", "boolean"],
+              "description": "Generate realistic phone numbers (format: US, UK, AU)"
+            },
+            "url": {
+              "type": ["string", "object", "boolean"],
+              "description": "Generate realistic URLs (protocol: http/https)"
+            },
+            "uuidPattern": {
+              "type": "boolean",
+              "description": "Generate UUID values"
+            },
+            "ipv4": {
+              "type": "boolean",
+              "description": "Generate IPv4 addresses"
+            },
+            "ipv6": {
+              "type": "boolean",
+              "description": "Generate IPv6 addresses"
+            },
+            "ssnPattern": {
+              "type": "boolean",
+              "description": "Generate SSN pattern values"
+            },
+            "creditCard": {
+              "type": ["string", "object", "boolean"],
+              "description": "Generate credit card numbers (type: visa, mastercard, amex)"
+            },
+            "withinDays": {
+              "type": ["integer", "object"],
+              "description": "Generate dates within the last N days"
+            },
+            "futureDays": {
+              "type": ["integer", "object"],
+              "description": "Generate dates within the next N days"
+            },
+            "excludeWeekends": {
+              "type": "boolean",
+              "description": "Exclude weekends from generated dates"
+            },
+            "businessHours": {
+              "type": ["object", "boolean"],
+              "description": "Generate timestamps within business hours"
+            },
+            "timeBetween": {
+              "type": ["object", "array", "string"],
+              "description": "Generate timestamps between start and end times"
+            },
+            "sequence": {
+              "type": ["object", "integer"],
+              "description": "Generate sequential values with prefix/padding"
+            },
+            "dailyBatchSequence": {
+              "type": ["object", "string"],
+              "description": "Generate daily batch sequence values"
+            },
+            "semanticVersion": {
+              "type": "object",
+              "description": "Generate semantic version values"
+            },
+            "conditionalValue": {
+              "type": "object",
+              "description": "Generate values using CASE WHEN logic"
+            },
+            "mapping": {
+              "type": "object",
+              "description": "Map values from one field to another"
+            },
+            "correlatedWith": {
+              "type": ["object", "string"],
+              "description": "Generate values correlated with another field"
+            },
+            "negativelyCorrelatedWith": {
+              "type": ["object", "string"],
+              "description": "Generate values negatively correlated with another field"
+            }
+          },
+          "additionalProperties": true
+        },
+        "nullable": {
+          "type": "boolean",
+          "description": "Whether the field can be null",
+          "default": true
+        },
+        "static": {
+          "type": "string",
+          "description": "Static value for all records"
+        },
+        "fields": {
+          "type": "array",
+          "description": "Nested fields for struct types",
+          "items": {
+            "$ref": "#/$defs/field"
+          }
+        }
+      },
+      "required": ["name"],
+      "additionalProperties": true
+    },
+    "transformation": {
+      "type": "object",
+      "description": "Post-generation data transformation",
+      "properties": {
+        "className": {
+          "type": "string",
+          "description": "Fully qualified Java/Scala class name"
+        },
+        "methodName": {
+          "type": "string",
+          "description": "Method to call (default: 'transform')"
+        },
+        "mode": {
+          "type": "string",
+          "description": "Transformation mode",
+          "enum": ["whole-file", "row-by-row"]
+        },
+        "outputPath": {
+          "type": "string",
+          "description": "Output directory for transformed data"
+        },
+        "deleteOriginal": {
+          "type": "boolean",
+          "description": "Delete input after transformation"
+        },
+        "enabled": {
+          "type": "boolean",
+          "description": "Enable or disable transformation",
+          "default": true
+        },
+        "options": {
+          "type": "object",
+          "description": "Transformation parameters",
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      },
+      "required": ["className"],
+      "additionalProperties": true
+    },
+    "validation": {
+      "type": "object",
+      "description": "Inline validation definition. Supports expression, field, group by, field names, and upstream validations.",
+      "properties": {
+        "expr": {
+          "type": "string",
+          "description": "SQL expression to validate (must evaluate to true)",
+          "examples": ["email IS NOT NULL", "price > 0", "quantity >= 0"]
+        },
+        "selectExpr": {
+          "type": "array",
+          "description": "SELECT columns for expression validation",
+          "items": {
+            "type": "string"
+          }
+        },
+        "field": {
+          "type": "string",
+          "description": "Field name for field-level validations"
+        },
+        "validation": {
+          "type": "array",
+          "description": "List of validations to apply to the field",
+          "items": {
+            "$ref": "#/$defs/fieldValidation"
+          }
+        },
+        "groupByFields": {
+          "type": "array",
+          "description": "Fields to group by for aggregation validation",
+          "items": {
+            "type": "string"
+          }
+        },
+        "aggField": {
+          "type": "string",
+          "description": "Field to aggregate"
+        },
+        "aggType": {
+          "type": "string",
+          "description": "Aggregation type",
+          "enum": ["sum", "avg", "min", "max", "count", "stddev"]
+        },
+        "aggExpr": {
+          "type": "string",
+          "description": "Custom aggregation expression"
+        },
+        "fieldNameType": {
+          "type": "string",
+          "description": "Type check for field names validation"
+        },
+        "count": {
+          "type": "integer",
+          "description": "Expected exact field count"
+        },
+        "min": {
+          "type": "integer",
+          "description": "Minimum field count"
+        },
+        "max": {
+          "type": "integer",
+          "description": "Maximum field count"
+        },
+        "names": {
+          "type": "array",
+          "description": "Expected field names",
+          "items": {
+            "type": "string"
+          }
+        },
+        "upstreamDataSource": {
+          "type": "string",
+          "description": "Data source name for upstream validation"
+        },
+        "upstreamReadOptions": {
+          "type": "object",
+          "description": "Read options for upstream data source",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "joinFields": {
+          "type": "array",
+          "description": "Fields to join on for upstream validation",
+          "items": {
+            "type": "string"
+          }
+        },
+        "joinType": {
+          "type": "string",
+          "description": "Join type for upstream validation",
+          "enum": ["inner", "left", "right", "full", "anti", "semi"]
+        },
+        "description": {
+          "type": "string",
+          "description": "Human-readable validation description"
+        },
+        "errorThreshold": {
+          "type": "number",
+          "description": "Allowed error rate (0-1)",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "preFilterExpr": {
+          "type": "string",
+          "description": "SQL filter to apply before validation"
+        },
+        "waitCondition": {
+          "$ref": "#/$defs/waitCondition"
+        }
+      },
+      "additionalProperties": true
+    },
+    "fieldValidation": {
+      "type": "object",
+      "description": "Field-level validation with 30+ validation types",
+      "properties": {
+        "type": {
+          "type": "string",
+          "description": "Validation type",
+          "enum": [
+            "null", "unique", "equal", "notEqual",
+            "contains", "notContains", "startsWith", "endsWith",
+            "between", "notBetween", "lessThan", "lessThanOrEqual",
+            "greaterThan", "greaterThanOrEqual",
+            "in", "notIn", "matches", "notMatches",
+            "size", "lengthBetween", "luhnCheck",
+            "hasType", "isDecreasing", "isIncreasing",
+            "isJsonParsable", "matchJsonSchema", "matchDateTimeFormat",
+            "distinctInSet", "distinctContainsSet",
+            "maxBetween", "meanBetween", "minBetween", "stdDevBetween", "sumBetween",
+            "uniqueValuesProportionBetween", "quantileValuesBetween"
+          ]
+        },
+        "value": {
+          "description": "Single value for comparison"
+        },
+        "values": {
+          "type": "array",
+          "description": "Multiple values for in/notIn validations",
+          "items": {}
+        },
+        "min": {
+          "description": "Minimum value for range validations"
+        },
+        "max": {
+          "description": "Maximum value for range validations"
+        },
+        "regex": {
+          "type": "string",
+          "description": "Regex pattern for matches validation"
+        },
+        "regexes": {
+          "type": "array",
+          "description": "Multiple regex patterns",
+          "items": {
+            "type": "string"
+          }
+        },
+        "size": {
+          "type": "integer",
+          "description": "Expected size/length"
+        },
+        "strictly": {
+          "type": "boolean",
+          "description": "Strict comparison mode"
+        },
+        "negate": {
+          "type": "boolean",
+          "description": "Negate the validation result",
+          "default": false
+        },
+        "matchAll": {
+          "type": "boolean",
+          "description": "Match all patterns (vs any)"
+        },
+        "format": {
+          "type": "string",
+          "description": "Format pattern for date/time validation"
+        },
+        "schema": {
+          "type": "string",
+          "description": "JSON schema for matchJsonSchema validation"
+        },
+        "quantileRanges": {
+          "type": "object",
+          "description": "Quantile ranges for quantileValuesBetween validation",
+          "additionalProperties": {
+            "type": "array",
+            "items": {
+              "type": "array",
+              "items": {
+                "type": "number"
+              }
+            }
+          }
+        },
+        "description": {
+          "type": "string",
+          "description": "Human-readable description"
+        },
+        "errorThreshold": {
+          "type": "number",
+          "description": "Allowed error rate (0-1)",
+          "minimum": 0,
+          "maximum": 1
+        }
+      },
+      "required": ["type"],
+      "additionalProperties": true
+    },
+    "waitCondition": {
+      "type": "object",
+      "description": "Wait condition before running validation",
+      "properties": {
+        "type": {
+          "type": "string",
+          "description": "Wait condition type",
+          "enum": ["pause", "fileExists", "dataExists", "webhook"],
+          "default": "pause"
+        },
+        "pauseInSeconds": {
+          "type": "integer",
+          "description": "Pause duration in seconds (for pause type)",
+          "minimum": 0
+        },
+        "path": {
+          "type": "string",
+          "description": "File path to check (for fileExists type)"
+        },
+        "dataSourceName": {
+          "type": "string",
+          "description": "Data source name (for dataExists type)"
+        },
+        "options": {
+          "type": "object",
+          "description": "Read options for data source",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "expr": {
+          "type": "string",
+          "description": "Expression to evaluate for data existence"
+        },
+        "url": {
+          "type": "string",
+          "description": "Webhook URL (for webhook type)"
+        },
+        "method": {
+          "type": "string",
+          "description": "HTTP method for webhook",
+          "enum": ["GET", "POST", "PUT", "DELETE"]
+        },
+        "statusCodes": {
+          "type": "array",
+          "description": "Expected HTTP status codes",
+          "items": {
+            "type": "integer"
+          }
+        },
+        "maxRetries": {
+          "type": "integer",
+          "description": "Maximum retry attempts",
+          "minimum": 0
+        },
+        "waitBeforeRetrySeconds": {
+          "type": "integer",
+          "description": "Seconds to wait between retries",
+          "minimum": 0
+        }
+      },
+      "additionalProperties": true
+    },
+    "foreignKey": {
+      "type": "object",
+      "description": "Foreign key relationship between data sources",
+      "properties": {
+        "source": {
+          "$ref": "#/$defs/foreignKeyRelation",
+          "description": "Source table containing the primary key"
+        },
+        "generate": {
+          "type": "array",
+          "description": "Target tables to generate with foreign key references",
+          "items": {
+            "$ref": "#/$defs/foreignKeyRelation"
+          }
+        },
+        "delete": {
+          "type": "array",
+          "description": "Target tables for cleanup with foreign key references",
+          "items": {
+            "$ref": "#/$defs/foreignKeyRelation"
+          }
+        }
+      },
+      "required": ["source"],
+      "additionalProperties": true
+    },
+    "foreignKeyRelation": {
+      "type": "object",
+      "description": "Foreign key relation definition",
+      "properties": {
+        "dataSource": {
+          "type": "string",
+          "description": "Data source name"
+        },
+        "step": {
+          "type": "string",
+          "description": "Step (table/topic) name"
+        },
+        "fields": {
+          "type": "array",
+          "description": "Key field names",
+          "items": {
+            "type": "string"
+          }
+        },
+        "cardinality": {
+          "$ref": "#/$defs/cardinalityConfig"
+        },
+        "nullability": {
+          "$ref": "#/$defs/nullabilityConfig"
+        },
+        "generationMode": {
+          "type": "string",
+          "description": "Generation strategy for the relationship"
+        }
+      },
+      "required": ["dataSource", "step", "fields"],
+      "additionalProperties": true
+    },
+    "cardinalityConfig": {
+      "type": "object",
+      "description": "One-to-many relationship cardinality configuration",
+      "properties": {
+        "min": {
+          "type": "integer",
+          "description": "Minimum records per parent",
+          "minimum": 0,
+          "examples": [1]
+        },
+        "max": {
+          "type": "integer",
+          "description": "Maximum records per parent",
+          "minimum": 0,
+          "examples": [10]
+        },
+        "ratio": {
+          "type": "number",
+          "description": "Ratio multiplier (e.g., 10.0 = 10x parent records)",
+          "minimum": 0,
+          "examples": [10.0, 30.0]
+        },
+        "distribution": {
+          "type": "string",
+          "description": "Distribution for cardinality",
+          "enum": ["uniform", "normal", "zipf"],
+          "default": "uniform"
+        }
+      },
+      "additionalProperties": true
+    },
+    "nullabilityConfig": {
+      "type": "object",
+      "description": "Null value handling for foreign keys",
+      "properties": {
+        "nullPercentage": {
+          "type": "number",
+          "description": "Percentage of null values (0-1)",
+          "minimum": 0,
+          "maximum": 1,
+          "examples": [0.05, 0.30]
+        },
+        "strategy": {
+          "type": "string",
+          "description": "Null distribution strategy",
+          "enum": ["random", "leading", "trailing"],
+          "default": "random"
+        }
+      },
+      "additionalProperties": true
+    },
+    "sinkOptions": {
+      "type": "object",
+      "description": "Global data generation settings",
+      "properties": {
+        "seed": {
+          "type": "string",
+          "description": "Random seed for reproducible generation",
+          "examples": ["42", "12345"]
+        },
+        "locale": {
+          "type": "string",
+          "description": "Locale for data generation (affects names, addresses, etc.)",
+          "examples": ["en-US", "en-GB", "de-DE", "fr-FR", "ja-JP"]
+        }
+      },
+      "additionalProperties": true
+    }
+  }
+}

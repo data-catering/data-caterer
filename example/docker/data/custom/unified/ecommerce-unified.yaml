@@ -1,0 +1,373 @@
+# =============================================================================
+# E-Commerce Data Generation - Unified YAML Configuration
+# =============================================================================
+# This single file contains all configuration needed to generate test data:
+# - Data source connections (inline)
+# - Step definitions with fields
+# - Inline validations
+# - Foreign key relationships
+# - Runtime configuration (optional)
+# =============================================================================
+
+version: "1.0"
+name: "ecommerce_data_generation"
+description: "Generate realistic e-commerce test data with customers, orders, and products"
+
+# =============================================================================
+# Configuration (Optional)
+# Omit this section to use default system settings
+# =============================================================================
+config:
+  flags:
+    enableGenerateData: true
+    enableValidation: true
+    enableSaveReports: true
+  generation:
+    numRecordsPerBatch: 100000
+  folders:
+    generatedReportsFolderPath: "/tmp/data-caterer/reports"
+
+# =============================================================================
+# Data Sources
+# Each data source includes inline connection and step definitions
+# =============================================================================
+dataSources:
+  # ---------------------------------------------------------------------------
+  # PostgreSQL Database - Main E-commerce Data
+  # ---------------------------------------------------------------------------
+  - name: "ecommerce_postgres"
+    connection:
+      type: "postgres"
+      options:
+        url: "jdbc:postgresql://localhost:5432/ecommerce"
+        user: "postgres"
+        password: "${POSTGRES_PASSWORD}"  # Environment variable substitution
+    steps:
+      # ----- Customers Table -----
+      - name: "customers"
+        options:
+          dbtable: "public.customers"
+        count:
+          records: 1000
+        fields:
+          - name: "customer_id"
+            options:
+              regex: "CUST[0-9]{8}"
+              isPrimaryKey: true
+          - name: "email"
+            options:
+              expression: "#{Internet.emailAddress}"
+              isUnique: true
+          - name: "first_name"
+            options:
+              expression: "#{Name.firstName}"
+          - name: "last_name"
+            options:
+              expression: "#{Name.lastName}"
+          - name: "phone"
+            options:
+              expression: "#{PhoneNumber.phoneNumber}"
+          - name: "created_at"
+            type: "timestamp"
+            options:
+              min: "2023-01-01T00:00:00"
+              max: "2024-12-31T23:59:59"
+          - name: "status"
+            options:
+              oneOf:
+                - "active"
+                - "inactive"
+                - "pending"
+        validations:
+          - expr: "email IS NOT NULL"
+          - field: "customer_id"
+            validation:
+              - type: "unique"
+          - field: "email"
+            validation:
+              - type: "unique"
+              - type: "matches"
+                regex: "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$"
+
+      # ----- Products Table -----
+      - name: "products"
+        options:
+          dbtable: "public.products"
+        count:
+          records: 500
+        fields:
+          - name: "product_id"
+            options:
+              regex: "PROD[0-9]{6}"
+              isPrimaryKey: true
+          - name: "name"
+            options:
+              expression: "#{Commerce.productName}"
+          - name: "category"
+            options:
+              oneOf:
+                - "Electronics"
+                - "Clothing"
+                - "Books"
+                - "Home & Garden"
+                - "Sports"
+                - "Toys"
+          - name: "price"
+            type: "double"
+            options:
+              min: 9.99
+              max: 999.99
+          - name: "stock_quantity"
+            type: "integer"
+            options:
+              min: 0
+              max: 1000
+          - name: "is_active"
+            type: "boolean"
+        validations:
+          - expr: "price > 0"
+          - expr: "stock_quantity >= 0"
+          - field: "product_id"
+            validation:
+              - type: "unique"
+
+      # ----- Orders Table -----
+      - name: "orders"
+        options:
+          dbtable: "public.orders"
+        count:
+          records: 5000
+        fields:
+          - name: "order_id"
+            options:
+              regex: "ORD[0-9]{10}"
+              isPrimaryKey: true
+          - name: "customer_id"
+            # Foreign key - will be populated from customers
+          - name: "order_date"
+            type: "timestamp"
+            options:
+              min: "2024-01-01T00:00:00"
+              max: "2024-12-31T23:59:59"
+          - name: "total_amount"
+            type: "double"
+            options:
+              min: 10.00
+              max: 5000.00
+          - name: "status"
+            options:
+              oneOf:
+                - "pending"
+                - "processing"
+                - "shipped"
+                - "delivered"
+                - "cancelled"
+          - name: "shipping_address"
+            options:
+              expression: "#{Address.fullAddress}"
+        validations:
+          - expr: "total_amount > 0"
+          - field: "order_id"
+            validation:
+              - type: "unique"
+
+      # ----- Order Items Table -----
+      - name: "order_items"
+        options:
+          dbtable: "public.order_items"
+        count:
+          records: 15000
+        fields:
+          - name: "order_item_id"
+            options:
+              regex: "ITEM[0-9]{12}"
+              isPrimaryKey: true
+          - name: "order_id"
+            # Foreign key - will be populated from orders
+          - name: "product_id"
+            # Foreign key - will be populated from products
+          - name: "quantity"
+            type: "integer"
+            options:
+              min: 1
+              max: 10
+          - name: "unit_price"
+            type: "double"
+            options:
+              min: 9.99
+              max: 999.99
+        validations:
+          - expr: "quantity > 0"
+          - expr: "unit_price > 0"
+
+  # ---------------------------------------------------------------------------
+  # JSON Files - Analytics Data
+  # ---------------------------------------------------------------------------
+  - name: "analytics_json"
+    connection:
+      type: "json"
+      options:
+        path: "/tmp/data/analytics"
+    steps:
+      - name: "page_views"
+        count:
+          records: 10000
+        fields:
+          - name: "view_id"
+            options:
+              regex: "VIEW[0-9]{16}"
+          - name: "customer_id"
+            # Can reference customers from postgres
+          - name: "page_url"
+            options:
+              expression: "#{Internet.url}"
+          - name: "view_timestamp"
+            type: "timestamp"
+            options:
+              min: "2024-01-01T00:00:00"
+              max: "2024-12-31T23:59:59"
+          - name: "duration_seconds"
+            type: "integer"
+            options:
+              min: 1
+              max: 3600
+          - name: "device"
+            type: "struct"
+            fields:
+              - name: "type"
+                options:
+                  oneOf:
+                    - "desktop"
+                    - "mobile"
+                    - "tablet"
+              - name: "browser"
+                options:
+                  oneOf:
+                    - "Chrome"
+                    - "Firefox"
+                    - "Safari"
+                    - "Edge"
+              - name: "os"
+                options:
+                  oneOf:
+                    - "Windows"
+                    - "macOS"
+                    - "iOS"
+                    - "Android"
+                    - "Linux"
+
+  # ---------------------------------------------------------------------------
+  # CSV Files - Reports
+  # ---------------------------------------------------------------------------
+  - name: "reports_csv"
+    connection:
+      type: "csv"
+      options:
+        path: "/tmp/data/reports"
+    steps:
+      - name: "daily_sales_summary"
+        count:
+          records: 365
+        fields:
+          - name: "report_date"
+            type: "date"
+            options:
+              min: "2024-01-01"
+              max: "2024-12-31"
+          - name: "total_orders"
+            type: "integer"
+            options:
+              min: 50
+              max: 500
+          - name: "total_revenue"
+            type: "double"
+            options:
+              min: 5000.00
+              max: 100000.00
+          - name: "avg_order_value"
+            type: "double"
+            options:
+              min: 50.00
+              max: 500.00
+          - name: "new_customers"
+            type: "integer"
+            options:
+              min: 5
+              max: 100
+
+# =============================================================================
+# Foreign Key Relationships
+# Define how data sources relate to each other
+# =============================================================================
+foreignKeys:
+  # Customers -> Orders (one-to-many)
+  # Each customer has 1-10 orders, 5% guest checkouts (null customer_id)
+  - source:
+      dataSource: "ecommerce_postgres"
+      step: "customers"
+      fields: ["customer_id"]
+    generate:
+      - dataSource: "ecommerce_postgres"
+        step: "orders"
+        fields: ["customer_id"]
+        cardinality:
+          min: 1
+          max: 10
+          distribution: "normal"
+        nullability:
+          nullPercentage: 0.05
+          strategy: "random"
+
+  # Orders -> Order Items (one-to-many)
+  # Each order has 1-15 items
+  - source:
+      dataSource: "ecommerce_postgres"
+      step: "orders"
+      fields: ["order_id"]
+    generate:
+      - dataSource: "ecommerce_postgres"
+        step: "order_items"
+        fields: ["order_id"]
+        cardinality:
+          min: 1
+          max: 15
+          distribution: "normal"
+
+  # Products -> Order Items (many-to-many via order_items)
+  # Products can appear in multiple order items
+  - source:
+      dataSource: "ecommerce_postgres"
+      step: "products"
+      fields: ["product_id"]
+    generate:
+      - dataSource: "ecommerce_postgres"
+        step: "order_items"
+        fields: ["product_id"]
+        cardinality:
+          ratio: 30.0
+          distribution: "zipf"  # Power law: some products are more popular
+
+  # Customers -> Page Views (cross data source)
+  # Customer activity tracked in analytics
+  - source:
+      dataSource: "ecommerce_postgres"
+      step: "customers"
+      fields: ["customer_id"]
+    generate:
+      - dataSource: "analytics_json"
+        step: "page_views"
+        fields: ["customer_id"]
+        cardinality:
+          ratio: 10.0
+          distribution: "zipf"
+        nullability:
+          nullPercentage: 0.30  # 30% anonymous visitors
+          strategy: "random"
+
+# =============================================================================
+# Sink Options
+# Global settings for data generation
+# =============================================================================
+sinkOptions:
+  seed: "42"
+  locale: "en-US"

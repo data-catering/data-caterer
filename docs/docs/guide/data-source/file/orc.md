@@ -74,13 +74,19 @@ Create a file depending on which interface you want to use.
 
 === "YAML"
 
-    In `docker/data/custom/plan/my-orc.yaml`:
+    In `docker/data/custom/unified/my-orc.yaml`:
     ```yaml
     name: "my_orc_plan"
     description: "Create account data in ORC format"
-    tasks:
-      - name: "orc_task"
-        dataSourceName: "my_orc"
+
+    dataSources:
+      - name: "my_orc"
+        connection:
+          type: "orc"
+          options:
+            path: "/tmp/custom/orc/accounts"
+        steps:
+          - name: "accounts"
     ```
 
 === "UI"
@@ -130,13 +136,15 @@ Within our class, we can start by defining the connection properties to read/wri
 
 === "YAML"
 
-    In `docker/data/custom/application.conf`:
-    ```
-    orc {
-        my_orc {
-            "spark.sql.orc.mergeSchema": "false"
-        }
-    }
+    In a unified YAML file:
+    ```yaml
+    dataSources:
+      - name: "my_orc"
+        connection:
+          type: "orc"
+          options:
+            path: "/opt/app/data/customer/account_orc"
+            spark.sql.orc.mergeSchema: "false"
     ```
 
     Additional options can be found [**here**](https://spark.apache.org/docs/latest/sql-data-sources-orc.html#data-source-option).

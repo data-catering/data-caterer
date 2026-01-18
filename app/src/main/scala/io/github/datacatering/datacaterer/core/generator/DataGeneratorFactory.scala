@@ -130,7 +130,9 @@ class DataGeneratorFactory(faker: Faker, enableFastGeneration: Boolean = false)(
     val namedStruct = dataGenerators.map(dg => s"'${dg.structField.name}', CAST(${dg.generateSqlExpressionWrapper} AS ${dg.structField.dataType.sql})").mkString(",")
     //if it is using a weighted oneOf generator, it will have a weight column
     val countGeneratorSql = countGenerator.generateSqlExpressionWrapper
-    val optWeightCol = if (countGeneratorSql.contains(RECORD_COUNT_GENERATOR_WEIGHT_FIELD)) Array(s"RAND() AS $RECORD_COUNT_GENERATOR_WEIGHT_FIELD") else Array[String]()
+    val optWeightCol = if (countGeneratorSql.contains(RECORD_COUNT_GENERATOR_WEIGHT_FIELD)) {
+      Array(s"${countGenerator.sqlRandomWithOffset(1)} AS $RECORD_COUNT_GENERATOR_WEIGHT_FIELD")
+    } else Array[String]()
     val perCountGeneratedExpr = df.columns ++ optWeightCol ++ Array(
       s"CAST($countGeneratorSql AS INT) AS $PER_FIELD_COUNT_GENERATED_NUM",
       s"CASE WHEN $PER_FIELD_COUNT_GENERATED_NUM = 0 THEN ARRAY() ELSE SEQUENCE(1, $PER_FIELD_COUNT_GENERATED_NUM) END AS $PER_FIELD_COUNT_GENERATED"
@@ -437,4 +439,5 @@ object UDFHelperFunctions extends Serializable {
     val length = RANDOM.nextInt(maxLength + 1) + minLength
     RANDOM.alphanumeric.take(length).mkString("")
   }).asNondeterministic()
+
 }

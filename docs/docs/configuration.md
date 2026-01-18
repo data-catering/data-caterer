@@ -23,15 +23,16 @@ Flags are used to control which processes are executed when you run Data Caterer
 | `enableCount`                  | true    | Count the number of records generated. Can be disabled to improve performance                                                                                                                                               |
 | `enableFailOnError`            | true    | Whilst saving generated data, if there is an error, it will stop any further data from being generated                                                                                                                      |
 | `enableSaveReports`            | true    | Enable/disable HTML reports summarising data generated, metadata of data generated (if `enableSinkMetadata` is enabled) and validation results (if `enableValidation` is enabled). Sample [**here**](report/html-report.md) |
-| `enableSinkMetadata`           | true    | Run data profiling for the generated data. Shown in HTML reports if `enableSaveSinkMetadata` is enabled                                                                                                                     |
-| `enableValidation`             | false   | Run validations as described in plan. Results can be viewed from logs or from HTML report if `enableSaveSinkMetadata` is enabled. Sample [**here**](validation.md)                                                          |
+| `enableSinkMetadata`           | false   | Run data profiling for the generated data. Shown in HTML reports if `enableSaveReports` is enabled                                                                                                                          |
+| `enableValidation`             | true    | Run validations as described in plan. Results can be viewed from logs or from HTML report if `enableSaveReports` is enabled. Sample [**here**](validation.md)                                                               |
 | `enableUniqueCheck`            | false   | If enabled, for any `isUnique` fields, will ensure only unique values are generated                                                                                                                                         |
 | `enableAlerts`                 | true    | Enable/disable alerts to be sent                                                                                                                                                                                            |
 | `enableGeneratePlanAndTasks`   | false   | Enable/disable plan and task auto generation based off data source connections                                                                                                                                              |
 | `enableRecordTracking`         | false   | Enable/disable which data records have been generated for any data source                                                                                                                                                   |
 | `enableDeleteGeneratedRecords` | false   | Delete all generated records based off record tracking (if `enableRecordTracking` has been set to true)                                                                                                                     |
-| `enableGenerateValidations`    | false   | If enabled, it will generate validations based on the data sources defined.                                                                                                                                                 |
-| `enableFastGeneration`         | false   | Enable fast generation to maximize throughput. This automatically disables slower features and applies runtime optimizations for maximum performance |
+| `enableGenerateValidations`    | false   | If enabled, it will generate validations based on the data sources defined                                                                                                                                                  |
+| `enableUniqueCheckOnlyInBatch` | false   | If enabled, unique checks only verify uniqueness within each batch, not across all batches. Improves performance for large datasets                                                                                         |
+| `enableFastGeneration`         | false   | Enable fast generation to maximize throughput. This automatically disables slower features and applies runtime optimizations for maximum performance                                                                         |
 
 === "Java"
 
@@ -48,7 +49,8 @@ Flags are used to control which processes are executed when you run Data Caterer
       .enableGeneratePlanAndTasks(false)
       .enableRecordTracking(false)
       .enableDeleteGeneratedRecords(false)
-      .enableGenerateValidations(false);
+      .enableGenerateValidations(false)
+      .enableUniqueCheckOnlyInBatch(false);
     ```
 
 === "Scala"
@@ -67,6 +69,29 @@ Flags are used to control which processes are executed when you run Data Caterer
       .enableRecordTracking(false)
       .enableDeleteGeneratedRecords(false)
       .enableGenerateValidations(false)
+      .enableUniqueCheckOnlyInBatch(false)
+    ```
+
+=== "YAML"
+
+    In a unified YAML file:
+    ```yaml
+    config:
+      flags:
+        enableGenerateData: true
+        enableCount: true
+        enableFailOnError: true
+        enableSaveReports: true
+        enableSinkMetadata: true
+        enableValidation: false
+        enableUniqueCheck: true
+        enableAlerts: true
+        enableGeneratePlanAndTasks: false
+        enableRecordTracking: false
+        enableDeleteGeneratedRecords: false
+        enableGenerateValidations: false
+        enableUniqueCheckOnlyInBatch: false
+        enableFastGeneration: false
     ```
 
 === "application.conf"
@@ -97,6 +122,8 @@ Flags are used to control which processes are executed when you run Data Caterer
       enableGenerateValidations = ${?ENABLE_GENERATE_VALIDATIONS}
       enableAlerts = false
       enableAlerts = ${?ENABLE_ALERTS}
+      enableUniqueCheckOnlyInBatch = false
+      enableUniqueCheckOnlyInBatch = ${?ENABLE_UNIQUE_CHECK_ONLY_IN_BATCH}
       # Fast generation disables slower features for maximum throughput
       enableFastGeneration = false
       enableFastGeneration = ${?ENABLE_FAST_GENERATION}
@@ -125,6 +152,15 @@ partitions, enable AQE, Kryo serializer) and increases `numRecordsPerBatch`.
       .enableFastGeneration(true)
     ```
     
+=== "YAML"
+
+    In a unified YAML file:
+    ```yaml
+    config:
+      flags:
+        enableFastGeneration: true
+    ```
+
 === "application.conf"
 
     ```
@@ -175,6 +211,17 @@ These folder pathways can be defined as a cloud storage pathway (i.e. `s3a://my-
       .generatedPlanAndTaskFolderPath("/opt/app/custom/generated")
       .recordTrackingFolderPath("/opt/app/custom/record-tracking")
       .recordTrackingForValidationFolderPath("/opt/app/custom/record-tracking-validation")
+    ```
+
+=== "YAML"
+
+    In a unified YAML file:
+    ```yaml
+    config:
+      folders:
+        generatedReportsFolderPath: "/opt/app/custom/report"
+        recordTrackingFolderPath: "/opt/app/custom/record-tracking"
+        recordTrackingForValidationFolderPath: "/opt/app/custom/record-tracking-validation"
     ```
 
 === "application.conf"
@@ -241,6 +288,19 @@ when analysing the generated data if the number of records generated is large.
       .numGeneratedSamples(10)
     ```
 
+=== "YAML"
+
+    In a unified YAML file:
+    ```yaml
+    config:
+      metadata:
+        numRecordsFromDataSource: 10000
+        numRecordsForAnalysis: 10000
+        oneOfMinCount: 1000
+        oneOfDistinctCountVsCountThreshold: 0.2
+        numGeneratedSamples: 10
+    ```
+
 === "application.conf"
 
     ```
@@ -286,12 +346,88 @@ batch.
       .numRecordsPerStep(1000)
     ```
 
+=== "YAML"
+
+    In a unified YAML file:
+    ```yaml
+    config:
+      generation:
+        numRecordsPerBatch: 100000
+        numRecordsPerStep: 1000
+    ```
+
 === "application.conf"
 
     ```
     generation {
       numRecordsPerBatch = 100000
       numRecordsPerStep = 1000
+    }
+    ```
+
+## Streaming
+
+Configurations for streaming and real-time data generation scenarios (Kafka, HTTP, etc.).
+
+| Config                 | Default | Description                                                                        |
+|------------------------|---------|------------------------------------------------------------------------------------|
+| `maxTimeoutSeconds`    | 3600    | Maximum execution time in seconds for streaming jobs before timeout                |
+| `maxAsyncParallelism`  | 100     | Maximum number of concurrent async operations for HTTP and streaming data sources  |
+| `responseBufferSize`   | 10000   | Size of the bounded buffer for HTTP responses to prevent memory issues             |
+| `timestampWindowMs`    | 1000    | Time window in milliseconds for grouping streaming timestamps                      |
+
+=== "Java"
+
+    ```java
+    configuration()
+      .streamingConfig(
+        new StreamingConfig(
+          3600,    // maxTimeoutSeconds
+          100,     // maxAsyncParallelism
+          10000,   // responseBufferSize
+          1000L    // timestampWindowMs
+        )
+      );
+    ```
+
+=== "Scala"
+
+    ```scala
+    configuration
+      .streamingConfig(
+        StreamingConfig(
+          maxTimeoutSeconds = 3600,
+          maxAsyncParallelism = 100,
+          responseBufferSize = 10000,
+          timestampWindowMs = 1000L
+        )
+      )
+    ```
+
+=== "YAML"
+
+    In a unified YAML file:
+    ```yaml
+    config:
+      streaming:
+        maxTimeoutSeconds: 3600
+        maxAsyncParallelism: 100
+        responseBufferSize: 10000
+        timestampWindowMs: 1000
+    ```
+
+=== "application.conf"
+
+    ```
+    streaming {
+      maxTimeoutSeconds = 3600
+      maxTimeoutSeconds = ${?STREAMING_MAX_TIMEOUT_SECONDS}
+      maxAsyncParallelism = 100
+      maxAsyncParallelism = ${?STREAMING_MAX_ASYNC_PARALLELISM}
+      responseBufferSize = 10000
+      responseBufferSize = ${?STREAMING_RESPONSE_BUFFER_SIZE}
+      timestampWindowMs = 1000
+      timestampWindowMs = ${?STREAMING_TIMESTAMP_WINDOW_MS}
     }
     ```
 
@@ -320,12 +456,78 @@ Configurations to alter how validations are executed.
       .enableDeleteRecordTrackingFiles(false)
     ```
 
+=== "YAML"
+
+    In a unified YAML file:
+    ```yaml
+    config:
+      validation:
+        numSampleErrorRecords: 10
+        enableDeleteRecordTrackingFiles: false
+    ```
+
 === "application.conf"
 
     ```
-    validatoin {
+    validation {
       numSampleErrorRecords = 10
       enableDeleteRecordTrackingFiles = false
+    }
+    ```
+
+## Alert
+
+Configurations for alert notifications when data generation or validation completes.
+
+| Config        | Default | Description                                                                                                               |
+|---------------|---------|---------------------------------------------------------------------------------------------------------------------------|
+| `triggerOn`   | all     | When to trigger alerts: `all`, `failure`, `success`, `generation_failure`, `generation_success`, `validation_failure`, `validation_success` |
+| `slackToken`  | ""      | Slack API token for sending alerts to Slack channels                                                                      |
+| `slackChannels` | []    | List of Slack channel names to send alerts to                                                                             |
+
+=== "Java"
+
+    ```java
+    configuration()
+      .alertTriggerOn("all")
+      .slackAlertToken("xoxb-your-slack-token")
+      .slackAlertChannels(List.of("data-caterer-alerts", "data-quality"));
+    ```
+
+=== "Scala"
+
+    ```scala
+    configuration
+      .alertTriggerOn("all")
+      .slackAlertToken("xoxb-your-slack-token")
+      .slackAlertChannels(List("data-caterer-alerts", "data-quality"))
+    ```
+
+=== "YAML"
+
+    In a unified YAML file:
+    ```yaml
+    config:
+      alert:
+        triggerOn: "all"
+        slackToken: "xoxb-your-slack-token"
+        slackChannels:
+          - "data-caterer-alerts"
+          - "data-quality"
+    ```
+
+=== "application.conf"
+
+    ```
+    alert {
+      triggerOn = "all"
+      triggerOn = ${?ALERT_TRIGGER_ON}
+      slack {
+        token = ""
+        token = ${?SLACK_API_TOKEN}
+        channels = []
+        channels = ${?SLACK_CHANNELS}
+      }
     }
     ```
 
@@ -348,11 +550,21 @@ If `enableUniqueCheck` is enabled, you can tune the underlying Bloom filter used
       .uniqueBloomFilterNumItems(100000L)
       .uniqueBloomFilterFalsePositiveProbability(0.1)
     ```
-    
+
+=== "YAML"
+
+    In a unified YAML file:
+    ```yaml
+    config:
+      generation:
+        uniqueBloomFilterNumItems: 100000
+        uniqueBloomFilterFalsePositiveProbability: 0.1
+    ```
+
 === "application.conf"
 
     ```
-    uniqueCheck {
+    generation {
       uniqueBloomFilterNumItems = 100000
       uniqueBloomFilterFalsePositiveProbability = 0.1
     }

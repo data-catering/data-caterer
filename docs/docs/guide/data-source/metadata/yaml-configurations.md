@@ -44,33 +44,36 @@ The YAML metadata source allows you to reference existing YAML task and plan fil
 
 ### Basic Usage
 
-**Existing YAML Task File (customer-fields.yaml):**
+**Existing Unified YAML File (customer-fields.yaml):**
 ```yaml
 name: "customer_data"
-dataSourceName: "customer_csv"
-steps:
-  - name: "customers"
-    type: "file"
-    options:
-      path: "/opt/app/data/customers.csv"
-    fields:
-      - name: "customer_id"
-        type: "string"
-        options:
-          regex: "CUST[0-9]{8}"
-          isUnique: "true"
-      - name: "first_name"
-        type: "string"
-        options:
-          expression: "#{Name.firstName}"
-      - name: "last_name"
-        type: "string"
-        options:
-          expression: "#{Name.lastName}"
-      - name: "email"
-        type: "string"
-        options:
-          expression: "#{Internet.emailAddress}"
+
+dataSources:
+  - name: "customer_data"
+    connection:
+      type: "csv"
+      options:
+        path: "/opt/app/data/customers.csv"
+    steps:
+      - name: "customers"
+        fields:
+          - name: "customer_id"
+            type: "string"
+            options:
+              regex: "CUST[0-9]{8}"
+              isUnique: "true"
+          - name: "first_name"
+            type: "string"
+            options:
+              expression: "#{Name.firstName}"
+          - name: "last_name"
+            type: "string"
+            options:
+              expression: "#{Name.lastName}"
+          - name: "email"
+            type: "string"
+            options:
+              expression: "#{Internet.emailAddress}"
 ```
 
 **Programmatic Usage:**
@@ -122,44 +125,47 @@ steps:
 **Account Fields YAML (account-fields.yaml):**
 ```yaml
 name: "account_data"
-dataSourceName: "account_json"
-steps:
-  - name: "checking_accounts"
-    type: "file"
-    options:
-      path: "/opt/app/data/checking.json"
-    fields:
-      - name: "account_id"
-        type: "string"
+
+dataSources:
+  - name: "account_data"
+    connection:
+      type: "json"
+      options: {}
+    steps:
+      - name: "checking_accounts"
         options:
-          regex: "CHK[0-9]{10}"
-          isUnique: "true"
-      - name: "balance"
-        type: "double"
+          path: "/opt/app/data/checking.json"
+        fields:
+          - name: "account_id"
+            type: "string"
+            options:
+              regex: "CHK[0-9]{10}"
+              isUnique: "true"
+          - name: "balance"
+            type: "double"
+            options:
+              min: 0.0
+              max: 50000.0
+
+      - name: "savings_accounts"
         options:
-          min: 0.0
-          max: 50000.0
-    
-  - name: "savings_accounts"
-    type: "file"
-    options:
-      path: "/opt/app/data/savings.json"
-    fields:
-      - name: "account_id"
-        type: "string"
-        options:
-          regex: "SAV[0-9]{10}"
-          isUnique: "true"
-      - name: "balance"
-        type: "double"
-        options:
-          min: 100.0
-          max: 1000000.0
-      - name: "interest_rate"
-        type: "double"
-        options:
-          min: 0.01
-          max: 0.05
+          path: "/opt/app/data/savings.json"
+        fields:
+          - name: "account_id"
+            type: "string"
+            options:
+              regex: "SAV[0-9]{10}"
+              isUnique: "true"
+          - name: "balance"
+            type: "double"
+            options:
+              min: 100.0
+              max: 1000000.0
+          - name: "interest_rate"
+            type: "double"
+            options:
+              min: 0.01
+              max: 0.05
 ```
 
 **Creating Multiple Tasks from Same YAML:**
@@ -733,20 +739,27 @@ csv_output {
 }
 ```
 
-**YAML Task (customer-task.yaml):**
+**Unified YAML (customer-task.yaml):**
 ```yaml
 name: "customer_data"
-dataSourceName: "postgres_customer"  # References connection config
-steps:
-  - name: "customers"
-    type: "table"
-    options:
-      tableName: "customers"
-fields:
-  - name: "customer_id"
-    type: "string"
-    options:
-      regex: "CUST[0-9]{8}"
+
+dataSources:
+  - name: "postgres_customer"
+    connection:
+      type: "postgres"
+      options:
+        url: "jdbc:postgresql://localhost:5432/customer"
+        user: "postgres"
+        password: "password"
+    steps:
+      - name: "customers"
+        options:
+          dbtable: "customers"
+        fields:
+          - name: "customer_id"
+            type: "string"
+            options:
+              regex: "CUST[0-9]{8}"
 ```
 
 **Java/Scala Code:**

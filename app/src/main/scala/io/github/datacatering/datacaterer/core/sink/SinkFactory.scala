@@ -1,7 +1,7 @@
 package io.github.datacatering.datacaterer.core.sink
 
 import io.github.datacatering.datacaterer.api.model.Constants.{DELTA, DELTA_LAKE_SPARK_CONF, DRIVER, FORMAT, ICEBERG, ICEBERG_SPARK_CONF, JDBC, POSTGRES_DRIVER, ROWS_PER_SECOND}
-import io.github.datacatering.datacaterer.api.model.{FlagsConfig, FoldersConfig, MetadataConfig, SinkResult, Step}
+import io.github.datacatering.datacaterer.api.model.{FlagsConfig, FoldersConfig, MetadataConfig, SinkResult, Step, StreamingConfig}
 import org.apache.pekko.actor.ActorSystem
 import io.github.datacatering.datacaterer.api.util.ConfigUtil
 import io.github.datacatering.datacaterer.core.exception.FailedSaveDataException
@@ -27,7 +27,8 @@ import java.time.LocalDateTime
 class SinkFactory(
   val flagsConfig: FlagsConfig,
   val metadataConfig: MetadataConfig,
-  val foldersConfig: FoldersConfig
+  val foldersConfig: FoldersConfig,
+  val streamingConfig: StreamingConfig = StreamingConfig()
 )(implicit val sparkSession: SparkSession) {
 
   private val LOGGER = Logger.getLogger(getClass.getName)
@@ -39,8 +40,12 @@ class SinkFactory(
   private val batchSinkWriter = new BatchSinkWriter(fileConsolidator, transformationApplicator)
 
   // Shared ActorSystem for PekkoStreamingSinkWriter to avoid expensive per-call creation
+  @volatile private var streamingWriterInitialized = false
   private lazy val sharedActorSystem = ActorSystem("SinkFactoryPekkoStreaming")
-  private lazy val pekkoStreamingSinkWriter = new PekkoStreamingSinkWriter(foldersConfig, Some(sharedActorSystem))
+  private lazy val pekkoStreamingSinkWriter = {
+    streamingWriterInitialized = true
+    new PekkoStreamingSinkWriter(foldersConfig, streamingConfig, Some(sharedActorSystem))
+  }
 
   /**
    * Main entry point for pushing data to a sink (single-batch mode).
@@ -107,7 +112,7 @@ class SinkFactory(
     isMultiBatch: Boolean,
     isLastBatch: Boolean
   ): SinkResult = {
-    val saveTiming = determineSaveTiming(dataSourceName, format, step.name)
+    val saveTiming = determineSaveTiming(dataSourceName, format, step.name, step.options)
     val baseSinkResult = SinkResult(dataSourceName, format, saveMode.name())
 
     //TODO might have use case where empty data can be tested, is it okay just to check for empty schema?
@@ -117,11 +122,22 @@ class SinkFactory(
     } else if (saveTiming.equalsIgnoreCase(BATCH)) {
       batchSinkWriter.saveBatchData(dataSourceName, df, saveMode, connectionConfig, count, startTime, step, isMultiBatch, isLastBatch)
     } else {
-      // Use PekkoStreamingSinkWriter for real-time sinks (HTTP, JMS)
+      // Use PekkoStreamingSinkWriter for real-time sinks (HTTP, JMS, Kafka)
       val rowsPerSecond = step.options.getOrElse(ROWS_PER_SECOND, connectionConfig.getOrElse(ROWS_PER_SECOND, DEFAULT_ROWS_PER_SECOND))
-      val rate = Math.max(rowsPerSecond.toInt, 1)
-      LOGGER.info(s"Rows per second for generating data, rows-per-second=$rate")
-      pekkoStreamingSinkWriter.saveWithRateControl(dataSourceName, df, format, connectionConfig, step, rate, startTime)
+
+      try {
+        val rate = Math.max(rowsPerSecond.toInt, 1)
+        LOGGER.info(s"Using streaming sink writer for data-source=$dataSourceName, format=$format, step=${step.name}, rate=$rate/sec")
+        val (result, _) = pekkoStreamingSinkWriter.saveWithRateControl(dataSourceName, df, format, connectionConfig, step, rate, startTime, None, None)
+        result // Return just the SinkResult, discard metrics (SinkFactory doesn't use them)
+      } catch {
+        case ex: NumberFormatException =>
+          LOGGER.error(s"Invalid rows-per-second value: $rowsPerSecond for data-source=$dataSourceName", ex)
+          throw new IllegalArgumentException(s"Invalid rows-per-second value: $rowsPerSecond. Must be a valid integer.", ex)
+        case ex: Exception =>
+          LOGGER.error(s"Streaming sink failed for data-source=$dataSourceName, format=$format, error=${ex.getMessage}", ex)
+          throw ex
+      }
     }
 
     val finalSinkResult = (sinkResult.isSuccess, sinkResult.exception) match {
@@ -191,7 +207,11 @@ class SinkFactory(
    * Should be called when the SinkFactory is no longer needed.
    */
   def shutdown(): Unit = {
-    LOGGER.info("Shutting down SinkFactory resources")
-    pekkoStreamingSinkWriter.shutdown()
+    if (streamingWriterInitialized) {
+      LOGGER.info("Shutting down SinkFactory resources")
+      pekkoStreamingSinkWriter.shutdown()
+    } else {
+      LOGGER.debug("Skipping SinkFactory shutdown; streaming writer was never initialized")
+    }
   }
 }

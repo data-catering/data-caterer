@@ -20,7 +20,7 @@ COPY src ./src
 RUN ./gradlew clean build --no-daemon
 
 # Stage 2: Runtime image based on Data Caterer
-ARG DATA_CATERER_VERSION=0.18.0
+ARG DATA_CATERER_VERSION=0.19.0
 FROM datacatering/data-caterer:${DATA_CATERER_VERSION}
 
 # Copy the built JAR from the builder stage

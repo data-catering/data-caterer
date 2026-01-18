@@ -30,6 +30,21 @@ receive an alert like the below.
     execute(conf, ...)
     ```
 
+=== "YAML"
+
+    In a unified YAML file:
+    ```yaml
+    config:
+      flags:
+        enableAlerts: true
+      alert:
+        triggerOn: "onFailure"  # onFailure | onCompletion | always
+        slackToken: "abc123"
+        slackChannels:
+          - "#test-alerts"
+          - "#pre-prod-testing"
+    ```
+
 === "application.conf"
 
     ```
@@ -65,6 +80,17 @@ Control when alerts are sent based on execution results.
       .alertTriggerOn("onFailure") // options: onFailure | onCompletion | always
     ```
     
+=== "YAML"
+
+    In a unified YAML file:
+    ```yaml
+    config:
+      flags:
+        enableAlerts: true
+      alert:
+        triggerOn: "onFailure"  # onFailure | onCompletion | always
+    ```
+
 === "application.conf"
 
     ```
@@ -75,5 +101,3 @@ Control when alerts are sent based on execution results.
       triggerOn = "onFailure"  # onFailure | onCompletion | always
     }
     ```
-
-

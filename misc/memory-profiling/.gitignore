@@ -1,0 +1,16 @@
+# Memory profiling results
+results/
+
+# Process ID files
+.http-server.pid
+.data-caterer.pid
+
+# Temporary YAML files
+*-scenario.yaml
+
+# Python cache
+__pycache__/
+*.pyc
+
+# macOS
+.DS_Store

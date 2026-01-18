@@ -1,0 +1,64 @@
+version: "1.0"
+name: "sustained_load_http_memory_test"
+description: "Sustained load test with 1M records over extended period"
+
+config:
+  flags:
+    enableGenerateData: true
+    enableFastGeneration: true
+    enableSaveReports: true
+    enableDeleteGeneratedRecords: false
+    enableRecordTracking: false
+
+dataSources:
+  - name: "test_http"
+    connection:
+      type: "http"
+      options:
+        url: "http://localhost:8080"
+    steps:
+      - name: "sustained_load"
+        options:
+          format: "http"  # REQUIRED for HTTP format
+        count:
+          records: 1000000  # 1M records for sustained load test
+          perColumnCount:
+            rate: 50  # 50 records per second for sustained load
+        fields:
+          # Direct internal field names for HTTP
+          - name: "url"
+            static: "http://localhost:8080/"
+
+          - name: "method"
+            static: "POST"
+
+          - name: "Content-Type"
+            static: "application/json"
+
+          - name: "body"
+            options:
+              sql: "TO_JSON(STRUCT(event_id, session_id, user_agent, ip_address, event_data, timestamp))"
+
+          # Body fields
+          - name: "event_id"
+            options:
+              regex: "EVT[0-9]{10}"
+
+          - name: "session_id"
+            options:
+              regex: "SES[A-Z0-9]{16}"
+
+          - name: "user_agent"
+            options:
+              regex: "Mozilla/[0-9]\\.[0-9] \\([A-Za-z0-9 ;]+\\)"
+
+          - name: "ip_address"
+            options:
+              regex: "[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}"
+
+          - name: "event_data"
+            options:
+              regex: "[A-Za-z0-9]{400}"
+
+          - name: "timestamp"
+            type: "timestamp"

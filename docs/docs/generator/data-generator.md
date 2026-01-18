@@ -55,6 +55,17 @@ descriptions:
 | `enableNull`      | false   | `enableNull: "true"`                                                                         | Enable/disable null values being generated                                                                                                                                                                                     |
 | `nullProbability` | 0.0     | `nullProb: "0.1"`                                                                            | Probability to generate null values if `enableNull` is true                                                                                                                                                                    |
 | `uuid`            | <empty> | `uuid: "account_id"`                                                                         | Generate a UUID value. If value is non-empty, UUID value will be generated based off column value                                                                                                                              |
+| `email`           | <empty> | `email: "company.com"`                                                                       | Generate realistic email addresses. If empty, uses random domains                                                                                                                           |
+| `phone`           | "US"    | `phone: "UK"`                                                                                | Generate realistic phone numbers. Supported formats: `US`, `UK`, `AU`                                                                                                                       |
+| `url`             | "https" | `url: "http"`                                                                                | Generate realistic URLs for the given protocol                                                                                                                                                |
+| `uuidPattern`     | false   | `uuidPattern: true`                                                                          | Generate random UUIDs (version 4)                                                                                                                                                            |
+| `ipv4`            | false   | `ipv4: true`                                                                                 | Generate IPv4 addresses                                                                                                                                                                      |
+| `ipv6`            | false   | `ipv6: true`                                                                                 | Generate IPv6 addresses                                                                                                                                                                      |
+| `ssnPattern`      | false   | `ssnPattern: true`                                                                           | Generate SSN values using the standard pattern                                                                                                                                               |
+| `creditCard`      | "visa"  | `creditCard: "amex"`                                                                         | Generate credit card numbers for the given card type                                                                                                                                        |
+| `sequence`        | <empty> | `sequence: { start: 100, step: 2, prefix: "ORD-", padding: 6 }`                               | Generate sequential string values using `__index_inc`                                                                                                                                        |
+| `dailyBatchSequence` | <empty> | `dailyBatchSequence: { prefix: "BATCH-", dateFormat: "yyyyMMdd" }`                         | Generate daily batch identifiers with date and sequence                                                                                                                                      |
+| `semanticVersion` | <empty> | `semanticVersion: { major: 2, minor: 1, patchIncrement: true }`                              | Generate semantic versions like `2.1.0`, `2.1.1`, ...                                                                                                                                         |
 
 **Edge cases**: ("", "\n", "\r", "\t", " ", "\\u0000", "\\ufff", "İyi günler", "Спасибо", "Καλημέρα", "صباح الخير", "
 Förlåt", "你好吗", "Nhà vệ sinh ở đâu", "こんにちは", "नमस्ते", "Բարեւ", "Здравейте")
@@ -106,7 +117,51 @@ Förlåt", "你好吗", "Nhà vệ sinh ở đâu", "こんにちは", "नम�
         field()
           .name("calculated_field")
           .type(StringType.instance())
-          .sql("CASE WHEN amount < 10 THEN 'small' ELSE 'large' END")
+          .sql("CASE WHEN amount < 10 THEN 'small' ELSE 'large' END"),
+        field()
+          .name("support_email")
+          .type(StringType.instance())
+          .email("company.com"),
+        field()
+          .name("contact_phone")
+          .type(StringType.instance())
+          .phone("AU"),
+        field()
+          .name("website")
+          .type(StringType.instance())
+          .url("https"),
+        field()
+          .name("random_uuid")
+          .type(StringType.instance())
+          .uuidPattern(),
+        field()
+          .name("ipv4_address")
+          .type(StringType.instance())
+          .ipv4(),
+        field()
+          .name("ipv6_address")
+          .type(StringType.instance())
+          .ipv6(),
+        field()
+          .name("ssn")
+          .type(StringType.instance())
+          .ssnPattern(),
+        field()
+          .name("card_number")
+          .type(StringType.instance())
+          .creditCard("visa"),
+        field()
+          .name("order_id")
+          .type(StringType.instance())
+          .sequence(100, 2, "ORD-", 6, ""),
+        field()
+          .name("batch_id")
+          .type(StringType.instance())
+          .dailyBatchSequence("BATCH-", "yyyyMMdd"),
+        field()
+          .name("version")
+          .type(StringType.instance())
+          .semanticVersion(2, 1, true)
       )
       .fields(
          field()
@@ -161,7 +216,51 @@ Förlåt", "你好吗", "Nhà vệ sinh ở đâu", "こんにちは", "नम�
         field
           .name("calculated_field")
           .`type`(StringType)
-          .sql("CASE WHEN amount < 10 THEN 'small' ELSE 'large' END")
+          .sql("CASE WHEN amount < 10 THEN 'small' ELSE 'large' END"),
+        field
+          .name("support_email")
+          .`type`(StringType)
+          .email("company.com"),
+        field
+          .name("contact_phone")
+          .`type`(StringType)
+          .phone("AU"),
+        field
+          .name("website")
+          .`type`(StringType)
+          .url("https"),
+        field
+          .name("random_uuid")
+          .`type`(StringType)
+          .uuidPattern(),
+        field
+          .name("ipv4_address")
+          .`type`(StringType)
+          .ipv4(),
+        field
+          .name("ipv6_address")
+          .`type`(StringType)
+          .ipv6(),
+        field
+          .name("ssn")
+          .`type`(StringType)
+          .ssnPattern(),
+        field
+          .name("card_number")
+          .`type`(StringType)
+          .creditCard("visa"),
+        field
+          .name("order_id")
+          .`type`(StringType)
+          .sequence(100, 2, "ORD-", 6, ""),
+        field
+          .name("batch_id")
+          .`type`(StringType)
+          .dailyBatchSequence("BATCH-", "yyyyMMdd"),
+        field
+          .name("version")
+          .`type`(StringType)
+          .semanticVersion(2, 1, patchIncrement = true)
       )
     ```
 
@@ -212,6 +311,59 @@ Förlåt", "你好吗", "Nhà vệ sinh ở đâu", "こんにちは", "नम�
             type: "string"
             options:
               sql: "CASE WHEN amount < 10 THEN 'small' ELSE 'large' END"
+          - name: "support_email"
+            type: "string"
+            options:
+              email: "company.com"
+          - name: "contact_phone"
+            type: "string"
+            options:
+              phone: "AU"
+          - name: "website"
+            type: "string"
+            options:
+              url: "https"
+          - name: "random_uuid"
+            type: "string"
+            options:
+              uuidPattern: true
+          - name: "ipv4_address"
+            type: "string"
+            options:
+              ipv4: true
+          - name: "ipv6_address"
+            type: "string"
+            options:
+              ipv6: true
+          - name: "ssn"
+            type: "string"
+            options:
+              ssnPattern: true
+          - name: "card_number"
+            type: "string"
+            options:
+              creditCard: "visa"
+          - name: "order_id"
+            type: "string"
+            options:
+              sequence:
+                start: 100
+                step: 2
+                prefix: "ORD-"
+                padding: 6
+          - name: "batch_id"
+            type: "string"
+            options:
+              dailyBatchSequence:
+                prefix: "BATCH-"
+                dateFormat: "yyyyMMdd"
+          - name: "version"
+            type: "string"
+            options:
+              semanticVersion:
+                major: 2
+                minor: 1
+                patchIncrement: true
     ```
 
 ### Numeric
@@ -673,27 +825,21 @@ Disable data generation for specific steps when you want to use them only for re
 
 === "YAML"
 
-    In `plan.yaml`:
+    In a unified YAML file:
 
     ```yaml
     name: "my_plan"
-    tasks:
-      - name: "csv_accounts_task"
-        dataSourceName: "csv_accounts"
-        enabled: false  # disable generation for this task
-    ```
 
-    In task file:
-
-    ```yaml
-    name: "csv_accounts_task"
-    steps:
-      - name: "accounts"
-        type: "csv"
-        options:
-          path: "/opt/app/data/customer/account"
-          header: "true"
-        enableDataGeneration: false
+    dataSources:
+      - name: "csv_accounts"
+        connection:
+          type: "csv"
+          options:
+            path: "/opt/app/data/customer/account"
+            header: "true"
+        steps:
+          - name: "accounts"
+            enableDataGeneration: false
     ```
 
 ### Partitioning and throughput
@@ -721,18 +867,22 @@ Control data partitioning and parallelism for improved performance with large da
 === "YAML"
 
     ```yaml
-    name: "csv_accounts_task"
-    steps:
-      - name: "accounts"
-        type: "csv"
-        options:
-          path: "/opt/app/data/customer/account"
-          partitionBy: "year,account_id"
-          partitions: 8
-        fields:
-          - name: "account_id"
-          - name: "year"
-            type: "integer"
+    name: "csv_partition_plan"
+
+    dataSources:
+      - name: "csv_accounts"
+        connection:
+          type: "csv"
+          options:
+            path: "/opt/app/data/customer/account"
+            partitionBy: "year,account_id"
+            partitions: 8
+        steps:
+          - name: "accounts"
+            fields:
+              - name: "account_id"
+              - name: "year"
+                type: "integer"
     ```
 
 ### Single file output for file formats
@@ -1012,14 +1162,19 @@ Use existing data as reference instead of generating new data for a step. This i
 === "YAML"
 
     ```yaml
-    name: "reference_json_task"
-    steps:
-      - name: "reference_data"
-        type: "json"
-        options:
-          path: "/opt/app/data/reference/json"
-          enableReferenceMode: true
-          enableDataGeneration: false
+    name: "reference_json_plan"
+
+    dataSources:
+      - name: "reference_json"
+        connection:
+          type: "json"
+          options:
+            path: "/opt/app/data/reference/json"
+        steps:
+          - name: "reference_data"
+            options:
+              enableReferenceMode: true
+              enableDataGeneration: false
     ```
 
 ## Key positions and clustering
@@ -1053,22 +1208,28 @@ For databases that support primary key positions and clustering order (like Cass
 === "YAML"
 
     ```yaml
-    name: "cassandra_accounts_task"
-    steps:
-      - name: "accounts"
-        type: "cassandra"
-        options:
-          keyspace: "account"
-          table: "accounts"
-        fields:
-          - name: "id"
+    name: "cassandra_accounts_plan"
+
+    dataSources:
+      - name: "customer_cassandra"
+        connection:
+          type: "cassandra"
+          options:
+            url: "localhost:9042"
+        steps:
+          - name: "accounts"
             options:
-              isPrimaryKey: true
-              primaryKeyPosition: 1
-          - name: "event_time"
-            type: "timestamp"
-            options:
-              clusteringPosition: 1
+              keyspace: "account"
+              table: "accounts"
+            fields:
+              - name: "id"
+                options:
+                  isPrimaryKey: true
+                  primaryKeyPosition: 1
+              - name: "event_time"
+                type: "timestamp"
+                options:
+                  clusteringPosition: 1
     ```
 
 ## Advanced SQL Generation
@@ -1076,6 +1237,43 @@ For databases that support primary key positions and clustering order (like Cass
 Data Caterer supports complex SQL expressions for generating sophisticated data relationships and calculations. SQL expressions are evaluated after all non-SQL fields have been generated.
 
 [:material-run-fast: Scala Example](https://github.com/data-catering/data-caterer/blob/main/example/src/main/scala/io/github/datacatering/plan/DocumentationPlanRun.scala) | [:material-coffee: Java Example](https://github.com/data-catering/data-caterer/blob/main/example/src/main/java/io/github/datacatering/plan/DocumentationJavaPlanRun.java)
+
+### Conditional and mapping helpers
+
+Use SQL `CASE WHEN` expressions for conditional values and mappings.
+
+=== "Scala"
+
+    ```scala
+    field.name("priority").conditionalValue(
+      when("amount").greaterThan(1000) -> "HIGH",
+      when("amount").greaterThan(500) -> "MEDIUM"
+    )(elseValue = "LOW")
+
+    field.name("status_code").mapping("status",
+      "OPEN" -> 1,
+      "CLOSED" -> 2
+    )(defaultValue = 0)
+    ```
+
+=== "Java"
+
+    ```java
+    field().name("priority")
+      .sql("CASE WHEN amount > 1000 THEN 'HIGH' WHEN amount > 500 THEN 'MEDIUM' ELSE 'LOW' END");
+    ```
+
+=== "YAML"
+
+    ```yaml
+    fields:
+      - name: "priority"
+        options:
+          sql: "CASE WHEN amount > 1000 THEN 'HIGH' WHEN amount > 500 THEN 'MEDIUM' ELSE 'LOW' END"
+      - name: "status_code"
+        options:
+          sql: "CASE WHEN status = 'OPEN' THEN 1 WHEN status = 'CLOSED' THEN 2 ELSE 0 END"
+    ```
 
 ### Array Operations and Aggregations
 
@@ -1350,6 +1548,9 @@ Use window functions for ranking, running totals, and analytical calculations.
 | `max`             | now()            | `max: "2023-12-31"`  | Ensures that all generated values are less than or equal to `max`    |
 | `enableNull`      | false            | `enableNull: "true"` | Enable/disable null values being generated                           |
 | `nullProbability` | 0.0              | `nullProb: "0.1"`    | Probability to generate null values if `enableNull` is true          |
+| `withinDays`      | 30               | `withinDays: 30`      | Generate dates within the last N days                               |
+| `futureDays`      | 90               | `futureDays: 90`      | Generate dates within the next N days                               |
+| `excludeWeekends` | false            | `excludeWeekends: true` | Exclude weekends from generated dates                             |
 
 **Edge cases**: (0001-01-01, 1582-10-15, 1970-01-01, 9999-12-31)
 ([reference](https://github.com/apache/spark/blob/master/sql/catalyst/src/test/scala/org/apache/spark/sql/RandomDataGenerator.scala#L206))
@@ -1381,7 +1582,12 @@ Use window functions for ranking, running totals, and analytical calculations.
           .max(java.sql.Date.valueOf("2023-12-31"))
           .isUnique(true),
         field().name("calculated_date").type(DateType.instance())
-          .sql("CASE WHEN created_date < '2022-01-01' THEN '2022-01-01' ELSE created_date END")
+          .sql("CASE WHEN created_date < '2022-01-01' THEN '2022-01-01' ELSE created_date END"),
+        field().name("recent_business_date").type(DateType.instance())
+          .withinDays(30)
+          .excludeWeekends(),
+        field().name("scheduled_date").type(DateType.instance())
+          .futureDays(90)
       );
     ```
 
@@ -1410,7 +1616,12 @@ Use window functions for ranking, running totals, and analytical calculations.
           .max(java.sql.Date.valueOf("2023-12-31"))
           .isUnique(true),
         field.name("calculated_date").`type`(DateType)
-          .sql("CASE WHEN created_date < '2022-01-01' THEN '2022-01-01' ELSE created_date END")
+          .sql("CASE WHEN created_date < '2022-01-01' THEN '2022-01-01' ELSE created_date END"),
+        field.name("recent_business_date").`type`(DateType)
+          .withinDays(30)
+          .excludeWeekends(),
+        field.name("scheduled_date").`type`(DateType)
+          .futureDays(90)
       )
     ```
 
@@ -1457,6 +1668,15 @@ Use window functions for ranking, running totals, and analytical calculations.
             type: "date"
             options:
               sql: "CASE WHEN created_date < '2022-01-01' THEN '2022-01-01' ELSE created_date END"
+          - name: "recent_business_date"
+            type: "date"
+            options:
+              withinDays: 30
+              excludeWeekends: true
+          - name: "scheduled_date"
+            type: "date"
+            options:
+              futureDays: 90
     ```
 
 ### Timestamp
@@ -1467,6 +1687,8 @@ Use window functions for ranking, running totals, and analytical calculations.
 | `max`             | now()            | `max: "2023-12-31 23:10:10"` | Ensures that all generated values are less than or equal to `max`    |
 | `enableNull`      | false            | `enableNull: "true"`         | Enable/disable null values being generated                           |
 | `nullProbability` | 0.0              | `nullProb: "0.1"`            | Probability to generate null values if `enableNull` is true          |
+| `businessHours`   | 9-17             | `businessHours: { startHour: 8, endHour: 18 }` | Generate timestamps within business hours                         |
+| `timeBetween`     | 09:00-17:00      | `timeBetween: { start: "09:00", end: "17:00" }` | Generate timestamps between specific times                       |
 
 **Edge cases**: (0001-01-01 00:00:00, 1582-10-15 23:59:59, 1970-01-01 00:00:00, 9999-12-31 23:59:59)
 
@@ -1487,6 +1709,10 @@ Use window functions for ranking, running totals, and analytical calculations.
           .nullProbability(0.2),
         field().name("scheduled_time").type(TimestampType.instance())
           .oneOf("2024-01-01 09:00:00", "2024-01-01 12:00:00", "2024-01-01 17:00:00"),
+        field().name("work_time").type(TimestampType.instance())
+          .businessHours(8, 18),
+        field().name("meeting_time").type(TimestampType.instance())
+          .timeBetween("09:00", "17:00"),
         field().name("event_timestamp").type(TimestampType.instance())
           .min(java.sql.Timestamp.valueOf("2023-06-01 00:00:00"))
           .max(java.sql.Timestamp.valueOf("2023-12-31 23:59:59"))
@@ -1516,6 +1742,10 @@ Use window functions for ranking, running totals, and analytical calculations.
           .nullProbability(0.2),
         field.name("scheduled_time").`type`(TimestampType)
           .oneOf("2024-01-01 09:00:00", "2024-01-01 12:00:00", "2024-01-01 17:00:00"),
+        field.name("work_time").`type`(TimestampType)
+          .businessHours(startHour = 8, endHour = 18),
+        field.name("meeting_time").`type`(TimestampType)
+          .timeBetween("09:00", "17:00"),
         field.name("event_timestamp").`type`(TimestampType)
           .min(java.sql.Timestamp.valueOf("2023-06-01 00:00:00"))
           .max(java.sql.Timestamp.valueOf("2023-12-31 23:59:59"))
@@ -1556,6 +1786,18 @@ Use window functions for ranking, running totals, and analytical calculations.
             type: "timestamp"
             options:
               oneOf: ["2024-01-01 09:00:00", "2024-01-01 12:00:00", "2024-01-01 17:00:00"]
+          - name: "work_time"
+            type: "timestamp"
+            options:
+              businessHours:
+                startHour: 8
+                endHour: 18
+          - name: "meeting_time"
+            type: "timestamp"
+            options:
+              timeBetween:
+                start: "09:00"
+                end: "17:00"
           - name: "event_timestamp"
             type: "timestamp"
             options:
@@ -1690,6 +1932,10 @@ Use window functions for ranking, running totals, and analytical calculations.
 | `arrayMinLen`     | 0       | `arrayMinLen: "2"`    | Ensures that all generated arrays have at least length `arrayMinLen`                                                     |
 | `arrayMaxLen`     | 5       | `arrayMaxLen: "15"`   | Ensures that all generated arrays have at most length `arrayMaxLen`                                                      |
 | `arrayType`       | <empty> | `arrayType: "double"` | Inner data type of the array. Optional when using Java/Scala API. Allows for nested data types to be defined like struct |
+| `arrayOneOf`      | <empty> | `arrayOneOf: "HIGH,MEDIUM,LOW"` | Randomly choose array elements from a set (duplicates allowed)                                                          |
+| `arrayUniqueFrom` | <empty> | `arrayUniqueFrom: "A,B,C"`      | Randomly choose array elements from a set (no duplicates)                                                                |
+| `arrayWeightedOneOf` | <empty> | `arrayWeightedOneOf: "HIGH:0.2,MEDIUM:0.5,LOW:0.3"` | Weighted selection of array elements                                                                        |
+| `arrayEmptyProbability` | 0.0 | `arrayEmptyProbability: "0.2"` | Probability the generated array is empty                                                                                |
 | `enableNull`      | false   | `enableNull: "true"`  | Enable/disable null values being generated                                                                               |
 | `nullProbability` | 0.0     | `nullProb: "0.1"`     | Probability to generate null values if `enableNull` is true                                                              |
 
@@ -1698,6 +1944,8 @@ Use window functions for ranking, running totals, and analytical calculations.
 === "Java"
 
     ```java
+    import scala.Tuple2;
+
     csv("transactions", "app/src/test/resources/sample/csv/transactions")
       .fields(
         field().name("transaction_amounts").type(ArrayType.instance())
@@ -1710,6 +1958,30 @@ Use window functions for ranking, running totals, and analytical calculations.
           .arrayMaxLength(5)
           .enableNull(true)
           .nullProbability(0.1),
+        field().name("event_types").type(ArrayType.instance())
+          .arrayType("string")
+          .arrayMinLength(3)
+          .arrayMaxLength(6)
+          .arrayOneOf("LOGIN", "LOGOUT", "VIEW"),
+        field().name("unique_tags").type(ArrayType.instance())
+          .arrayType("string")
+          .arrayMinLength(2)
+          .arrayMaxLength(4)
+          .arrayUniqueFrom("A", "B", "C", "D"),
+        field().name("weighted_priorities").type(ArrayType.instance())
+          .arrayType("string")
+          .arrayMinLength(4)
+          .arrayMaxLength(8)
+          .arrayWeightedOneOf(
+            new Tuple2<>("HIGH", 0.2),
+            new Tuple2<>("MEDIUM", 0.5),
+            new Tuple2<>("LOW", 0.3)
+          ),
+        field().name("optional_labels").type(ArrayType.instance())
+          .arrayType("string")
+          .arrayMinLength(1)
+          .arrayMaxLength(3)
+          .arrayEmptyProbability(0.2),
         field().name("priority_scores").type(ArrayType.instance())
           .arrayType("integer")
           .arrayMinLength(3)
@@ -1742,6 +2014,26 @@ Use window functions for ranking, running totals, and analytical calculations.
           .arrayMaxLength(5)
           .enableNull(true)
           .nullProbability(0.1),
+        field.name("event_types").`type`(ArrayType)
+          .arrayType("string")
+          .arrayMinLength(3)
+          .arrayMaxLength(6)
+          .arrayOneOf("LOGIN", "LOGOUT", "VIEW"),
+        field.name("unique_tags").`type`(ArrayType)
+          .arrayType("string")
+          .arrayMinLength(2)
+          .arrayMaxLength(4)
+          .arrayUniqueFrom("A", "B", "C", "D"),
+        field.name("weighted_priorities").`type`(ArrayType)
+          .arrayType("string")
+          .arrayMinLength(4)
+          .arrayMaxLength(8)
+          .arrayWeightedOneOf(("HIGH", 0.2), ("MEDIUM", 0.5), ("LOW", 0.3)),
+        field.name("optional_labels").`type`(ArrayType)
+          .arrayType("string")
+          .arrayMinLength(1)
+          .arrayMaxLength(3)
+          .arrayEmptyProbability(0.2),
         field.name("priority_scores").`type`(ArrayType)
           .arrayType("integer")
           .arrayMinLength(3)
@@ -1781,6 +2073,30 @@ Use window functions for ranking, running totals, and analytical calculations.
               arrayMaxLen: 5
               enableNull: true
               nullProb: 0.1
+          - name: "event_types"
+            type: "array<string>"
+            options:
+              arrayMinLen: 3
+              arrayMaxLen: 6
+              arrayOneOf: "LOGIN,LOGOUT,VIEW"
+          - name: "unique_tags"
+            type: "array<string>"
+            options:
+              arrayMinLen: 2
+              arrayMaxLen: 4
+              arrayUniqueFrom: "A,B,C,D"
+          - name: "weighted_priorities"
+            type: "array<string>"
+            options:
+              arrayMinLen: 4
+              arrayMaxLen: 8
+              arrayWeightedOneOf: "HIGH:0.2,MEDIUM:0.5,LOW:0.3"
+          - name: "optional_labels"
+            type: "array<string>"
+            options:
+              arrayMinLen: 1
+              arrayMaxLen: 3
+              arrayEmptyProbability: 0.2
           - name: "priority_scores"
             type: "array<integer>"
             options:

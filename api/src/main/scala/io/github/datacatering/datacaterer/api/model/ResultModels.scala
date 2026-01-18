@@ -20,7 +20,8 @@ case class DataSourceResult(
                              task: Task = Task(),
                              step: Step = Step(),
                              sinkResult: SinkResult = SinkResult(),
-                             batchNum: Int = 0
+                             batchNum: Int = 0,
+                             performanceMetrics: Option[PerformanceMetrics] = None
                            ) {
 
   def summarise: List[String] = {

@@ -93,13 +93,19 @@ Create a file depending on which interface you want to use.
 
 === "YAML"
 
-    In `docker/data/custom/plan/my-bigquery.yaml`:
+    In `docker/data/custom/unified/my-bigquery.yaml`:
     ```yaml
     name: "my_bigquery_plan"
     description: "Create account data via BigQuery"
-    tasks:
-      - name: "bigquery_task"
-        dataSourceName: "my_bigquery"
+
+    dataSources:
+      - name: "my_bigquery"
+        connection:
+          type: "bigquery"
+          options:
+            temporaryGcsBucket: "gs://my-test-bucket"
+        steps:
+          - name: "accounts"
     ```
 
 === "UI"
@@ -140,14 +146,14 @@ By default, it will use `indirect` as the `writeMethod` which involves writing t
 
 === "YAML"
 
-    In `docker/data/custom/application.conf`:
-    ```
-    bigquery {
-        customer_bigquery {
-            temporaryGcsBucket = "gs://my-test-bucket"
-            temporaryGcsBucket = ${?BIGQUERY_TEMPORARY_GCS_BUCKET}
-        }
-    }
+    In a unified YAML file:
+    ```yaml
+    dataSources:
+      - name: "customer_bigquery"
+        connection:
+          type: "bigquery"
+          options:
+            temporaryGcsBucket: "gs://my-test-bucket"
     ```
 
 === "UI"
@@ -205,23 +211,27 @@ corresponds to `text` in BigQuery.
 
 === "YAML"
 
-    In `docker/data/custom/task/bigquery/bigquery-task.yaml`:
+    In a unified YAML file:
     ```yaml
-    name: "bigquery_task"
-    steps:
-      - name: "accounts"
-        type: "bigquery"
-        options:
-          dbtable: "account.accounts"
-        fields:
-        - name: "account_number"
-        - name: "amount"
-          type: "double"
-        - name: "created_by"
-        - name: "created_by_fixed_length"
-        - name: "open_timestamp"
-          type: "timestamp"
-        - name: "account_status"
+    dataSources:
+      - name: "customer_bigquery"
+        connection:
+          type: "bigquery"
+          options:
+            temporaryGcsBucket: "gs://<my-bucket-name>/temp-data-gen"
+        steps:
+          - name: "accounts"
+            options:
+              dbtable: "account.accounts"
+            fields:
+              - name: "account_number"
+              - name: "amount"
+                type: "double"
+              - name: "created_by"
+              - name: "created_by_fixed_length"
+              - name: "open_timestamp"
+                type: "timestamp"
+              - name: "account_status"
     ```
 
 === "UI"

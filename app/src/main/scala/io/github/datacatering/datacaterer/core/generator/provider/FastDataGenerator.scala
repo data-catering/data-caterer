@@ -71,7 +71,8 @@ object FastDataGenerator {
    * Falls back to UDF-based generation for unsupported patterns.
    */
   class FastRegexDataGenerator(val structField: StructField, val faker: Faker = new Faker()) extends NullableDataGenerator[String] {
-    import io.github.datacatering.datacaterer.core.generator.provider.regex.RegexPatternParser
+    import io.github.datacatering.datacaterer.api.model.Constants.{INDEX_INC_FIELD, IS_UNIQUE}
+    import io.github.datacatering.datacaterer.core.generator.provider.regex.{RegexNode, CharacterClassNode, Digit, LiteralNode, RegexPatternParser, SequenceNode}
     import io.github.datacatering.datacaterer.core.model.Constants.GENERATE_REGEX_UDF
     import org.apache.log4j.Logger
 
@@ -81,6 +82,8 @@ object FastDataGenerator {
 
     // Parse the regex pattern once during initialization
     private val parsedPattern = RegexPatternParser.parse(regex)
+    private val isUniqueRegex = structField.metadata.contains(IS_UNIQUE) &&
+      structField.metadata.getString(IS_UNIQUE).toBoolean
 
     // Log parsing result for debugging
     parsedPattern match {
@@ -98,11 +101,23 @@ object FastDataGenerator {
       faker.regexify(regex)
     }
 
+    private def uniqueSqlForPattern(node: RegexNode): Option[String] = node match {
+      case SequenceNode(List(LiteralNode(prefix), CharacterClassNode(Digit, min, max)))
+        if min == max =>
+        Some(s"CONCAT('$prefix', LPAD(CAST($INDEX_INC_FIELD AS BIGINT), $min, '0'))")
+      case CharacterClassNode(Digit, min, max) if min == max =>
+        Some(s"LPAD(CAST($INDEX_INC_FIELD AS BIGINT), $min, '0')")
+      case _ => None
+    }
+
     override def generateSqlExpression: String = {
       parsedPattern match {
         case scala.util.Success(node) =>
-          // Successfully parsed - use pure SQL generation
-          node.toSql
+          if (isUniqueRegex) {
+            uniqueSqlForPattern(node).getOrElse(node.toSql(sqlRandom, sqlRandomWithIndex))
+          } else {
+            node.toSql(sqlRandom, sqlRandomWithIndex)
+          }
 
         case scala.util.Failure(_) =>
           // Parser failed - fall back to UDF (slower but correct)

@@ -92,23 +92,28 @@ Create a file depending on which interface you want to use.
 
 === "YAML"
 
-    In `docker/data/custom/plan/my-great-expectations.yaml`:
+    In `docker/data/custom/unified/my-great-expectations.yaml`:
     ```yaml
     name: "my_great_expectations_plan"
     description: "Create account data in JSON format and validate via Great Expectations metadata"
-    tasks:
-      - name: "json_task"
-        dataSourceName: "my_json"
-    ```
 
-    In `docker/data/custom/application.conf`:
-    ```
-    flags {
-      enableGenerateValidations = true
-    }
-    folders {
-      generatedReportsFolderPath = "/opt/app/data/report"
-    }
+    config:
+      flags:
+        enableGenerateValidations: true
+      folders:
+        generatedReportsFolderPath: "/opt/app/data/report"
+
+    dataSources:
+      - name: "my_json"
+        connection:
+          type: "json"
+          options:
+            path: "/opt/app/data/json"
+        steps:
+          - name: "accounts"
+            options:
+              metadataSourceType: "greatExpectations"
+              expectationsFile: "/opt/app/mount/ge/taxi-expectations.json"
     ```
 
 === "UI"
@@ -138,16 +143,19 @@ To point to a specific expectations file, we create a metadata source as seen be
 
 === "YAML"
 
-    In `docker/data/custom/task/file/json/json-great-expectations-task.yaml`:
+    In a unified YAML file:
     ```yaml
-    name: "json_task"
-    steps:
-      - name: "accounts"
-        type: "json"
-        options:
-          path: "/opt/app/data/json"
-          metadataSourceType: "greatExpectations"
-          expectationsFile: "/opt/app/mount/ge/taxi-expectations.json"
+    dataSources:
+      - name: "my_json"
+        connection:
+          type: "json"
+          options:
+            path: "/opt/app/data/json"
+        steps:
+          - name: "accounts"
+            options:
+              metadataSourceType: "greatExpectations"
+              expectationsFile: "/opt/app/mount/ge/taxi-expectations.json"
     ```
 
 === "UI"
@@ -219,46 +227,49 @@ At the end, we point to our expectations metadata source to use those validation
 
 === "YAML"
 
-    In `docker/data/custom/task/json/json-great-expectations-task.yaml`:
+    In a unified YAML file:
     ```yaml
-    name: "json_task"
-    steps:
-      - name: "accounts"
-        type: "json"
-        options:
-          path: "/opt/app/data/json"
-          metadataSourceType: "greatExpectations"
-          expectationsFile: "/opt/app/mount/ge/taxi-expectations.json"
-        fields:
-          - name: "vendor_id"
-          - name: "pickup_datetime"
-            type: "timestamp"
-          - name: "dropoff_datetime"
-            type: "timestamp"
-          - name: "passenger_count"
-            type: "integer"
-          - name: "trip_distance"
-            type: "double"
-          - name: "rate_code_id"
-          - name: "store_and_fwd_flag"
-          - name: "pickup_location_id"
-          - name: "dropoff_location_id"
-          - name: "payment_type"
-          - name: "fare_amount"
-            type: "double"
-          - name: "extra"
-          - name: "mta_tax"
-            type: "double"
-          - name: "tip_amount"
-            type: "double"
-          - name: "tolls_amount"
-            type: "double"
-          - name: "improvement_surcharge"
-            type: "double"
-          - name: "total_amount"
-            type: "double"
-          - name: "congestion_surcharge"
-            type: "double"
+    dataSources:
+      - name: "my_json"
+        connection:
+          type: "json"
+          options:
+            path: "/opt/app/data/json"
+        steps:
+          - name: "accounts"
+            options:
+              metadataSourceType: "greatExpectations"
+              expectationsFile: "/opt/app/mount/ge/taxi-expectations.json"
+            fields:
+              - name: "vendor_id"
+              - name: "pickup_datetime"
+                type: "timestamp"
+              - name: "dropoff_datetime"
+                type: "timestamp"
+              - name: "passenger_count"
+                type: "integer"
+              - name: "trip_distance"
+                type: "double"
+              - name: "rate_code_id"
+              - name: "store_and_fwd_flag"
+              - name: "pickup_location_id"
+              - name: "dropoff_location_id"
+              - name: "payment_type"
+              - name: "fare_amount"
+                type: "double"
+              - name: "extra"
+              - name: "mta_tax"
+                type: "double"
+              - name: "tip_amount"
+                type: "double"
+              - name: "tolls_amount"
+                type: "double"
+              - name: "improvement_surcharge"
+                type: "double"
+              - name: "total_amount"
+                type: "double"
+              - name: "congestion_surcharge"
+                type: "double"
     ```
 
 === "UI"
@@ -349,18 +360,23 @@ Expectations. No worries, we can simply add it in here alongside the existing ex
 
 === "YAML"
 
-    In `docker/data/custom/validation/great-expectations-validation.yaml`:
+    In a unified YAML file:
     ```yaml
-    ---
-    name: "ge_checks"
     dataSources:
-      my_json:
-        - validations:
-            - expr: "trip_distance < 500"
-            - field: "trip_distance"  #OR
-              validation:
-                - type: "lessThan"
-                  value: 500
+      - name: "my_json"
+        connection:
+          type: "json"
+          options:
+            path: "/opt/app/data/json"
+        steps:
+          - name: "accounts"
+        validations:
+          - validations:
+              - expr: "trip_distance < 500"
+              - field: "trip_distance"  #OR
+                validation:
+                  - type: "lessThan"
+                    value: 500
     ```
 
 === "UI"

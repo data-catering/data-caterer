@@ -1,5 +1,6 @@
 package io.github.datacatering.datacaterer.core.generator.metrics
 
+import io.github.datacatering.datacaterer.api.model.{BatchMetrics, PerformanceMetrics}
 import org.apache.log4j.Logger
 
 import java.time.LocalDateTime

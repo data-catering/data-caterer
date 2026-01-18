@@ -216,4 +216,61 @@ class FastGenerationModeIntegrationTest extends AnyFunSuite with SparkSuite {
 
     println(s"All data types test passed - sample: ${sample.mkString(", ")}")
   }
+
+  test("Fast mode should generate lowercase hexadecimal pattern correctly") {
+    val faker = new Faker() with Serializable
+    val fastFactory = new DataGeneratorFactory(faker, enableFastGeneration = true)
+
+    val fields = List(
+      Field("hex_lowercase", Some("string"), options = Map(REGEX_GENERATOR -> "[0-9a-f]{8}")),
+      Field("hex_uppercase", Some("string"), options = Map(REGEX_GENERATOR -> "[0-9A-F]{8}")),
+      Field("hex_mixed", Some("string"), options = Map(REGEX_GENERATOR -> "[0-9a-fA-F]{8}"))
+    )
+
+    val step = Step("hex_test", "json", Count(records = Some(100)), Map(), fields)
+    val df = fastFactory.generateDataForStep(step, "test_datasource", 0, 100)
+
+    df.cache()
+    assert(df.count() == 100)
+
+    val rows = df.collect()
+    rows.foreach { row =>
+      val hexLower = row.getAs[String]("hex_lowercase")
+      val hexUpper = row.getAs[String]("hex_uppercase")
+      val hexMixed = row.getAs[String]("hex_mixed")
+
+      // Verify length
+      assert(hexLower.length == 8, s"hex_lowercase should be 8 chars: $hexLower")
+      assert(hexUpper.length == 8, s"hex_uppercase should be 8 chars: $hexUpper")
+      assert(hexMixed.length == 8, s"hex_mixed should be 8 chars: $hexMixed")
+
+      // Verify lowercase hex contains only 0-9a-f (NO UPPERCASE!)
+      assert(hexLower.matches("[0-9a-f]{8}"),
+        s"hex_lowercase should only contain 0-9a-f but got: $hexLower")
+      assert(!hexLower.matches(".*[A-F].*"),
+        s"hex_lowercase should NOT contain uppercase letters but got: $hexLower")
+
+      // Verify uppercase hex contains only 0-9A-F (NO LOWERCASE!)
+      assert(hexUpper.matches("[0-9A-F]{8}"),
+        s"hex_uppercase should only contain 0-9A-F but got: $hexUpper")
+      assert(!hexUpper.matches(".*[a-f].*"),
+        s"hex_uppercase should NOT contain lowercase letters but got: $hexUpper")
+
+      // Verify mixed hex contains only 0-9a-fA-F
+      assert(hexMixed.matches("[0-9a-fA-F]{8}"),
+        s"hex_mixed should only contain 0-9a-fA-F but got: $hexMixed")
+    }
+
+    // Verify execution plan doesn't use UDF
+    val plan = df.queryExecution.executedPlan.toString
+    assert(!plan.contains("GENERATE_REGEX_UDF"),
+      "Fast mode should not use regex UDF for hexadecimal patterns")
+
+    println(s"Hexadecimal pattern test passed!")
+    println(s"Sample lowercase: ${rows.head.getAs[String]("hex_lowercase")}")
+    println(s"Sample uppercase: ${rows.head.getAs[String]("hex_uppercase")}")
+    println(s"Sample mixed: ${rows.head.getAs[String]("hex_mixed")}")
+
+    df.unpersist()
+  }
 } 

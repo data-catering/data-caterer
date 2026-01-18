@@ -49,6 +49,13 @@ case class ValidationConfig(
                              enableDeleteRecordTrackingFiles: Boolean = DEFAULT_VALIDATION_DELETE_RECORD_TRACKING_FILES,
                            )
 
+case class StreamingConfig(
+                            maxTimeoutSeconds: Int = DEFAULT_STREAMING_MAX_TIMEOUT_SECONDS,
+                            maxAsyncParallelism: Int = DEFAULT_STREAMING_MAX_ASYNC_PARALLELISM,
+                            responseBufferSize: Int = DEFAULT_STREAMING_RESPONSE_BUFFER_SIZE,
+                            timestampWindowMs: Long = DEFAULT_STREAMING_TIMESTAMP_WINDOW_MS,
+                          )
+
 case class AlertConfig(
                         triggerOn: String = ALERT_TRIGGER_ON_ALL,
                         slackAlertConfig: SlackAlertConfig = SlackAlertConfig()
@@ -65,6 +72,7 @@ case class DataCatererConfiguration(
                                      metadataConfig: MetadataConfig = MetadataConfig(),
                                      generationConfig: GenerationConfig = GenerationConfig(),
                                      validationConfig: ValidationConfig = ValidationConfig(),
+                                     streamingConfig: StreamingConfig = StreamingConfig(),
                                      alertConfig: AlertConfig = AlertConfig(),
                                      connectionConfigByName: Map[String, Map[String, String]] = Map(),
                                      runtimeConfig: Map[String, String] = DEFAULT_RUNTIME_CONFIG,

@@ -1,6 +1,6 @@
 package io.github.datacatering.datacaterer.core.util
 
-import io.github.datacatering.datacaterer.api.model.Constants.{EXPRESSION, HTTP, JMS, ONE_OF_GENERATOR, REGEX_GENERATOR, SQL_GENERATOR}
+import io.github.datacatering.datacaterer.api.model.Constants.{EXPRESSION, HTTP, JMS, KAFKA, ONE_OF_GENERATOR, REGEX_GENERATOR, ROWS_PER_SECOND, SQL_GENERATOR}
 import io.github.datacatering.datacaterer.api.model.{Step, TaskSummary}
 import io.github.datacatering.datacaterer.core.generator.provider.FastDataGenerator.{FastRegexDataGenerator, FastStringDataGenerator}
 import io.github.datacatering.datacaterer.core.generator.provider.{DataGenerator, OneOfDataGenerator, RandomDataGenerator}
@@ -599,14 +599,47 @@ object GeneratorUtil {
       }
   }
 
+  /**
+   * Determines whether to use batch or real-time mode for saving data.
+   *
+   * Real-time mode is used when:
+   * - Format is HTTP or JMS (always real-time)
+   * - Format is Kafka and rowsPerSecond is configured (rate-limited streaming)
+   *
+   * Batch mode is used for all other cases including Kafka without rate limiting.
+   */
   def determineSaveTiming(dataSourceName: String, format: String, stepName: String): String = {
+    determineSaveTiming(dataSourceName, format, stepName, Map.empty)
+  }
+
+  /**
+   * Determines whether to use batch or real-time mode for saving data.
+   *
+   * Real-time mode is used when:
+   * - Format is HTTP or JMS (always real-time)
+   * - Format is Kafka and rowsPerSecond is configured (rate-limited streaming)
+   *
+   * Batch mode is used for all other cases including Kafka without rate limiting.
+   */
+  def determineSaveTiming(dataSourceName: String, format: String, stepName: String, stepOptions: Map[String, String]): String = {
+    val hasRateLimit = stepOptions.contains(ROWS_PER_SECOND)
+
     format match {
       case HTTP | JMS =>
-        LOGGER.debug(s"Given the step type is either HTTP or JMS, data will be generated in real-time mode. " +
-          s"It will be based on requests per second defined at plan level, data-source-name=$dataSourceName, step-name=$stepName, format=$format")
+        LOGGER.info(s"Using real-time mode for sink (HTTP/JMS always uses real-time), " +
+          s"data-source-name=$dataSourceName, step-name=$stepName, format=$format")
         REAL_TIME
+      case KAFKA if hasRateLimit =>
+        val rate = stepOptions.getOrElse(ROWS_PER_SECOND, "unknown")
+        LOGGER.info(s"Using real-time mode for Kafka sink with rate limiting, " +
+          s"data-source-name=$dataSourceName, step-name=$stepName, format=$format, rowsPerSecond=$rate")
+        REAL_TIME
+      case KAFKA =>
+        LOGGER.info(s"Using batch mode for Kafka sink (no rate limiting configured, set 'rowsPerSecond' to enable rate limiting), " +
+          s"data-source-name=$dataSourceName, step-name=$stepName, format=$format")
+        BATCH
       case _ =>
-        LOGGER.debug(s"Will generate data in batch mode for step, data-source-name=$dataSourceName, step-name=$stepName, format=$format")
+        LOGGER.debug(s"Using batch mode for sink, data-source-name=$dataSourceName, step-name=$stepName, format=$format")
         BATCH
     }
   }

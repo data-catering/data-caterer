@@ -54,24 +54,28 @@ Transform each record/line in a file independently. Best for line-by-line modifi
 === "YAML"
 
     ```yaml
-    name: "csv_task"
-    steps:
-      - name: "accounts"
-        type: "csv"
-        options:
-          path: "/tmp/accounts.csv"
-        count:
-          records: 100
-        fields:
-          - name: "account_id"
-          - name: "name"
-        transformation:
-          className: "com.example.MyPerRecordTransformer"
-          methodName: "transformRecord"
-          mode: "per-record"
+    name: "csv_transform_plan"
+
+    dataSources:
+      - name: "csv_accounts"
+        connection:
+          type: "csv"
           options:
-            prefix: "BANK_"
-            suffix: "_VERIFIED"
+            path: "/tmp/accounts.csv"
+        steps:
+          - name: "accounts"
+            count:
+              records: 100
+            fields:
+              - name: "account_id"
+              - name: "name"
+            transformation:
+              className: "com.example.MyPerRecordTransformer"
+              methodName: "transformRecord"
+              mode: "per-record"
+              options:
+                prefix: "BANK_"
+                suffix: "_VERIFIED"
     ```
 
 ### Implementing Per-Record Transformer
@@ -145,23 +149,27 @@ Transform the entire file as a single unit. Best for operations requiring full f
 === "YAML"
 
     ```yaml
-    name: "json_task"
-    steps:
-      - name: "transactions"
-        type: "json"
-        options:
-          path: "/tmp/transactions.json"
-        count:
-          records: 200
-        fields:
-          - name: "id"
-          - name: "data"
-        transformation:
-          className: "com.example.JsonArrayWrapperTransformer"
-          methodName: "transformFile"
-          mode: "whole-file"
+    name: "json_transform_plan"
+
+    dataSources:
+      - name: "my_json"
+        connection:
+          type: "json"
           options:
-            minify: "true"
+            path: "/tmp/transactions.json"
+        steps:
+          - name: "transactions"
+            count:
+              records: 200
+            fields:
+              - name: "id"
+              - name: "data"
+            transformation:
+              className: "com.example.JsonArrayWrapperTransformer"
+              methodName: "transformFile"
+              mode: "whole-file"
+              options:
+                minify: "true"
     ```
 
 ### Implementing Whole-File Transformer
@@ -262,16 +270,22 @@ Apply the same transformation to all steps in a task.
 === "YAML"
 
     ```yaml
-    name: "my_task"
-    transformation:
-      className: "com.example.MyTransformer"
-      mode: "whole-file"
-      options:
-        format: "custom"
-    steps:
-      - name: "step1"
-        type: "csv"
-        # ...
+    name: "my_transform_plan"
+
+    dataSources:
+      - name: "my_csv"
+        connection:
+          type: "csv"
+          options:
+            path: "/path"
+        steps:
+          - name: "step1"
+            transformation:
+              className: "com.example.MyTransformer"
+              mode: "whole-file"
+              options:
+                format: "custom"
+            # ...
     ```
 
 ## Custom Output Path
@@ -682,22 +696,26 @@ When you configure a transformation on a step, it will be applied when generatin
 === "YAML"
 
     ```yaml
-    name: "sample_json_task"
-    steps:
-      - name: "transactions"
-        type: "json"
-        options:
-          path: "/tmp/transactions.json"
-        count:
-          records: 10
-        fields:
-          - name: "id"
-          - name: "amount"
-        transformation:
-          className: "com.example.JsonArrayWrapperTransformer"
-          methodName: "transformFile"
-          mode: "whole-file"
-          enabled: true
+    name: "sample_transform_plan"
+
+    dataSources:
+      - name: "sample_json"
+        connection:
+          type: "json"
+          options:
+            path: "/tmp/transactions.json"
+        steps:
+          - name: "transactions"
+            count:
+              records: 10
+            fields:
+              - name: "id"
+              - name: "amount"
+            transformation:
+              className: "com.example.JsonArrayWrapperTransformer"
+              methodName: "transformFile"
+              mode: "whole-file"
+              enabled: true
     ```
 
 **2. Generate sample with transformation applied:**

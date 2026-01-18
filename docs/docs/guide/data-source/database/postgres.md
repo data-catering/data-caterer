@@ -108,13 +108,22 @@ Create a file depending on which interface you want to use.
 
 === "YAML"
 
-    In `docker/data/custom/plan/my-postgres.yaml`:
+    Create a unified YAML file `docker/data/custom/unified/my-postgres.yaml`:
     ```yaml
     name: "my_postgres_plan"
     description: "Create account data via Postgres"
-    tasks:
-      - name: "postgres_task"
-        dataSourceName: "my_postgres"
+
+    dataSources:
+      - name: "my_postgres"
+        connection:
+          type: "postgres"
+          options:
+            url: "jdbc:postgresql://host.docker.internal:5432/customer"
+            user: "postgres"
+            password: "postgres"
+        steps:
+          - name: "accounts"
+            # Add fields and options here
     ```
 
 === "UI"
@@ -170,16 +179,16 @@ Within our class, we can start by defining the connection properties to connect 
 
 === "YAML"
 
-    In `docker/data/custom/application.conf`:
-    ```
-    jdbc {
-        customer_postgres {
-            url = "jdbc:mysql://jdbc:postgresql://host.docker.internal:5432/customer/customer"
-            user = "postgres"
-            password = "postgres"
-            driver = "org.postgresql.Driver"
-        }
-    }
+    In a unified YAML file, connection is defined inline within the data source:
+    ```yaml
+    dataSources:
+      - name: "customer_postgres"
+        connection:
+          type: "postgres"
+          options:
+            url: "jdbc:postgresql://host.docker.internal:5432/customer"
+            user: "postgres"
+            password: "postgres"
     ```
 
 === "UI"
@@ -231,23 +240,29 @@ corresponds to `text` in Postgres.
 
 === "YAML"
 
-    In `docker/data/custom/task/postgres/postgres-task.yaml`:
+    In a unified YAML file:
     ```yaml
-    name: "postgres_task"
-    steps:
-      - name: "accounts"
-        type: "postgres"
-        options:
-          dbtable: "account.accounts"
-        fields:
-        - name: "account_number"
-        - name: "amount"
-          type: "double"
-        - name: "created_by"
-        - name: "created_by_fixed_length"
-        - name: "open_timestamp"
-          type: "timestamp"
-        - name: "account_status"
+    dataSources:
+      - name: "customer_postgres"
+        connection:
+          type: "postgres"
+          options:
+            url: "jdbc:postgresql://host.docker.internal:5432/customer"
+            user: "postgres"
+            password: "postgres"
+        steps:
+          - name: "accounts"
+            options:
+              dbtable: "account.accounts"
+            fields:
+              - name: "account_number"
+              - name: "amount"
+                type: "double"
+              - name: "created_by"
+              - name: "created_by_fixed_length"
+              - name: "open_timestamp"
+                type: "timestamp"
+              - name: "account_status"
     ```
 
 === "UI"
@@ -298,14 +313,18 @@ have unique values generated.
 
 === "YAML"
 
-    In `docker/data/custom/application.conf`:
-    ```
-    flags {
-      enableUniqueCheck = true
-    }
-    folders {
-      generatedReportsFolderPath = "/opt/app/data/report"
-    }
+    In a unified YAML file, add a `config` section:
+    ```yaml
+    name: "my_postgres_plan"
+
+    config:
+      flags:
+        enableUniqueCheck: true
+      folders:
+        generatedReportsFolderPath: "/opt/app/data/report"
+
+    dataSources:
+      ...
     ```
 
 === "UI"

@@ -74,13 +74,19 @@ Create a file depending on which interface you want to use.
 
 === "YAML"
 
-    In `docker/data/custom/plan/my-parquet.yaml`:
+    In `docker/data/custom/unified/my-parquet.yaml`:
     ```yaml
     name: "my_parquet_plan"
     description: "Create account data in Parquet format"
-    tasks:
-      - name: "parquet_task"
-        dataSourceName: "my_parquet"
+
+    dataSources:
+      - name: "my_parquet"
+        connection:
+          type: "parquet"
+          options:
+            path: "/tmp/custom/parquet/accounts"
+        steps:
+          - name: "accounts"
     ```
 
 === "UI"
@@ -130,13 +136,15 @@ Within our class, we can start by defining the connection properties to read/wri
 
 === "YAML"
 
-    In `docker/data/custom/application.conf`:
-    ```
-    parquet {
-        my_parquet {
-            "spark.sql.parquet.mergeSchema": "true"
-        }
-    }
+    In a unified YAML file:
+    ```yaml
+    dataSources:
+      - name: "my_parquet"
+        connection:
+          type: "parquet"
+          options:
+            path: "/opt/app/data/customer/account_parquet"
+            spark.sql.parquet.mergeSchema: "true"
     ```
 
     Additional options can be found [**here**](https://spark.apache.org/docs/latest/sql-data-sources-parquet.html#data-source-option).

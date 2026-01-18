@@ -69,6 +69,16 @@ Then in the parquet task, define 1 to 10 transactions per `account_id` to be gen
 [Parquet transaction generation example task](https://github.com/data-catering/data-caterer/blob/main/example/docker/data/custom/task/file/parquet/parquet-transaction-task.yaml)  
 [Plan](https://github.com/data-catering/data-caterer/blob/main/example/docker/data/custom/plan/scenario-based.yaml)
 
+## Memory profiling scenarios
+
+If you are load testing streaming sinks or investigating memory pressure, there is a curated set of profiling scripts and scenarios:
+
+- **Scenarios**: baseline, high-throughput, stress, and sustained-load profiles
+- **Scripts**: run-all, run-memory-profile, and plotting helpers
+- **HTTP server**: minimal server for repeatable sink tests
+
+[Memory profiling README](https://github.com/data-catering/data-caterer/blob/main/misc/memory-profiling/README.md)
+
 ## Cloud storage
 
 ### Data source

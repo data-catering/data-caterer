@@ -122,7 +122,12 @@ nav:
           - Alert: 'docs/report/alert.md'
       - API: 'docs/api.md'
       - Delete Data: 'docs/delete-data.md'
-      - Configuration: 'docs/configuration.md'
+      - Configuration:
+          - Overview: 'docs/configuration.md'
+          - Unified YAML Schema: 'docs/configuration/unified-yaml-schema.md'
+      - Migrations:
+          - Overview: 'migrations/README.md'
+          - Unified YAML Format: 'migrations/yaml-unified-format/MIGRATION.md'
       - Deployment: 'docs/deployment.md'
       - Advanced: 'docs/advanced.md'
   - Use Case:
@@ -135,6 +140,8 @@ nav:
           - A year of getting paid from Medium articles: 'use-case/blog/a-year-of-getting-paid-from-medium-articles.md'
           - Shift Left Data Quality: 'use-case/blog/shift-left-data-quality.md'
       - Changelog:
+          - 0.19.0: 'use-case/changelog/0.19.0.md'
+          - 0.18.0: 'use-case/changelog/0.18.0.md'
           - 0.17.2: 'use-case/changelog/0.17.2.md'
           - 0.17.1: 'use-case/changelog/0.17.1.md'
           - 0.17.0: 'use-case/changelog/0.17.0.md'

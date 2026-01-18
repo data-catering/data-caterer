@@ -419,42 +419,30 @@ Content-Type: application/json
 
     **Example Workflow:**
 
-    1. Define connections in `application.conf`:
-       ```
-       postgres {
-         customer_db {
-           url = "jdbc:postgresql://localhost:5432/customer"
-           user = "admin"
-           password = ${?DB_PASSWORD}
-           driver = "org.postgresql.Driver"
-         }
-       }
-       ```
-
-    2. Create YAML task file referencing the connection:
-       ```yaml
-       name: "customer_task"
-       steps:
-         - name: "customers_table"
-           type: "table"
-           options:
-             dbtable: "customers"
-           fields:
-             - name: "customer_id"
-               type: "string"
-       ```
-
-    3. Create YAML plan referencing the task:
+    1. Create a unified YAML file (e.g. `docker/data/custom/unified/customer-data.yaml`):
        ```yaml
        name: "customer_data_plan"
        description: "Generate customer data"
-       tasks:
-         - name: "customer_task"
-           dataSourceName: "customer_db"
-           enabled: true
+
+       dataSources:
+         - name: "customer_db"
+           connection:
+             type: "postgres"
+             options:
+               url: "jdbc:postgresql://localhost:5432/customer"
+               user: "admin"
+               password: ${?DB_PASSWORD}
+               driver: "org.postgresql.Driver"
+           steps:
+             - name: "customers_table"
+               options:
+                 dbtable: "customers"
+               fields:
+                 - name: "customer_id"
+                   type: "string"
        ```
 
-    4. Execute via API - connection details are automatically merged from `application.conf`
+    2. Execute via API using the unified YAML file
 
 ??? info "Save Plan - `POST /plan`"
 

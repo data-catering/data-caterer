@@ -331,4 +331,47 @@ class RegexPatternParserTest extends AnyFunSuite {
     assert(node.minLength == 2) // "NO"
     assert(node.maxLength == 3) // "YES"
   }
+
+  test("Parse hexadecimal lowercase pattern") {
+    val result = RegexPatternParser.parse("[0-9a-f]{8}")
+    assert(result.isSuccess)
+    result.get match {
+      case CharacterClassNode(CustomCharSet(chars), 8, 8) =>
+        // Should be a custom character set with only lowercase hex chars
+        assert(chars == "0123456789abcdef", s"Expected '0123456789abcdef' but got '$chars'")
+      case other => fail(s"Expected CharacterClassNode(CustomCharSet(0123456789abcdef), 8, 8), got $other")
+    }
+  }
+
+  test("Parse hexadecimal uppercase pattern") {
+    val result = RegexPatternParser.parse("[0-9A-F]{8}")
+    assert(result.isSuccess)
+    result.get match {
+      case CharacterClassNode(CustomCharSet(chars), 8, 8) =>
+        // Should be a custom character set with only uppercase hex chars
+        assert(chars == "0123456789ABCDEF", s"Expected '0123456789ABCDEF' but got '$chars'")
+      case other => fail(s"Expected CharacterClassNode(CustomCharSet(0123456789ABCDEF), 8, 8), got $other")
+    }
+  }
+
+  test("Parse hexadecimal mixed case pattern") {
+    val result = RegexPatternParser.parse("[0-9a-fA-F]{8}")
+    assert(result.isSuccess)
+    result.get match {
+      case CharacterClassNode(CustomCharSet(chars), 8, 8) =>
+        // Should be a custom character set with both cases
+        assert(chars == "0123456789abcdefABCDEF", s"Expected '0123456789abcdefABCDEF' but got '$chars'")
+      case other => fail(s"Expected CharacterClassNode(CustomCharSet), got $other")
+    }
+  }
+
+  test("Generate SQL for hexadecimal lowercase pattern") {
+    val sql = RegexPatternParser.toSql("[0-9a-f]{8}")
+    assert(sql.isSuccess)
+    // Should use SUBSTRING with custom charset
+    assert(sql.get.contains("SUBSTRING"))
+    assert(sql.get.contains("0123456789abcdef"))
+    // Should NOT contain uppercase letters
+    assert(!sql.get.contains("ABCDEF"))
+  }
 }

@@ -3,7 +3,8 @@ package io.github.datacatering.datacaterer.core.generator.execution
 import io.github.datacatering.datacaterer.api.model.{Task, TaskSummary}
 import io.github.datacatering.datacaterer.core.generator.execution.pattern.BreakingPointPattern
 import io.github.datacatering.datacaterer.core.generator.execution.rate.{DurationTracker, RateLimiter}
-import io.github.datacatering.datacaterer.core.generator.metrics.{PerformanceMetrics, PerformanceMetricsCollector}
+import io.github.datacatering.datacaterer.api.model.PerformanceMetrics
+import io.github.datacatering.datacaterer.core.generator.metrics.PerformanceMetricsCollector
 import io.github.datacatering.datacaterer.core.parser.LoadPatternParser
 import io.github.datacatering.datacaterer.core.util.GeneratorUtil
 import org.apache.log4j.Logger
@@ -113,6 +114,11 @@ class BreakingPointExecutionStrategy(
 
     Some(metrics)
   }
+
+  /**
+   * Get the metrics collector so streaming sink can collect performance metrics.
+   */
+  override def getMetricsCollector: Option[PerformanceMetricsCollector] = Some(metricsCollector)
 
   /**
    * Update the rate limiter based on the current elapsed time and breaking point pattern.

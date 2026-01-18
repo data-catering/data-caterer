@@ -74,13 +74,21 @@ Create a file depending on which interface you want to use.
 
 === "YAML"
 
-    In `docker/data/custom/plan/my-csv.yaml`:
+    Create a unified YAML file `docker/data/custom/unified/my-csv.yaml`:
     ```yaml
     name: "my_csv_plan"
     description: "Create account data in CSV"
-    tasks:
-      - name: "csv_task"
-        dataSourceName: "my_csv"
+
+    dataSources:
+      - name: "my_csv"
+        connection:
+          type: "csv"
+          options:
+            path: "/opt/app/data/customer/account"
+            header: "true"
+        steps:
+          - name: "accounts"
+            # Add fields here
     ```
 
 === "UI"
@@ -130,13 +138,15 @@ Within our class, we can start by defining the connection properties to read/wri
 
 === "YAML"
 
-    In `docker/data/custom/application.conf`:
-    ```
-    csv {
-        my_csv {
-            "header": "true"
-        }
-    }
+    In a unified YAML file, connection options are defined inline:
+    ```yaml
+    dataSources:
+      - name: "customer_accounts"
+        connection:
+          type: "csv"
+          options:
+            path: "/opt/app/data/customer/account"
+            header: "true"
     ```
 
 === "UI"
@@ -179,14 +189,18 @@ have unique values generated.
 
 === "YAML"
 
-    In `docker/data/custom/application.conf`:
-    ```
-    flags {
-      enableUniqueCheck = true
-    }
-    folders {
-      generatedReportsFolderPath = "/opt/app/data/report"
-    }
+    In a unified YAML file, add a `config` section:
+    ```yaml
+    name: "my_csv_plan"
+
+    config:
+      flags:
+        enableUniqueCheck: true
+      folders:
+        generatedReportsFolderPath: "/opt/app/data/report"
+
+    dataSources:
+      ...
     ```
 
 === "UI"

@@ -72,13 +72,19 @@ Create a file depending on which interface you want to use.
 
 === "YAML"
 
-    In `docker/data/custom/plan/my-delta-lake.yaml`:
+    In `docker/data/custom/unified/my-delta-lake.yaml`:
     ```yaml
     name: "my_delta_lake_plan"
     description: "Create account data in Delta Lake"
-    tasks:
-      - name: "delta_lake_task"
-        dataSourceName: "my_delta_lake"
+
+    dataSources:
+      - name: "my_delta_lake"
+        connection:
+          type: "delta"
+          options:
+            path: "/tmp/custom/delta_lake/accounts"
+        steps:
+          - name: "accounts"
     ```
 
 === "UI"
@@ -128,13 +134,15 @@ Within our class, we can start by defining the connection properties to read/wri
 
 === "YAML"
 
-    In `docker/data/custom/application.conf`:
-    ```
-    delta_lake {
-        my_delta_lake {
-            "spark.databricks.delta.properties.defaults.appendOnly" = "true"
-        }
-    }
+    In a unified YAML file:
+    ```yaml
+    dataSources:
+      - name: "my_delta_lake"
+        connection:
+          type: "delta"
+          options:
+            path: "/opt/app/data/customer/delta"
+            spark.databricks.delta.properties.defaults.appendOnly: "true"
     ```
 
 === "UI"

@@ -143,24 +143,27 @@ Create a file depending on which interface you want to use.
 
 === "YAML"
 
-    In `docker/data/custom/plan/my-json-schema.yaml`:
+    In `docker/data/custom/unified/my-json-schema.yaml`:
     ```yaml
     name: "my_json_schema_plan"
     description: "Create JSON data via JSON Schema metadata"
-    tasks:
-      - name: "json_schema_task"
-        dataSourceName: "my_json_schema"
-    ```
 
-    In `docker/data/custom/application.conf`:
-    ```
-    flags {
-      enableGeneratePlanAndTasks = true
-      enableUniqueCheck = true
-    }
-    folders {
-      generatedReportsFolderPath = "/opt/app/data/report"
-    }
+    config:
+      flags:
+        enableGeneratePlanAndTasks: true
+        enableUniqueCheck: true
+      folders:
+        generatedReportsFolderPath: "/opt/app/data/report"
+
+    dataSources:
+      - name: "my_json_schema"
+        connection:
+          type: "json"
+          options:
+            path: "/opt/app/data/json-schema-output"
+            saveMode: "overwrite"
+        steps:
+          - name: "json_data"
     ```
 
 === "UI"
@@ -198,13 +201,15 @@ Within our class, we can start by defining the connection properties to read/wri
 
 === "YAML"
 
-    In `docker/data/custom/application.conf`:
-    ```
-    json {
-        my_json_schema {
-            "saveMode": "overwrite"
-        }
-    }
+    In a unified YAML file:
+    ```yaml
+    dataSources:
+      - name: "my_json_schema"
+        connection:
+          type: "json"
+          options:
+            path: "/opt/app/data/json-schema-output"
+            saveMode: "overwrite"
     ```
 
 === "UI"
@@ -237,19 +242,22 @@ We can point the schema of a data source to our JSON Schema file. The metadata s
 
 === "YAML"
 
-    In `docker/data/custom/task/file/json/json-schema-task.yaml`:
+    In a unified YAML file:
     ```yaml
-    name: "json_schema_task"
-    steps:
-      - name: "json_data"
-        type: "json"
-        options:
-          path: "/opt/app/data/json-schema-output"
-          saveMode: "overwrite"
-          metadataSourceType: "jsonSchema"
-          jsonSchemaFile: "/opt/app/mount/json-schema/payment-schema.json"
-        count:
-          records: 10
+    dataSources:
+      - name: "my_json_schema"
+        connection:
+          type: "json"
+          options:
+            path: "/opt/app/data/json-schema-output"
+            saveMode: "overwrite"
+        steps:
+          - name: "json_data"
+            options:
+              metadataSourceType: "jsonSchema"
+              jsonSchemaFile: "/opt/app/mount/json-schema/payment-schema.json"
+            count:
+              records: 10
     ```
 
 === "UI"
@@ -314,36 +322,39 @@ JSON Schema metadata source supports powerful field filtering capabilities to co
 
 === "YAML"
 
-    In `docker/data/custom/task/file/json/json-schema-task.yaml`:
+    In a unified YAML file:
     ```yaml
-    name: "json_schema_task"
-    steps:
-      - name: "json_data"
-        type: "json"
-        options:
-          path: "/opt/app/data/json-schema-output"
-          saveMode: "overwrite"
-          metadataSourceType: "jsonSchema"
-          jsonSchemaFile: "/opt/app/mount/json-schema/payment-schema.json"
-          # Include specific fields only
-          includeFields:
-            - "customer_direct_debit_initiation_v11.group_header.message_identification"
-            - "customer_direct_debit_initiation_v11.group_header.creation_date_time"
-            - "customer_direct_debit_initiation_v11.payment_information.payment_information_identification"
-          # Or exclude specific fields
-          # excludeFields:
-          #   - "customer_direct_debit_initiation_v11.group_header.control_sum"
-          #   - "customer_direct_debit_initiation_v11.payment_information.batch_booking"
-          # Or include fields matching patterns
-          # includeFieldPatterns:
-          #   - ".*amount.*"
-          #   - ".*identification.*"
-          # Or exclude fields matching patterns
-          # excludeFieldPatterns:
-          #   - ".*internal.*"
-          #   - ".*debug.*"
-        count:
-          records: 10
+    dataSources:
+      - name: "my_json_schema"
+        connection:
+          type: "json"
+          options:
+            path: "/opt/app/data/json-schema-output"
+            saveMode: "overwrite"
+        steps:
+          - name: "json_data"
+            options:
+              metadataSourceType: "jsonSchema"
+              jsonSchemaFile: "/opt/app/mount/json-schema/payment-schema.json"
+              # Include specific fields only
+              includeFields:
+                - "customer_direct_debit_initiation_v11.group_header.message_identification"
+                - "customer_direct_debit_initiation_v11.group_header.creation_date_time"
+                - "customer_direct_debit_initiation_v11.payment_information.payment_information_identification"
+              # Or exclude specific fields
+              # excludeFields:
+              #   - "customer_direct_debit_initiation_v11.group_header.control_sum"
+              #   - "customer_direct_debit_initiation_v11.payment_information.batch_booking"
+              # Or include fields matching patterns
+              # includeFieldPatterns:
+              #   - ".*amount.*"
+              #   - ".*identification.*"
+              # Or exclude fields matching patterns
+              # excludeFieldPatterns:
+              #   - ".*internal.*"
+              #   - ".*debug.*"
+            count:
+              records: 10
     ```
 
 === "UI"

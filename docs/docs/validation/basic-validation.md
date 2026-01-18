@@ -1193,19 +1193,25 @@ open to have `balance` greater than 0, otherwise, check the `balance` is 0.
 === "YAML"
 
     ```yaml
-    ---
     name: "account_checks"
-    dataSources:
-      transactions:
-        options:
-          path: "/tmp/csv"
-        validations:
-          - expr: "amount < 100"
-          - expr: "year == 2021"
-            errorThreshold: 0.1   #equivalent to if error percentage is > 10%, then fail
-          - expr: "REGEXP_LIKE(name, 'Peter .*')"
-            errorThreshold: 200   #equivalent to if number of errors is > 200, then fail
-            description: "Should be lots of Peters"
+    description: "Validate transaction data"
 
-    #enableValidation inside application.conf
+    config:
+      flags:
+        enableValidation: true
+
+    dataSources:
+      - name: "transactions"
+        connection:
+          type: "csv"
+          options:
+            path: "/tmp/csv"
+        validations:
+          - validations:
+              - expr: "amount < 100"
+              - expr: "year == 2021"
+                errorThreshold: 0.1   #equivalent to if error percentage is > 10%, then fail
+              - expr: "REGEXP_LIKE(name, 'Peter .*')"
+                errorThreshold: 200   #equivalent to if number of errors is > 200, then fail
+                description: "Should be lots of Peters"
     ```

@@ -219,16 +219,4 @@ class SimplePercentileCalculatorTest extends AnyFunSuite with Matchers {
     p95 should be > 5000.0
     p95 should be < 8000.0
   }
-
-  test("Deprecated TDigest alias works") {
-    // Test that the deprecated TDigest alias still works for backwards compatibility
-    val calc = TDigest()
-    calc.add(100.0)
-    calc.count shouldBe 1
-
-    val calc2 = TDigest.fromValues(List(1.0, 2.0, 3.0))
-    calc2.count shouldBe 3
-
-    TDigest.LARGE_DATASET_THRESHOLD shouldBe 100000
-  }
 }

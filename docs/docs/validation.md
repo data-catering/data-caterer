@@ -61,29 +61,39 @@ Full example validations can be found below. For more details, check out each of
 === "YAML"
 
     ```yaml
-    ---
     name: "account_checks"
+    description: "Validate transaction data"
+
+    config:
+      flags:
+        enableValidation: true
+
     dataSources:
-      transactions:
-        - options:
+      - name: "transactions"
+        connection:
+          type: "csv"
+          options:
             path: "/tmp/csv"
-          validations:
-            - expr: "amount < 100"
-            - field: "amount" #or
-              validation:
-                - type: "lessThan"
-                  value: 100
-            - expr: "year == 2021"
-              errorThreshold: 0.1   #equivalent to if error percentage is > 10%, then fail
-            - expr: "REGEXP_LIKE(name, 'Peter .*')"
-              errorThreshold: 200   #equivalent to if number of errors is > 200, then fail
-              description: "Should be lots of Peters"
-            - expr: "amount > 100"
-              preFilterExpr: "STARTSWITH(account_id, 'ACC')"
-            - expr: "ISNOTNULL(name)"
-              preFilterExpr: "STARTSWITH(account_id, 'ACC') AND ISNOTNULL(merchant)"
-          waitCondition:
-            pauseInSeconds: 1
+        validations:
+          - options:
+              path: "/tmp/csv"
+            validations:
+              - expr: "amount < 100"
+              - field: "amount"
+                validation:
+                  - type: "lessThan"
+                    value: 100
+              - expr: "year == 2021"
+                errorThreshold: 0.1   #equivalent to if error percentage is > 10%, then fail
+              - expr: "REGEXP_LIKE(name, 'Peter .*')"
+                errorThreshold: 200   #equivalent to if number of errors is > 200, then fail
+                description: "Should be lots of Peters"
+              - expr: "amount > 100"
+                preFilterExpr: "STARTSWITH(account_id, 'ACC')"
+              - expr: "ISNOTNULL(name)"
+                preFilterExpr: "STARTSWITH(account_id, 'ACC') AND ISNOTNULL(merchant)"
+            waitCondition:
+              pauseInSeconds: 1
     ```
 
 ## Pre-filter Data
@@ -112,15 +122,16 @@ when you want to check that for all records with `status=closed`, that `balance=
 === "YAML"
 
     ```yaml
-    ---
-    name: "account_checks"
     dataSources:
-      transactions:
-        - options:
+      - name: "transactions"
+        connection:
+          type: "csv"
+          options:
             path: "/tmp/csv"
-          validations:
-            - expr: "balance == 0"
-              preFilterExpr: "status == 'closed'"
+        validations:
+          - validations:
+              - expr: "balance == 0"
+                preFilterExpr: "status == 'closed'"
     ```
 
 ## Wait Condition
@@ -152,14 +163,15 @@ validations. This can be via:
 === "YAML"
 
     ```yaml
-    ---
-    name: "account_checks"
     dataSources:
-      transactions:
-        - options:
+      - name: "transactions"
+        connection:
+          type: "csv"
+          options:
             path: "/tmp/csv"
-          waitCondition:
-            pauseInSeconds: 1
+        validations:
+          - waitCondition:
+              pauseInSeconds: 1
     ```
 
 ### Data exists
@@ -181,17 +193,18 @@ validations. This can be via:
 === "YAML"
 
     ```yaml
-    ---
-    name: "account_checks"
     dataSources:
-      transactions:
-        - options:
+      - name: "transactions"
+        connection:
+          type: "csv"
+          options:
             path: "/tmp/csv"
-          waitCondition:
-            dataSourceName: "transactions"
-            options:
-              path: "/tmp/csv"
-            expr: "updated_date > DATE('2023-01-01')"
+        validations:
+          - waitCondition:
+              dataSourceName: "transactions"
+              options:
+                path: "/tmp/csv"
+              expr: "updated_date > DATE('2023-01-01')"
     ```
 
 ### Webhook
@@ -233,39 +246,42 @@ validations. This can be via:
 === "YAML"
 
     ```yaml
-    ---
-    name: "account_checks"
     dataSources:
-      transactions:
-        - options:
+      - name: "transactions"
+        connection:
+          type: "csv"
+          options:
             path: "/tmp/csv"
-          waitCondition:
-            url: "http://localhost:8080/finished" #by default, GET request successful when 200 status code
+        validations:
+          - waitCondition:
+              url: "http://localhost:8080/finished" #by default, GET request successful when 200 status code
 
     #or
-    
-    ---
-    name: "account_checks"
+
     dataSources:
-      transactions:
-        - options:
+      - name: "transactions"
+        connection:
+          type: "csv"
+          options:
             path: "/tmp/csv"
-          waitCondition:
-            url: "http://localhost:8080/finished"
-            method: "GET"
-            statusCodes: [200, 202] #successful if 200 or 202 status code
+        validations:
+          - waitCondition:
+              url: "http://localhost:8080/finished"
+              method: "GET"
+              statusCodes: [200, 202] #successful if 200 or 202 status code
 
     #or
-    
-    ---
-    name: "account_checks"
+
     dataSources:
-      transactions:
-        - options:
+      - name: "transactions"
+        connection:
+          type: "csv"
+          options:
             path: "/tmp/csv"
-          waitCondition:
-            dataSourceName: "my_http" #use connection configuration from existing 'my_http' connection definition
-            url: "http://localhost:8080/finished"
+        validations:
+          - waitCondition:
+              dataSourceName: "my_http" #use connection configuration from existing 'my_http' connection definition
+              url: "http://localhost:8080/finished"
     ```
 
 ### File exists
@@ -287,14 +303,15 @@ validations. This can be via:
 === "YAML"
 
     ```yaml
-    ---
-    name: "account_checks"
     dataSources:
-      transactions:
-        - options:
+      - name: "transactions"
+        connection:
+          type: "csv"
+          options:
             path: "/tmp/csv"
-          waitCondition:
-            path: "/tmp/json"
+        validations:
+          - waitCondition:
+              path: "/tmp/json"
     ```
 
 ## Report

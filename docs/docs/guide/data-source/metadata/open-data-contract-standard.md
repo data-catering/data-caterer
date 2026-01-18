@@ -98,23 +98,31 @@ Make sure your class extends `PlanRun`.
 
 === "YAML"
 
-    In `docker/data/custom/plan/my-odcs.yaml`:
+    In `docker/data/custom/unified/my-odcs.yaml`:
     ```yaml
     name: "my_odcs_plan"
     description: "Create account data in CSV via ODCS metadata"
-    tasks:
-      - name: "csv_account_file"
-        dataSourceName: "customer_accounts"
-    ```
 
-    In `docker/data/custom/application.conf`:
-    ```
-    flags {
-      enableUniqueCheck = true
-    }
-    folders {
-      generatedReportsFolderPath = "/opt/app/data/report"
-    }
+    config:
+      flags:
+        enableUniqueCheck: true
+      folders:
+        generatedReportsFolderPath: "/opt/app/data/report"
+
+    dataSources:
+      - name: "customer_accounts"
+        connection:
+          type: "csv"
+          options:
+            path: "/opt/app/data/csv/account-odcs"
+            header: "true"
+        steps:
+          - name: "accounts"
+            options:
+              metadataSourceType: "openDataContractStandard"
+              dataContractFile: "/opt/app/mount/odcs/full-example.yaml"
+            count:
+              records: 100
     ```
 
 === "UI"
@@ -148,18 +156,22 @@ We can point the schema of a data source to our Open Data Contract Standard (ODC
 
 === "YAML"
 
-    In `docker/data/custom/task/file/csv/csv-odcs-account-task.yaml`:
+    In a unified YAML file:
     ```yaml
-    name: "csv_account_file"
-    steps:
-      - name: "accounts"
-        type: "csv"
-        options:
-          path: "/opt/app/data/csv/account-odcs"
-          metadataSourceType: "openDataContractStandard"
-          dataContractFile: "/opt/app/mount/odcs/full-example.yaml"
-        count:
-          records: 100
+    dataSources:
+      - name: "customer_accounts"
+        connection:
+          type: "csv"
+          options:
+            path: "/opt/app/data/csv/account-odcs"
+            header: "true"
+        steps:
+          - name: "accounts"
+            options:
+              metadataSourceType: "openDataContractStandard"
+              dataContractFile: "/opt/app/mount/odcs/full-example.yaml"
+            count:
+              records: 100
     ```
 
 === "UI"

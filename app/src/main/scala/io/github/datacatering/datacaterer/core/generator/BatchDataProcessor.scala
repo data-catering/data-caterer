@@ -1,12 +1,12 @@
 package io.github.datacatering.datacaterer.core.generator
 
 import io.github.datacatering.datacaterer.api.model.Constants.{DEFAULT_ENABLE_REFERENCE_MODE, ENABLE_REFERENCE_MODE, SAVE_MODE}
-import io.github.datacatering.datacaterer.api.model.{DataSourceResult, FlagsConfig, FoldersConfig, GenerationConfig, MetadataConfig, Plan, Step, Task, TaskSummary, UpstreamDataSourceValidation, ValidationConfiguration}
+import io.github.datacatering.datacaterer.api.model.{DataSourceResult, FlagsConfig, FoldersConfig, GenerationConfig, MetadataConfig, Plan, Step, StreamingConfig, Task, TaskSummary, UpstreamDataSourceValidation, ValidationConfiguration}
 import io.github.datacatering.datacaterer.core.exception.InvalidRandomSeedException
 import io.github.datacatering.datacaterer.core.foreignkey.ForeignKeyProcessor
 import io.github.datacatering.datacaterer.core.foreignkey.model.ForeignKeyContext
 import io.github.datacatering.datacaterer.core.generator.execution.{DurationBasedExecutionStrategy, ExecutionStrategy, ExecutionStrategyFactory, GenerationMode, PatternBasedExecutionStrategy}
-import io.github.datacatering.datacaterer.core.generator.metrics.PerformanceMetrics
+import io.github.datacatering.datacaterer.api.model.PerformanceMetrics
 import io.github.datacatering.datacaterer.core.generator.track.RecordTrackingProcessor
 import io.github.datacatering.datacaterer.core.sink.{PekkoStreamingSinkWriter, SinkFactory, SinkRouter, SinkStrategy}
 import io.github.datacatering.datacaterer.core.util.GeneratorUtil.getDataSourceName
@@ -21,39 +21,52 @@ import java.util.{Locale, Random}
 import scala.util.{Failure, Success, Try}
 
 class BatchDataProcessor(connectionConfigsByName: Map[String, Map[String, String]], foldersConfig: FoldersConfig,
-                         metadataConfig: MetadataConfig, flagsConfig: FlagsConfig, generationConfig: GenerationConfig)(implicit sparkSession: SparkSession) {
+                         metadataConfig: MetadataConfig, flagsConfig: FlagsConfig, generationConfig: GenerationConfig, streamingConfig: StreamingConfig = StreamingConfig())(implicit sparkSession: SparkSession) {
 
   private val LOGGER = Logger.getLogger(getClass.getName)
-  private lazy val sinkFactory = new SinkFactory(flagsConfig, metadataConfig, foldersConfig)
+  private var sinkFactoryOpt: Option[SinkFactory] = None
+  private def sinkFactory: SinkFactory = {
+    sinkFactoryOpt match {
+      case Some(existing) => existing
+      case None =>
+        val created = new SinkFactory(flagsConfig, metadataConfig, foldersConfig, streamingConfig)
+        sinkFactoryOpt = Some(created)
+        created
+    }
+  }
   private lazy val sinkRouter = new SinkRouter()
   private lazy val recordTrackingProcessor = new RecordTrackingProcessor(foldersConfig.recordTrackingFolderPath)
   private lazy val validationRecordTrackingProcessor = new RecordTrackingProcessor(foldersConfig.recordTrackingForValidationFolderPath)
 
   def splitAndProcess(plan: Plan, executableTasks: List[(TaskSummary, Task)], optValidations: Option[List[ValidationConfiguration]])
                      (implicit sparkSession: SparkSession): (List[DataSourceResult], Option[PerformanceMetrics]) = {
-    val faker = getDataFaker(plan)
-    val dataGeneratorFactory = new DataGeneratorFactory(faker, flagsConfig.enableFastGeneration)
-    val uniqueFieldUtil = new UniqueFieldsUtil(plan, executableTasks, flagsConfig.enableUniqueCheckOnlyInBatch, generationConfig)
-    
-    // Create StepDataCoordinator for data generation
-    val stepDataCoordinator = new StepDataCoordinator(dataGeneratorFactory, uniqueFieldUtil, connectionConfigsByName, flagsConfig)
-    
-    // Create execution strategy
-    val executionStrategy = ExecutionStrategyFactory.create(plan, executableTasks, generationConfig)
+    try {
+      val faker = getDataFaker(plan)
+      val dataGeneratorFactory = new DataGeneratorFactory(faker, flagsConfig.enableFastGeneration)
+      val uniqueFieldUtil = new UniqueFieldsUtil(plan, executableTasks, flagsConfig.enableUniqueCheckOnlyInBatch, generationConfig)
 
-    // Route to appropriate execution mode based on strategy
-    executionStrategy.getGenerationMode match {
-      case GenerationMode.Batched =>
-        LOGGER.info("Using batched generation mode")
-        executeBatchedGeneration(plan, executableTasks, optValidations, stepDataCoordinator, executionStrategy)
-      
-      case GenerationMode.AllUpfront =>
-        LOGGER.info("Using all-upfront generation mode for streaming execution")
-        executeAllUpfrontGeneration(plan, executableTasks, optValidations, stepDataCoordinator, executionStrategy)
-      
-      case GenerationMode.Progressive =>
-        LOGGER.warn("Progressive generation mode not yet implemented, falling back to batched mode")
-        executeBatchedGeneration(plan, executableTasks, optValidations, stepDataCoordinator, executionStrategy)
+      // Create StepDataCoordinator for data generation
+      val stepDataCoordinator = new StepDataCoordinator(dataGeneratorFactory, uniqueFieldUtil, connectionConfigsByName, flagsConfig)
+
+      // Create execution strategy
+      val executionStrategy = ExecutionStrategyFactory.create(plan, executableTasks, generationConfig)
+
+      // Route to appropriate execution mode based on strategy
+      executionStrategy.getGenerationMode match {
+        case GenerationMode.Batched =>
+          LOGGER.info("Using batched generation mode")
+          executeBatchedGeneration(plan, executableTasks, optValidations, stepDataCoordinator, executionStrategy)
+
+        case GenerationMode.AllUpfront =>
+          LOGGER.info("Using all-upfront generation mode for streaming execution")
+          executeAllUpfrontGeneration(plan, executableTasks, optValidations, stepDataCoordinator, executionStrategy)
+
+        case GenerationMode.Progressive =>
+          LOGGER.warn("Progressive generation mode not yet implemented, falling back to batched mode")
+          executeBatchedGeneration(plan, executableTasks, optValidations, stepDataCoordinator, executionStrategy)
+      }
+    } finally {
+      shutdownSinkFactory()
     }
   }
 
@@ -144,7 +157,18 @@ class BatchDataProcessor(connectionConfigsByName: Map[String, Map[String, String
     // Finalize any pending consolidations for multi-batch scenarios
     sinkFactory.finalizePendingConsolidations()
 
-    (dataSourceResults, executionStrategy.getMetrics)
+    // Attach performance metrics to results
+    val metricsOpt = executionStrategy.getMetrics
+    val resultsWithMetrics = if (dataSourceResults.nonEmpty && metricsOpt.isDefined) {
+      // Attach metrics to the last result (represents the full execution)
+      val lastResult = dataSourceResults.last
+      val updatedLastResult = lastResult.copy(performanceMetrics = metricsOpt)
+      dataSourceResults.dropRight(1) :+ updatedLastResult
+    } else {
+      dataSourceResults
+    }
+
+    (resultsWithMetrics, metricsOpt)
   }
 
   /**
@@ -160,12 +184,14 @@ class BatchDataProcessor(connectionConfigsByName: Map[String, Map[String, String
   )(implicit sparkSession: SparkSession): (List[DataSourceResult], Option[PerformanceMetrics]) = {
     val startTime = LocalDateTime.now()
     
-    // Extract streaming config from duration-based strategy
+    // Extract streaming config from duration-based or pattern-based strategy
     val (durationSeconds, rate) = executionStrategy match {
       case dbs: DurationBasedExecutionStrategy =>
         (dbs.getDurationSeconds, dbs.getTargetRate.getOrElse(1))
+      case pbs: PatternBasedExecutionStrategy =>
+        (pbs.getDurationSeconds, pbs.getAverageRate)
       case _ =>
-        throw new IllegalStateException("AllUpfront generation mode requires DurationBasedExecutionStrategy with rate configured")
+        throw new IllegalStateException("AllUpfront generation mode requires DurationBasedExecutionStrategy or PatternBasedExecutionStrategy")
     }
 
     LOGGER.info(s"Starting all-upfront data generation for streaming: duration=${durationSeconds}s, rate=$rate/sec")
@@ -259,60 +285,79 @@ class BatchDataProcessor(connectionConfigsByName: Map[String, Map[String, String
     ).toMap
     
     val dataSourcesUsedInValidation = getDataSourcesUsedInValidation(optValidations)
-    val pekkoStreamingWriter = new PekkoStreamingSinkWriter(foldersConfig)
+    val pekkoStreamingWriter = new PekkoStreamingSinkWriter(foldersConfig, streamingConfig)
 
-    generatedData.flatMap { case (dataSourceStepName, df) =>
-      val dataSourceName = dataSourceStepName.split("\\.").head
-      val (step, task) = stepAndTaskByDataSourceName(dataSourceStepName)
-      val dataSourceConfig = connectionConfigsByName.getOrElse(dataSourceName, Map())
-      
-      // Skip reference mode steps - they should not be saved to sinks
-      val isReferenceMode = step.options.get(ENABLE_REFERENCE_MODE).map(_.toBoolean).getOrElse(DEFAULT_ENABLE_REFERENCE_MODE)
-      if (isReferenceMode) {
-        LOGGER.debug(s"Skipping save for reference data source, data-source=$dataSourceName, step-name=${step.name}")
-        None
-      } else {
-        val stepWithConfig = step.copy(options = dataSourceConfig ++ step.options)
-        val format = stepWithConfig.options.getOrElse("format", throw new IllegalArgumentException(s"No format specified for $dataSourceName"))
-        
-        // Add rate information to options for router decision
-        val optionsWithRate = executionStrategy match {
-          case dbs: DurationBasedExecutionStrategy if dbs.getTargetRate.isDefined =>
-            stepWithConfig.options + ("hasRateControl" -> "true")
-          case _: PatternBasedExecutionStrategy =>
-            stepWithConfig.options + ("hasRateControl" -> "true")
-          case _ => stepWithConfig.options
+    try {
+      generatedData.flatMap { case (dataSourceStepName, df) =>
+        val dataSourceName = dataSourceStepName.split("\\.").head
+        val (step, task) = stepAndTaskByDataSourceName(dataSourceStepName)
+        val dataSourceConfig = connectionConfigsByName.getOrElse(dataSourceName, Map())
+
+        // Skip reference mode steps - they should not be saved to sinks
+        val isReferenceMode = step.options.get(ENABLE_REFERENCE_MODE).map(_.toBoolean).getOrElse(DEFAULT_ENABLE_REFERENCE_MODE)
+        if (isReferenceMode) {
+          LOGGER.debug(s"Skipping save for reference data source, data-source=$dataSourceName, step-name=${step.name}")
+          None
+        } else {
+          val stepWithConfig = step.copy(options = dataSourceConfig ++ step.options)
+          val format = stepWithConfig.options.getOrElse("format", throw new IllegalArgumentException(s"No format specified for $dataSourceName"))
+
+          // Add rate information to options for router decision
+          val optionsWithRate = executionStrategy match {
+            case dbs: DurationBasedExecutionStrategy if dbs.getTargetRate.isDefined =>
+              stepWithConfig.options + ("hasRateControl" -> "true")
+            case _: PatternBasedExecutionStrategy =>
+              stepWithConfig.options + ("hasRateControl" -> "true")
+            case _ => stepWithConfig.options
+          }
+
+          // Determine sink strategy using router
+          val sinkStrategy = sinkRouter.determineSinkStrategy(format, executionStrategy.getGenerationMode, optionsWithRate)
+
+          LOGGER.info(s"Routing to sink, data-source=$dataSourceName, format=$format, strategy=$sinkStrategy")
+
+          // Apply record tracking if enabled
+          if (flagsConfig.enableRecordTracking) {
+            recordTrackingProcessor.trackRecords(df, dataSourceName, plan.name, stepWithConfig)
+          }
+          if (dataSourcesUsedInValidation.contains(dataSourceName)) {
+            validationRecordTrackingProcessor.trackRecords(df, dataSourceName, plan.name, stepWithConfig)
+          }
+
+          sinkStrategy match {
+            case SinkStrategy.BatchSink =>
+              // Use standard batch writer
+              val sinkResult = sinkFactory.pushToSink(df, dataSourceName, stepWithConfig, startTime, isMultiBatch = false, isLastBatch = true)
+              Some(DataSourceResult(dataSourceName, task, stepWithConfig, sinkResult, 1))
+
+            case SinkStrategy.StreamingSink =>
+              // Use Pekko streaming writer with rate control
+              val (rate, rateFunction, totalDuration) = executionStrategy match {
+                case dbs: DurationBasedExecutionStrategy =>
+                  (dbs.getTargetRate.getOrElse(1), None, None)
+                case pbs: PatternBasedExecutionStrategy =>
+                  // For pattern-based, pass rate function for dynamic control
+                  val avgRate = pbs.getAverageRate
+                  val rateFn = pbs.getRateFunction
+                  val duration = pbs.getDurationSeconds
+                  LOGGER.info(s"Using pattern-based streaming with dynamic rate control, data-source=$dataSourceName, average-rate=$avgRate/sec, duration=${duration}s")
+                  (avgRate, Some(rateFn), Some(duration))
+                case _ => (1, None, None)
+              }
+              if (rateFunction.isEmpty) {
+                LOGGER.info(s"Using streaming sink with rate control, data-source=$dataSourceName, rate=$rate/sec")
+              }
+              val (sinkResult, metrics) = pekkoStreamingWriter.saveWithRateControl(
+                dataSourceName, df, format, dataSourceConfig, stepWithConfig, rate, startTime, rateFunction, totalDuration
+              )
+
+              // Create result with performance metrics
+              Some(DataSourceResult(dataSourceName, task, stepWithConfig, sinkResult, 1, metrics))
+          }
         }
-        
-        // Determine sink strategy using router
-        val sinkStrategy = sinkRouter.determineSinkStrategy(format, executionStrategy.getGenerationMode, optionsWithRate)
-        
-        LOGGER.info(s"Routing to sink, data-source=$dataSourceName, format=$format, strategy=$sinkStrategy")
-        
-        // Apply record tracking if enabled
-        if (flagsConfig.enableRecordTracking) {
-          recordTrackingProcessor.trackRecords(df, dataSourceName, plan.name, stepWithConfig)
-        }
-        if (dataSourcesUsedInValidation.contains(dataSourceName)) {
-          validationRecordTrackingProcessor.trackRecords(df, dataSourceName, plan.name, stepWithConfig)
-        }
-        
-        val sinkResult = sinkStrategy match {
-          case SinkStrategy.BatchSink =>
-            // Use standard batch writer
-            sinkFactory.pushToSink(df, dataSourceName, stepWithConfig, startTime, isMultiBatch = false, isLastBatch = true)
-          
-          case SinkStrategy.StreamingSink =>
-            // Use Pekko streaming writer with rate control
-            val rate = executionStrategy match {
-              case dbs: DurationBasedExecutionStrategy => dbs.getTargetRate.getOrElse(1)
-              case _ => 1
-            }
-            pekkoStreamingWriter.saveWithRateControl(dataSourceName, df, format, dataSourceConfig, stepWithConfig, rate, startTime)
-        }
-        
-        Some(DataSourceResult(dataSourceName, task, stepWithConfig, sinkResult, 1))
       }
+    } finally {
+      pekkoStreamingWriter.shutdown()
     }
   }
 
@@ -417,6 +462,11 @@ class BatchDataProcessor(connectionConfigsByName: Map[String, Map[String, String
       case (Some(_), Failure(exception), _) => throw InvalidRandomSeedException(exception)
       case _ => new Faker() with Serializable
     }
+  }
+
+  private def shutdownSinkFactory(): Unit = {
+    sinkFactoryOpt.foreach(_.shutdown())
+    sinkFactoryOpt = None
   }
 }
 

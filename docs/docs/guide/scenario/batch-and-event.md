@@ -93,15 +93,36 @@ Make sure your class extends `PlanRun`.
 
 === "YAML"
 
-    Create file `docker/data/custom/plan/batch-event-plan.yaml`:
+    Create file `docker/data/custom/unified/batch-event.yaml`:
     ```yaml
     name: "batch_event_plan"
     description: "Generate batch and event data"
-    tasks:
-      - name: "kafka_task"
-        dataSourceName: "my_kafka"
-      - name: "csv_task"
-        dataSourceName: "my_csv"
+
+    dataSources:
+      - name: "my_kafka"
+        connection:
+          type: "kafka"
+          options:
+            url: "localhost:9092"
+        steps:
+          - name: "account_topic"
+            fields:
+              - name: "key"
+              - name: "tmp_year"
+              - name: "tmp_name"
+              - name: "value"
+      - name: "my_csv"
+        connection:
+          type: "csv"
+          options:
+            path: "/opt/app/data/csv/account"
+        steps:
+          - name: "csv_accounts"
+            fields:
+              - name: "account_number"
+              - name: "year"
+              - name: "name"
+              - name: "payload"
     ```
 
 We will borrow the Kafka task that is already defined under the class `KafkaPlanRun`
@@ -142,19 +163,21 @@ Kafka messages.
 
 === "YAML"
 
-    Create file `docker/data/custom/task/csv-task.yaml`:
+    In a unified YAML file:
     ```yaml
-    name: "csv_task"
-    steps:
-      - name: "csv_accounts"
-        type: "csv"
-        options:
-          path: "/opt/app/data/csv/account"
-        fields:
-          - name: "account_number"
-          - name: "year"
-          - name: "name"
-          - name: "payload"
+    dataSources:
+      - name: "my_csv"
+        connection:
+          type: "csv"
+          options:
+            path: "/opt/app/data/csv/account"
+        steps:
+          - name: "csv_accounts"
+            fields:
+              - name: "account_number"
+              - name: "year"
+              - name: "name"
+              - name: "payload"
     ```
 
 This is a simple schema where we want to use the values and metadata that is already defined in the `kafkaTask` to
@@ -208,33 +231,50 @@ to match with the corresponding field in the other data source.
 
 === "YAML"
 
-    Update `docker/data/custom/plan/batch-event-plan.yaml`:
+    Update `docker/data/custom/unified/batch-event.yaml`:
     ```yaml
     name: "batch_event_plan"
     description: "Generate batch and event data"
-    tasks:
-      - name: "kafka_task"
-        dataSourceName: "my_kafka"
-      - name: "csv_task"
-        dataSourceName: "my_csv"
 
-    sinkOptions:
-      foreignKeys:
-        - source:
-            dataSource: "my_kafka"
-            step: "account_topic"
-            fields: ["key", "tmp_year", "tmp_name", "value"]
-          generate:
-            - dataSource: "my_csv"
-              step: "csv_accounts"
-              fields: ["account_number", "year", "name", "payload"]
-    ```
+    config:
+      folders:
+        generatedReportsFolderPath: "/opt/app/data/report"
 
-    Create file `docker/data/custom/application.conf`:
-    ```yaml
-    folders {
-      generatedReportsFolderPath = "/opt/app/data/report"
-    }
+    dataSources:
+      - name: "my_kafka"
+        connection:
+          type: "kafka"
+          options:
+            url: "localhost:9092"
+        steps:
+          - name: "account_topic"
+            fields:
+              - name: "key"
+              - name: "tmp_year"
+              - name: "tmp_name"
+              - name: "value"
+      - name: "my_csv"
+        connection:
+          type: "csv"
+          options:
+            path: "/opt/app/data/csv/account"
+        steps:
+          - name: "csv_accounts"
+            fields:
+              - name: "account_number"
+              - name: "year"
+              - name: "name"
+              - name: "payload"
+
+    foreignKeys:
+      - source:
+          dataSource: "my_kafka"
+          step: "account_topic"
+          fields: ["key", "tmp_year", "tmp_name", "value"]
+        generate:
+          - dataSource: "my_csv"
+            step: "csv_accounts"
+            fields: ["account_number", "year", "name", "payload"]
     ```
 
 ### Run

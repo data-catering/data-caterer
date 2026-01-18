@@ -91,70 +91,61 @@ All example classes are in `src/main/scala/io/github/datacatering/plan/`.
 
 ## YAML
 
-Define data generation using YAML configuration files.
+Define data generation using a single unified YAML configuration file.
 
 ### Run
 
 ```shell
 git clone git@github.com:data-catering/data-caterer.git
 cd data-caterer/example
-./run.sh csv.yaml
+./run.sh unified/ecommerce-unified.yaml
 ```
 
 ### What Happens
 
 1. Builds the example JAR
-2. Runs the YAML plan via Docker
+2. Runs the unified YAML plan via Docker
 3. Generates data and reports to `docker/data/custom/`
 
 ### Example YAML
 
-**Plan file** (`docker/data/custom/plan/csv.yaml`):
-```yaml
-name: "csv_example_plan"
-description: "Create transaction data in CSV file"
-tasks:
-  - name: "csv_transaction_file"
-    dataSourceName: "csv"
-    enabled: true
-```
+The unified format combines connections, data sources, and generation config in a **single file**:
 
-**Task file** (`docker/data/custom/task/file/csv/`):
 ```yaml
-name: "csv_transaction_file"
-steps:
-  - name: "transactions"
-    type: "csv"
-    options:
-      path: "/opt/app/data/transactions"
-      header: "true"
-    count:
-      records: 1000
-    fields:
-      - name: "account_id"
-        options:
-          regex: "ACC[0-9]{8}"
-      - name: "amount"
-        type: "double"
-        options:
-          min: 10
-          max: 1000
+name: "csv_example"
+description: "Create transaction data in CSV file"
+
+dataSources:
+  - name: "csv_transactions"
+    connection:
+      type: "csv"
+      options:
+        path: "/opt/app/data/transactions"
+        header: "true"
+    steps:
+      - name: "transactions"
+        count:
+          records: 1000
+        fields:
+          - name: "account_id"
+            options:
+              regex: "ACC[0-9]{8}"
+          - name: "amount"
+            type: "double"
+            options:
+              min: 10
+              max: 1000
 ```
 
 ### More Examples
 
-| Plan File | Description |
+| YAML File | Description |
 |-----------|-------------|
-| `csv.yaml` | CSV files |
-| `parquet.yaml` | Parquet files |
-| `postgres.yaml` | PostgreSQL tables |
-| `kafka.yaml` | Kafka messages |
-| `foreign-key.yaml` | Data with relationships |
-| `validation.yaml` | Generate and validate |
+| `unified/ecommerce-unified.yaml` | Complete e-commerce with foreign keys |
 
 Run any example: `./run.sh <filename>.yaml`
 
-All plan files are in `docker/data/custom/plan/`. Task definitions are in `docker/data/custom/task/`.
+All unified YAML files are self-contained - no separate task files needed.
 
 ---
 
@@ -165,7 +156,7 @@ A web interface for creating and running data generation plans.
 ### Run
 
 ```shell
-docker run -d -p 9898:9898 -e DEPLOY_MODE=standalone --name datacaterer datacatering/data-caterer:0.18.0
+docker run -d -p 9898:9898 -e DEPLOY_MODE=standalone --name datacaterer datacatering/data-caterer:0.19.0
 ```
 
 Open [http://localhost:9898](http://localhost:9898) in your browser.

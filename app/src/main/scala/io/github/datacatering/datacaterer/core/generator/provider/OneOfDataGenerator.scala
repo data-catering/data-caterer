@@ -27,7 +27,7 @@ object OneOfDataGenerator {
 
     override def generateSqlExpression: String = {
       val oneOfValuesString = oneOfValues.mkString("||")
-      s"CAST(SPLIT('$oneOfValuesString', '\\\\|\\\\|')[CAST(RAND() * $oneOfArrayLength AS INT)] AS ${structField.dataType.sql})"
+      s"CAST(SPLIT('$oneOfValuesString', '\\\\|\\\\|')[CAST($sqlRandom * $oneOfArrayLength AS INT)] AS ${structField.dataType.sql})"
     }
   }
 

@@ -90,13 +90,22 @@ Create a file depending on which interface you want to use.
 
 === "YAML"
 
-    In `docker/data/custom/plan/my-rabbitmq.yaml`:
+    In `docker/data/custom/unified/my-rabbitmq.yaml`:
     ```yaml
     name: "my_rabbitmq_plan"
     description: "Create account data in RabbitMQ"
-    tasks:
-      - name: "rabbitmq_task"
-        dataSourceName: "my_rabbitmq"
+
+    dataSources:
+      - name: "my_rabbitmq"
+        connection:
+          type: "rabbitmq"
+          options:
+            url: "ampq://host.docker.internal:5672"
+            user: "guest"
+            password: "guest"
+            virtualHost: "/"
+        steps:
+          - name: "rabbitmq_account"
     ```
 
 === "UI"
@@ -146,24 +155,19 @@ Within our class, we can start by defining the connection properties to connect 
 
 === "YAML"
 
-    In `docker/data/custom/application.conf`:
-    ```
-    jms {
-        rabbitmq {
-            initialContextFactory = "com.rabbitmqsystems.jndi.SolJNDIInitialContextFactory"
-            initialContextFactory = ${?SOLACE_INITIAL_CONTEXT_FACTORY}
-            connectionFactory = "/jms/cf/default"
-            connectionFactory = ${?SOLACE_CONNECTION_FACTORY}
-            url = "smf://rabbitmqserver:55555"
-            url = ${?SOLACE_URL}
-            user = "admin"
-            user = ${?SOLACE_USER}
-            password = "admin"
-            password = ${?SOLACE_PASSWORD}
-            vpnName = "default"
-            vpnName = ${?SOLACE_VPN}
-        }
-    }
+    In a unified YAML file:
+    ```yaml
+    dataSources:
+      - name: "my_rabbitmq"
+        connection:
+          type: "rabbitmq"
+          options:
+            url: "ampq://rabbitmqserver:5672"
+            user: "admin"
+            password: "admin"
+            virtualHost: "/"
+            connectionFactory: "/jms/cf/default"
+            initialContextFactory: "com.rabbitmqsystems.jndi.SolJNDIInitialContextFactory"
     ```
 
 === "UI"
@@ -258,54 +262,59 @@ that the `text` fields do not have a data type defined. This is because the defa
 
 === "YAML"
 
-    In `docker/data/custom/task/rabbitmq/rabbitmq-task.yaml`:
+    In a unified YAML file:
     ```yaml
-    name: "rabbitmq_task"
-    steps:
-      - name: "rabbitmq_account"
-        options:
-          destinationName: "accounts"
-        fields:
-          - name: "messageBody"
+    dataSources:
+      - name: "my_rabbitmq"
+        connection:
+          type: "rabbitmq"
+          options:
+            url: "ampq://host.docker.internal:5672"
+        steps:
+          - name: "rabbitmq_account"
+            options:
+              destinationName: "accounts"
             fields:
-              - name: "account_id"
-              - name: "year"
-                type: "int"
-                options:
-                  min: "2021"
-                  max: "2022"
-              - name: "amount"
-                type: "double"
-                options:
-                  min: "10.0"
-                  max: "100.0"
-              - name: "details"
+              - name: "messageBody"
                 fields:
-                  - name: "name"
-                  - name: "first_txn_date"
-                    type: "date"
+                  - name: "account_id"
+                  - name: "year"
+                    type: "int"
                     options:
-                      sql: "ELEMENT_AT(SORT_ARRAY(body.transactions.txn_date), 1)"
-                  - name: "updated_by"
-                    fields:
-                      - name: "user"
-                      - name: "time"
-                        type: "timestamp"
-              - name: "transactions"
-                type: "array"
-                fields:
-                  - name: "txn_date"
-                    type: "date"
+                      min: "2021"
+                      max: "2022"
                   - name: "amount"
                     type: "double"
-          - name: "messageHeaders"
-            fields:
-              - name: "account-id"
-                options:
-                  sql: "body.account_id"
-              - name: "updated"
-                options:
-                  sql: "body.details.update_by.time"
+                    options:
+                      min: "10.0"
+                      max: "100.0"
+                  - name: "details"
+                    fields:
+                      - name: "name"
+                      - name: "first_txn_date"
+                        type: "date"
+                        options:
+                          sql: "ELEMENT_AT(SORT_ARRAY(body.transactions.txn_date), 1)"
+                      - name: "updated_by"
+                        fields:
+                          - name: "user"
+                          - name: "time"
+                            type: "timestamp"
+                  - name: "transactions"
+                    type: "array"
+                    fields:
+                      - name: "txn_date"
+                        type: "date"
+                      - name: "amount"
+                        type: "double"
+              - name: "messageHeaders"
+                fields:
+                  - name: "account-id"
+                    options:
+                      sql: "body.account_id"
+                  - name: "updated"
+                    options:
+                      sql: "body.details.update_by.time"
     ```
 
 === "UI"
@@ -362,22 +371,27 @@ expression.
 
 === "YAML"
 
-    In `docker/data/custom/task/rabbitmq/rabbitmq-task.yaml`:
+    In a unified YAML file:
     ```yaml
-    name: "rabbitmq_task"
-    steps:
-      - name: "rabbitmq_account"
-        options:
-          destinationName: "accounts"
-        fields:
-          - name: "messageHeaders"
+    dataSources:
+      - name: "my_rabbitmq"
+        connection:
+          type: "rabbitmq"
+          options:
+            url: "ampq://host.docker.internal:5672"
+        steps:
+          - name: "rabbitmq_account"
+            options:
+              destinationName: "accounts"
             fields:
-              - name: "account-id"
-                options:
-                  sql: "body.account_id"
-              - name: "updated"
-                options:
-                  sql: "body.details.update_by.time"
+              - name: "messageHeaders"
+                fields:
+                  - name: "account-id"
+                    options:
+                      sql: "body.account_id"
+                  - name: "updated"
+                    options:
+                      sql: "body.details.update_by.time"
     ```
 
 === "UI"
@@ -414,23 +428,28 @@ can be controlled via `arrayMinLength` and `arrayMaxLength`.
 
 === "YAML"
 
-    In `docker/data/custom/task/rabbitmq/rabbitmq-task.yaml`:
+    In a unified YAML file:
     ```yaml
-    name: "rabbitmq_task"
-    steps:
-      - name: "rabbitmq_account"
-        options:
-          destinationName: "accounts"
-        fields:
-          - name: "messageBody"
+    dataSources:
+      - name: "my_rabbitmq"
+        connection:
+          type: "rabbitmq"
+          options:
+            url: "ampq://host.docker.internal:5672"
+        steps:
+          - name: "rabbitmq_account"
+            options:
+              destinationName: "accounts"
             fields:
-              - name: "transactions"
-                type: "array"
+              - name: "messageBody"
                 fields:
-                  - name: "txn_date"
-                    type: "date"
-                  - name: "amount"
-                    type: "double"
+                  - name: "transactions"
+                    type: "array"
+                    fields:
+                      - name: "txn_date"
+                        type: "date"
+                      - name: "amount"
+                        type: "double"
     ```
 
 === "UI"
@@ -476,28 +495,33 @@ sort the array by `txn_date` and get the first element.
 
 === "YAML"
 
-    In `docker/data/custom/task/rabbitmq/rabbitmq-task.yaml`:
+    In a unified YAML file:
     ```yaml
-    name: "rabbitmq_task"
-    steps:
-      - name: "rabbitmq_account"
-        options:
-          destinationName: "accounts"
-        fields:
-          - name: "messageBody"
+    dataSources:
+      - name: "my_rabbitmq"
+        connection:
+          type: "rabbitmq"
+          options:
+            url: "ampq://host.docker.internal:5672"
+        steps:
+          - name: "rabbitmq_account"
+            options:
+              destinationName: "accounts"
             fields:
-              - name: "details"
+              - name: "messageBody"
                 fields:
-                  - name: "name"
-                  - name: "first_txn_date"
-                    type: "date"
-                    options:
-                      sql: "ELEMENT_AT(SORT_ARRAY(body.transactions.txn_date), 1)"
-                  - name: "updated_by"
+                  - name: "details"
                     fields:
-                      - name: "user"
-                      - name: "time"
-                        type: "timestamp"
+                      - name: "name"
+                      - name: "first_txn_date"
+                        type: "date"
+                        options:
+                          sql: "ELEMENT_AT(SORT_ARRAY(body.transactions.txn_date), 1)"
+                      - name: "updated_by"
+                        fields:
+                          - name: "user"
+                          - name: "time"
+                            type: "timestamp"
     ```
 
 === "UI"

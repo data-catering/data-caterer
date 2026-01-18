@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Data Caterer Memory Profiling Visualization</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #333;
+            padding: 20px;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            color: white;
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .controls {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        .controls label {
+            font-weight: 600;
+            margin-right: 10px;
+        }
+
+        .controls input, .controls select {
+            padding: 8px 12px;
+            border: 2px solid #ddd;
+            border-radius: 6px;
+            margin-right: 15px;
+            font-size: 14px;
+        }
+
+        .controls button {
+            padding: 10px 20px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: background 0.3s;
+        }
+
+        .controls button:hover {
+            background: #5568d3;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+
+        .stat-card h3 {
+            font-size: 0.9em;
+            color: #666;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .stat-card .value {
+            font-size: 2em;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .stat-card .unit {
+            font-size: 0.8em;
+            color: #999;
+        }
+
+        .chart-container {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        .chart-container h2 {
+            margin-bottom: 15px;
+            color: #333;
+            border-bottom: 3px solid #667eea;
+            padding-bottom: 10px;
+        }
+
+        canvas {
+            max-height: 400px;
+        }
+
+        .info-box {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 10px;
+            border-left: 4px solid #667eea;
+        }
+
+        .info-box h4 {
+            color: #667eea;
+            margin-bottom: 8px;
+        }
+
+        .info-box p {
+            color: #666;
+            font-size: 0.9em;
+            line-height: 1.6;
+        }
+
+        .legend {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin-top: 15px;
+            flex-wrap: wrap;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .legend-color {
+            width: 20px;
+            height: 20px;
+            border-radius: 4px;
+        }
+
+        .status {
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-size: 0.85em;
+            font-weight: 600;
+        }
+
+        .status.success { background: #d4edda; color: #155724; }
+        .status.warning { background: #fff3cd; color: #856404; }
+        .status.error { background: #f8d7da; color: #721c24; }
+
+        @media (max-width: 768px) {
+            h1 { font-size: 1.8em; }
+            .stats-grid { grid-template-columns: repeat(2, 1fr); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📊 Data Caterer Memory Profiling</h1>
+
+        <div class="controls">
+            <label for="dataFile">Load Data:</label>
+            <input type="file" id="dataFile" accept=".json">
+            <button onclick="loadSampleData()">Load Sample Data</button>
+            <button onclick="autoRefresh()">Auto Refresh</button>
+        </div>
+
+        <div class="stats-grid">
+            <div class="stat-card">
+                <h3>Peak Memory</h3>
+                <div class="value" id="peakMemory">0</div>
+                <div class="unit">MB</div>
+            </div>
+            <div class="stat-card">
+                <h3>Avg Memory</h3>
+                <div class="value" id="avgMemory">0</div>
+                <div class="unit">MB</div>
+            </div>
+            <div class="stat-card">
+                <h3>Min Memory</h3>
+                <div class="value" id="minMemory">0</div>
+                <div class="unit">MB</div>
+            </div>
+            <div class="stat-card">
+                <h3>Duration</h3>
+                <div class="value" id="duration">0</div>
+                <div class="unit">seconds</div>
+            </div>
+            <div class="stat-card">
+                <h3>GC Count</h3>
+                <div class="value" id="gcCount">0</div>
+                <div class="unit">collections</div>
+            </div>
+            <div class="stat-card">
+                <h3>Total Records</h3>
+                <div class="value" id="totalRecords">0</div>
+                <div class="unit">records</div>
+            </div>
+        </div>
+
+        <div class="chart-container">
+            <h2>Memory Usage Over Time</h2>
+            <canvas id="memoryChart"></canvas>
+            <div class="info-box">
+                <h4>Memory Metrics</h4>
+                <p>Track heap memory usage, GC activity, and memory efficiency over time. Blue line shows used heap, red line shows committed heap.</p>
+            </div>
+        </div>
+
+        <div class="chart-container">
+            <h2>Throughput & Performance</h2>
+            <canvas id="throughputChart"></canvas>
+            <div class="info-box">
+                <h4>Performance Metrics</h4>
+                <p>Records processed per second and HTTP request throughput. Higher is better.</p>
+            </div>
+        </div>
+
+        <div class="chart-container">
+            <h2>GC Activity</h2>
+            <canvas id="gcChart"></canvas>
+            <div class="info-box">
+                <h4>Garbage Collection</h4>
+                <p>GC pause times and frequency. Lower is better. Spikes indicate memory pressure.</p>
+            </div>
+        </div>
+
+        <div class="chart-container">
+            <h2>Memory Efficiency</h2>
+            <canvas id="efficiencyChart"></canvas>
+            <div class="info-box">
+                <h4>Records per MB</h4>
+                <p>Data generation efficiency: records processed per megabyte of memory. Higher values indicate better memory efficiency.</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let memoryChart, throughputChart, gcChart, efficiencyChart;
+
+        // Initialize charts
+        function initCharts() {
+            const commonOptions = {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: {
+                        display: true,
+                        position: 'top'
+                    }
+                }
+            };
+
+            // Memory Chart
+            const memoryCtx = document.getElementById('memoryChart').getContext('2d');
+            memoryChart = new Chart(memoryCtx, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [
+                        {
+                            label: 'Used Heap (MB)',
+                            data: [],
+                            borderColor: 'rgb(75, 192, 192)',
+                            backgroundColor: 'rgba(75, 192, 192, 0.1)',
+                            tension: 0.4,
+                            fill: true
+                        },
+                        {
+                            label: 'Committed Heap (MB)',
+                            data: [],
+                            borderColor: 'rgb(255, 99, 132)',
+                            backgroundColor: 'rgba(255, 99, 132, 0.1)',
+                            tension: 0.4,
+                            fill: true
+                        }
+                    ]
+                },
+                options: {
+                    ...commonOptions,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Memory (MB)'
+                            }
+                        },
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Time (seconds)'
+                            }
+                        }
+                    }
+                }
+            });
+
+            // Throughput Chart
+            const throughputCtx = document.getElementById('throughputChart').getContext('2d');
+            throughputChart = new Chart(throughputCtx, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [
+                        {
+                            label: 'Records/sec',
+                            data: [],
+                            borderColor: 'rgb(102, 126, 234)',
+                            backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                            tension: 0.4,
+                            yAxisID: 'y'
+                        },
+                        {
+                            label: 'HTTP Requests/sec',
+                            data: [],
+                            borderColor: 'rgb(255, 159, 64)',
+                            backgroundColor: 'rgba(255, 159, 64, 0.1)',
+                            tension: 0.4,
+                            yAxisID: 'y'
+                        }
+                    ]
+                },
+                options: {
+                    ...commonOptions,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Rate (per second)'
+                            }
+                        },
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Time (seconds)'
+                            }
+                        }
+                    }
+                }
+            });
+
+            // GC Chart
+            const gcCtx = document.getElementById('gcChart').getContext('2d');
+            gcChart = new Chart(gcCtx, {
+                type: 'bar',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: 'GC Pause Time (ms)',
+                        data: [],
+                        backgroundColor: 'rgba(255, 99, 132, 0.7)',
+                        borderColor: 'rgb(255, 99, 132)',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    ...commonOptions,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Pause Time (ms)'
+                            }
+                        },
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Time (seconds)'
+                            }
+                        }
+                    }
+                }
+            });
+
+            // Efficiency Chart
+            const efficiencyCtx = document.getElementById('efficiencyChart').getContext('2d');
+            efficiencyChart = new Chart(efficiencyCtx, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: 'Records per MB',
+                        data: [],
+                        borderColor: 'rgb(75, 192, 192)',
+                        backgroundColor: 'rgba(75, 192, 192, 0.1)',
+                        tension: 0.4,
+                        fill: true
+                    }]
+                },
+                options: {
+                    ...commonOptions,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Records per MB'
+                            }
+                        },
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Time (seconds)'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Update charts with data
+        function updateCharts(data) {
+            if (!data || !data.samples) {
+                console.error('Invalid data format');
+                return;
+            }
+
+            const samples = data.samples;
+            const timeLabels = samples.map((s, i) => s.timestamp || i);
+
+            // Update Memory Chart
+            memoryChart.data.labels = timeLabels;
+            memoryChart.data.datasets[0].data = samples.map(s => s.usedHeapMB || 0);
+            memoryChart.data.datasets[1].data = samples.map(s => s.committedHeapMB || 0);
+            memoryChart.update();
+
+            // Update Throughput Chart
+            throughputChart.data.labels = timeLabels;
+            throughputChart.data.datasets[0].data = samples.map(s => s.recordsPerSec || 0);
+            throughputChart.data.datasets[1].data = samples.map(s => s.httpRequestsPerSec || 0);
+            throughputChart.update();
+
+            // Update GC Chart
+            gcChart.data.labels = timeLabels;
+            gcChart.data.datasets[0].data = samples.map(s => s.gcPauseMs || 0);
+            gcChart.update();
+
+            // Update Efficiency Chart
+            efficiencyChart.data.labels = timeLabels;
+            efficiencyChart.data.datasets[0].data = samples.map(s => {
+                const usedHeap = s.usedHeapMB || 1;
+                const records = s.cumulativeRecords || 0;
+                return records / usedHeap;
+            });
+            efficiencyChart.update();
+
+            // Update stats
+            const usedHeaps = samples.map(s => s.usedHeapMB || 0);
+            document.getElementById('peakMemory').textContent = Math.max(...usedHeaps).toFixed(1);
+            document.getElementById('avgMemory').textContent = (usedHeaps.reduce((a, b) => a + b, 0) / usedHeaps.length).toFixed(1);
+            document.getElementById('minMemory').textContent = Math.min(...usedHeaps).toFixed(1);
+            document.getElementById('duration').textContent = data.summary?.duration || samples.length;
+            document.getElementById('gcCount').textContent = data.summary?.gcCount || samples.filter(s => s.gcPauseMs > 0).length;
+            document.getElementById('totalRecords').textContent = data.summary?.totalRecords || samples[samples.length - 1]?.cumulativeRecords || 0;
+        }
+
+        // Load sample data
+        function loadSampleData() {
+            const sampleData = {
+                summary: {
+                    duration: 31,
+                    gcCount: 5,
+                    totalRecords: 100
+                },
+                samples: []
+            };
+
+            // Generate sample data points
+            for (let i = 0; i <= 31; i++) {
+                const baseMemory = 150 + Math.random() * 50;
+                const spike = i % 8 === 0 ? 30 : 0;
+
+                sampleData.samples.push({
+                    timestamp: i,
+                    usedHeapMB: baseMemory + spike + (i * 2),
+                    committedHeapMB: 512,
+                    recordsPerSec: 3 + Math.random() * 2,
+                    httpRequestsPerSec: 3 + Math.random() * 2,
+                    gcPauseMs: i % 8 === 0 ? 10 + Math.random() * 20 : 0,
+                    cumulativeRecords: Math.min(100, i * 3.2)
+                });
+            }
+
+            updateCharts(sampleData);
+        }
+
+        // Auto refresh
+        function autoRefresh() {
+            // Try to load the latest metrics file
+            fetch('results/latest-metrics.json')
+                .then(response => response.json())
+                .then(data => updateCharts(data))
+                .catch(err => {
+                    console.error('Could not load metrics:', err);
+                    alert('No metrics file found. Run a profiling test first or click "Load Sample Data".');
+                });
+        }
+
+        // File upload handler
+        document.getElementById('dataFile').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    try {
+                        const data = JSON.parse(e.target.result);
+                        updateCharts(data);
+                    } catch (err) {
+                        alert('Invalid JSON file: ' + err.message);
+                    }
+                };
+                reader.readAsText(file);
+            }
+        });
+
+        // Initialize on page load
+        window.addEventListener('load', function() {
+            initCharts();
+            loadSampleData(); // Show sample data by default
+        });
+    </script>
+</body>
+</html>

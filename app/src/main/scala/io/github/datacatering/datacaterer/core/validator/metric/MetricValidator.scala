@@ -1,7 +1,7 @@
 package io.github.datacatering.datacaterer.core.validator.metric
 
 import io.github.datacatering.datacaterer.api.model.{BetweenFieldValidation, EqualFieldValidation, FieldValidation, GreaterThanFieldValidation, InFieldValidation, LessThanFieldValidation, MetricValidation}
-import io.github.datacatering.datacaterer.core.generator.metrics.PerformanceMetrics
+import io.github.datacatering.datacaterer.api.model.PerformanceMetrics
 import org.apache.log4j.Logger
 
 /**

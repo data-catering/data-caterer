@@ -140,40 +140,46 @@ To define the generated data that should be deleted, follow the below configurat
 === "YAML"
 
     ```yaml
-    ---
-    name: "postgres_data"
-    steps:
-      - name: "accounts"
-        type: "postgres"
-        options:
-          dbtable: "account.accounts"
-        fields:
-          - name: "account_id"
-          - name: "name"
-      - name: "transactions"
-        type: "postgres"
-        options:
-          dbtable: "account.transactions"
-        fields:
-          - name: "account_id"
-          - name: "full_name"
-    ---
     name: "customer_create_plan"
     description: "Create customers in JDBC"
-    tasks:
-      - name: "postgres_data"
-        dataSourceName: "my_postgres"
 
-    sinkOptions:
-      foreignKeys:
-        - source:
-            dataSource: "postgres"
-            step: "accounts"
+    config:
+      flags:
+        enableRecordTracking: true
+        enableDeleteGeneratedRecords: true
+        enableGenerateData: false
+
+    dataSources:
+      - name: "my_postgres"
+        connection:
+          type: "postgres"
+          options:
+            url: "jdbc:postgresql://host.docker.internal:5432/account"
+            user: "postgres"
+            password: "postgres"
+        steps:
+          - name: "accounts"
+            options:
+              dbtable: "account.accounts"
+            fields:
+              - name: "account_id"
+              - name: "name"
+          - name: "transactions"
+            options:
+              dbtable: "account.transactions"
+            fields:
+              - name: "account_id"
+              - name: "full_name"
+
+    foreignKeys:
+      - source:
+          dataSource: "my_postgres"
+          step: "accounts"
+          fields: ["account_id"]
+        generate:
+          - dataSource: "my_postgres"
+            step: "transactions"
             fields: ["account_id"]
-          generate:
-            - dataSource: "postgres"
-              step: "transactions"
-              fields: ["account_id"]
     ```
 
 === "UI"
@@ -278,37 +284,43 @@ follow the below example:
 === "YAML"
 
     ```yaml
-    ---
-    name: "postgres_data"
-    steps:
-      - name: "accounts"
-        type: "postgres"
-        options:
-          dbtable: "account.accounts"
-        fields:
-          - name: "account_id"
-          - name: "name"
-      - name: "balances"
-        type: "postgres"
-        options:
-          dbtable: "account.balances"
-    ---
     name: "customer_create_plan"
     description: "Create customers in JDBC"
-    tasks:
-      - name: "postgres_data"
-        dataSourceName: "my_postgres"
 
-    sinkOptions:
-      foreignKeys:
-        - source:
-            dataSource: "postgres"
-            step: "accounts"
+    config:
+      flags:
+        enableRecordTracking: true
+        enableDeleteGeneratedRecords: true
+        enableGenerateData: false
+
+    dataSources:
+      - name: "my_postgres"
+        connection:
+          type: "postgres"
+          options:
+            url: "jdbc:postgresql://host.docker.internal:5432/account"
+            user: "postgres"
+            password: "postgres"
+        steps:
+          - name: "accounts"
+            options:
+              dbtable: "account.accounts"
+            fields:
+              - name: "account_id"
+              - name: "name"
+          - name: "balances"
+            options:
+              dbtable: "account.balances"
+
+    foreignKeys:
+      - source:
+          dataSource: "my_postgres"
+          step: "accounts"
+          fields: ["account_id"]
+        delete:
+          - dataSource: "my_postgres"
+            step: "balances"
             fields: ["account_id"]
-          delete:
-            - dataSource: "postgres"
-              step: "balances"
-              fields: ["account_id"]
     ```
 
 === "UI"

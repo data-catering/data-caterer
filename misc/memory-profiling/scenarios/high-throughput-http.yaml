@@ -1,0 +1,79 @@
+version: "1.0"
+name: "high_throughput_http_memory_test"
+description: "High throughput test with 10K records to validate memory efficiency at higher rates"
+
+config:
+  flags:
+    enableGenerateData: true
+    enableFastGeneration: true
+    enableSaveReports: true
+    enableDeleteGeneratedRecords: false
+    enableRecordTracking: false
+
+dataSources:
+  - name: "test_http"
+    connection:
+      type: "http"
+      options:
+        url: "http://localhost:8080"
+    steps:
+      - name: "transactions"
+        options:
+          format: "http"  # REQUIRED for HTTP format
+        count:
+          records: 10000
+          perColumnCount:
+            rate: 50  # 50 records per second for high throughput
+        fields:
+          # Direct internal field names for HTTP
+          - name: "url"
+            static: "http://localhost:8080/"
+
+          - name: "method"
+            static: "POST"
+
+          - name: "Content-Type"
+            static: "application/json"
+
+          - name: "body"
+            options:
+              sql: "TO_JSON(STRUCT(transaction_id, account_number, amount, currency, status, timestamp, metadata))"
+
+          # Body fields
+          - name: "transaction_id"
+            options:
+              regex: "TXN[0-9]{10}"
+
+          - name: "account_number"
+            options:
+              regex: "ACC[0-9]{8}"
+
+          - name: "amount"
+            type: "double"
+            options:
+              min: 1.0
+              max: 10000.0
+
+          - name: "currency"
+            options:
+              oneOf:
+                - "USD"
+                - "EUR"
+                - "GBP"
+                - "JPY"
+                - "AUD"
+
+          - name: "status"
+            options:
+              oneOf:
+                - "PENDING"
+                - "COMPLETED"
+                - "FAILED"
+                - "CANCELLED"
+
+          - name: "timestamp"
+            type: "timestamp"
+
+          - name: "metadata"
+            options:
+              regex: "[A-Za-z0-9]{300}"

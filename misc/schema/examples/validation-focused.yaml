@@ -1,0 +1,139 @@
+# yaml-language-server: $schema=../unified-config-schema.json
+# Validation-focused example showing all validation types
+
+version: "1.0"
+name: "validation_example"
+description: "Demonstrates inline validations"
+
+config:
+  flags:
+    enableGenerateData: true
+    enableValidation: true
+    enableSaveReports: true
+  validation:
+    numSampleErrorRecords: 20
+
+dataSources:
+  - name: "customer_db"
+    connection:
+      type: "postgres"
+      options:
+        url: "jdbc:postgresql://localhost:5432/customers"
+        user: "postgres"
+        password: "${DB_PASSWORD}"
+    steps:
+      - name: "customers"
+        options:
+          dbtable: "public.customers"
+        count:
+          records: 1000
+        fields:
+          - name: "customer_id"
+            options:
+              regex: "CUST[0-9]{8}"
+              isPrimaryKey: true
+          - name: "email"
+            options:
+              expression: "#{Internet.emailAddress}"
+              isUnique: true
+          - name: "age"
+            type: "integer"
+            options:
+              min: 18
+              max: 120
+          - name: "credit_score"
+            type: "integer"
+            options:
+              min: 300
+              max: 850
+          - name: "account_balance"
+            type: "double"
+            options:
+              min: 0.0
+              max: 1000000.0
+          - name: "status"
+            options:
+              oneOf:
+                - "active"
+                - "inactive"
+                - "pending"
+          - name: "created_at"
+            type: "timestamp"
+            options:
+              min: "2020-01-01T00:00:00"
+              max: "2024-12-31T23:59:59"
+        validations:
+          # Expression validations
+          - expr: "age >= 18 AND age <= 120"
+            description: "Age must be between 18 and 120"
+          - expr: "credit_score >= 300 AND credit_score <= 850"
+            description: "Credit score must be valid FICO range"
+          - expr: "account_balance >= 0"
+            description: "Balance cannot be negative"
+
+          # Field validations - unique
+          - field: "customer_id"
+            validation:
+              - type: "unique"
+                description: "Customer ID must be unique"
+          - field: "email"
+            validation:
+              - type: "unique"
+              - type: "matches"
+                regex: "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$"
+                description: "Must be a valid email format"
+
+          # Field validations - range
+          - field: "age"
+            validation:
+              - type: "between"
+                min: 18
+                max: 120
+                description: "Age range validation"
+
+          # Field validations - enumeration
+          - field: "status"
+            validation:
+              - type: "in"
+                values: ["active", "inactive", "pending"]
+
+          # Field validations - null checks
+          - field: "email"
+            validation:
+              - type: "null"
+                negate: true
+                description: "Email cannot be null"
+
+          # Aggregation validations
+          - groupByFields: ["status"]
+            aggField: "account_balance"
+            aggType: "avg"
+            aggExpr: "avg_balance > 0"
+            description: "Average balance per status should be positive"
+
+          # Field names validation
+          - names: ["customer_id", "email", "age", "credit_score", "account_balance", "status", "created_at"]
+            description: "Expected schema columns"
+
+  - name: "reference_data"
+    connection:
+      type: "csv"
+      options:
+        path: "/tmp/data/reference"
+    steps:
+      - name: "valid_statuses"
+        count:
+          records: 3
+        fields:
+          - name: "status_code"
+            static: "active"
+        validations:
+          # Wait condition example
+          - expr: "status_code IS NOT NULL"
+            waitCondition:
+              type: "pause"
+              pauseInSeconds: 5
+
+sinkOptions:
+  seed: "42"
+  locale: "en-US"

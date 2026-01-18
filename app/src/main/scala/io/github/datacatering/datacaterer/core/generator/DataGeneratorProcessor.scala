@@ -22,8 +22,9 @@ class DataGeneratorProcessor(dataCatererConfiguration: DataCatererConfiguration)
   private val metadataConfig = dataCatererConfiguration.metadataConfig
   private val flagsConfig = dataCatererConfiguration.flagsConfig
   private val generationConfig = dataCatererConfiguration.generationConfig
+  private val streamingConfig = dataCatererConfiguration.streamingConfig
   private lazy val deleteRecordProcessor = new DeleteRecordProcessor(connectionConfigsByName, foldersConfig.recordTrackingFolderPath)
-  private lazy val batchDataProcessor = new BatchDataProcessor(connectionConfigsByName, foldersConfig, metadataConfig, flagsConfig, generationConfig)
+  private lazy val batchDataProcessor = new BatchDataProcessor(connectionConfigsByName, foldersConfig, metadataConfig, flagsConfig, generationConfig, streamingConfig)
   private lazy val sparkRecordListener = new SparkRecordListener(flagsConfig.enableCount)
   private lazy val planRunPostPlanProcessor = new PlanRunPostPlanProcessor(dataCatererConfiguration)
   sparkSession.sparkContext.addSparkListener(sparkRecordListener)
@@ -95,7 +96,7 @@ class DataGeneratorProcessor(dataCatererConfiguration: DataCatererConfiguration)
                                  optValidations: Option[List[ValidationConfiguration]],
                                  plan: Plan,
                                  generationResults: List[DataSourceResult],
-                                 optPerformanceMetrics: Option[io.github.datacatering.datacaterer.core.generator.metrics.PerformanceMetrics]
+                                 optPerformanceMetrics: Option[io.github.datacatering.datacaterer.api.model.PerformanceMetrics]
                                ): List[ValidationConfigResult] = {
     try {
       new ValidationProcessor(connectionConfigsByName, optValidations, dataCatererConfiguration.validationConfig, foldersConfig, optPerformanceMetrics)
@@ -107,7 +108,7 @@ class DataGeneratorProcessor(dataCatererConfiguration: DataCatererConfiguration)
     }
   }
 
-  private def runDataGeneration(plan: Plan, summaryWithTask: List[(TaskSummary, Task)], optValidations: Option[List[ValidationConfiguration]]): (List[DataSourceResult], Option[io.github.datacatering.datacaterer.core.generator.metrics.PerformanceMetrics]) = {
+  private def runDataGeneration(plan: Plan, summaryWithTask: List[(TaskSummary, Task)], optValidations: Option[List[ValidationConfiguration]]): (List[DataSourceResult], Option[io.github.datacatering.datacaterer.api.model.PerformanceMetrics]) = {
     try {
       batchDataProcessor.splitAndProcess(plan, summaryWithTask, optValidations)
     } catch {

@@ -10,7 +10,7 @@ import org.apache.spark.sql.types._
 
 import java.sql.{Date, Timestamp}
 import java.time.temporal.ChronoUnit
-import java.time.{Instant, LocalDate}
+import java.time.{DayOfWeek, Instant, LocalDate}
 import scala.util.Try
 
 object RandomDataGenerator {
@@ -52,6 +52,18 @@ object RandomDataGenerator {
     private val characterSet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 "
     private val characterSetSize = characterSet.length
 
+    private def creditCardRegex(expression: String): Option[String] = {
+      expression.trim match {
+        case "#{Finance.creditCard 'VISA'}" =>
+          Some("(4[0-9]{12}|4[0-9]{15}|4[0-9]{18})")
+        case "#{Finance.creditCard 'MASTERCARD'}" =>
+          Some("5[1-5][0-9]{14}")
+        case "#{Finance.creditCard 'AMEX'}" =>
+          Some("3[47][0-9]{13}")
+        case _ => None
+      }
+    }
+
     override val edgeCases: List[String] = List("", "\n", "\r", "\t", " ", "\\u0000", "\\ufff",
       "İyi günler", "Спасибо", "Καλημέρα", "صباح الخير", "Förlåt", "你好吗", "Nhà vệ sinh ở đâu", "こんにちは", "नमस्ते", "Բարեւ", "Здравейте")
 
@@ -66,7 +78,14 @@ object RandomDataGenerator {
 
     override def generateSqlExpression: String = {
       if (tryExpression.isSuccess) {
-        s"$GENERATE_FAKER_EXPRESSION_UDF('${tryExpression.get}')"
+        val expression = tryExpression.get
+        creditCardRegex(expression) match {
+          case Some(regex) =>
+            s"$GENERATE_REGEX_UDF('$regex')"
+          case None =>
+            val escapedExpression = expression.replace("'", "''")
+            s"$GENERATE_FAKER_EXPRESSION_UDF('$escapedExpression')"
+        }
       } else {
         val randLength = s"CAST($sqlRandom * (${maxLength - minLength}) + $minLength AS INT)"
         s"CONCAT_WS('', TRANSFORM(SEQUENCE(1, $randLength), i -> SUBSTR('$characterSet', CAST($sqlRandom * $characterSetSize + 1 AS INT), 1)))"
@@ -181,7 +200,24 @@ object RandomDataGenerator {
     )
 
     override def generate: Date = {
-      Date.valueOf(min.plusDays(random.nextInt(maxDays)))
+      val excludeWeekends = structField.metadata.contains(DATE_EXCLUDE_WEEKENDS) &&
+        Try(structField.metadata.getString(DATE_EXCLUDE_WEEKENDS)).toOption.exists(_.equalsIgnoreCase("true"))
+      val safeMaxDays = Math.max(maxDays, 1)
+
+      if (!excludeWeekends) {
+        Date.valueOf(min.plusDays(random.nextInt(safeMaxDays)))
+      } else {
+        val weekdayOffsets = (0 until maxDays).filter { offset =>
+          val day = min.plusDays(offset).getDayOfWeek
+          day != DayOfWeek.SATURDAY && day != DayOfWeek.SUNDAY
+        }
+        if (weekdayOffsets.nonEmpty) {
+          val offset = weekdayOffsets(random.nextInt(weekdayOffsets.length))
+          Date.valueOf(min.plusDays(offset))
+        } else {
+          Date.valueOf(min.plusDays(random.nextInt(safeMaxDays)))
+        }
+      }
     }
 
     private def getMinValue: LocalDate = {
@@ -195,7 +231,26 @@ object RandomDataGenerator {
     }
 
     override def generateSqlExpression: String = {
-      s"DATE_ADD('${min.toString}', CAST($sqlRandom * $maxDays AS INT))"
+      // Check for excludeWeekends flag in metadata
+      val excludeWeekends = structField.metadata.contains(DATE_EXCLUDE_WEEKENDS) &&
+        Try(structField.metadata.getString(DATE_EXCLUDE_WEEKENDS)).toOption.exists(_.equalsIgnoreCase("true"))
+
+      if (excludeWeekends) {
+        // Use a simple weekday filter for correctness.
+        // Note: DAYOFWEEK returns 1=Sunday, 2=Monday, ..., 7=Saturday
+        val minDate = s"DATE'${min.toString}'"
+        val maxDate = s"DATE'${max.toString}'"
+        val allDates = s"SEQUENCE($minDate, $maxDate)"
+        val weekdayDates = s"FILTER($allDates, d -> DAYOFWEEK(d) BETWEEN 2 AND 6)"
+        val weekdayCount = s"SIZE($weekdayDates)"
+        val randWeekdayIndex = s"CAST($sqlRandom * $weekdayCount AS INT) + 1"
+        val weekdayDate = s"ELEMENT_AT($weekdayDates, $randWeekdayIndex)"
+
+        val fallbackDate = s"DATE_ADD($minDate, CAST($sqlRandom * ${Math.max(maxDays, 1)} AS INT))"
+        s"CASE WHEN $weekdayCount = 0 THEN $fallbackDate ELSE $weekdayDate END"
+      } else {
+        s"DATE_ADD('${min.toString}', CAST($sqlRandom * ${Math.max(maxDays, 1)} AS INT))"
+      }
     }
   }
 
@@ -259,7 +314,7 @@ object RandomDataGenerator {
     }
 
     override def generateSqlExpression: String = {
-      s"TO_BINARY(ARRAY_JOIN(TRANSFORM(ARRAY_REPEAT(1, CAST($sqlRandom * ${maxLength - minLength} + $minLength AS INT)), i -> CHAR(ROUND($sqlRandom * 94 + 32, 0))), ''), 'utf-8')"
+      s"TO_BINARY(ARRAY_JOIN(TRANSFORM(ARRAY_REPEAT(1, CAST($sqlRandom * ${maxLength - minLength} + $minLength AS INT)), i -> CHAR(ROUND(${sqlRandomWithIndex("i")} * 94 + 32, 0))), ''), 'utf-8')"
     }
   }
 
@@ -271,13 +326,21 @@ object RandomDataGenerator {
     }
 
     override def generateSqlExpression: String = {
-      s"TO_BINARY(CHAR(ROUND($sqlRandom * 94 + 32, 0)))"
+      s"TO_BINARY(CHAR(ROUND($sqlRandom * 94 + 32, 0)), 'utf-8')"
     }
   }
 
   class RandomArrayDataGenerator[T](val structField: StructField, val dataType: DataType, val faker: Faker = new Faker()) extends ArrayDataGenerator[T] {
     override lazy val arrayMinSize: Int = tryGetValue(structField.metadata, ARRAY_MINIMUM_LENGTH, 0)
     override lazy val arrayMaxSize: Int = tryGetValue(structField.metadata, ARRAY_MAXIMUM_LENGTH, 5)
+
+    // Check for array helper options
+    private lazy val arrayUniqueFromOpt: Option[String] = Try(structField.metadata.getString(ARRAY_UNIQUE_FROM)).toOption
+    private lazy val arrayOneOfOpt: Option[String] = Try(structField.metadata.getString(ARRAY_ONE_OF)).toOption
+    private lazy val arrayEmptyProbOpt: Option[Double] = Try(structField.metadata.getString(ARRAY_EMPTY_PROBABILITY).toDouble).toOption
+      .orElse(Try(structField.metadata.getDouble(ARRAY_EMPTY_PROBABILITY)).toOption)
+    private lazy val arrayWeightedOneOfOpt: Option[String] = Try(structField.metadata.getString(ARRAY_WEIGHTED_ONE_OF)).toOption
+
     assert(arrayMinSize >= 0, s"arrayMinSize has to be greater than or equal to 0, " +
       s"field-name=${structField.name}, arrayMinSize=$arrayMinSize")
     assert(arrayMinSize <= arrayMaxSize, s"arrayMinSize has to be less than or equal to arrayMaxSize, " +
@@ -292,7 +355,33 @@ object RandomDataGenerator {
       }
     }
 
+    /**
+     * Applies empty probability wrapper to array SQL expression if specified.
+     * Extracts common logic to reduce duplication across array generation methods.
+     */
+    private def applyEmptyProbability(arrayExpr: String): String = {
+      arrayEmptyProbOpt match {
+        case Some(prob) if prob > 0.0 =>
+          s"CASE WHEN $sqlRandom < $prob THEN ARRAY() ELSE $arrayExpr END"
+        case _ => arrayExpr
+      }
+    }
+
     override def generateSqlExpression: String = {
+      // Check if using array helper methods
+      if (arrayUniqueFromOpt.isDefined) {
+        generateArrayUniqueFromSql(arrayUniqueFromOpt.get)
+      } else if (arrayOneOfOpt.isDefined) {
+        generateArrayOneOfSql(arrayOneOfOpt.get)
+      } else if (arrayWeightedOneOfOpt.isDefined) {
+        generateArrayWeightedOneOfSql(arrayWeightedOneOfOpt.get)
+      } else {
+        // Default array generation logic
+        generateDefaultArraySql()
+      }
+    }
+
+    private def generateDefaultArraySql(): String = {
       val nestedSqlExpressions = dataType match {
         case structType: StructType =>
           val structFieldWithMetadata = StructField(structField.name, structType, structField.nullable, structField.metadata)
@@ -301,7 +390,125 @@ object RandomDataGenerator {
         case _ =>
           getGeneratorForStructField(structField.copy(dataType = dataType), faker).generateSqlExpressionWrapper
       }
-      s"TRANSFORM(ARRAY_REPEAT(1, CAST($sqlRandom * ${arrayMaxSize - arrayMinSize} + $arrayMinSize AS INT)), i -> $nestedSqlExpressions)"
+      val sizeExpr = s"CAST($sqlRandom * ${arrayMaxSize - arrayMinSize} + $arrayMinSize AS INT)"
+      val arrayExpr = s"TRANSFORM(ARRAY_REPEAT(1, $sizeExpr), i -> $nestedSqlExpressions)"
+
+      applyEmptyProbability(arrayExpr)
+    }
+
+    private def generateArrayUniqueFromSql(valuesStr: String): String = {
+      val sizeExpr = s"CAST($sqlRandom * ${arrayMaxSize - arrayMinSize} + $arrayMinSize AS INT)"
+      val arrayExpr = s"SLICE(SHUFFLE(ARRAY($valuesStr)), 1, $sizeExpr)"
+
+      applyEmptyProbability(arrayExpr)
+    }
+
+    private def generateArrayOneOfSql(valuesStr: String): String = {
+      val valuesArray = s"ARRAY($valuesStr)"
+      val arraySize = valuesStr.split(",").length
+      val randomIndexExpr = s"CAST($sqlRandom * $arraySize + 1 AS INT)"
+      val sizeExpr = s"CAST($sqlRandom * ${arrayMaxSize - arrayMinSize} + $arrayMinSize AS INT)"
+      val arrayExpr = s"TRANSFORM(ARRAY_REPEAT(1, $sizeExpr), i -> ELEMENT_AT($valuesArray, CAST(${sqlRandomWithIndex("i")} * $arraySize + 1 AS INT)))"
+
+      applyEmptyProbability(arrayExpr)
+    }
+
+    private def generateArrayWeightedOneOfSql(weightedStr: String): String = {
+      // Parse weighted values: 'val1':0.2,'val2':0.5,'val3':0.3
+      val weightedPairs = parseWeightedPairs(weightedStr)
+
+      // Calculate cumulative weights
+      val totalWeight = weightedPairs.map(_._2).sum
+      require(totalWeight > 0,
+        s"Invalid weights in field '${structField.name}': total weight must be greater than 0.")
+      val normalizedWeights = weightedPairs.map { case (v, w) => (v, w / totalWeight) }
+      val cumulativeThresholds = normalizedWeights.scanLeft(0.0)(_ + _._2).tail
+
+      val valuesArrayExpr = s"ARRAY(${normalizedWeights.map(_._1).mkString(",")})"
+      val thresholdsArrayExpr = s"ARRAY(${cumulativeThresholds.map(_.toString).mkString(",")})"
+      val zippedExpr = s"ZIP_WITH($valuesArrayExpr, $thresholdsArrayExpr, (v, t) -> named_struct('value', v, 'threshold', t))"
+
+      // Use a single RAND() per element to compare against cumulative thresholds
+      val weightedSelectExpr =
+        s"""AGGREGATE(
+           |  $zippedExpr,
+           |  named_struct('r', ${sqlRandomWithIndex("i")}, 'picked', CAST(NULL AS ${dataType.sql})),
+           |  (acc, x) -> IF(acc.picked IS NOT NULL, acc,
+           |    IF(acc.r < x.threshold, named_struct('r', acc.r, 'picked', x.value), acc)
+           |  ),
+           |  acc -> acc.picked
+           |)""".stripMargin
+      val sizeExpr = s"CAST($sqlRandom * ${arrayMaxSize - arrayMinSize} + $arrayMinSize AS INT)"
+      val arrayExpr = s"TRANSFORM(ARRAY_REPEAT(1, $sizeExpr), i -> $weightedSelectExpr)"
+
+      applyEmptyProbability(arrayExpr)
+    }
+
+    private def parseWeightedPairs(weightedStr: String): Seq[(String, Double)] = {
+      val rawPairs = splitOutsideQuotes(weightedStr, ',').map(_.trim).filter(_.nonEmpty)
+      rawPairs.map { pair =>
+        val separatorIdx = findDelimiterOutsideQuotes(pair, ':')
+        require(separatorIdx >= 0,
+          s"Invalid weighted value format in field '${structField.name}': '$pair'. Expected format 'value:weight'")
+
+        val valuePart = pair.substring(0, separatorIdx).trim
+        val weightPart = pair.substring(separatorIdx + 1).trim
+        require(valuePart.nonEmpty && weightPart.nonEmpty,
+          s"Invalid weighted value format in field '${structField.name}': '$pair'. Expected format 'value:weight'")
+
+        val weight = Try(weightPart.toDouble).getOrElse(
+          throw new IllegalArgumentException(s"Invalid weight value in field '${structField.name}': '$weightPart'. Weight must be a number.")
+        )
+        require(weight >= 0,
+          s"Invalid weight in field '${structField.name}': $weight. Weights must be non-negative.")
+        (valuePart, weight)
+      }
+    }
+
+    private def splitOutsideQuotes(value: String, delimiter: Char): Seq[String] = {
+      val parts = scala.collection.mutable.ArrayBuffer.empty[String]
+      val current = new StringBuilder
+      var inSingleQuotes = false
+      var i = 0
+      while (i < value.length) {
+        val ch = value.charAt(i)
+        if (ch == '\'') {
+          if (inSingleQuotes && i + 1 < value.length && value.charAt(i + 1) == '\'') {
+            current.append("''")
+            i += 1
+          } else {
+            inSingleQuotes = !inSingleQuotes
+            current.append(ch)
+          }
+        } else if (ch == delimiter && !inSingleQuotes) {
+          parts += current.toString()
+          current.clear()
+        } else {
+          current.append(ch)
+        }
+        i += 1
+      }
+      parts += current.toString()
+      parts.toSeq
+    }
+
+    private def findDelimiterOutsideQuotes(value: String, delimiter: Char): Int = {
+      var inSingleQuotes = false
+      var i = 0
+      while (i < value.length) {
+        val ch = value.charAt(i)
+        if (ch == '\'') {
+          if (inSingleQuotes && i + 1 < value.length && value.charAt(i + 1) == '\'') {
+            i += 1
+          } else {
+            inSingleQuotes = !inSingleQuotes
+          }
+        } else if (ch == delimiter && !inSingleQuotes) {
+          return i
+        }
+        i += 1
+      }
+      -1
     }
   }
 
@@ -318,17 +525,28 @@ object RandomDataGenerator {
     assert(mapMinSize <= mapMaxSize, s"mapMinSize has to be less than or equal to mapMaxSize, " +
       s"field-name=${structField.name}, mapMinSize=$mapMinSize, mapMaxSize=$mapMaxSize")
 
-    override def keyGenerator: DataGenerator[T] = getGeneratorForDataType(keyDataType).asInstanceOf[DataGenerator[T]]
+    private def seededMetadata: Metadata = optRandomSeed match {
+      case Some(seed) => new MetadataBuilder().putString(RANDOM_SEED, seed.toString).build()
+      case None => Metadata.empty
+    }
 
-    override def valueGenerator: DataGenerator[K] = getGeneratorForDataType(valueDataType).asInstanceOf[DataGenerator[K]]
+    override def keyGenerator: DataGenerator[T] =
+      getGeneratorForStructField(StructField(structField.name, keyDataType, nullable = true, seededMetadata), faker)
+        .asInstanceOf[DataGenerator[T]]
+
+    override def valueGenerator: DataGenerator[K] =
+      getGeneratorForStructField(StructField(structField.name, valueDataType, nullable = true, seededMetadata), faker)
+        .asInstanceOf[DataGenerator[K]]
 
     //how to make it empty map when size is 0
     override def generateSqlExpression: String = {
-      val keyDataGenerator = getGeneratorForDataType(keyDataType)
-      val valueDataGenerator = getGeneratorForDataType(valueDataType)
+      val keyDataGenerator = getGeneratorForStructField(StructField(structField.name, keyDataType, nullable = true, seededMetadata), faker)
+      val valueDataGenerator = getGeneratorForStructField(StructField(structField.name, valueDataType, nullable = true, seededMetadata), faker)
       val keySql = keyDataGenerator.generateSqlExpressionWrapper
       val valueSql = valueDataGenerator.generateSqlExpressionWrapper
-      s"STR_TO_MAP(CONCAT_WS(',', TRANSFORM(ARRAY_REPEAT(1, CAST($sqlRandom * ${mapMaxSize - mapMinSize} + $mapMinSize AS INT)), i -> CONCAT($keySql, '->', $valueSql))), '->', ',')"
+      val keySqlWithIndex = optRandomSeed.map(_ => keySql.replace(sqlRandom, sqlRandomWithIndex("i"))).getOrElse(keySql)
+      val valueSqlWithIndex = optRandomSeed.map(_ => valueSql.replace(sqlRandom, sqlRandomWithIndex("i"))).getOrElse(valueSql)
+      s"STR_TO_MAP(CONCAT_WS(',', TRANSFORM(ARRAY_REPEAT(1, CAST($sqlRandom * ${mapMaxSize - mapMinSize} + $mapMinSize AS INT)), i -> CONCAT($keySqlWithIndex, '->', $valueSqlWithIndex))), '->', ',')"
     }
   }
 
@@ -359,7 +577,6 @@ object RandomDataGenerator {
       s"NAMED_STRUCT($nestedSqlExpression)"
     }
   }
-
 
   def sqlExpressionForNumeric(metadata: Metadata, typeName: String, sqlRand: String): String = {
     val (min, max, diff, mean) = typeName.toUpperCase match {

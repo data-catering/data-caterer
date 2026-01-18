@@ -74,13 +74,19 @@ Create a file depending on which interface you want to use.
 
 === "YAML"
 
-    In `docker/data/custom/plan/my-json.yaml`:
+    In `docker/data/custom/unified/my-json.yaml`:
     ```yaml
     name: "my_json_plan"
     description: "Create account data in JSON"
-    tasks:
-      - name: "json_task"
-        dataSourceName: "my_json"
+
+    dataSources:
+      - name: "my_json"
+        connection:
+          type: "json"
+          options:
+            path: "/tmp/custom/json/accounts"
+        steps:
+          - name: "accounts"
     ```
 
 === "UI"
@@ -130,13 +136,15 @@ Within our class, we can start by defining the connection properties to read/wri
 
 === "YAML"
 
-    In `docker/data/custom/application.conf`:
-    ```
-    json {
-        my_json {
-            "dateFormat": "dd-MM-yyyy"
-        }
-    }
+    In a unified YAML file:
+    ```yaml
+    dataSources:
+      - name: "my_json"
+        connection:
+          type: "json"
+          options:
+            path: "/opt/app/data/customer/account_json"
+            dateFormat: "dd-MM-yyyy"
     ```
 
 === "UI"
@@ -194,29 +202,31 @@ to the accounts generated.
 
 === "YAML"
 
-    In `docker/data/custom/task/json/json-task.yaml`:
+    In a unified YAML file:
     ```yaml
-    name: "json_task"
-    steps:
-      - name: "accounts"
-        type: "json"
-        options:
-          path: "/opt/app/data/customer/account_json"
-        fields:
-          - name: "account_id"
-          - name: "balance"
-            type: "double"
-          - name: "created_by"
-          - name: "open_time"
-            type: "timestamp"
-          - name: "status"
-          - name: "customer_details"
-            type: "struct"
+    dataSources:
+      - name: "my_json"
+        connection:
+          type: "json"
+          options:
+            path: "/opt/app/data/customer/account_json"
+        steps:
+          - name: "accounts"
             fields:
-              - name: "name"
-              - name: "age"
-                type: "integer"
-              - name: "city"
+              - name: "account_id"
+              - name: "balance"
+                type: "double"
+              - name: "created_by"
+              - name: "open_time"
+                type: "timestamp"
+              - name: "status"
+              - name: "customer_details"
+                type: "struct"
+                fields:
+                  - name: "name"
+                  - name: "age"
+                    type: "integer"
+                  - name: "city"
     ```
 
 === "UI"
@@ -318,24 +328,28 @@ If your JSON sink should output a bare top-level array when there is a single to
 === "YAML"
 
     ```yaml
-    name: "json_array_task"
-    steps:
+    name: "json_array_plan"
+
+    dataSources:
       - name: "json_array"
-        type: "json"
-        options:
-          path: "/opt/app/data/json-array"
-        fields:
-          - name: "items"
-            type: "array"
-            options:
-              unwrapTopLevelArray: true
+        connection:
+          type: "json"
+          options:
+            path: "/opt/app/data/json-array"
+        steps:
+          - name: "json_array"
             fields:
-              - name: "id"
-              - name: "score"
-                type: "double"
+              - name: "items"
+                type: "array"
                 options:
-                  min: 0
-                  max: 100
+                  unwrapTopLevelArray: true
+                fields:
+                  - name: "id"
+                  - name: "score"
+                    type: "double"
+                    options:
+                      min: 0
+                      max: 100
     ```
 
 === "UI"
