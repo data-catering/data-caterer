@@ -103,7 +103,13 @@ object Constants {
   lazy val DISTRIBUTION_UNIFORM = "uniform"
   lazy val DISTRIBUTION_EXPONENTIAL = "exponential"
   lazy val DISTRIBUTION_NORMAL = "normal"
+  lazy val DATE_EXCLUDE_WEEKENDS = "dateExcludeWeekends"
   lazy val ARRAY_TYPE = "arrayType"
+  lazy val ARRAY_UNIQUE_FROM = "arrayUniqueFrom"
+  lazy val ARRAY_ONE_OF = "arrayOneOf"
+  lazy val ARRAY_FIXED_SIZE = "arrayFixedSize"
+  lazy val ARRAY_EMPTY_PROBABILITY = "arrayEmptyProb"
+  lazy val ARRAY_WEIGHTED_ONE_OF = "arrayWeightedOneOf"
   lazy val EXPRESSION = "expression"
   lazy val DISTINCT_COUNT = "distinctCount"
   lazy val ROW_COUNT = "count"
@@ -403,6 +409,12 @@ object Constants {
   lazy val DEFAULT_VALIDATION_WEBHOOK_HTTP_METHOD = "GET"
   lazy val DEFAULT_VALIDATION_WEBHOOK_HTTP_STATUS_CODES = List(200)
   lazy val DEFAULT_VALIDATION_FIELD_NAME_TYPE = VALIDATION_FIELD_NAME_COUNT_EQUAL
+
+  //streaming defaults
+  lazy val DEFAULT_STREAMING_MAX_TIMEOUT_SECONDS = 3600
+  lazy val DEFAULT_STREAMING_MAX_ASYNC_PARALLELISM = 100
+  lazy val DEFAULT_STREAMING_RESPONSE_BUFFER_SIZE = 10000
+  lazy val DEFAULT_STREAMING_TIMESTAMP_WINDOW_MS = 1000L
 
   //metadata source
   lazy val METADATA_SOURCE_TYPE = "metadataSourceType"

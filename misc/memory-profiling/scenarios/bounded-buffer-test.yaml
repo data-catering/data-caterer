@@ -1,0 +1,67 @@
+version: "1.0"
+name: "bounded_buffer_http_memory_test"
+description: "Test to validate bounded buffer memory optimization with HTTP responses"
+
+config:
+  flags:
+    enableGenerateData: true
+    enableFastGeneration: true
+    enableSaveReports: true
+    enableDeleteGeneratedRecords: false
+    enableRecordTracking: false
+
+dataSources:
+  - name: "test_http"
+    connection:
+      type: "http"
+      options:
+        url: "http://localhost:8080"
+    steps:
+      - name: "buffer_test"
+        options:
+          format: "http"  # REQUIRED for HTTP format
+        count:
+          records: 1000  # 1K records to test buffer behavior
+          perColumnCount:
+            rate: 20  # 20 records per second
+        fields:
+          # Direct internal field names for HTTP
+          - name: "url"
+            static: "http://localhost:8080/"
+
+          - name: "method"
+            static: "POST"
+
+          - name: "Content-Type"
+            static: "application/json"
+
+          - name: "body"
+            options:
+              sql: "TO_JSON(STRUCT(buffer_test_id, response_payload, sequence, category, timestamp))"
+
+          # Body fields
+          - name: "buffer_test_id"
+            options:
+              regex: "BUF[0-9]{8}"
+
+          - name: "response_payload"
+            options:
+              regex: "[A-Za-z0-9]{500}"
+
+          - name: "sequence"
+            type: "integer"
+            options:
+              min: 1
+              max: 999999
+
+          - name: "category"
+            options:
+              oneOf:
+                - "ALPHA"
+                - "BETA"
+                - "GAMMA"
+                - "DELTA"
+                - "EPSILON"
+
+          - name: "timestamp"
+            type: "timestamp"

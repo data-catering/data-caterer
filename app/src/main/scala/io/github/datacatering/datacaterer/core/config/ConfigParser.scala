@@ -2,7 +2,7 @@ package io.github.datacatering.datacaterer.core.config
 
 import com.typesafe.config.{Config, ConfigFactory, ConfigValueType}
 import io.github.datacatering.datacaterer.api.model.Constants.{DRIVER, FORMAT, JDBC, MYSQL, MYSQL_DRIVER, POSTGRES, POSTGRES_DRIVER}
-import io.github.datacatering.datacaterer.api.model.{AlertConfig, DataCatererConfiguration, FlagsConfig, FoldersConfig, GenerationConfig, MetadataConfig, ValidationConfig}
+import io.github.datacatering.datacaterer.api.model.{AlertConfig, DataCatererConfiguration, FlagsConfig, FoldersConfig, GenerationConfig, MetadataConfig, StreamingConfig, ValidationConfig}
 import io.github.datacatering.datacaterer.core.model.Constants.{APPLICATION_CONFIG_PATH, RUNTIME_MASTER, SUPPORTED_CONNECTION_FORMATS}
 import io.github.datacatering.datacaterer.core.util.ObjectMapperUtil
 import org.apache.log4j.Logger
@@ -21,6 +21,12 @@ object ConfigParser {
   lazy val metadataConfig: MetadataConfig = ObjectMapperUtil.jsonObjectMapper.convertValue(config.getObject("metadata").unwrapped(), classOf[MetadataConfig])
   lazy val generationConfig: GenerationConfig = ObjectMapperUtil.jsonObjectMapper.convertValue(config.getObject("generation").unwrapped(), classOf[GenerationConfig])
   lazy val validationConfig: ValidationConfig = ObjectMapperUtil.jsonObjectMapper.convertValue(config.getObject("validation").unwrapped(), classOf[ValidationConfig])
+  lazy val streamingConfig: StreamingConfig = Try(
+    ObjectMapperUtil.jsonObjectMapper.convertValue(config.getObject("streaming").unwrapped(), classOf[StreamingConfig])
+  ).getOrElse {
+    LOGGER.debug("No streaming configuration found in application.conf, using defaults")
+    StreamingConfig()
+  }
   lazy val alertConfig: AlertConfig = ObjectMapperUtil.jsonObjectMapper.convertValue(config.getObject("alert").unwrapped(), classOf[AlertConfig])
   lazy val baseRuntimeConfig: Map[String, String] = ObjectMapperUtil.jsonObjectMapper.convertValue(config.getObject("runtime.config").unwrapped(), classOf[Map[String, String]])
   lazy val master: String = config.getString(RUNTIME_MASTER)
@@ -114,6 +120,7 @@ object ConfigParser {
       metadataConfig,
       optimizedGeneration,
       validationConfig,
+      streamingConfig,
       alertConfig,
       connectionConfigsByName,
       optimizedRuntime ++ sparkConnectionConfig,
@@ -132,12 +139,18 @@ object ConfigParser {
     val freshMetadataConfig = ObjectMapperUtil.jsonObjectMapper.convertValue(freshConfig.getObject("metadata").unwrapped(), classOf[MetadataConfig])
     val freshGenerationConfig = ObjectMapperUtil.jsonObjectMapper.convertValue(freshConfig.getObject("generation").unwrapped(), classOf[GenerationConfig])
     val freshValidationConfig = ObjectMapperUtil.jsonObjectMapper.convertValue(freshConfig.getObject("validation").unwrapped(), classOf[ValidationConfig])
+    val freshStreamingConfig = Try(
+      ObjectMapperUtil.jsonObjectMapper.convertValue(freshConfig.getObject("streaming").unwrapped(), classOf[StreamingConfig])
+    ).getOrElse {
+      LOGGER.debug("No streaming configuration found in application.conf (reload), using defaults")
+      StreamingConfig()
+    }
     val freshAlertConfig = ObjectMapperUtil.jsonObjectMapper.convertValue(freshConfig.getObject("alert").unwrapped(), classOf[AlertConfig])
     val freshBaseRuntimeConfig = ObjectMapperUtil.jsonObjectMapper.convertValue(freshConfig.getObject("runtime.config").unwrapped(), classOf[Map[String, String]])
     val freshMaster = freshConfig.getString(RUNTIME_MASTER)
     val freshConnectionConfigsByName = getConnectionConfigsByName
     val freshSparkConnectionConfig = getSparkConnectionConfig
-    
+
     val (optimizedFlags, optimizedGeneration, optimizedRuntime) = applyFastGenerationOptimizations(freshFlagsConfig, freshGenerationConfig, freshBaseRuntimeConfig)
     DataCatererConfiguration(
       optimizedFlags,
@@ -145,6 +158,7 @@ object ConfigParser {
       freshMetadataConfig,
       optimizedGeneration,
       freshValidationConfig,
+      freshStreamingConfig,
       freshAlertConfig,
       freshConnectionConfigsByName,
       optimizedRuntime ++ freshSparkConnectionConfig,

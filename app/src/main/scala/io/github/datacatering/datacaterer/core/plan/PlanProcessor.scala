@@ -11,6 +11,7 @@ import io.github.datacatering.datacaterer.core.generator.metadata.datasource.Dat
 import io.github.datacatering.datacaterer.core.model.Constants.METADATA_CONNECTION_OPTIONS
 import io.github.datacatering.datacaterer.core.model.PlanRunResults
 import io.github.datacatering.datacaterer.core.parser.PlanParser
+import io.github.datacatering.datacaterer.core.parser.unified.{UnifiedConfigConverter, UnifiedYamlParser}
 import io.github.datacatering.datacaterer.core.util.SparkProvider
 import org.apache.log4j.Logger
 import org.apache.spark.sql.SparkSession
@@ -55,6 +56,24 @@ object PlanProcessor {
       )
     )
     executePlanWithConfig(dataCatererConfiguration, None, DATA_CATERER_INTERFACE_YAML)
+  }
+
+  /**
+   * Execute from a unified YAML configuration file.
+   * The unified format contains connections, data sources, fields, validations, and configuration
+   * all in a single file.
+   */
+  def executeFromUnifiedYaml(unifiedFilePath: String): PlanRunResults = {
+    val unifiedConfig = UnifiedYamlParser.parse(unifiedFilePath)(null)
+    val (plan, tasks, validations, dataCatererConfig) = UnifiedConfigConverter.convert(unifiedConfig)
+
+    implicit val sparkSession: SparkSession = new SparkProvider(
+      dataCatererConfig.master,
+      dataCatererConfig.runtimeConfig
+    ).getSparkSession
+
+    val unifiedPlanRun = new UnifiedPlanRun(plan, tasks, validations, dataCatererConfig)
+    executePlanWithConfig(dataCatererConfig, Some(unifiedPlanRun), DATA_CATERER_INTERFACE_YAML)
   }
 
   private def executePlan(planRun: PlanRun, interface: String): PlanRunResults = {
@@ -346,4 +365,32 @@ class YamlPlanRun(
   })
 
   _configuration = dataCatererConfiguration.copy(connectionConfigByName = updatedConnectionConfig)
+}
+
+/**
+ * PlanRun implementation for unified YAML configuration.
+ * All configuration (connections, tasks, validations) is already resolved in the converter.
+ */
+class UnifiedPlanRun(
+                      unifiedPlan: Plan,
+                      unifiedTasks: List[Task],
+                      validations: Option[List[ValidationConfiguration]],
+                      dataCatererConfig: DataCatererConfiguration
+                    ) extends PlanRun {
+  _plan = unifiedPlan
+  _tasks = unifiedTasks.map(task => {
+    // Merge connection config into each step's options
+    val dataSourceName = unifiedPlan.tasks.find(ts => ts.name.equalsIgnoreCase(task.name))
+      .map(_.dataSourceName)
+      .getOrElse(task.name.replace("_task", ""))
+    val connectionConfig = dataCatererConfig.connectionConfigByName.getOrElse(dataSourceName, Map())
+
+    val stepsWithConnectionConfig = task.steps.map(step => {
+      step.copy(options = connectionConfig ++ step.options)
+    })
+
+    task.copy(steps = stepsWithConnectionConfig)
+  })
+  _validations = validations.getOrElse(List())
+  _configuration = dataCatererConfig
 }

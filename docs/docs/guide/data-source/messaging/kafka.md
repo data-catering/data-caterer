@@ -87,13 +87,20 @@ Create a file depending on which interface you want to use.
 
 === "YAML"
 
-    In `docker/data/custom/plan/my-kafka.yaml`:
+    Create a unified YAML file `docker/data/custom/unified/my-kafka.yaml`:
     ```yaml
     name: "my_kafka_plan"
     description: "Create account data via Kafka"
-    tasks:
-      - name: "kafka_task"
-        dataSourceName: "my_kafka"
+
+    dataSources:
+      - name: "my_kafka"
+        connection:
+          type: "kafka"
+          options:
+            url: "kafkaserver:29092"
+        steps:
+          - name: "account-topic"
+            # Add fields here
     ```
 
 === "UI"
@@ -143,14 +150,16 @@ Within our class, we can start by defining the connection properties to connect 
 
 === "YAML"
 
-    In `docker/data/custom/application.conf`:
-    ```
-    kafka {
-        my_kafka {
-            kafka.bootstrap.servers = "localhost:9092"
-            kafka.bootstrap.servers = ${?KAFKA_BOOTSTRAP_SERVERS}
-        }
-    }
+    In a unified YAML file, connection is defined inline:
+    ```yaml
+    dataSources:
+      - name: "my_kafka"
+        connection:
+          type: "kafka"
+          options:
+            url: "kafkaserver:29092"
+          # Or use environment variable
+          # url: "${KAFKA_BOOTSTRAP_SERVERS}"
     ```
 
 === "UI"
@@ -249,57 +258,69 @@ the `text` fields do not have a data type defined. This is because the default d
 
 === "YAML"
 
-    In `docker/data/custom/task/kafka/kafka-task.yaml`:
+    In a unified YAML file:
     ```yaml
-    name: "kafka_task"
-    steps:
-      - name: "kafka_account"
-        options:
-          topic: "account-topic"
-        fields:
-          - name: "key"
+    name: "my_kafka_plan"
+    description: "Generate Kafka messages with nested structure"
+
+    dataSources:
+      - name: "my_kafka"
+        connection:
+          type: "kafka"
+          options:
+            url: "kafkaserver:29092"
+        steps:
+          - name: "kafka_account"
             options:
-              sql: "body.account_id"
-          - name: "messageBody"
+              topic: "account-topic"
             fields:
-              - name: "account_id"
-              - name: "year"
-                type: "int"
-                options:
-                  min: "2021"
-                  max: "2022"
-              - name: "amount"
-                type: "double"
-                options:
-                  min: "10.0"
-                  max: "100.0"
-              - name: "details"
-                fields:
-                  - name: "name"
-                  - name: "first_txn_date"
-                    type: "date"
-                    options:
-                      sql: "ELEMENT_AT(SORT_ARRAY(body.transactions.txn_date), 1)"
-                  - name: "updated_by"
-                    fields:
-                      - name: "user"
-                      - name: "time"
-                        type: "timestamp"
-              - name: "transactions"
-                type: "array"
-                fields:
-                  - name: "txn_date"
-                    type: "date"
-                  - name: "amount"
-                    type: "double"
-          - name: "messageHeaders"
-            fields:
-              - name: "account-id"
+              - name: "key"
                 options:
                   sql: "body.account_id"
-              - name: "updated"
-                options:
-                  sql: "body.details.update_by.time"
+              - name: "messageBody"
+                type: "struct"
+                fields:
+                  - name: "account_id"
+                  - name: "year"
+                    type: "integer"
+                    options:
+                      min: 2021
+                      max: 2022
+                  - name: "amount"
+                    type: "double"
+                    options:
+                      min: 10.0
+                      max: 100.0
+                  - name: "details"
+                    type: "struct"
+                    fields:
+                      - name: "name"
+                      - name: "first_txn_date"
+                        type: "date"
+                        options:
+                          sql: "ELEMENT_AT(SORT_ARRAY(body.transactions.txn_date), 1)"
+                      - name: "updated_by"
+                        type: "struct"
+                        fields:
+                          - name: "user"
+                          - name: "time"
+                            type: "timestamp"
+                  - name: "transactions"
+                    type: "array"
+                    fields:
+                      - name: "txn_date"
+                        type: "date"
+                      - name: "amount"
+                        type: "double"
+              - name: "messageHeaders"
+                type: "struct"
+                fields:
+                  - name: "account-id"
+                    options:
+                      sql: "body.account_id"
+                  - name: "updated"
+                    options:
+                      sql: "body.details.update_by.time"
     ```
 
 === "UI"
@@ -355,15 +376,15 @@ expression.
 
 === "YAML"
 
-    In `docker/data/custom/task/kafka/kafka-task.yaml`:
+    In a unified YAML file:
     ```yaml
-    name: "kafka_task"
     steps:
       - name: "kafka_account"
         options:
           topic: "account-topic"
         fields:
           - name: "messageHeaders"
+            type: "struct"
             fields:
               - name: "account-id"
                 options:
@@ -407,15 +428,15 @@ can be controlled via `arrayMinLength` and `arrayMaxLength`.
 
 === "YAML"
 
-    In `docker/data/custom/task/kafka/kafka-task.yaml`:
+    In a unified YAML file:
     ```yaml
-    name: "kafka_task"
     steps:
       - name: "kafka_account"
         options:
           topic: "account-topic"
         fields:
           - name: "messageBody"
+            type: "struct"
             fields:
               - name: "transactions"
                 type: "array"
@@ -469,17 +490,18 @@ sort the array by `txn_date` and get the first element.
 
 === "YAML"
 
-    In `docker/data/custom/task/kafka/kafka-task.yaml`:
+    In a unified YAML file:
     ```yaml
-    name: "kafka_task"
     steps:
       - name: "kafka_account"
         options:
           topic: "account-topic"
         fields:
           - name: "messageBody"
+            type: "struct"
             fields:
               - name: "details"
+                type: "struct"
                 fields:
                   - name: "name"
                   - name: "first_txn_date"
@@ -487,6 +509,7 @@ sort the array by `txn_date` and get the first element.
                     options:
                       sql: "ELEMENT_AT(SORT_ARRAY(body.transactions.txn_date), 1)"
                   - name: "updated_by"
+                    type: "struct"
                     fields:
                       - name: "user"
                       - name: "time"
@@ -521,11 +544,11 @@ output folder of that report via configurations.
 
 === "YAML"
 
-    In `docker/data/custom/application.conf`:
-    ```
-    folders {
-      generatedReportsFolderPath = "/opt/app/data/report"
-    }
+    In a unified YAML file, add a `config` section:
+    ```yaml
+    config:
+      folders:
+        generatedReportsFolderPath: "/opt/app/data/report"
     ```
 
 === "UI"

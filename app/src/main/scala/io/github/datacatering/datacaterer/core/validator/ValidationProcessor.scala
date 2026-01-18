@@ -37,7 +37,7 @@ class ValidationProcessor(
                            optValidationConfigs: Option[List[ValidationConfiguration]],
                            validationConfig: ValidationConfig,
                            foldersConfig: FoldersConfig,
-                           optPerformanceMetrics: Option[io.github.datacatering.datacaterer.core.generator.metrics.PerformanceMetrics] = None
+                           optPerformanceMetrics: Option[io.github.datacatering.datacaterer.api.model.PerformanceMetrics] = None
                          )(implicit sparkSession: SparkSession) {
 
   private val LOGGER = Logger.getLogger(getClass.getName)

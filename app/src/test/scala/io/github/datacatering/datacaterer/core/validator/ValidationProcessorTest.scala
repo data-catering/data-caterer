@@ -68,7 +68,12 @@ class ValidationProcessorTest extends SparkSuite {
   }
 
   test("Can read validations from YAML file") {
-    val path = Files.createTempDirectory("yaml-validation-json-test").toString
+    val path = "/tmp/yaml-validation-json-test"
+    // Clean up any existing data
+    val pathDir = new File(path)
+    if (pathDir.exists()) {
+      new Directory(pathDir).deleteRecursively()
+    }
     df.write.format("json").mode("overwrite").save(path)
     val validationProcessor = new ValidationProcessor(
       Map("json" -> Map(FORMAT -> "json")),

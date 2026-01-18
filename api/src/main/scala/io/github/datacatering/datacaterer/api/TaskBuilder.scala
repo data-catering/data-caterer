@@ -1149,6 +1149,521 @@ case class FieldBuilder(field: Field = Field()) {
     this.modify(_.field.options).setTo(getGenBuilder.arrayMaxLength(length).options)
 
   /**
+   * Generates an array with a fixed size.
+   * This is a convenience method equivalent to setting arrayMinLength and arrayMaxLength to the same value.
+   *
+   * @param size the exact size of the generated array
+   * @return the updated `FieldBuilder` instance
+   * @example {{{
+   *   field.name("rgb_values").type("array<int>").arrayFixedSize(3).min(0).max(255)
+   *   // Generates arrays like: [128, 45, 200]
+   * }}}
+   */
+  def arrayFixedSize(size: Int): FieldBuilder =
+    this.modify(_.field.options).setTo(getGenBuilder.arrayFixedSize(size).options)
+
+  /**
+   * Generates an array by randomly selecting unique values from the provided list.
+   * The array will contain between arrayMinLength and arrayMaxLength elements, all unique.
+   * This is useful for generating tags, categories, permissions, or any list of non-repeating choices.
+   *
+   * SQL Pattern: SLICE(SHUFFLE(ARRAY(...)), 1, randomSize)
+   *
+   * @param values the values to randomly select from (without duplicates)
+   * @return the updated `FieldBuilder` instance
+   * @example {{{
+   *   field.name("tags").arrayUniqueFrom("finance", "tech", "healthcare", "retail")
+   *     .arrayMinLength(2).arrayMaxLength(4)
+   *   // Generates arrays like: ["tech", "healthcare", "finance"]
+   *
+   *   field.name("permissions").arrayUniqueFrom("READ", "WRITE", "DELETE", "ADMIN")
+   *     .arrayFixedSize(2)
+   *   // Generates arrays like: ["WRITE", "ADMIN"]
+   * }}}
+   */
+  @scala.annotation.varargs
+  def arrayUniqueFrom(values: Any*): FieldBuilder =
+    this.modify(_.field.options).setTo(getGenBuilder.arrayUniqueFrom(values: _*).options)
+
+  /**
+   * Generates an array by randomly selecting values from the provided list (duplicates allowed).
+   * The array will contain between arrayMinLength and arrayMaxLength elements.
+   * This is useful for generating status histories, event types, or any repeatable choices.
+   *
+   * SQL Pattern: TRANSFORM(ARRAY_REPEAT(1, randomSize), i -> ELEMENT_AT(ARRAY(...), randomIndex))
+   *
+   * @param values the values to randomly select from (duplicates allowed)
+   * @return the updated `FieldBuilder` instance
+   * @example {{{
+   *   field.name("event_types").arrayOneOf("LOGIN", "LOGOUT", "VIEW", "CLICK")
+   *     .arrayMinLength(5).arrayMaxLength(10)
+   *   // Generates arrays like: ["LOGIN", "VIEW", "VIEW", "CLICK", "LOGOUT"]
+   *
+   *   field.name("dice_rolls").type("array<int>").arrayOneOf(1, 2, 3, 4, 5, 6)
+   *     .arrayFixedSize(10)
+   *   // Generates arrays like: [3, 6, 2, 2, 5, 1, 4, 6, 3, 2]
+   * }}}
+   */
+  @scala.annotation.varargs
+  def arrayOneOf(values: Any*): FieldBuilder =
+    this.modify(_.field.options).setTo(getGenBuilder.arrayOneOf(values: _*).options)
+
+  /**
+   * Sets the probability that the generated array will be empty.
+   * This is useful for optional array fields where some records should have no values.
+   *
+   * @param probability the probability (0.0 to 1.0) that the array will be empty
+   * @return the updated `FieldBuilder` instance
+   * @example {{{
+   *   field.name("optional_tags").type("array<string>")
+   *     .arrayEmptyProbability(0.3)  // 30% of records will have empty arrays
+   *     .arrayMinLength(1).arrayMaxLength(5)
+   *   // 30% of records: []
+   *   // 70% of records: ["tag1", "tag2", ...]
+   * }}}
+   */
+  def arrayEmptyProbability(probability: Double): FieldBuilder =
+    this.modify(_.field.options).setTo(getGenBuilder.arrayEmptyProbability(probability).options)
+
+  /**
+   * Generates an array by randomly selecting values with weighted probabilities.
+   * Each element is chosen independently according to the specified weights.
+   * This is useful for generating realistic distributions (e.g., priority levels, status codes).
+   *
+   * SQL Pattern: Complex CASE WHEN statement based on random values and cumulative weights
+   *
+   * @param weightedValues sequence of (value, weight) tuples where weights are relative probabilities
+   * @return the updated `FieldBuilder` instance
+   * @example {{{
+   *   field.name("priorities").arrayWeightedOneOf(
+   *     ("HIGH", 0.2),
+   *     ("MEDIUM", 0.5),
+   *     ("LOW", 0.3)
+   *   ).arrayFixedSize(10)
+   *   // Generates arrays with ~20% HIGH, ~50% MEDIUM, ~30% LOW
+   *   // Example: ["MEDIUM", "LOW", "MEDIUM", "HIGH", "MEDIUM", "LOW", ...]
+   *
+   *   field.name("http_statuses").type("array<int>").arrayWeightedOneOf(
+   *     (200, 0.8),
+   *     (404, 0.1),
+   *     (500, 0.1)
+   *   ).arrayMinLength(5).arrayMaxLength(15)
+   *   // Generates arrays like: [200, 200, 404, 200, 200, 500, 200, ...]
+   * }}}
+   */
+  @scala.annotation.varargs
+  def arrayWeightedOneOf(weightedValues: (Any, Double)*): FieldBuilder =
+    this.modify(_.field.options).setTo(getGenBuilder.arrayWeightedOneOf(weightedValues: _*).options)
+
+  // ========== String Pattern Helpers ==========
+
+  /**
+   * Generates realistic email addresses using DataFaker.
+   *
+   * @param domain optional domain (default: random realistic domains)
+   * @return the updated FieldBuilder instance
+   * @example {{{
+   *   field.name("email").email()  // john.doe@example.com
+   *   field.name("work_email").email("company.com")  // jane.smith@company.com
+   * }}}
+   */
+  def email(domain: String = ""): FieldBuilder = {
+    if (domain.nonEmpty) {
+      require(domain.matches("[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}"),
+        s"Invalid domain format: '$domain'. Expected format: 'example.com' or 'subdomain.example.com'")
+    }
+    val expr = if (domain.isEmpty) "#{Internet.emailAddress}"
+    else s"#{Name.first_name}.#{Name.last_name}@$domain"
+    this.modify(_.field.options).setTo(getGenBuilder.expression(expr).options)
+  }
+
+  /**
+   * Generates realistic phone numbers using DataFaker.
+   *
+   * @param format country format: "US" (default), "UK", "AU", etc.
+   * @return the updated FieldBuilder instance
+   * @example {{{
+   *   field.name("phone").phone()  // (555) 123-4567
+   *   field.name("uk_phone").phone("UK")  // +44 20 1234 5678
+   * }}}
+   */
+  def phone(format: String = "US"): FieldBuilder = {
+    val supportedFormats = List("US", "UK", "AU")
+    val normalizedFormat = format.toUpperCase
+    require(supportedFormats.contains(normalizedFormat),
+      s"Unsupported phone format: '$format'. Supported formats: ${supportedFormats.mkString(", ")}")
+
+    val expr = normalizedFormat match {
+      case "US" => "#{PhoneNumber.cellPhone}"
+      case "UK" => "#{PhoneNumber.phoneNumber}"
+      case "AU" => "#{PhoneNumber.phoneNumber}"
+    }
+    this.modify(_.field.options).setTo(getGenBuilder.expression(expr).options)
+  }
+
+  /**
+   * Generates UUIDs (version 4).
+   * Wrapper for existing uuid() in GeneratorBuilder.
+   *
+   * @return the updated FieldBuilder instance
+   * @example {{{
+   *   field.name("id").uuidPattern()  // 550e8400-e29b-41d4-a716-446655440000
+   * }}}
+   */
+  def uuidPattern(): FieldBuilder =
+    this.modify(_.field.options).setTo(getGenBuilder.uuid().options)
+
+  /**
+   * Generates realistic URLs using DataFaker.
+   *
+   * @param protocol "http" or "https" (default: "https")
+   * @return the updated FieldBuilder instance
+   * @example {{{
+   *   field.name("website").url()  // https://example.com
+   *   field.name("api").url("http")  // http://api.example.com
+   * }}}
+   */
+  def url(protocol: String = "https"): FieldBuilder = {
+    val normalizedProtocol = protocol.toLowerCase
+    require(List("http", "https").contains(normalizedProtocol),
+      s"Invalid protocol: '$protocol'. Supported protocols: http, https")
+
+    val expr = s"$normalizedProtocol://#{Internet.domainName}"
+    this.modify(_.field.options).setTo(getGenBuilder.expression(expr).options)
+  }
+
+  /**
+   * Generates IPv4 addresses using DataFaker.
+   *
+   * @return the updated FieldBuilder instance
+   * @example {{{
+   *   field.name("ip").ipv4()  // 192.168.1.42
+   * }}}
+   */
+  def ipv4(): FieldBuilder =
+    this.modify(_.field.options).setTo(getGenBuilder.expression("#{Internet.ipV4Address}").options)
+
+  /**
+   * Generates IPv6 addresses using DataFaker.
+   *
+   * @return the updated FieldBuilder instance
+   * @example {{{
+   *   field.name("ip6").ipv6()  // 2001:0db8:85a3:0000:0000:8a2e:0370:7334
+   * }}}
+   */
+  def ipv6(): FieldBuilder =
+    this.modify(_.field.options).setTo(getGenBuilder.expression("#{Internet.ipV6Address}").options)
+
+  /**
+   * Generates US Social Security Numbers.
+   *
+   * @return the updated FieldBuilder instance
+   * @example {{{
+   *   field.name("ssn").ssnPattern()  // 123-45-6789
+   * }}}
+   */
+  def ssnPattern(): FieldBuilder =
+    this.modify(_.field.options).setTo(getGenBuilder.regex("[0-9]{3}-[0-9]{2}-[0-9]{4}").options)
+
+  /**
+   * Generates credit card numbers.
+   *
+   * @param cardType "visa", "mastercard", "amex", etc.
+   * @return the updated FieldBuilder instance
+   * @example {{{
+   *   field.name("card").creditCard()  // Valid Luhn checksum
+   *   field.name("card").creditCard("visa")  // Visa card number
+   * }}}
+   */
+  def creditCard(cardType: String = "visa"): FieldBuilder = {
+    val expr = cardType.toLowerCase match {
+      case "visa" => "#{Finance.creditCard}"
+      case "mastercard" => "#{Finance.creditCard}"
+      case "amex" => "#{Finance.creditCard}"
+      case _ => "#{Finance.creditCard}"
+    }
+    this.modify(_.field.options).setTo(getGenBuilder.expression(expr).options)
+  }
+
+  // ========== Date/Time Helpers ==========
+
+  /**
+   * Generate dates within the last N days from today.
+   *
+   * @param days number of days back from today (default: 30)
+   * @return the updated FieldBuilder instance
+   * @example {{{
+   *   field.name("recent_date").withinDays(30)  // Last 30 days
+   * }}}
+   */
+  def withinDays(days: Int = 30): FieldBuilder = {
+    // Use min/max approach instead of SQL so excludeWeekends() can work
+    val today = java.time.LocalDate.now()
+    val minDate = today.minusDays(days)
+    this.modify(_.field.options).setTo(
+      getGenBuilder.min(minDate.toString).max(today.toString).options
+    )
+  }
+
+  /**
+   * Generate dates in the future N days from today.
+   *
+   * @param days number of days forward from today (default: 90)
+   * @return the updated FieldBuilder instance
+   * @example {{{
+   *   field.name("scheduled_date").futureDays(90)
+   * }}}
+   */
+  def futureDays(days: Int = 90): FieldBuilder = {
+    // Use min/max approach instead of SQL so excludeWeekends() can work
+    val today = java.time.LocalDate.now()
+    val maxDate = today.plusDays(days)
+    this.modify(_.field.options).setTo(
+      getGenBuilder.min(today.toString).max(maxDate.toString).options
+    )
+  }
+
+  /**
+   * Exclude weekends from generated dates.
+   * Must be combined with date generation method (withinDays, futureDays, etc.)
+   *
+   * @return the updated FieldBuilder instance
+   * @example {{{
+   *   field.name("business_date").withinDays(30).excludeWeekends()
+   * }}}
+   */
+  def excludeWeekends(): FieldBuilder = {
+    this.modify(_.field.options)(_ ++ Map(DATE_EXCLUDE_WEEKENDS -> "true"))
+  }
+
+  /**
+   * Generate timestamps within business hours (9 AM - 5 PM by default).
+   *
+   * @param startHour start hour (0-23, default: 9)
+   * @param endHour end hour (0-23, default: 17)
+   * @return the updated FieldBuilder instance
+   * @example {{{
+   *   field.name("created_at").businessHours()  // 9 AM - 5 PM
+   *   field.name("created_at").businessHours(startHour = 8, endHour = 18)
+   * }}}
+   */
+  def businessHours(startHour: Int = 9, endHour: Int = 17): FieldBuilder = {
+    require(startHour >= 0 && startHour < 24, "startHour must be 0-23")
+    require(endHour >= 0 && endHour < 24, "endHour must be 0-23")
+    require(endHour > startHour, "endHour must be greater than startHour")
+
+    val sql = s"""TIMESTAMP_SECONDS(
+      |UNIX_TIMESTAMP(DATE_ADD(CURRENT_DATE(), CAST(RAND() * 30 AS INT))) +
+      |CAST(RAND() * ${(endHour - startHour) * 3600} + ${startHour * 3600} AS LONG)
+      |)""".stripMargin
+    this.modify(_.field.options).setTo(getGenBuilder.sql(sql).options)
+  }
+
+  /**
+   * Generate timestamps between specific start and end times.
+   *
+   * @param start start time (HH:mm format, e.g., "09:00")
+   * @param end end time (HH:mm format, e.g., "17:00")
+   * @return the updated FieldBuilder instance
+   * @example {{{
+   *   field.name("time").timeBetween("09:00", "17:00")
+   * }}}
+   */
+  def timeBetween(start: String, end: String): FieldBuilder = {
+    require(start.matches("\\d{1,2}:\\d{2}"),
+      s"Invalid start time format: '$start'. Expected format: 'HH:mm' (e.g., '09:00' or '9:00')")
+    require(end.matches("\\d{1,2}:\\d{2}"),
+      s"Invalid end time format: '$end'. Expected format: 'HH:mm' (e.g., '17:00')")
+
+    val startParts = start.split(":")
+    val endParts = end.split(":")
+    val startHour = startParts(0).toInt
+    val startMinute = startParts(1).toInt
+    val endHour = endParts(0).toInt
+    val endMinute = endParts(1).toInt
+
+    require(startHour >= 0 && startHour < 24,
+      s"Invalid start hour: $startHour. Must be 0-23")
+    require(endHour >= 0 && endHour < 24,
+      s"Invalid end hour: $endHour. Must be 0-23")
+    require(startMinute >= 0 && startMinute < 60,
+      s"Invalid start minute: $startMinute. Must be 0-59")
+    require(endMinute >= 0 && endMinute < 60,
+      s"Invalid end minute: $endMinute. Must be 0-59")
+
+    val startSeconds = startHour * 3600 + startMinute * 60
+    val endSeconds = endHour * 3600 + endMinute * 60
+
+    require(endSeconds > startSeconds,
+      s"End time '$end' must be after start time '$start'")
+
+    val sql = s"""TIMESTAMP_SECONDS(
+      |UNIX_TIMESTAMP(CURRENT_DATE()) +
+      |CAST(RAND() * ${endSeconds - startSeconds} + $startSeconds AS LONG)
+      |)""".stripMargin
+    this.modify(_.field.options).setTo(getGenBuilder.sql(sql).options)
+  }
+
+  /**
+   * Generate sequential dates with specified increment.
+   * Uses __index_inc for sequential generation.
+   *
+   * @param startDate start date (YYYY-MM-DD format)
+   * @param incrementDays days to increment per record (default: 1)
+   * @return the updated FieldBuilder instance
+   * @example {{{
+   *   field.name("date").dailySequence("2024-01-01")  // 2024-01-01, 2024-01-02, ...
+   * }}}
+   */
+  def dailySequence(startDate: String, incrementDays: Int = 1): FieldBuilder = {
+    val sql = s"DATE_ADD('$startDate', CAST($INDEX_INC_FIELD * $incrementDays AS INT))"
+    this.modify(_.field.options).setTo(getGenBuilder.sql(sql).options)
+  }
+
+  /**
+   * Generate sequential timestamps with specified increment.
+   *
+   * @param startTimestamp start timestamp (YYYY-MM-DD HH:mm:ss format)
+   * @param incrementSeconds seconds to increment per record (default: 3600 = 1 hour)
+   * @return the updated FieldBuilder instance
+   * @example {{{
+   *   field.name("timestamp").hourlySequence("2024-01-01 00:00:00")
+   * }}}
+   */
+  def hourlySequence(startTimestamp: String, incrementSeconds: Int = 3600): FieldBuilder = {
+    val sql = s"TIMESTAMP_SECONDS(UNIX_TIMESTAMP('$startTimestamp') + $INDEX_INC_FIELD * $incrementSeconds)"
+    this.modify(_.field.options).setTo(getGenBuilder.sql(sql).options)
+  }
+
+  // ========== Sequential Helpers ==========
+
+  /**
+   * Generate sequential values with prefix, padding, and suffix.
+   * Uses __index_inc for sequential generation.
+   *
+   * @param start starting value (default: 1)
+   * @param step increment per record (default: 1)
+   * @param prefix string prefix (default: "")
+   * @param padding zero-padding width (default: 0 = no padding)
+   * @param suffix string suffix (default: "")
+   * @return the updated FieldBuilder instance
+   * @example {{{
+   *   field.name("order_id").sequence(start = 1000, prefix = "ORD-", padding = 8)
+   *   // ORD-00001000, ORD-00001001, ORD-00001002, ...
+   * }}}
+   */
+  def sequence(start: Long = 1, step: Long = 1, prefix: String = "",
+               padding: Int = 0, suffix: String = ""): FieldBuilder = {
+    val numExpr = s"($start + $INDEX_INC_FIELD * $step)"
+    val paddedExpr = if (padding > 0) s"LPAD(CAST($numExpr AS STRING), $padding, '0')" else s"CAST($numExpr AS STRING)"
+    val sql = s"CONCAT('$prefix', $paddedExpr, '$suffix')"
+    this.modify(_.field.options).setTo(getGenBuilder.sql(sql).options)
+  }
+
+  /**
+   * Generate daily batch IDs with date and sequence.
+   *
+   * @param prefix batch prefix (default: "BATCH-")
+   * @param dateFormat date format (default: "yyyyMMdd")
+   * @return the updated FieldBuilder instance
+   * @example {{{
+   *   field.name("batch_id").dailyBatchSequence()
+   *   // BATCH-20240101-001, BATCH-20240101-002, ...
+   * }}}
+   */
+  def dailyBatchSequence(prefix: String = "BATCH-", dateFormat: String = "yyyyMMdd"): FieldBuilder = {
+    val sql = s"CONCAT('$prefix', DATE_FORMAT(CURRENT_DATE(), '$dateFormat'), '-', LPAD(CAST($INDEX_INC_FIELD AS STRING), 3, '0'))"
+    this.modify(_.field.options).setTo(getGenBuilder.sql(sql).options)
+  }
+
+  /**
+   * Generate semantic version numbers (major.minor.patch).
+   *
+   * @param major major version (default: 1)
+   * @param minor minor version (default: 0)
+   * @param patchIncrement true to increment patch per record (default: true)
+   * @return the updated FieldBuilder instance
+   * @example {{{
+   *   field.name("version").semanticVersion(major = 2, minor = 1)
+   *   // 2.1.0, 2.1.1, 2.1.2, ...
+   * }}}
+   */
+  def semanticVersion(major: Int = 1, minor: Int = 0, patchIncrement: Boolean = true): FieldBuilder = {
+    val patchExpr = if (patchIncrement) s"$INDEX_INC_FIELD" else "0"
+    val sql = s"CONCAT('$major', '.', '$minor', '.', $patchExpr)"
+    this.modify(_.field.options).setTo(getGenBuilder.sql(sql).options)
+  }
+
+  // ========== Conditional Helpers ==========
+
+  /**
+   * Create a conditional reference to another field.
+   * Used for type-safe conditional value generation.
+   *
+   * @param fieldName name of field to reference
+   * @return ConditionalBuilder for chaining conditions
+   * @example {{{
+   *   when("total").greaterThan(100)
+   * }}}
+   */
+  def when(fieldName: String): ConditionalBuilder =
+    ConditionalBuilder(fieldName)
+
+  /**
+   * Generate conditional values based on other fields.
+   * Builds a SQL CASE WHEN expression.
+   *
+   * @param cases sequence of conditional cases (condition -> value)
+   * @param elseValue default value when no conditions match
+   * @return the updated FieldBuilder instance
+   * @example {{{
+   *   field.name("discount").conditionalValue(
+   *     when("total").greaterThan(1000) -> 100,
+   *     when("total").greaterThan(500) -> 50,
+   *     when("total").greaterThan(100) -> 10
+   *   )(elseValue = 0)
+   * }}}
+   */
+  def conditionalValue(cases: ConditionalCase*)(elseValue: Any = "NULL"): FieldBuilder = {
+    val quotedElse = elseValue match {
+      case s: String if s != "NULL" => s"'$s'"
+      case v => v.toString
+    }
+
+    val caseSql = cases.map(_.toSql).mkString(" ")
+    val fullSql = s"CASE $caseSql ELSE $quotedElse END"
+
+    this.modify(_.field.options).setTo(getGenBuilder.sql(fullSql).options)
+  }
+
+  /**
+   * Map values from one field to another using a lookup table.
+   * Convenient for enum/category mapping.
+   *
+   * @param sourceField field to map from
+   * @param mappings map of source value -> target value
+   * @param defaultValue value when no mapping matches
+   * @return the updated FieldBuilder instance
+   * @example {{{
+   *   field.name("priority_code").mapping("priority",
+   *     "HIGH" -> 1,
+   *     "MEDIUM" -> 2,
+   *     "LOW" -> 3
+   *   )(defaultValue = 0)
+   * }}}
+   */
+  def mapping(sourceField: String, mappings: (String, Any)*)(defaultValue: Any = "NULL"): FieldBuilder = {
+    val cases = mappings.map { case (sourceValue, targetValue) =>
+      val quotedTarget = targetValue match {
+        case s: String => s"'$s'"
+        case v => v.toString
+      }
+      ConditionalCase(s"$sourceField = '$sourceValue'", quotedTarget)
+    }
+    conditionalValue(cases: _*)(defaultValue)
+  }
+
+  /**
    * Sets the numeric precision for the field.
    *
    * @param precision The numeric precision to set for the field.
@@ -1726,6 +2241,80 @@ case class GeneratorBuilder(options: Map[String, Any] = Map()) {
     this.modify(_.options)(_ ++ Map(ARRAY_MAXIMUM_LENGTH -> length.toString))
 
   /**
+   * Generates an array with a fixed size.
+   * This is a convenience method equivalent to setting arrayMinLength and arrayMaxLength to the same value.
+   *
+   * @param size the exact size of the generated array
+   * @return GeneratorBuilder
+   */
+  def arrayFixedSize(size: Int): GeneratorBuilder =
+    this.arrayMinLength(size).arrayMaxLength(size)
+
+  /**
+   * Generates an array by randomly selecting unique values from the provided list.
+   * The array will contain between arrayMinLength and arrayMaxLength elements, all unique.
+   *
+   * @param values the values to randomly select from (without duplicates)
+   * @return GeneratorBuilder
+   */
+  @scala.annotation.varargs
+  def arrayUniqueFrom(values: Any*): GeneratorBuilder = {
+    val valuesStr = values.map {
+      case s: String => s"'$s'"
+      case v => v.toString
+    }.mkString(",")
+    this.modify(_.options)(_ ++ Map(ARRAY_UNIQUE_FROM -> valuesStr))
+  }
+
+  /**
+   * Generates an array by randomly selecting values from the provided list (duplicates allowed).
+   *
+   * @param values the values to randomly select from (duplicates allowed)
+   * @return GeneratorBuilder
+   */
+  @scala.annotation.varargs
+  def arrayOneOf(values: Any*): GeneratorBuilder = {
+    val valuesStr = values.map {
+      case s: String => s"'$s'"
+      case v => v.toString
+    }.mkString(",")
+    this.modify(_.options)(_ ++ Map(ARRAY_ONE_OF -> valuesStr))
+  }
+
+  /**
+   * Sets the probability that the generated array will be empty.
+   *
+   * @param probability the probability (0.0 to 1.0) that the array will be empty
+   * @return GeneratorBuilder
+   */
+  def arrayEmptyProbability(probability: Double): GeneratorBuilder =
+    this.modify(_.options)(_ ++ Map(ARRAY_EMPTY_PROBABILITY -> probability.toString))
+
+  /**
+   * Generates an array by randomly selecting values with weighted probabilities.
+   * Each element is chosen independently according to the specified weights.
+   *
+   * @param weightedValues sequence of (value, weight) tuples where weights are relative probabilities
+   * @return GeneratorBuilder
+   */
+  @scala.annotation.varargs
+  def arrayWeightedOneOf(weightedValues: (Any, Double)*): GeneratorBuilder = {
+    // Validation
+    require(weightedValues.nonEmpty, "arrayWeightedOneOf requires at least one weighted value")
+    require(weightedValues.forall(_._2 >= 0), "All weights must be non-negative")
+
+    val totalWeight = weightedValues.map(_._2).sum
+    require(totalWeight > 0, "Total weight must be greater than 0 (at least one weight must be positive)")
+
+    // Format: value1:weight1,value2:weight2,...
+    val weightedStr = weightedValues.map {
+      case (v: String, w) => s"'$v':$w"
+      case (v, w) => s"$v:$w"
+    }.mkString(",")
+    this.modify(_.options)(_ ++ Map(ARRAY_WEIGHTED_ONE_OF -> weightedStr))
+  }
+
+  /**
    * Numeric precision used for Decimal data type
    *
    * @param precision Decimal precision
@@ -1848,6 +2437,7 @@ case class GeneratorBuilder(options: Map[String, Any] = Map()) {
    */
   def uuid(): GeneratorBuilder =
     this.modify(_.options)(_ ++ Map(SQL_GENERATOR -> "UUID()"))
+
 }
 
 object HttpMethodEnum extends Enumeration {

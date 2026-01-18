@@ -62,13 +62,24 @@ Use data quality rules defined from OpenMetadata to execute over dataset.
 
     ```yaml
     name: "account_checks"
+    description: "Validate using OpenMetadata rules"
+
+    config:
+      flags:
+        enableGenerateValidations: true
+
     dataSources:
-      my_json:
-        - options:
-            metadataSourceType: "openMetadata"
-            authType: "openMetadataJwtToken"
-            openMetadataJwtToken: "abc123"
-            tableFqn: "sample_data.ecommerce_db.shopify.raw_customer"
+      - name: "my_json"
+        connection:
+          type: "json"
+          options:
+            path: "/opt/app/data/json"
+        validations:
+          - options:
+              metadataSourceType: "openMetadata"
+              authType: "openMetadataJwtToken"
+              openMetadataJwtToken: "abc123"
+              tableFqn: "sample_data.ecommerce_db.shopify.raw_customer"
     ```
 
 ## Great Expectations
@@ -97,9 +108,20 @@ Use data quality rules defined from OpenMetadata to execute over dataset.
 
     ```yaml
     name: "account_checks"
+    description: "Validate using Great Expectations rules"
+
+    config:
+      flags:
+        enableGenerateValidations: true
+
     dataSources:
-      my_json:
-        - options:
-            metadataSourceType: "greatExpectations"
-            expectationsFile: "great-expectations/taxi-expectations.json"
+      - name: "my_json"
+        connection:
+          type: "json"
+          options:
+            path: "/opt/app/data/json"
+        validations:
+          - options:
+              metadataSourceType: "greatExpectations"
+              expectationsFile: "great-expectations/taxi-expectations.json"
     ```

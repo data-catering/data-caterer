@@ -2,7 +2,7 @@ package io.github.datacatering.datacaterer.core.generator.result
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.scala.DefaultScalaModule
-import io.github.datacatering.datacaterer.core.generator.metrics.PerformanceMetrics
+import io.github.datacatering.datacaterer.api.model.PerformanceMetrics
 import io.github.datacatering.datacaterer.core.util.FileUtil
 import org.apache.hadoop.fs.FileSystem
 import org.apache.log4j.Logger

@@ -1,6 +1,6 @@
 package io.github.datacatering.datacaterer.core.sink
 
-import io.github.datacatering.datacaterer.api.model.FoldersConfig
+import io.github.datacatering.datacaterer.api.model.{FoldersConfig, StreamingConfig}
 import io.github.datacatering.datacaterer.core.util.SparkSuite
 import org.apache.log4j.Logger
 import org.apache.pekko.actor.ActorSystem
@@ -246,7 +246,7 @@ class PekkoStreamingSinkWriterTest extends SparkSuite with Matchers with BeforeA
 
     try {
       // Verify writer can be constructed with a shared actor system
-      val writerWithShared = new PekkoStreamingSinkWriter(foldersConfig, Some(sharedSystem))
+      val writerWithShared = new PekkoStreamingSinkWriter(foldersConfig, streamingConfig = StreamingConfig(), sharedActorSystem = Some(sharedSystem))
 
       // Verify writer can also be constructed without a shared system (backwards compatibility)
       val writerWithoutShared = new PekkoStreamingSinkWriter(foldersConfig)

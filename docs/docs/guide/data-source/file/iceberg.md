@@ -72,13 +72,23 @@ Create a file depending on which interface you want to use.
 
 === "YAML"
 
-    In `docker/data/custom/plan/my-iceberg.yaml`:
+    In `docker/data/custom/unified/my-iceberg.yaml`:
     ```yaml
     name: "my_iceberg_plan"
     description: "Create account data in Iceberg table"
-    tasks:
-      - name: "iceberg_task"
-        dataSourceName: "my_iceberg"
+
+    dataSources:
+      - name: "my_iceberg"
+        connection:
+          type: "iceberg"
+          options:
+            path: "/opt/app/data/customer/iceberg"
+            catalogType: "hadoop"
+            catalogUri: ""
+        steps:
+          - name: "accounts"
+            options:
+              table: "account.accounts"
     ```
 
 === "UI"
@@ -128,18 +138,16 @@ Within our class, we can start by defining the connection properties to read/wri
 
 === "YAML"
 
-    In `docker/data/custom/application.conf`:
-    ```
-    iceberg {
-      my_iceberg {
-        path = "/opt/app/data/customer/iceberg"
-        path = ${?ICEBERG_WAREHOUSE_PATH}
-        catalogType = "hadoop"
-        catalogType = ${?ICEBERG_CATALOG_TYPE}
-        catalogUri = ""
-        catalogUri = ${?ICEBERG_CATALOG_URI}
-      }
-    }
+    In a unified YAML file:
+    ```yaml
+    dataSources:
+      - name: "my_iceberg"
+        connection:
+          type: "iceberg"
+          options:
+            path: "/opt/app/data/customer/iceberg"
+            catalogType: "hadoop"
+            catalogUri: ""
     ```
 
 === "UI"

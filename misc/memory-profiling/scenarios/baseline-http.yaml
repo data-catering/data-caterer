@@ -1,0 +1,52 @@
+version: "1.0"
+name: "baseline_http_memory_test"
+description: "Baseline memory test with 100 records to HTTP endpoint at 5 records per second"
+
+config:
+  flags:
+    enableGenerateData: true
+    enableFastGeneration: true
+    enableSaveReports: true
+
+dataSources:
+  - name: "test_http"
+    connection:
+      type: "http"
+      options:
+        url: "http://localhost:8080"
+    steps:
+      - name: "events"
+        options:
+          format: "http"
+          rowsPerSecond: "5"
+        count:
+          records: 100
+        fields:
+          - name: "url"
+            static: "http://localhost:8080/"
+          - name: "method"
+            static: "POST"
+          - name: "Content-Type"
+            static: "application/json"
+          - name: "body"
+            options:
+              sql: "TO_JSON(STRUCT(id, user_id, event_type, timestamp, payload))"
+          - name: "id"
+            options:
+              regex: "ID[0-9]{8}"
+          - name: "user_id"
+            options:
+              regex: "USER[0-9]{6}"
+          - name: "event_type"
+            options:
+              oneOf:
+                - "LOGIN"
+                - "LOGOUT"
+                - "PAGE_VIEW"
+                - "CLICK"
+                - "PURCHASE"
+          - name: "timestamp"
+            type: "timestamp"
+          - name: "payload"
+            options:
+              regex: "[A-Za-z0-9]{200}"

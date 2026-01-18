@@ -195,7 +195,39 @@ object RandomDataGenerator {
     }
 
     override def generateSqlExpression: String = {
-      s"DATE_ADD('${min.toString}', CAST($sqlRandom * $maxDays AS INT))"
+      // Check for excludeWeekends flag in metadata
+      val excludeWeekends = structField.metadata.contains(DATE_EXCLUDE_WEEKENDS) &&
+        Try(structField.metadata.getString(DATE_EXCLUDE_WEEKENDS)).toOption.exists(_.equalsIgnoreCase("true"))
+
+      if (excludeWeekends) {
+        // Pure SQL approach to generate weekday-only dates
+        //
+        // Strategy: Calculate offset to first Monday, then generate random weekdays from there
+        // 1. Find first Monday on or after min date
+        // 2. Generate random weekday index (0-4 for Mon-Fri) and random week
+        // 3. Result = first_monday + (week * 7) + weekday
+        //
+        // Note: DAYOFWEEK returns 1=Sunday, 2=Monday, ..., 7=Saturday
+        // To get to Monday: if today is Sun(1), add 1; if Mon(2), add 0; if Tue(3), add 6; etc.
+        // Formula: (9 - DAYOFWEEK(date)) % 7
+
+        val startDayOfWeek = s"DAYOFWEEK(DATE'${min.toString}')"
+        val daysToMonday = s"MOD((9 - $startDayOfWeek), 7)"
+        val firstMonday = s"DATE_ADD(DATE'${min.toString}', $daysToMonday)"
+
+        // Calculate how many complete weeks fit in the remaining range
+        val remainingDays = s"($maxDays - $daysToMonday)"
+        val numCompleteWeeks = s"CAST($remainingDays / 7 AS INT)"
+
+        // Generate random week (0 to numCompleteWeeks-1) and weekday (0-4)
+        // Use separate RAND() calls for week and weekday to ensure proper independence
+        val randWeek = s"CAST($sqlRandom * $numCompleteWeeks AS INT)"
+        val randWeekday = s"CAST(RAND() * 5 AS INT)"
+
+        s"DATE_ADD($firstMonday, $randWeek * 7 + $randWeekday)"
+      } else {
+        s"DATE_ADD('${min.toString}', CAST($sqlRandom * $maxDays AS INT))"
+      }
     }
   }
 
@@ -278,6 +310,14 @@ object RandomDataGenerator {
   class RandomArrayDataGenerator[T](val structField: StructField, val dataType: DataType, val faker: Faker = new Faker()) extends ArrayDataGenerator[T] {
     override lazy val arrayMinSize: Int = tryGetValue(structField.metadata, ARRAY_MINIMUM_LENGTH, 0)
     override lazy val arrayMaxSize: Int = tryGetValue(structField.metadata, ARRAY_MAXIMUM_LENGTH, 5)
+
+    // Check for array helper options
+    private lazy val arrayUniqueFromOpt: Option[String] = Try(structField.metadata.getString(ARRAY_UNIQUE_FROM)).toOption
+    private lazy val arrayOneOfOpt: Option[String] = Try(structField.metadata.getString(ARRAY_ONE_OF)).toOption
+    private lazy val arrayEmptyProbOpt: Option[Double] = Try(structField.metadata.getString(ARRAY_EMPTY_PROBABILITY).toDouble).toOption
+      .orElse(Try(structField.metadata.getDouble(ARRAY_EMPTY_PROBABILITY)).toOption)
+    private lazy val arrayWeightedOneOfOpt: Option[String] = Try(structField.metadata.getString(ARRAY_WEIGHTED_ONE_OF)).toOption
+
     assert(arrayMinSize >= 0, s"arrayMinSize has to be greater than or equal to 0, " +
       s"field-name=${structField.name}, arrayMinSize=$arrayMinSize")
     assert(arrayMinSize <= arrayMaxSize, s"arrayMinSize has to be less than or equal to arrayMaxSize, " +
@@ -292,7 +332,33 @@ object RandomDataGenerator {
       }
     }
 
+    /**
+     * Applies empty probability wrapper to array SQL expression if specified.
+     * Extracts common logic to reduce duplication across array generation methods.
+     */
+    private def applyEmptyProbability(arrayExpr: String): String = {
+      arrayEmptyProbOpt match {
+        case Some(prob) if prob > 0.0 =>
+          s"CASE WHEN $sqlRandom < $prob THEN ARRAY() ELSE $arrayExpr END"
+        case _ => arrayExpr
+      }
+    }
+
     override def generateSqlExpression: String = {
+      // Check if using array helper methods
+      if (arrayUniqueFromOpt.isDefined) {
+        generateArrayUniqueFromSql(arrayUniqueFromOpt.get)
+      } else if (arrayOneOfOpt.isDefined) {
+        generateArrayOneOfSql(arrayOneOfOpt.get)
+      } else if (arrayWeightedOneOfOpt.isDefined) {
+        generateArrayWeightedOneOfSql(arrayWeightedOneOfOpt.get)
+      } else {
+        // Default array generation logic
+        generateDefaultArraySql()
+      }
+    }
+
+    private def generateDefaultArraySql(): String = {
       val nestedSqlExpressions = dataType match {
         case structType: StructType =>
           val structFieldWithMetadata = StructField(structField.name, structType, structField.nullable, structField.metadata)
@@ -301,7 +367,65 @@ object RandomDataGenerator {
         case _ =>
           getGeneratorForStructField(structField.copy(dataType = dataType), faker).generateSqlExpressionWrapper
       }
-      s"TRANSFORM(ARRAY_REPEAT(1, CAST($sqlRandom * ${arrayMaxSize - arrayMinSize} + $arrayMinSize AS INT)), i -> $nestedSqlExpressions)"
+      val sizeExpr = s"CAST($sqlRandom * ${arrayMaxSize - arrayMinSize} + $arrayMinSize AS INT)"
+      val arrayExpr = s"TRANSFORM(ARRAY_REPEAT(1, $sizeExpr), i -> $nestedSqlExpressions)"
+
+      applyEmptyProbability(arrayExpr)
+    }
+
+    private def generateArrayUniqueFromSql(valuesStr: String): String = {
+      val sizeExpr = s"CAST($sqlRandom * ${arrayMaxSize - arrayMinSize} + $arrayMinSize AS INT)"
+      val arrayExpr = s"SLICE(SHUFFLE(ARRAY($valuesStr)), 1, $sizeExpr)"
+
+      applyEmptyProbability(arrayExpr)
+    }
+
+    private def generateArrayOneOfSql(valuesStr: String): String = {
+      val valuesArray = s"ARRAY($valuesStr)"
+      val arraySize = valuesStr.split(",").length
+      val randomIndexExpr = s"CAST($sqlRandom * $arraySize + 1 AS INT)"
+      val sizeExpr = s"CAST($sqlRandom * ${arrayMaxSize - arrayMinSize} + $arrayMinSize AS INT)"
+      val arrayExpr = s"TRANSFORM(ARRAY_REPEAT(1, $sizeExpr), i -> ELEMENT_AT($valuesArray, CAST(RAND() * $arraySize + 1 AS INT)))"
+
+      applyEmptyProbability(arrayExpr)
+    }
+
+    private def generateArrayWeightedOneOfSql(weightedStr: String): String = {
+      // Parse weighted values: 'val1':0.2,'val2':0.5,'val3':0.3
+      val weightedPairs = weightedStr.split(",").map { pair =>
+        val parts = pair.split(":")
+        require(parts.length == 2,
+          s"Invalid weighted value format in field '${structField.name}': '$pair'. Expected format 'value:weight'")
+        val weight = Try(parts(1).trim.toDouble).getOrElse(
+          throw new IllegalArgumentException(s"Invalid weight value in field '${structField.name}': '${parts(1).trim}'. Weight must be a number.")
+        )
+        require(weight >= 0,
+          s"Invalid weight in field '${structField.name}': $weight. Weights must be non-negative.")
+        (parts(0).trim, weight)
+      }
+
+      // Calculate cumulative weights
+      val totalWeight = weightedPairs.map(_._2).sum
+      val normalizedWeights = weightedPairs.map { case (v, w) => (v, w / totalWeight) }
+
+      // Build CASE WHEN statement for weighted selection
+      // Use RAND() directly in each WHEN clause to avoid nested subquery
+      var cumulativeProb = 0.0
+      val caseStatements = normalizedWeights.zipWithIndex.map { case ((value, weight), idx) =>
+        val prevCumulativeProb = cumulativeProb
+        cumulativeProb += weight
+        if (idx == normalizedWeights.length - 1) {
+          s"ELSE $value"
+        } else {
+          s"WHEN RAND() < $cumulativeProb THEN $value"
+        }
+      }.mkString(" ")
+
+      val weightedSelectExpr = s"(CASE $caseStatements END)"
+      val sizeExpr = s"CAST($sqlRandom * ${arrayMaxSize - arrayMinSize} + $arrayMinSize AS INT)"
+      val arrayExpr = s"TRANSFORM(ARRAY_REPEAT(1, $sizeExpr), i -> $weightedSelectExpr)"
+
+      applyEmptyProbability(arrayExpr)
     }
   }
 
@@ -359,7 +483,6 @@ object RandomDataGenerator {
       s"NAMED_STRUCT($nestedSqlExpression)"
     }
   }
-
 
   def sqlExpressionForNumeric(metadata: Metadata, typeName: String, sqlRand: String): String = {
     val (min, max, diff, mean) = typeName.toUpperCase match {

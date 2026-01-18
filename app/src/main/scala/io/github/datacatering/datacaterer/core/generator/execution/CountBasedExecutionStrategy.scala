@@ -1,7 +1,7 @@
 package io.github.datacatering.datacaterer.core.generator.execution
 
 import io.github.datacatering.datacaterer.api.model.{GenerationConfig, Plan, Task, TaskSummary}
-import io.github.datacatering.datacaterer.core.generator.metrics.PerformanceMetrics
+import io.github.datacatering.datacaterer.api.model.PerformanceMetrics
 import io.github.datacatering.datacaterer.core.util.RecordCountUtil
 import org.apache.log4j.Logger
 

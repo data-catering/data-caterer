@@ -88,11 +88,48 @@ class RegexPatternParser extends RegexParsers {
         val cleaned = other.replace("\\-", "-").replace("\\]", "]")
         CustomCharSet(cleaned)
       case other =>
-        // Complex range pattern - try to extract characters
-        // For now, use alphanumeric as fallback
-        // TODO: Could expand ranges like "a-zA-Z0-9" manually
-        AlphanumericMixed
+        // Complex range pattern - expand ranges into character set
+        val expanded = expandRanges(other)
+        CustomCharSet(expanded)
     }
+  }
+
+  /**
+   * Expand range patterns like "0-9a-f" or "A-F0-9" into actual character strings.
+   * Handles multiple ranges and literal characters mixed together.
+   */
+  def expandRanges(pattern: String): String = {
+    val result = new StringBuilder
+    var i = 0
+
+    while (i < pattern.length) {
+      // Check if this is a range pattern: X-Y
+      if (i + 2 < pattern.length && pattern.charAt(i + 1) == '-' && pattern.charAt(i + 2) != '-') {
+        val start = pattern.charAt(i)
+        val end = pattern.charAt(i + 2)
+
+        // Validate it's a valid range
+        if (start <= end) {
+          // Expand the range
+          (start to end).foreach(c => result.append(c))
+          i += 3
+        } else {
+          // Invalid range - treat dash as literal
+          result.append(start)
+          i += 1
+        }
+      } else if (pattern.charAt(i) == '\\' && i + 1 < pattern.length) {
+        // Escaped character - add the next character literally
+        result.append(pattern.charAt(i + 1))
+        i += 2
+      } else {
+        // Regular character
+        result.append(pattern.charAt(i))
+        i += 1
+      }
+    }
+
+    result.toString
   }
 
   // Literal characters (not special regex chars)

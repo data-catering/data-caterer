@@ -76,13 +76,20 @@ Make sure your class extends `PlanRun`.
 
 === "YAML"
 
-    In `docker/data/custom/plan/my-csv.yaml`:
+    In `docker/data/custom/unified/my-csv.yaml`:
     ```yaml
     name: "my_csv_plan"
     description: "Create account data in CSV file"
-    tasks:
-      - name: "csv_account_file"
-        dataSourceName: "customer_accounts"
+
+    dataSources:
+      - name: "customer_accounts"
+        connection:
+          type: "csv"
+          options:
+            path: "/opt/app/data/customer/account"
+            header: "true"
+        steps:
+          - name: "accounts"
     ```
 
 === "UI"
@@ -123,15 +130,15 @@ high level configurations.
 
 === "YAML"
 
-    In `docker/data/custom/application.conf`:
-    ```
-    csv {
-      customer_accounts {
-        path = "/opt/app/data/customer/account"
-        path = ${?CSV_PATH}
-        header = "true"
-      }
-    }
+    In a unified YAML file:
+    ```yaml
+    dataSources:
+      - name: "customer_accounts"
+        connection:
+          type: "csv"
+          options:
+            path: "/opt/app/data/customer/account"
+            header: "true"
     ```
 
 === "UI"
@@ -913,24 +920,31 @@ below.
 
 === "YAML"
 
-    In `docker/data/custom/plan/my-csv.yaml`:
+    In `docker/data/custom/unified/my-csv.yaml`:
     ```yaml
     name: "my_csv_plan"
     description: "Create account data in CSV file"
-    tasks:
-      - name: "csv_account_file"
-        dataSourceName: "customer_accounts"
 
-    sinkOptions:
-      foreignKeys:
-        - source:
-            dataSource: "customer_accounts"
-            step: "accounts"
-            fields: ["account_id", "name"]
-          generate:
-            - dataSource: "customer_accounts"
-              step: "transactions"
-              fields: ["account_id", "full_name"]
+    dataSources:
+      - name: "customer_accounts"
+        connection:
+          type: "csv"
+          options:
+            path: "/opt/app/data/customer/account"
+            header: "true"
+        steps:
+          - name: "accounts"
+          - name: "transactions"
+
+    foreignKeys:
+      - source:
+          dataSource: "customer_accounts"
+          step: "accounts"
+          fields: ["account_id", "name"]
+        generate:
+          - dataSource: "customer_accounts"
+            step: "transactions"
+            fields: ["account_id", "full_name"]
       ```
 
 === "UI"

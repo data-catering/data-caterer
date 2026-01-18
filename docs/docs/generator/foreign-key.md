@@ -67,41 +67,44 @@ for `account_id`.
 
 === "YAML"
 
+    In a unified YAML file:
     ```yaml
-    ---
-    name: "postgres_data"
-    steps:
-      - name: "accounts"
-        type: "postgres"
-        options:
-          dbtable: "account.accounts"
-        fields:
-          - name: "account_id"
-          - name: "name"
-      - name: "transactions"
-        type: "postgres"
-        options:
-          dbtable: "account.transactions"
-        fields:
-          - name: "account_id"
-          - name: "full_name"
-    ---
     name: "customer_create_plan"
     description: "Create customers in JDBC"
-    tasks:
-      - name: "postgres_data"
-        dataSourceName: "my_postgres"
 
-    sinkOptions:
-      foreignKeys:
-        - source:
-            dataSource: "postgres"
-            step: "accounts"
-            fields: ["account_id"]
-          generate:
-            - dataSource: "postgres"
-              step: "transactions"
-              fields: ["account_id"]
+    dataSources:
+      - name: "my_postgres"
+        connection:
+          type: "postgres"
+          options:
+            url: "jdbc:postgresql://localhost:5432/customer"
+            user: "postgres"
+            password: "postgres"
+        steps:
+          - name: "accounts"
+            options:
+              dbtable: "account.accounts"
+            fields:
+              - name: "account_id"
+              - name: "name"
+          - name: "transactions"
+            options:
+              dbtable: "account.transactions"
+            fields:
+              - name: "account_id"
+              - name: "full_name"
+
+    foreignKeys:
+      - source:
+          dataSource: "my_postgres"
+          step: "accounts"
+          fields:
+            - "account_id"
+        generate:
+          - dataSource: "my_postgres"
+            step: "transactions"
+            fields:
+              - "account_id"
     ```
 
 ## Multiple fields
@@ -159,41 +162,46 @@ and `name` from `accounts` to match with `account_id` and `full_name` to match i
 
 === "YAML"
 
+    In a unified YAML file:
     ```yaml
-    ---
-    name: "postgres_data"
-    steps:
-      - name: "accounts"
-        type: "postgres"
-        options:
-          dbtable: "account.accounts"
-        fields:
-          - name: "account_id"
-          - name: "name"
-      - name: "transactions"
-        type: "postgres"
-        options:
-          dbtable: "account.transactions"
-        fields:
-          - name: "account_id"
-          - name: "full_name"
-    ---
     name: "customer_create_plan"
     description: "Create customers in JDBC"
-    tasks:
-      - name: "postgres_data"
-        dataSourceName: "my_postgres"
 
-    sinkOptions:
-      foreignKeys:
-        - source:
-            dataSource: "postgres"
-            step: "accounts"
-            fields: ["account_id", "name"]
-          generate:
-            - dataSource: "postgres"
-              step: "transactions"
-              fields: ["account_id", "full_name"]
+    dataSources:
+      - name: "my_postgres"
+        connection:
+          type: "postgres"
+          options:
+            url: "jdbc:postgresql://localhost:5432/customer"
+            user: "postgres"
+            password: "postgres"
+        steps:
+          - name: "accounts"
+            options:
+              dbtable: "account.accounts"
+            fields:
+              - name: "account_id"
+              - name: "name"
+          - name: "transactions"
+            options:
+              dbtable: "account.transactions"
+            fields:
+              - name: "account_id"
+              - name: "full_name"
+
+    foreignKeys:
+      - source:
+          dataSource: "my_postgres"
+          step: "accounts"
+          fields:
+            - "account_id"
+            - "name"
+        generate:
+          - dataSource: "my_postgres"
+            step: "transactions"
+            fields:
+              - "account_id"
+              - "full_name"
     ```
 
 ## Transformed field
@@ -251,54 +259,53 @@ data source contains `account_id` which is a concatenation of `ACC` with `accoun
 
 === "YAML"
 
+    In a unified YAML file:
     ```yaml
-    ---
-    #postgres task yaml
-    name: "postgres_data"
-    steps:
-      - name: "accounts"
-        type: "postgres"
-        options:
-          dbtable: "account.accounts"
-        fields:
-          - name: "account_number"
-          - name: "name"
-    ---
-    #json task yaml
-    name: "json_data"
-    steps:
-      - name: "transactions"
-        type: "json"
-        options:
-          dbtable: "account.transactions"
-        fields:
-          - name: "account_id"
-            options:
-              sql: "CONCAT('ACC', account_number)"
-          - name: "account_number"
-            options:
-              omit: true
-
-    ---
-    #plan yaml
     name: "customer_create_plan"
-    description: "Create customers in JDBC"
-    tasks:
-      - name: "postgres_data"
-        dataSourceName: "my_postgres"
-      - name: "json_data"
-        dataSourceName: "my_json"
+    description: "Create customers with transformed foreign key"
 
-    sinkOptions:
-      foreignKeys:
-        - source:
-            dataSource: "my_postgres"
-            step: "accounts"
-            fields: ["account_number"]
-          generate:
-            - dataSource: "my_json"
-              step: "transactions"
-              fields: ["account_number"]
+    dataSources:
+      - name: "my_postgres"
+        connection:
+          type: "postgres"
+          options:
+            url: "jdbc:postgresql://localhost:5432/customer"
+            user: "postgres"
+            password: "postgres"
+        steps:
+          - name: "accounts"
+            options:
+              dbtable: "account.accounts"
+            fields:
+              - name: "account_number"
+              - name: "name"
+
+      - name: "my_json"
+        connection:
+          type: "json"
+          options:
+            path: "/tmp/json"
+        steps:
+          - name: "transactions"
+            fields:
+              - name: "account_id"
+                options:
+                  sql: "CONCAT('ACC', account_number)"
+              - name: "account_number"
+                options:
+                  omit: true
+
+    foreignKeys:
+      - source:
+          dataSource: "my_postgres"
+          step: "accounts"
+          fields:
+            - "account_number"
+        generate:
+          - dataSource: "my_json"
+            step: "transactions"
+            fields:
+              - "account_number"
     ```
 
 ## Nested field
@@ -366,57 +373,59 @@ key definition.
 
 === "YAML"
 
+    In a unified YAML file:
     ```yaml
-    ---
-    #postgres task yaml
-    name: "postgres_data"
-    steps:
-      - name: "accounts"
-        type: "postgres"
-        options:
-          dbtable: "account.accounts"
-        fields:
-          - name: "account_id"
-          - name: "name"
-    ---
-    #json task yaml
-    name: "json_data"
-    steps:
-      - name: "transactions"
-        type: "json"
-        options:
-          dbtable: "account.transactions"
-        fields:
-          - name: "account_id"
-          - name: "_txn_name"
-            options:
-              omit: true
-          - name: "cusotmer_details"
-            fields:
-              name: "name"
-              options:
-                sql: "_txn_name"
-
-    ---
-    #plan yaml
     name: "customer_create_plan"
-    description: "Create customers in JDBC"
-    tasks:
-      - name: "postgres_data"
-        dataSourceName: "my_postgres"
-      - name: "json_data"
-        dataSourceName: "my_json"
+    description: "Create customers with nested foreign key"
 
-    sinkOptions:
-      foreignKeys:
-        - source:
-            dataSource: "my_postgres"
-            step: "accounts"
-            fields: ["account_id", "name"]
-          generate:
-            - dataSource: "my_json"
-              step: "transactions"
-              fields: ["account_id", "_txn_name"]
+    dataSources:
+      - name: "my_postgres"
+        connection:
+          type: "postgres"
+          options:
+            url: "jdbc:postgresql://localhost:5432/customer"
+            user: "postgres"
+            password: "postgres"
+        steps:
+          - name: "accounts"
+            options:
+              dbtable: "account.accounts"
+            fields:
+              - name: "account_id"
+              - name: "name"
+
+      - name: "my_json"
+        connection:
+          type: "json"
+          options:
+            path: "/tmp/json"
+        steps:
+          - name: "transactions"
+            fields:
+              - name: "account_id"
+              - name: "_txn_name"
+                options:
+                  omit: true
+              - name: "customer_details"
+                type: "struct"
+                fields:
+                  - name: "name"
+                    options:
+                      sql: "_txn_name"
+
+    foreignKeys:
+      - source:
+          dataSource: "my_postgres"
+          step: "accounts"
+          fields:
+            - "account_id"
+            - "name"
+        generate:
+          - dataSource: "my_json"
+            step: "transactions"
+            fields:
+              - "account_id"
+              - "_txn_name"
     ```
 
 ## Ordering
@@ -463,37 +472,37 @@ Below is how you can define the order of the HTTP data sources.
 
 === "YAML"
 
-    In `docker/data/custom/task/http/openapi-task.yaml`:
-    ```yaml
-    name: "http_task"
-    steps:
-      - name: "my_petstore"
-        options:
-          metadataSourceType: "openapi"
-          schemaLocation: "/opt/app/mount/http/petstore.json"
-    ```
-
-    In `docker/data/custom/plan/my-http.yaml`:
+    In a unified YAML file:
     ```yaml
     name: "my_http_plan"
     description: "Create pet data via HTTP from OpenAPI metadata"
-    tasks:
-      - name: "http_task"
-        dataSourceName: "my_http"
 
-    sinkOptions:
-      foreignKeys:
-        - source:
-            dataSource: "my_http"
-            step: "POST/pets"
-            fields: ["body.id"]
-          generate:
-            - dataSource: "my_http"
-              step: "GET/pets/{id}"
-              fields: ["pathParamid"]
-            - dataSource: "my_http"
-              step: "DELETE/pets/{id}"
-              fields: ["pathParamid"]
+    dataSources:
+      - name: "my_http"
+        connection:
+          type: "http"
+          options:
+        steps:
+          - name: "my_petstore"
+            options:
+              metadataSourceType: "openapi"
+              schemaLocation: "/opt/app/mount/http/petstore.json"
+
+    foreignKeys:
+      - source:
+          dataSource: "my_http"
+          step: "POST/pets"
+          fields:
+            - "body.id"
+        generate:
+          - dataSource: "my_http"
+            step: "GET/pets/{id}"
+            fields:
+              - "pathParamid"
+          - dataSource: "my_http"
+            step: "DELETE/pets/{id}"
+            fields:
+              - "pathParamid"
     ```
 
 ## Fast Relationships
@@ -546,35 +555,36 @@ values should appear in both datasets.
 
 === "YAML"
 
+    In a unified YAML file:
     ```yaml
-    name: "csv_file"
-    steps:
-      - name: "accounts"
-        ...
-        fields:
-          - name: "id"
-            type: "long"
-            options:
-              incremental: 1
-      - name: "transactions"
-        ...
-        fields:
-          - name: "id"
-            type: "long"
-            options:
-              incremental: 1
-    ```
+    name: "csv_fast_relationships"
+    description: "Fast relationships using incremental values"
 
-    In `docker/data/custom/application.conf`:
-    ```yaml
-    flags {
-        enableCount = false
-        enableCount = ${?ENABLE_COUNT}
-        enableSinkMetadata = false
-        enableSinkMetadata = ${?ENABLE_SINK_METADATA}
-        enableUniqueCheckOnlyInBatch = true
-        enableUniqueCheckOnlyInBatch = ${?ENABLE_UNIQUE_CHECK_ONLY_IN_BATCH}
-    }
+    config:
+      flags:
+        enableCount: false
+        enableSinkMetadata: false
+        enableUniqueCheckOnlyInBatch: true
+
+    dataSources:
+      - name: "csv_data"
+        connection:
+          type: "csv"
+          options:
+            path: "/tmp/data"
+        steps:
+          - name: "accounts"
+            fields:
+              - name: "id"
+                type: "long"
+                options:
+                  incremental: 1
+          - name: "transactions"
+            fields:
+              - name: "id"
+                type: "long"
+                options:
+                  incremental: 1
     ```
 
 ### UUID
@@ -611,21 +621,27 @@ If you require UUID values to match across datasets, you can also leverage `incr
 
 === "YAML"
 
+    In a unified YAML file:
     ```yaml
-    name: "csv_file"
-    steps:
-      - name: "accounts"
-        ...
-        fields:
-          - name: "id"
-            options:
-              incremental: 1
-              uuid: ""
-      - name: "transactions"
-        ...
-        fields:
-          - name: "id"
-            options:
-              incremental: 1
-              uuid: ""
+    name: "csv_uuid_relationships"
+
+    dataSources:
+      - name: "csv_data"
+        connection:
+          type: "csv"
+          options:
+            path: "/tmp/data"
+        steps:
+          - name: "accounts"
+            fields:
+              - name: "id"
+                options:
+                  incremental: 1
+                  uuid: ""
+          - name: "transactions"
+            fields:
+              - name: "id"
+                options:
+                  incremental: 1
+                  uuid: ""
     ```

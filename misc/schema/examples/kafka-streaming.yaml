@@ -1,0 +1,71 @@
+# yaml-language-server: $schema=../unified-config-schema.json
+# Kafka streaming example with load patterns
+
+version: "1.0"
+name: "kafka_streaming"
+description: "Generate streaming data to Kafka with ramp-up pattern"
+
+config:
+  flags:
+    enableGenerateData: true
+    enableSaveReports: true
+  runtime:
+    master: "local[4]"
+    sparkConfig:
+      "spark.sql.shuffle.partitions": "4"
+
+dataSources:
+  - name: "events_kafka"
+    connection:
+      type: "kafka"
+      options:
+        bootstrapServers: "${KAFKA_BROKERS:-localhost:9092}"
+        schemaRegistryUrl: "http://localhost:8081"
+    steps:
+      - name: "user_events"
+        options:
+          topic: "user-events"
+        count:
+          duration: "1m"
+          rate: 100
+          rateUnit: "second"
+          pattern:
+            type: "ramp"
+            startRate: 10
+            endRate: 200
+            rateIncrement: 10
+            incrementInterval: "10s"
+        fields:
+          - name: "event_id"
+            options:
+              regex: "EVT[0-9]{16}"
+          - name: "user_id"
+            options:
+              regex: "USR[0-9]{8}"
+          - name: "event_type"
+            options:
+              oneOf:
+                - "page_view"
+                - "click"
+                - "scroll"
+                - "form_submit"
+          - name: "timestamp"
+            type: "timestamp"
+          - name: "metadata"
+            type: "struct"
+            fields:
+              - name: "user_agent"
+                options:
+                  expression: "#{Internet.userAgentAny}"
+              - name: "ip_address"
+                options:
+                  expression: "#{Internet.ipV4Address}"
+              - name: "referrer"
+                options:
+                  expression: "#{Internet.url}"
+        validations:
+          - expr: "event_id IS NOT NULL"
+          - field: "event_type"
+            validation:
+              - type: "in"
+                values: ["page_view", "click", "scroll", "form_submit"]

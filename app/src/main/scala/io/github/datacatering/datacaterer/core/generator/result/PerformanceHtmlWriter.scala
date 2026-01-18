@@ -1,6 +1,6 @@
 package io.github.datacatering.datacaterer.core.generator.result
 
-import io.github.datacatering.datacaterer.core.generator.metrics.PerformanceMetrics
+import io.github.datacatering.datacaterer.api.model.PerformanceMetrics
 import scalatags.Text.all._
 import scalatags.Text.tags2
 
@@ -48,13 +48,16 @@ class PerformanceHtmlWriter {
    * Generate summary cards with key metrics
    */
   private def summaryCards(metrics: PerformanceMetrics) = {
+    val windowsLabel = if (metrics.isStreaming) "Time Windows" else "Total Batches"
+    val timeWindows = metrics.asTimeWindows()
+
     div(cls := "row mb-4",
       metricCard("Total Records", metrics.totalRecords.toString, "bi-database", "primary"),
       metricCard("Avg Throughput", f"${metrics.averageThroughput}%.2f rec/s", "bi-speedometer", "success"),
       metricCard("P95 Latency", f"${metrics.latencyP95}%.2f ms", "bi-clock-history", "info"),
       metricCard("Duration", s"${metrics.totalDurationSeconds}s", "bi-hourglass-split", "warning"),
       metricCard("Error Rate", f"${metrics.errorRate * 100}%.2f%%", "bi-exclamation-triangle", if (metrics.errorRate > 0.01) "danger" else "success"),
-      metricCard("Total Batches", metrics.batchMetrics.size.toString, "bi-layers", "secondary")
+      metricCard(windowsLabel, timeWindows.size.toString, "bi-layers", "secondary")
     )
   }
 
@@ -89,22 +92,26 @@ class PerformanceHtmlWriter {
   }
 
   /**
-   * Generate batch details table
+   * Generate batch/time window details table
    */
   private def batchDetailsTable(metrics: PerformanceMetrics) = {
-    if (metrics.batchMetrics.isEmpty) {
+    val timeWindows = metrics.asTimeWindows()
+    val tableTitle = if (metrics.isStreaming) "Time Window Details (1-second windows)" else "Batch Details"
+    val windowLabel = if (metrics.isStreaming) "Window #" else "Batch #"
+
+    if (timeWindows.isEmpty) {
       div()
     } else {
       div(cls := "card mt-4",
         div(cls := "card-header",
-          h5(cls := "mb-0", "Batch Details")
+          h5(cls := "mb-0", tableTitle)
         ),
         div(cls := "card-body p-0",
           div(cls := "table-responsive",
             table(cls := "table table-sm table-hover mb-0",
               thead(cls := "table-light",
                 tr(
-                  th("Batch #"),
+                  th(windowLabel),
                   th("Start Time"),
                   th("Records"),
                   th("Duration (ms)"),
@@ -112,7 +119,7 @@ class PerformanceHtmlWriter {
                 )
               ),
               tbody(
-                metrics.batchMetrics.take(100).map { batch =>
+                timeWindows.take(100).map { batch =>
                   tr(
                     td(batch.batchNumber.toString),
                     td(batch.startTime.toString.split("T")(1).split("\\.").head),
@@ -124,9 +131,9 @@ class PerformanceHtmlWriter {
               )
             )
           ),
-          if (metrics.batchMetrics.size > 100) {
+          if (timeWindows.size > 100) {
             div(cls := "card-footer text-muted text-center",
-              small(s"Showing first 100 of ${metrics.batchMetrics.size} batches")
+              small(s"Showing first 100 of ${timeWindows.size} ${if (metrics.isStreaming) "windows" else "batches"}")
             )
           } else {
             div()
@@ -140,12 +147,14 @@ class PerformanceHtmlWriter {
    * Generate Chart.js initialization scripts
    */
   private def chartScripts(metrics: PerformanceMetrics) = {
-    if (metrics.batchMetrics.isEmpty) {
+    val timeWindows = metrics.asTimeWindows()
+
+    if (timeWindows.isEmpty) {
       script()
     } else {
-      val throughputData = metrics.batchMetrics.map(_.throughput).mkString(",")
-      val batchNumbers = metrics.batchMetrics.map(_.batchNumber).mkString(",")
-      val recordsData = metrics.batchMetrics.map(_.recordsGenerated).mkString(",")
+      val throughputData = timeWindows.map(_.throughput).mkString(",")
+      val batchNumbers = timeWindows.map(_.batchNumber).mkString(",")
+      val recordsData = timeWindows.map(_.recordsGenerated).mkString(",")
       val latencyData = s"${metrics.latencyP50},${metrics.latencyP75},${metrics.latencyP90},${metrics.latencyP95},${metrics.latencyP99}"
 
       script(raw(

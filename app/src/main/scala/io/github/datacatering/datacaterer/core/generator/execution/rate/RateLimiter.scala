@@ -54,18 +54,31 @@ class RateLimiter(targetRate: Int, rateUnit: String = "1s") {
   }
 
   private def calculateRatePerSecond(rate: Int, unit: String): Double = {
-    // Parse unit like "1s", "100ms", "1m"
-    val pattern = """(\d+)([a-z]+)""".r
-    unit.toLowerCase match {
-      case pattern(value, unitType) =>
-        val timeWindowMs = unitType match {
-          case "ms" => value.toLong
-          case "s" => value.toLong * 1000
-          case "m" => value.toLong * 60 * 1000
-          case _ => throw new IllegalArgumentException(s"Invalid rate unit: $unit")
-        }
+    // First try human-readable format from schema: "second", "minute", "hour"
+    val humanReadableMs = unit.toLowerCase match {
+      case "second" => Some(1000L)
+      case "minute" => Some(60L * 1000L)
+      case "hour" => Some(60L * 60L * 1000L)
+      case _ => None
+    }
+
+    humanReadableMs match {
+      case Some(timeWindowMs) =>
         (rate.toDouble / timeWindowMs) * 1000.0 // convert to per second
-      case _ => throw new IllegalArgumentException(s"Invalid rate unit format: $unit. Expected format: <number><unit> (e.g., '1s', '100ms')")
+      case None =>
+        // Fall back to compact format: "1s", "100ms", "1m"
+        val pattern = """(\d+)([a-z]+)""".r
+        unit.toLowerCase match {
+          case pattern(value, unitType) =>
+            val timeWindowMs = unitType match {
+              case "ms" => value.toLong
+              case "s" => value.toLong * 1000
+              case "m" => value.toLong * 60 * 1000
+              case _ => throw new IllegalArgumentException(s"Invalid rate unit: $unit")
+            }
+            (rate.toDouble / timeWindowMs) * 1000.0 // convert to per second
+          case _ => throw new IllegalArgumentException(s"Invalid rate unit format: $unit. Expected: 'second', 'minute', 'hour' or '<number><unit>' (e.g., '1s', '100ms')")
+        }
     }
   }
 

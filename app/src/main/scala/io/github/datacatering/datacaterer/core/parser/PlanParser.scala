@@ -1,12 +1,10 @@
 package io.github.datacatering.datacaterer.core.parser
 
-import io.github.datacatering.datacaterer.api.model.Constants.{HTTP_PATH_PARAM_FIELD_PREFIX, HTTP_QUERY_PARAM_FIELD_PREFIX, INCREMENTAL, ONE_OF_GENERATOR, REAL_TIME_METHOD_FIELD, REAL_TIME_URL_FIELD, SQL_GENERATOR, UUID, YAML_HTTP_BODY_FIELD, YAML_HTTP_HEADERS_FIELD, YAML_HTTP_URL_FIELD, YAML_REAL_TIME_BODY_FIELD, YAML_REAL_TIME_HEADERS_FIELD}
-import io.github.datacatering.datacaterer.api.model.{DataCatererConfiguration, DataSourceValidation, DataType, Field, IntegerType, Plan, Task, UpstreamDataSourceValidation, ValidationConfiguration, YamlUpstreamDataSourceValidation, YamlValidationConfiguration}
-import io.github.datacatering.datacaterer.api.{ConnectionConfigWithTaskBuilder, FieldBuilder, HttpMethodEnum, HttpQueryParameterStyleEnum, ValidationBuilder}
+import io.github.datacatering.datacaterer.api.model.{DataCatererConfiguration, DataSourceValidation, Plan, Task, UpstreamDataSourceValidation, ValidationConfiguration, YamlUpstreamDataSourceValidation, YamlValidationConfiguration}
+import io.github.datacatering.datacaterer.api.{ConnectionConfigWithTaskBuilder, ValidationBuilder}
 import io.github.datacatering.datacaterer.core.exception.DataValidationMissingUpstreamDataSourceException
-import io.github.datacatering.datacaterer.core.generator.provider.OneOfDataGenerator
+import io.github.datacatering.datacaterer.core.parser.unified.{UnifiedConfigConverter, UnifiedConfigDetector, UnifiedYamlParser}
 import io.github.datacatering.datacaterer.core.util.FileUtil.{getFileContentFromFileSystem, isCloudStoragePath}
-import io.github.datacatering.datacaterer.core.util.PlanImplicits.FieldOps
 import io.github.datacatering.datacaterer.core.util.{FileUtil, ObjectMapperUtil}
 import org.apache.hadoop.fs.FileSystem
 import org.apache.log4j.Logger
@@ -23,7 +21,8 @@ object PlanParser {
   // ==================== Main Entry Points ====================
 
   /**
-   * Enhanced version that allows custom folder paths for testing
+   * Enhanced version that allows custom folder paths for testing.
+   * Detects unified YAML format and handles accordingly.
    */
   def getPlanTasksFromYaml(
                             dataCatererConfiguration: DataCatererConfiguration,
@@ -32,6 +31,14 @@ object PlanParser {
                             customTaskFolderPath: Option[String] = None,
                             customValidationFolderPath: Option[String] = None
                           )(implicit sparkSession: SparkSession): (Plan, List[Task], Option[List[ValidationConfiguration]]) = {
+    val planFilePath = dataCatererConfiguration.foldersConfig.planFilePath
+
+    // Check for unified format first
+    if (UnifiedConfigDetector.isUnifiedFormat(planFilePath)) {
+      LOGGER.info(s"Detected unified YAML format, parsing: $planFilePath")
+      return parseUnifiedConfig(planFilePath, enabledOnly)
+    }
+
     val effectiveTaskFolderPath = customTaskFolderPath.getOrElse(dataCatererConfiguration.foldersConfig.taskFolderPath)
     val effectiveValidationFolderPath = customValidationFolderPath.getOrElse(dataCatererConfiguration.foldersConfig.validationFolderPath)
 
@@ -42,6 +49,27 @@ object PlanParser {
       effectiveTaskFolderPath,
       effectiveValidationFolderPath
     )
+  }
+
+  /**
+   * Parse a unified YAML configuration file
+   */
+  def parseUnifiedConfig(
+                          filePath: String,
+                          enabledOnly: Boolean = true
+                        )(implicit sparkSession: SparkSession): (Plan, List[Task], Option[List[ValidationConfiguration]]) = {
+    val unifiedConfig = UnifiedYamlParser.parse(filePath)
+    val (plan, tasks, validations, _) = UnifiedConfigConverter.convert(unifiedConfig)
+
+    val filteredTasks = if (enabledOnly) {
+      val enabledTaskNames = plan.tasks.filter(_.enabled).map(_.name).toSet
+      tasks.filter(t => enabledTaskNames.contains(t.name))
+    } else {
+      tasks
+    }
+
+    LOGGER.info(s"Parsed unified config: plan=${plan.name}, tasks=${filteredTasks.size}, validations=${validations.map(_.size).getOrElse(0)}")
+    (plan, filteredTasks, validations)
   }
 
   private def getPlanTasksFromYamlWithPaths(
@@ -116,8 +144,7 @@ object PlanParser {
   def parseTasksFromFolder(taskFolderPath: String)(implicit sparkSession: SparkSession): Array[Task] = {
     if (isCloudStoragePath(taskFolderPath)) {
       YamlFileParser.parseFiles[Task](taskFolderPath)
-        .map(convertTaskNumbersToString)
-        .map(convertToSpecificFields)
+        .map(TaskConversionRegistry.applyTaskConversions(_))
     } else {
       val yamlFiles = findYamlFiles(taskFolderPath)
       yamlFiles.map(file => parseTaskFile(file)).toArray
@@ -129,8 +156,7 @@ object PlanParser {
    */
   def parseTaskFile(taskFile: File): Task = {
     val rawTask = OBJECT_MAPPER.readValue(taskFile, classOf[Task])
-    val convertedTask = convertTaskNumbersToString(rawTask)
-    convertToSpecificFields(convertedTask)
+    TaskConversionRegistry.applyTaskConversions(rawTask)
   }
 
   /**
@@ -146,8 +172,7 @@ object PlanParser {
    */
   private def parseTaskFileInternal(taskFile: File, withFieldConversion: Boolean): Task = {
     val rawTask = OBJECT_MAPPER.readValue(taskFile, classOf[Task])
-    val convertedTask = convertTaskNumbersToString(rawTask)
-    if (withFieldConversion) convertToSpecificFields(convertedTask) else convertedTask
+    TaskConversionRegistry.applyTaskConversions(rawTask, includeFieldConversions = withFieldConversion)
   }
 
   /**
@@ -166,8 +191,7 @@ object PlanParser {
    */
   def parseTaskFromContent(yamlContent: String, withFieldConversion: Boolean = true): Task = {
     val rawTask = OBJECT_MAPPER.readValue(yamlContent, classOf[Task])
-    val convertedTask = convertTaskNumbersToString(rawTask)
-    if (withFieldConversion) convertToSpecificFields(convertedTask) else convertedTask
+    TaskConversionRegistry.applyTaskConversions(rawTask, includeFieldConversions = withFieldConversion)
   }
 
   /**
@@ -240,119 +264,6 @@ object PlanParser {
       case None =>
         throw DataValidationMissingUpstreamDataSourceException(yamlUpstream.upstreamDataSource)
     }
-  }
-
-  // ==================== Field Processing Utilities ====================
-
-  private def convertTaskNumbersToString(task: Task): Task = {
-    val stringSteps = task.steps.map(step => {
-      val countPerColGenerator = step.count.perField.map(perFieldCount => {
-        val stringOpts = toStringValues(perFieldCount.options)
-        perFieldCount.copy(options = stringOpts)
-      })
-      val countStringOpts = toStringValues(step.count.options)
-      val mappedSchema = step.fields.map(_.fieldToStringOptions)
-      step.copy(
-        count = step.count.copy(perField = countPerColGenerator, options = countStringOpts),
-        fields = mappedSchema
-      )
-    })
-    task.copy(steps = stringSteps)
-  }
-
-  def convertToSpecificFields(task: Task): Task = {
-    def convertField(field: Field): List[Field] = {
-      (field.name, field.fields.nonEmpty) match {
-        case (YAML_REAL_TIME_HEADERS_FIELD, true) =>
-          val headerFields = field.fields.flatMap(innerField => {
-            convertField(innerField).map(convertedField => {
-              val sqlExpr = convertedField.static.getOrElse(convertedField.options.getOrElse(SQL_GENERATOR, "").toString)
-              FieldBuilder().messageHeader(convertedField.name, sqlExpr)
-            })
-          })
-          val messageHeaders = FieldBuilder().messageHeaders(headerFields: _*)
-          List(messageHeaders.field)
-        case (YAML_REAL_TIME_BODY_FIELD, true) =>
-          val innerFields = field.fields.flatMap(innerField => convertField(innerField).map(FieldBuilder))
-          val messageBodyBuilder = FieldBuilder().messageBody(innerFields: _*)
-          messageBodyBuilder.map(_.field)
-        case (YAML_HTTP_URL_FIELD, true) =>
-          val innerFields = field.fields.flatMap(innerField => convertField(innerField).map(FieldBuilder))
-          val urlField = innerFields.find(f => f.field.name == REAL_TIME_URL_FIELD).flatMap(f => f.field.static)
-          val methodField = innerFields.find(f => f.field.name == REAL_TIME_METHOD_FIELD).flatMap(f => f.field.static)
-          val pathParams = innerFields.find(f => f.field.name == HTTP_PATH_PARAM_FIELD_PREFIX)
-            .map(f => f.field.fields.map(f1 => FieldBuilder(f1).httpPathParam(f1.name)))
-            .getOrElse(List())
-          val queryParams = innerFields.find(f => f.field.name == HTTP_QUERY_PARAM_FIELD_PREFIX)
-            .map(f => f.field.fields.map(f1 =>
-              FieldBuilder(f1).httpQueryParam(
-                f1.name,
-                DataType.fromString(f1.`type`.getOrElse("string")),
-                f1.options.get("style").map(style => HttpQueryParameterStyleEnum.withName(style.toString)).getOrElse(HttpQueryParameterStyleEnum.FORM),
-                f1.options.get("explode").forall(_.toString.toBoolean)
-              )
-            ))
-            .getOrElse(List())
-          FieldBuilder().httpUrl(
-            urlField.get,
-            HttpMethodEnum.withName(methodField.get),
-            pathParams,
-            queryParams
-          ).map(_.field)
-        case (YAML_HTTP_HEADERS_FIELD, true) =>
-          val headerFields = field.fields.map(innerField => FieldBuilder(innerField).httpHeader(innerField.name))
-          headerFields.map(_.field)
-        case (YAML_HTTP_BODY_FIELD, true) =>
-          val innerFields = field.fields.flatMap(innerField => convertField(innerField).map(FieldBuilder))
-          val httpBody = FieldBuilder().httpBody(innerFields: _*)
-          httpBody.map(_.field)
-        case (_, false) =>
-          if (field.options.contains(ONE_OF_GENERATOR)) {
-            val baseArray = field.options(ONE_OF_GENERATOR) match {
-              case s: String => s.split(",").map(_.trim).toList
-              case l: List[_] => l.map(_.toString)
-              case other => List(other.toString)
-            }
-            if (OneOfDataGenerator.isWeightedOneOf(baseArray.toArray)) {
-              val valuesWithWeights = baseArray.map(value => {
-                val split = value.split("->")
-                (split(0), split(1).toDouble)
-              })
-              FieldBuilder().name(field.name).oneOfWeighted(valuesWithWeights).map(_.field)
-            } else {
-              List(field)
-            }
-          } else if (field.options.contains(UUID) && field.options.contains(INCREMENTAL)) {
-            val incrementalStartNumber = field.options(INCREMENTAL).toString.toLong
-            List(FieldBuilder().name(field.name).uuid().incremental(incrementalStartNumber).options(field.options).field)
-          } else if (field.options.contains(UUID)) {
-            val uuidFieldName = field.options(UUID).toString
-            if (uuidFieldName.nonEmpty) List(FieldBuilder().name(field.name).uuid(uuidFieldName).options(field.options).field)
-            else List(FieldBuilder().name(field.name).uuid().options(field.options).field)
-          } else if (field.options.contains(INCREMENTAL)) {
-            val incrementalStartNumber = field.options(INCREMENTAL).toString.toLong
-            List(FieldBuilder().name(field.name).`type`(IntegerType).incremental(incrementalStartNumber).options(field.options).field)
-          } else {
-            List(field)
-          }
-        case _ => List(field)
-      }
-    }
-
-    val specificFields = task.steps.map(step => {
-      val mappedFields = step.fields.flatMap(convertField)
-      step.copy(fields = mappedFields)
-    })
-    task.copy(steps = specificFields)
-  }
-
-  private def toStringValues(options: Map[String, Any]): Map[String, String] = {
-    options.map(x => {
-      x._2 match {
-        case list: List[_] => (x._1, list.mkString(","))
-        case _ => (x._1, x._2.toString)
-      }
-    })
   }
 
   // ==================== File Utilities ====================

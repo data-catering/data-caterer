@@ -89,23 +89,31 @@ Create a file depending on which interface you want to use.
 
 === "YAML"
 
-    In `docker/data/custom/plan/my-datacontract-cli.yaml`:
+    In `docker/data/custom/unified/my-datacontract-cli.yaml`:
     ```yaml
     name: "my_datacontract_cli_plan"
     description: "Create account data in CSV via Data Contract CLI metadata"
-    tasks:
-      - name: "csv_account_file"
-        dataSourceName: "customer_accounts"
-    ```
 
-    In `docker/data/custom/application.conf`:
-    ```
-    flags {
-      enableUniqueCheck = true
-    }
-    folders {
-      generatedReportsFolderPath = "/opt/app/data/report"
-    }
+    config:
+      flags:
+        enableUniqueCheck: true
+      folders:
+        generatedReportsFolderPath: "/opt/app/data/report"
+
+    dataSources:
+      - name: "customer_accounts"
+        connection:
+          type: "csv"
+          options:
+            path: "/opt/app/data/csv/account-datacontract-cli"
+            header: "true"
+        steps:
+          - name: "accounts"
+            options:
+              metadataSourceType: "dataContractCli"
+              dataContractFile: "/opt/app/mount/datacontract-cli/datacontract.yaml"
+            count:
+              records: 100
     ```
 
 === "UI"
@@ -139,18 +147,22 @@ We can point the schema of a data source to our Data Contract CLI file.
 
 === "YAML"
 
-    In `docker/data/custom/task/file/csv/csv-datacontract-cli-account-task.yaml`:
+    In a unified YAML file:
     ```yaml
-    name: "csv_account_file"
-    steps:
-      - name: "accounts"
-        type: "csv"
-        options:
-          path: "/opt/app/data/csv/account-datacontract-cli"
-          metadataSourceType: "dataContractCli"
-          dataContractFile: "/opt/app/mount/datacontract-cli/datacontract.yaml"
-        count:
-          records: 100
+    dataSources:
+      - name: "customer_accounts"
+        connection:
+          type: "csv"
+          options:
+            path: "/opt/app/data/csv/account-datacontract-cli"
+            header: "true"
+        steps:
+          - name: "accounts"
+            options:
+              metadataSourceType: "dataContractCli"
+              dataContractFile: "/opt/app/mount/datacontract-cli/datacontract.yaml"
+            count:
+              records: 100
     ```
 
 === "UI"

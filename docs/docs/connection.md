@@ -78,20 +78,35 @@ All connection details follow the same pattern.
     The above defines that if there is a system property or environment variable named `POSTGRES_URL`, then that value will
     be used for the `url`, otherwise, it will default to `localhost`.
 
-!!! tip "Automatic Connection Merging with YAML Plans"
+!!! tip "Connection Configuration Options"
 
-    When you execute YAML plans through the UI or API, connection configurations from `application.conf` are **automatically merged** into your task step options. This means:
+    You have two options for configuring connections:
 
-    **Key Points:**
+    **Option 1: Unified YAML File (Recommended)**
 
-    - The connection **format** (e.g., `json`, `postgres`, `kafka`) is determined by the top-level configuration key
-    - Connection details are identified by the `dataSourceName` in your plan's task summary
-    - All connection properties are merged into task step options before execution
-    - Step-specific options take precedence over connection configuration (step options override connection defaults)
+    Define connections inline within your unified YAML file:
+    ```yaml
+    name: "account_plan"
 
-    **Example:**
+    dataSources:
+      - name: "my_json_sink"
+        connection:
+          type: "json"
+          options:
+            path: "/data/output/accounts"
+            saveMode: "overwrite"
+        steps:
+          - name: "account_step"
+            count:
+              records: 1000
+            fields:
+              - name: "account_id"
+                type: "string"
+    ```
 
-    Configuration in `application.conf`:
+    **Option 2: External application.conf**
+
+    For advanced use cases or environment-specific configurations, you can define connections in `application.conf`:
     ```
     json {
       my_json_sink {
@@ -101,35 +116,26 @@ All connection details follow the same pattern.
     }
     ```
 
-    YAML task file (`account-task.yaml`):
+    Then reference the connection in your unified YAML:
     ```yaml
-    name: "account_task"
-    steps:
-      - name: "account_step"
-        count:
-          records: 1000
-        options:
-          saveMode: "append"  # This overrides the connection's "overwrite"
-        fields:
-          - name: "account_id"
-            type: "string"
+    dataSources:
+      - name: "my_json_sink"
+        # Connection details loaded from application.conf
+        steps:
+          - name: "account_step"
+            count:
+              records: 1000
+            options:
+              saveMode: "append"  # Step options override connection defaults
+            fields:
+              - name: "account_id"
+                type: "string"
     ```
 
-    YAML plan file:
-    ```yaml
-    name: "account_plan"
-    tasks:
-      - name: "account_task"
-        dataSourceName: "my_json_sink"  # References the connection name
-        enabled: true
-    ```
-
-    **Result:** The task will use:
-    - `format = "json"` (from top-level key)
-    - `path = "/data/output/accounts"` (from connection config)
-    - `saveMode = "append"` (from step options, overriding connection default)
-
-    This eliminates the need to duplicate connection details across multiple task files!
+    **Key Points:**
+    - Inline connections in unified YAML are the simplest approach
+    - Step-specific options take precedence over connection configuration
+    - Use `application.conf` when you need environment variable substitution or complex configuration
 
 ## Data sources
 
@@ -157,7 +163,17 @@ configurations can be found below.
 
 === "YAML"
 
-    In `docker/data/custom/application.conf`:
+    In a unified YAML file:
+    ```yaml
+    dataSources:
+      - name: "customer_transactions"
+        connection:
+          type: "csv"
+          options:
+            path: "/data/customer/transaction"
+    ```
+
+    Or in `application.conf`:
     ```
     csv {
       customer_transactions {
@@ -185,14 +201,13 @@ configurations can be found below.
 
 === "YAML"
 
-    In `docker/data/custom/application.conf`:
-    ```
-    json {
-      customer_transactions {
-        path = "/data/customer/transaction"
-        path = ${?JSON_PATH}
-      }
-    }
+    ```yaml
+    dataSources:
+      - name: "customer_transactions"
+        connection:
+          type: "json"
+          options:
+            path: "/data/customer/transaction"
     ```
 
 [Other available configuration for JSON can be found here](https://spark.apache.org/docs/latest/sql-data-sources-json.html#data-source-option)
@@ -213,14 +228,13 @@ configurations can be found below.
 
 === "YAML"
 
-    In `docker/data/custom/application.conf`:
-    ```
-    orc {
-      customer_transactions {
-        path = "/data/customer/transaction"
-        path = ${?ORC_PATH}
-      }
-    }
+    ```yaml
+    dataSources:
+      - name: "customer_transactions"
+        connection:
+          type: "orc"
+          options:
+            path: "/data/customer/transaction"
     ```
 
 [Other available configuration for ORC can be found here](https://spark.apache.org/docs/latest/sql-data-sources-orc.html#configuration)
@@ -241,14 +255,13 @@ configurations can be found below.
 
 === "YAML"
 
-    In `docker/data/custom/application.conf`:
-    ```
-    parquet {
-      customer_transactions {
-        path = "/data/customer/transaction"
-        path = ${?PARQUET_PATH}
-      }
-    }
+    ```yaml
+    dataSources:
+      - name: "customer_transactions"
+        connection:
+          type: "parquet"
+          options:
+            path: "/data/customer/transaction"
     ```
 
 [Other available configuration for Parquet can be found here](https://spark.apache.org/docs/latest/sql-data-sources-parquet.html#data-source-option)
@@ -269,14 +282,13 @@ configurations can be found below.
 
 === "YAML"
 
-    In `docker/data/custom/application.conf`:
-    ```
-    delta {
-      customer_transactions {
-        path = "/data/customer/transaction"
-        path = ${?DELTA_PATH}
-      }
-    }
+    ```yaml
+    dataSources:
+      - name: "customer_transactions"
+        connection:
+          type: "delta"
+          options:
+            path: "/data/customer/transaction"
     ```
 
 #### Iceberg
@@ -309,18 +321,18 @@ configurations can be found below.
 
 === "YAML"
 
-    In `docker/data/custom/application.conf`:
-    ```
-    iceberg {
-      customer_transactions {
-        path = "/opt/app/data/customer/iceberg"
-        path = ${?ICEBERG_WAREHOUSE_PATH}
-        catalogType = "hadoop"
-        catalogType = ${?ICEBERG_CATALOG_TYPE}
-        catalogUri = ""
-        catalogUri = ${?ICEBERG_CATALOG_URI}
-      }
-    }
+    ```yaml
+    dataSources:
+      - name: "customer_accounts"
+        connection:
+          type: "iceberg"
+          options:
+            path: "/opt/app/data/customer/iceberg"
+            catalogType: "hadoop"
+        steps:
+          - name: "accounts"
+            options:
+              table: "account.accounts"
     ```
 
 ### RMDBS
@@ -353,19 +365,15 @@ Sample can be found below
 
 === "YAML"
 
-    In `docker/data/custom/application.conf`:
-    ```
-    jdbc {
-        customer_postgres {
-            url = "jdbc:postgresql://localhost:5432/customer"
-            url = ${?POSTGRES_URL}
-            user = "postgres"
-            user = ${?POSTGRES_USERNAME}
-            password = "postgres"
-            password = ${?POSTGRES_PASSWORD}
-            driver = "org.postgresql.Driver"
-        }
-    }
+    ```yaml
+    dataSources:
+      - name: "customer_postgres"
+        connection:
+          type: "postgres"
+          options:
+            url: "jdbc:postgresql://localhost:5432/customer"
+            user: "postgres"
+            password: "postgres"
     ```
 
 Ensure that the user has write permission, so it is able to save the table to the target tables.
@@ -420,16 +428,15 @@ Following permissions are required when generating plan and tasks:
 
 === "YAML"
 
-    In `docker/data/custom/application.conf`:
-    ```
-    jdbc {
-        customer_mysql {
-            url = "jdbc:mysql://localhost:3306/customer"
-            user = "root"
-            password = "root"
-            driver = "com.mysql.cj.jdbc.Driver"
-        }
-    }
+    ```yaml
+    dataSources:
+      - name: "customer_mysql"
+        connection:
+          type: "mysql"
+          options:
+            url: "jdbc:mysql://localhost:3306/customer"
+            user: "root"
+            password: "root"
     ```
 
 ##### Permissions
@@ -471,14 +478,13 @@ Follows same configuration as defined by the Spark BigQuery Connector as found
 
 === "YAML"
 
-    In `docker/data/custom/application.conf`:
-    ```
-    bigquery {
-        customer_bigquery {
-            temporaryGcsBucket = "gs://my-test-bucket"
-            temporaryGcsBucket = ${?BIGQUERY_TEMPORARY_GCS_BUCKET}
-        }
-    }
+    ```yaml
+    dataSources:
+      - name: "customer_bigquery"
+        connection:
+          type: "bigquery"
+          options:
+            temporaryGcsBucket: "gs://my-test-bucket"
     ```
 
 ### Cassandra
@@ -512,20 +518,15 @@ found [**here**](https://github.com/datastax/spark-cassandra-connector/blob/mast
 
 === "YAML"
 
-    In `docker/data/custom/application.conf`:
-    ```
-    org.apache.spark.sql.cassandra {
-        customer_cassandra {
-            spark.cassandra.connection.host = "localhost"
-            spark.cassandra.connection.host = ${?CASSANDRA_HOST}
-            spark.cassandra.connection.port = "9042"
-            spark.cassandra.connection.port = ${?CASSANDRA_PORT}
-            spark.cassandra.auth.username = "cassandra"
-            spark.cassandra.auth.username = ${?CASSANDRA_USERNAME}
-            spark.cassandra.auth.password = "cassandra"
-            spark.cassandra.auth.password = ${?CASSANDRA_PASSWORD}
-        }
-    }
+    ```yaml
+    dataSources:
+      - name: "customer_cassandra"
+        connection:
+          type: "cassandra"
+          options:
+            url: "localhost:9042"
+            user: "cassandra"
+            password: "cassandra"
     ```
 
 ##### Permissions
@@ -575,14 +576,13 @@ found [**here**](https://spark.apache.org/docs/latest/structured-streaming-kafka
 
 === "YAML"
 
-    In `docker/data/custom/application.conf`:
-    ```
-    kafka {
-        customer_kafka {
-            kafka.bootstrap.servers = "localhost:9092"
-            kafka.bootstrap.servers = ${?KAFKA_BOOTSTRAP_SERVERS}
-        }
-    }
+    ```yaml
+    dataSources:
+      - name: "customer_kafka"
+        connection:
+          type: "kafka"
+          options:
+            url: "localhost:9092"
     ```
 
 When defining your schema for pushing data to Kafka, it follows a specific top level schema.  
@@ -626,22 +626,16 @@ via JNDI otherwise a connection cannot be created.
 
 === "YAML"
 
-    In `docker/data/custom/application.conf`:
-    ```
-    jms {
-        customer_rabbitmq {
-            connectionFactory = "com.rabbitmq.jms.admin.RMQConnectionFactory"
-            connectionFactory = ${?RABBITMQ_CONNECTION_FACTORY}
-            url = "amqp://localhost:5672"
-            url = ${?RABBITMQ_URL}
-            user = "guest"
-            user = ${?RABBITMQ_USER}
-            password = "guest"
-            password = ${?RABBITMQ_PASSWORD}
-            virtualHost = "/"
-            virtualHost = ${?RABBITMQ_VIRTUAL_HOST}
-        }
-    }
+    ```yaml
+    dataSources:
+      - name: "customer_rabbitmq"
+        connection:
+          type: "rabbitmq"
+          options:
+            url: "amqp://localhost:5672"
+            user: "guest"
+            password: "guest"
+            virtualHost: "/"
     ```
 
 #### Solace
@@ -676,22 +670,17 @@ via JNDI otherwise a connection cannot be created.
 
 === "YAML"
 
-    In `docker/data/custom/application.conf`:
-    ```
-    jms {
-        customer_solace {
-            initialContextFactory = "com.solacesystems.jndi.SolJNDIInitialContextFactory"
-            connectionFactory = "/jms/cf/default"
-            url = "smf://localhost:55555"
-            url = ${?SOLACE_URL}
-            user = "admin"
-            user = ${?SOLACE_USER}
-            password = "admin"
-            password = ${?SOLACE_PASSWORD}
-            vpnName = "default"
-            vpnName = ${?SOLACE_VPN}
-        }
-    }
+    ```yaml
+    dataSources:
+      - name: "customer_solace"
+        connection:
+          type: "solace"
+          options:
+            url: "smf://localhost:55555"
+            user: "admin"
+            password: "admin"
+            vpnName: "default"
+            connectionFactory: "/jms/cf/default"
     ```
 
 ### HTTP
@@ -721,14 +710,12 @@ The url is defined in the tasks to allow for generated data to be populated in t
 
 === "YAML"
 
-    In `docker/data/custom/application.conf`:
-    ```
-    http {
-        customer_api {
-            user = "admin"
-            user = ${?HTTP_USER}
-            password = "admin"
-            password = ${?HTTP_PASSWORD}
-        }
-    }
+    ```yaml
+    dataSources:
+      - name: "customer_api"
+        connection:
+          type: "http"
+          options:
+            user: "admin"
+            password: "admin"
     ```

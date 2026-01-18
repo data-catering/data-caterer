@@ -166,6 +166,7 @@ attributes that add guidelines that the data generator will understand when gene
 
 === "YAML"
 
+    In a unified YAML file:
     ```yaml
     fields:
       - name: "account_id"
@@ -342,37 +343,47 @@ Putting it all the fields together, our class should now look like this.
 
 === "YAML"
 
+    Create a unified YAML file `docker/data/custom/unified/my-csv.yaml`:
     ```yaml
-    name: "csv_account_task"
-    steps:
-      - name: "customer_accounts"
-        type: "csv"
-        options:
-          path: "/opt/app/data/customer/account"
-          header: "true"
-        fields:
-          - name: "account_id"
-            options:
-              regex: "ACC[0-9]{8}"
-              isUnique: true
-          - name: "balance"
-            type: "double"
-            options:
-              min: 1
-              max: 1000
-          - name: "created_by"
-            options:
-              sql: "CASE WHEN status IN ('open', 'closed') THEN 'eod' ELSE 'event' END"
-          - name: "name"
-            options:
-              expression: "#{Name.name}"
-          - name: "open_time"
-            type: "timestamp"
-            options:
-              min: "2022-01-01 00:00:00"
-          - name: "status"
-            options:
-              oneOf: ["open", "closed", "suspended", "pending"]
+    name: "csv_account_generation"
+    description: "Generate customer account data in CSV"
+
+    dataSources:
+      - name: "customer_csv"
+        connection:
+          type: "csv"
+          options:
+            path: "/opt/app/data/customer/account"
+            header: "true"
+        steps:
+          - name: "customer_accounts"
+            fields:
+              - name: "account_id"
+                options:
+                  regex: "ACC[0-9]{8}"
+                  isUnique: true
+              - name: "balance"
+                type: "double"
+                options:
+                  min: 1
+                  max: 1000
+              - name: "created_by"
+                options:
+                  sql: "CASE WHEN status IN ('open', 'closed') THEN 'eod' ELSE 'event' END"
+              - name: "name"
+                options:
+                  expression: "#{Name.name}"
+              - name: "open_time"
+                type: "timestamp"
+                options:
+                  min: "2022-01-01 00:00:00"
+              - name: "status"
+                options:
+                  oneOf:
+                    - "open"
+                    - "closed"
+                    - "suspended"
+                    - "pending"
     ```
 
 #### Record Count
@@ -402,13 +413,14 @@ We only want to generate 100 records, so that we can see what the output looks l
 
 === "YAML"
 
+    In a unified YAML file, add `count` to the step:
     ```yaml
-    name: "csv_account_task"
     steps:
       - name: "customer_accounts"
-        type: "csv"
         count:
           records: 100
+        fields:
+          ...
     ```
 
 #### Additional Configurations
@@ -435,11 +447,18 @@ have unique values generated.
 
 === "YAML"
 
+    In a unified YAML file, add `config` at the top level:
     ```yaml
-    flags:
-      enableUniqueCheck: true
-    folders:
-      generatedReportsFolderPath: "/opt/app/data/report"
+    name: "csv_account_generation"
+
+    config:
+      flags:
+        enableUniqueCheck: true
+      folders:
+        generatedReportsFolderPath: "/opt/app/data/report"
+
+    dataSources:
+      ...
     ```
 
 #### Execute
@@ -495,50 +514,55 @@ To tell Data Caterer that we want to run with the configurations along with the 
 
 === "YAML"
 
-    Create file `docker/data/custom/task/csv-account-task.yaml`:
+    Create a unified YAML file `docker/data/custom/unified/my-csv.yaml`:
     ```yaml
-    name: "csv_account_task"
-    steps:
-      - name: "customer_accounts"
-        type: "csv"
-        options:
-          path: "/opt/app/data/customer/account"
-          header: "true"
-        count:
-          records: 100
-        fields:
-          - name: "account_id"
-            options:
-              regex: "ACC[0-9]{8}"
-              isUnique: true
-          - name: "balance"
-            type: "double"
-            options:
-              min: 1
-              max: 1000
-          - name: "created_by"
-            options:
-              sql: "CASE WHEN status IN ('open', 'closed') THEN 'eod' ELSE 'event' END"
-          - name: "name"
-            options:
-              expression: "#{Name.name}"
-          - name: "open_time"
-            type: "timestamp"
-            options:
-              min: "2022-01-01 00:00:00"
-          - name: "status"
-            options:
-              oneOf: ["open", "closed", "suspended", "pending"]
-    ```
+    name: "csv_account_generation"
+    description: "Generate customer account data in CSV"
 
-    Create file `docker/data/custom/application.conf`:
-    ```yaml
-    flags {
-      enableUniqueCheck = true
-    }
-    folders {
-      generatedReportsFolderPath = "/opt/app/data/report"
-    }
+    config:
+      flags:
+        enableUniqueCheck: true
+      folders:
+        generatedReportsFolderPath: "/opt/app/data/report"
+
+    dataSources:
+      - name: "customer_csv"
+        connection:
+          type: "csv"
+          options:
+            path: "/opt/app/data/customer/account"
+            header: "true"
+        steps:
+          - name: "customer_accounts"
+            count:
+              records: 100
+            fields:
+              - name: "account_id"
+                options:
+                  regex: "ACC[0-9]{8}"
+                  isUnique: true
+              - name: "balance"
+                type: "double"
+                options:
+                  min: 1
+                  max: 1000
+              - name: "created_by"
+                options:
+                  sql: "CASE WHEN status IN ('open', 'closed') THEN 'eod' ELSE 'event' END"
+              - name: "name"
+                options:
+                  expression: "#{Name.name}"
+              - name: "open_time"
+                type: "timestamp"
+                options:
+                  min: "2022-01-01 00:00:00"
+              - name: "status"
+                options:
+                  oneOf:
+                    - "open"
+                    - "closed"
+                    - "suspended"
+                    - "pending"
     ```
 
 ### Run
@@ -768,97 +792,99 @@ Now, stitching it all together for the `execute` function, our final plan should
 
 === "YAML"
 
-    Create file `docker/data/custom/task/csv-complete-task.yaml`:
+    Create a unified YAML file `docker/data/custom/unified/my-csv-complete.yaml`:
     ```yaml
-    name: "csv_complete_task"
-    steps:
-      - name: "customer_accounts"
-        type: "csv"
-        options:
-          path: "/opt/app/data/customer/account"
-          header: "true"
-        count:
-          records: 100
-        fields:
-          - name: "account_id"
-            options:
-              regex: "ACC[0-9]{8}"
-              isUnique: true
-          - name: "balance"
-            type: "double"
-            options:
-              min: 1
-              max: 1000
-          - name: "created_by"
-            options:
-              sql: "CASE WHEN status IN ('open', 'closed') THEN 'eod' ELSE 'event' END"
-          - name: "name"
-            options:
-              expression: "#{Name.name}"
-          - name: "open_time"
-            type: "timestamp"
-            options:
-              min: "2022-01-01 00:00:00"
-          - name: "status"
-            options:
-              oneOf: ["open", "closed", "suspended", "pending"]
-      - name: "customer_transactions"
-        type: "csv"
-        options:
-          path: "/opt/app/data/customer/transaction"
-          header: "true"
-        count:
-          perField:
-            fieldNames: ["account_id", "full_name"]
-            options:
-              min: 0
-              max: 5
-        fields:
-          - name: "account_id"
-          - name: "name"
-          - name: "amount"
-            type: "double"
-            options:
-              min: 1
-              max: 100
-          - name: "time"
-            type: "timestamp"
-            options:
-              min: "2022-01-01 00:00:00"
-          - name: "date"
-            type: "date"
-            options:
-              sql: "DATE(time)"
-    ```
-
-    Create file `docker/data/custom/plan/my-csv-plan.yaml`:
-    ```yaml
-    name: "my_csv_plan"
+    name: "csv_complete_generation"
     description: "Generate CSV files with foreign key relationships"
-    tasks:
-      - name: "csv_complete_task"
-        dataSourceName: "my_csv"
 
-    sinkOptions:
-      foreignKeys:
-        - source:
-            dataSource: "my_csv"
-            step: "customer_accounts"
-            fields: ["account_id", "name"]
-          generate:
-            - dataSource: "my_csv"
-              step: "customer_transactions"
-              fields: ["account_id", "full_name"]
-    ```
+    config:
+      flags:
+        enableUniqueCheck: true
+      folders:
+        generatedReportsFolderPath: "/opt/app/data/report"
 
-    Create file `docker/data/custom/application.conf`:
-    ```yaml
-    flags {
-      enableUniqueCheck = true
-    }
-    folders {
-      generatedReportsFolderPath = "/opt/app/data/report"
-    }
+    dataSources:
+      - name: "customer_csv"
+        connection:
+          type: "csv"
+          options:
+            path: "/opt/app/data/customer"
+            header: "true"
+        steps:
+          - name: "customer_accounts"
+            options:
+              path: "/opt/app/data/customer/account"
+            count:
+              records: 100
+            fields:
+              - name: "account_id"
+                options:
+                  regex: "ACC[0-9]{8}"
+                  isUnique: true
+              - name: "balance"
+                type: "double"
+                options:
+                  min: 1
+                  max: 1000
+              - name: "created_by"
+                options:
+                  sql: "CASE WHEN status IN ('open', 'closed') THEN 'eod' ELSE 'event' END"
+              - name: "name"
+                options:
+                  expression: "#{Name.name}"
+              - name: "open_time"
+                type: "timestamp"
+                options:
+                  min: "2022-01-01 00:00:00"
+              - name: "status"
+                options:
+                  oneOf:
+                    - "open"
+                    - "closed"
+                    - "suspended"
+                    - "pending"
+
+          - name: "customer_transactions"
+            options:
+              path: "/opt/app/data/customer/transaction"
+            count:
+              perField:
+                fieldNames:
+                  - "account_id"
+                  - "full_name"
+                options:
+                  min: 0
+                  max: 5
+            fields:
+              - name: "account_id"
+              - name: "full_name"
+              - name: "amount"
+                type: "double"
+                options:
+                  min: 1
+                  max: 100
+              - name: "time"
+                type: "timestamp"
+                options:
+                  min: "2022-01-01 00:00:00"
+              - name: "date"
+                type: "date"
+                options:
+                  sql: "DATE(time)"
+
+    foreignKeys:
+      - source:
+          dataSource: "customer_csv"
+          step: "customer_accounts"
+          fields:
+            - "account_id"
+            - "name"
+        generate:
+          - dataSource: "customer_csv"
+            step: "customer_transactions"
+            fields:
+              - "account_id"
+              - "full_name"
     ```
 
 Let's try run again.
@@ -959,32 +985,47 @@ Below, we have an example that should give you a good understanding of what vali
 
 === "YAML"
 
+    Create a unified YAML file with inline validations:
     ```yaml
-    ---
     name: "postgres_validation"
+    description: "Validate customer transaction data"
+
     dataSources:
-      postgres:
-        - options:
+      - name: "customer_postgres"
+        connection:
+          type: "postgres"
+          options:
             url: "jdbc:postgresql://host.docker.internal:5432/customer"
             user: "postgres"
             password: "password"
-            dbtable: "account.transactions"
-          validations:
-            - expr: "account_id IS NULL"
-            - field: "name"
-              options:
-                matches: "[A-Z][a-z]+ [A-Z][a-z]+"
+        steps:
+          - name: "transactions"
+            options:
+              dbtable: "account.transactions"
+            validations:
+              - expr: "account_id IS NOT NULL"
+              - field: "name"
+                validation:
+                  - type: "matches"
+                    regex: "[A-Z][a-z]+ [A-Z][a-z]+"
                 errorThreshold: 0.2
                 description: "Some names have different formats"
-            - field: "balance"
-              options:
-                greaterThanOrEqual: 0
+              - field: "balance"
+                validation:
+                  - type: "greaterThanOrEqual"
+                    value: 0
                 errorThreshold: 10
                 description: "Account can have negative balance if overdraft"
-            - expr: "CASE WHEN status = 'closed' THEN close_date IS NOT NULL ELSE close_date IS NULL END"
-            - unique: ["account_id", "name"]
-            - groupByCols: ["account_id", "name"]
-              aggExpr: "max(login_retry) < 10"
+              - expr: "CASE WHEN status = 'closed' THEN close_date IS NOT NULL ELSE close_date IS NULL END"
+              - field: "account_id"
+                validation:
+                  - type: "unique"
+              - groupByFields:
+                  - "account_id"
+                  - "name"
+                aggField: "login_retry"
+                aggType: "max"
+                aggExpr: "max(login_retry) < 10"
     ```
 
 ##### name

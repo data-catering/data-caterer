@@ -1,0 +1,22 @@
+# Minimal example - just generates 10 JSON records
+
+version: "1.0"
+name: "minimal_example"
+
+dataSources:
+  - name: "output"
+    connection:
+      type: "json"
+      options:
+        path: "/tmp/data/minimal"
+    steps:
+      - name: "users"
+        count:
+          records: 10
+        fields:
+          - name: "id"
+            options:
+              regex: "USR[0-9]{6}"
+          - name: "name"
+            options:
+              expression: "#{Name.fullName}"

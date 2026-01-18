@@ -6,6 +6,21 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Data Caterer is a test data management tool built with Scala and Apache Spark that provides automated data generation, validation, and cleanup capabilities. It supports multiple data sources including databases, files, messaging systems, and HTTP APIs.
 
+### YAML Configuration Formats
+
+Data Caterer supports two YAML configuration formats:
+
+1. **Unified Format (v1.0+)** - Recommended for new projects
+   - Single-file configuration with `version: "1.0"`
+   - Examples in `misc/schema/examples/`
+   - Schema: `misc/schema/unified-config-schema.json`
+
+2. **Legacy Format** - Still supported but will be deprecated
+   - Separate plan and task files
+   - Examples in `example/docker/data/custom/`
+
+**Migration**: Use `migrate_yaml.py` to convert legacy YAML to unified format. See [docs/migrations/yaml-unified-format/](docs/migrations/yaml-unified-format/) for details.
+
 ## Build System & Common Commands
 
 The project uses Gradle with Kotlin DSL and follows a multi-module structure:
@@ -63,6 +78,8 @@ ScalaTest with JUnit Platform has limitations with Gradle's `--tests` filtering:
 - **Unit tests** (`app/src/test`): Fast, isolated tests for individual components
 - **Integration tests** (`app/src/integrationTest`): Slower tests that verify end-to-end workflows (e.g., YAML plan processing)
 - **Performance tests** (`app/src/performanceTest`): Benchmarking tests for data generation and foreign key performance
+- **Manual tests** (`app/src/manualTest`): Standalone tests for external dependencies (Kafka, PostgreSQL, etc.) - must be run explicitly
+- **Memory profiling** (`misc/memory-profiling`): Production-grade memory validation with JFR and heap dumps - see section below
 
 ## Architecture Overview
 
@@ -249,6 +266,97 @@ DEPLOY_MODE=standalone ./gradlew :app:run --args="DataCatererUI"
 # Specific test class
 ./gradlew :app:test --tests "io.github.datacatering.datacaterer.core.generator.DataGeneratorFactoryTest"
 ```
+
+### Manual Tests for External Dependencies
+
+Manual tests (`app/src/manualTest`) are standalone tests designed for verifying integrations with real external services (Kafka, PostgreSQL, etc.). These tests are NOT run as part of regular test suites.
+
+**Prerequisites**:
+- Install [insta-infra](https://github.com/data-catering/insta-infra) for automatic service management
+- Or start required services manually (Docker, local installations)
+
+**Running Manual Tests**:
+```bash
+# Run specific manual test (will auto-start Kafka via insta-infra if available)
+./gradlew :app:manualTest --tests "io.github.datacatering.datacaterer.core.manual.KafkaStreamingManualTest"
+
+# Run PostgreSQL manual test
+./gradlew :app:manualTest --tests "io.github.datacatering.datacaterer.core.manual.PostgresManualTest"
+
+# Run any unified YAML file for testing
+YAML_FILE=/path/to/my-config.yaml ./gradlew :app:manualTest --tests "io.github.datacatering.datacaterer.core.manual.YamlFileManualTest"
+
+# Run an example from misc/schema/examples
+YAML_FILE=misc/schema/examples/kafka-streaming.yaml ./gradlew :app:manualTest --tests "io.github.datacatering.datacaterer.core.manual.YamlFileManualTest"
+
+# With custom service configuration
+KAFKA_BROKERS=my-kafka:9092 ./gradlew :app:manualTest --tests "*KafkaStreamingManualTest"
+POSTGRES_URL=jdbc:postgresql://myhost:5432/mydb ./gradlew :app:manualTest --tests "*PostgresManualTest"
+```
+
+**Available Manual Tests**:
+- `KafkaStreamingManualTest`: Tests Kafka streaming with real Kafka cluster
+- `PostgresManualTest`: Tests PostgreSQL data generation with real database
+- `YamlFileManualTest`: Generic runner for any unified YAML configuration file
+
+## Memory Profiling
+
+**IMPORTANT**: Memory optimization validation uses production-grade profiling scripts in `misc/memory-profiling/`, NOT unit tests.
+
+### Why Not Use Tests?
+
+Test-based memory measurement fails due to:
+- Non-deterministic GC behavior (`System.gc()` is just a suggestion)
+- Test framework and Gradle daemon overhead
+- Inability to test real Spark jobs with HTTP streaming
+- Inconsistent results between runs (50%+ variance)
+
+### Using Memory Profiling Scripts
+
+Located in `misc/memory-profiling/`, these scripts provide accurate memory validation using Java Flight Recorder, heap dumps, and GC analysis.
+
+**Quick Start**:
+```bash
+cd misc/memory-profiling
+
+# Quick validation (10K records)
+./scripts/run-memory-profile.sh
+
+# Bounded buffer validation (250K records)
+./scripts/run-memory-profile.sh scenarios/bounded-buffer-test.yaml 512m 2g
+
+# Stress test with OOM detection (2M records)
+./scripts/run-memory-profile.sh scenarios/stress-test-http.yaml 1g 2g --oom-dump
+
+# Full regression testing
+./scripts/run-all-scenarios.sh 1g 2g
+```
+
+**Available Scenarios**:
+- `baseline-http.yaml` - Quick smoke test (10K records)
+- `bounded-buffer-test.yaml` - Validates bounded buffer optimization (250K records)
+- `high-throughput-http.yaml` - High throughput validation (500K records)
+- `large-batch-http.yaml` - Large batch processing (500K records)
+- `sustained-load-http.yaml` - Long-running load test (1M records)
+- `stress-test-http.yaml` - Stress test with OOM detection (2M records)
+
+**Profiling Options**:
+```bash
+# With Java Flight Recorder
+./scripts/run-memory-profile.sh scenarios/stress-test-http.yaml 1g 2g --flight-recorder
+
+# With heap dump on OOM
+./scripts/run-memory-profile.sh scenarios/stress-test-http.yaml 1g 2g --oom-dump
+
+# Custom HTTP port
+./scripts/run-memory-profile.sh scenarios/baseline-http.yaml 512m 2g --port 9090
+```
+
+**Results**:
+- Memory usage reports in `misc/memory-profiling/results/`
+
+**Documentation**:
+- [misc/memory-profiling/README.md](misc/memory-profiling/README.md) - Comprehensive guide
 
 ## Key Dependencies
 

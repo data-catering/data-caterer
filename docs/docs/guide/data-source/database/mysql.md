@@ -108,13 +108,22 @@ Create a file depending on which interface you want to use.
 
 === "YAML"
 
-    In `docker/data/custom/plan/my-mysql.yaml`:
+    Create a unified YAML file `docker/data/custom/unified/my-mysql.yaml`:
     ```yaml
     name: "my_mysql_plan"
     description: "Create account data via MySQL"
-    tasks:
-      - name: "mysql_task"
-        dataSourceName: "my_mysql"
+
+    dataSources:
+      - name: "my_mysql"
+        connection:
+          type: "mysql"
+          options:
+            url: "jdbc:mysql://host.docker.internal:3306/customer"
+            user: "root"
+            password: "root"
+        steps:
+          - name: "accounts"
+            # Add fields and options here
     ```
 
 === "UI"
@@ -170,16 +179,16 @@ Within our class, we can start by defining the connection properties to connect 
 
 === "YAML"
 
-    In `docker/data/custom/application.conf`:
-    ```
-    jdbc {
-        customer_mysql {
-            url = "jdbc:mysql://jdbc:mysql://host.docker.internal:3306/customer/customer"
-            user = "root"
-            password = "root"
-            driver = "com.mysql.cj.jdbc.Driver"
-        }
-    }
+    In a unified YAML file, connection is defined inline within the data source:
+    ```yaml
+    dataSources:
+      - name: "customer_mysql"
+        connection:
+          type: "mysql"
+          options:
+            url: "jdbc:mysql://host.docker.internal:3306/customer"
+            user: "root"
+            password: "root"
     ```
 
 === "UI"
@@ -231,23 +240,29 @@ corresponds to `text` in MySQL.
 
 === "YAML"
 
-    In `docker/data/custom/task/mysql/mysql-task.yaml`:
+    In a unified YAML file:
     ```yaml
-    name: "mysql_task"
-    steps:
-      - name: "accounts"
-        type: "mysql"
-        options:
-          dbtable: "customer.accounts"
-        fields:
-        - name: "account_number"
-        - name: "amount"
-          type: "double"
-        - name: "created_by"
-        - name: "created_by_fixed_length"
-        - name: "open_timestamp"
-          type: "timestamp"
-        - name: "account_status"
+    dataSources:
+      - name: "customer_mysql"
+        connection:
+          type: "mysql"
+          options:
+            url: "jdbc:mysql://host.docker.internal:3306/customer"
+            user: "root"
+            password: "root"
+        steps:
+          - name: "accounts"
+            options:
+              dbtable: "customer.accounts"
+            fields:
+              - name: "account_number"
+              - name: "amount"
+                type: "double"
+              - name: "created_by"
+              - name: "created_by_fixed_length"
+              - name: "open_timestamp"
+                type: "timestamp"
+              - name: "account_status"
     ```
 
 === "UI"
@@ -298,14 +313,18 @@ have unique values generated.
 
 === "YAML"
 
-    In `docker/data/custom/application.conf`:
-    ```
-    flags {
-      enableUniqueCheck = true
-    }
-    folders {
-      generatedReportsFolderPath = "/opt/app/data/report"
-    }
+    In a unified YAML file, add a `config` section:
+    ```yaml
+    name: "my_mysql_plan"
+
+    config:
+      flags:
+        enableUniqueCheck: true
+      folders:
+        generatedReportsFolderPath: "/opt/app/data/report"
+
+    dataSources:
+      ...
     ```
 
 === "UI"

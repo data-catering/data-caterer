@@ -437,4 +437,5 @@ object UDFHelperFunctions extends Serializable {
     val length = RANDOM.nextInt(maxLength + 1) + minLength
     RANDOM.alphanumeric.take(length).mkString("")
   }).asNondeterministic()
+
 }

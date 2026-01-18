@@ -137,19 +137,23 @@ the `count` function.
 === "YAML"
 
     ```yaml
-    name: "csv_transaction_task"
-    steps:
+    name: "csv_records_plan"
+
+    dataSources:
       - name: "customer_transactions"
-        type: "csv"
-        options:
-          path: "/opt/app/data/customer/transaction"
-          header: "true"
-        count:
-          perField:
-            count: 5
-            fieldNames:
-              - "account_id"
-              - "full_name"
+        connection:
+          type: "csv"
+          options:
+            path: "/opt/app/data/customer/transaction"
+            header: "true"
+        steps:
+          - name: "customer_transactions"
+            count:
+              perField:
+                count: 5
+                fieldNames:
+                  - "account_id"
+                  - "full_name"
     ```
 
 This will generate `1000 * 5 = 5000` records as the default number of records is set (1000) and
@@ -184,19 +188,23 @@ of records per field.
 === "YAML"
 
     ```yaml
-    name: "csv_transaction_task"
-    steps:
+    name: "csv_random_records_plan"
+
+    dataSources:
       - name: "customer_transactions"
-        type: "csv"
-        options:
-          path: "/opt/app/data/customer/transaction"
-          header: "true"
-        count:
-          perField:
-            fieldNames:
-              - "account_id"
-              - "full_name"
-            options:
+        connection:
+          type: "csv"
+          options:
+            path: "/opt/app/data/customer/transaction"
+            header: "true"
+        steps:
+          - name: "customer_transactions"
+            count:
+              perField:
+                fieldNames:
+                  - "account_id"
+                  - "full_name"
+                options:
               min: 0
               max: 5
     ```

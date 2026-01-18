@@ -1,8 +1,8 @@
 package io.github.datacatering.datacaterer.core.generator.execution
 
-import io.github.datacatering.datacaterer.api.model.{Task, TaskSummary}
+import io.github.datacatering.datacaterer.api.model.{PerformanceMetrics, Task, TaskSummary}
 import io.github.datacatering.datacaterer.core.generator.execution.rate.{DurationTracker, RateLimiter}
-import io.github.datacatering.datacaterer.core.generator.metrics.{PerformanceMetrics, PerformanceMetricsCollector}
+import io.github.datacatering.datacaterer.core.generator.metrics.PerformanceMetricsCollector
 import io.github.datacatering.datacaterer.core.util.GeneratorUtil
 import org.apache.log4j.Logger
 
@@ -73,6 +73,11 @@ class DurationBasedExecutionStrategy(
   override def getGenerationMode: GenerationMode = {
     if (rate.isDefined) GenerationMode.AllUpfront else GenerationMode.Batched
   }
+
+  /**
+   * Get the metrics collector so streaming sink can collect performance metrics.
+   */
+  override def getMetricsCollector: Option[PerformanceMetricsCollector] = Some(metricsCollector)
 
   /**
    * Get the duration in seconds for streaming execution

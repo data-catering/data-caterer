@@ -3,7 +3,8 @@ package io.github.datacatering.datacaterer.core.generator.execution
 import io.github.datacatering.datacaterer.api.model.{Task, TaskSummary}
 import io.github.datacatering.datacaterer.core.generator.execution.pattern.LoadPattern
 import io.github.datacatering.datacaterer.core.generator.execution.rate.{DurationTracker, RateLimiter}
-import io.github.datacatering.datacaterer.core.generator.metrics.{PerformanceMetrics, PerformanceMetricsCollector}
+import io.github.datacatering.datacaterer.api.model.PerformanceMetrics
+import io.github.datacatering.datacaterer.core.generator.metrics.PerformanceMetricsCollector
 import io.github.datacatering.datacaterer.core.parser.LoadPatternParser
 import io.github.datacatering.datacaterer.core.util.GeneratorUtil
 import org.apache.log4j.Logger
@@ -39,6 +40,55 @@ class PatternBasedExecutionStrategy(
   private var hasStarted = false
 
   LOGGER.info(s"Pattern-based execution strategy initialized: duration=$duration, pattern=${loadPattern.getClass.getSimpleName}")
+
+  /**
+   * Override to use AllUpfront generation mode for pattern-based execution.
+   * This enables routing through SinkRouter for proper rate limiting at sink level.
+   */
+  override def getGenerationMode: GenerationMode = GenerationMode.AllUpfront
+
+  /**
+   * Get the metrics collector so streaming sink can collect performance metrics.
+   */
+  override def getMetricsCollector: Option[PerformanceMetricsCollector] = Some(metricsCollector)
+
+  /**
+   * Get the total duration in seconds for this pattern-based execution.
+   */
+  def getDurationSeconds: Double = totalDurationSeconds
+
+  /**
+   * Get a function that calculates the rate at any given time in the execution.
+   * @return Function that takes elapsed seconds and returns the rate at that time
+   */
+  def getRateFunction: Double => Int = {
+    (elapsedSeconds: Double) => loadPattern.getRateAt(elapsedSeconds, totalDurationSeconds)
+  }
+
+  /**
+   * Get the current rate at the start of execution (time = 0).
+   */
+  def getInitialRate: Int = loadPattern.getRateAt(0.0, totalDurationSeconds)
+
+  /**
+   * Get the rate unit for this pattern-based execution.
+   */
+  def getRateUnit: String = rateUnit
+
+  /**
+   * Calculate the average rate across the execution duration.
+   * Samples the pattern at multiple points to get a representative average.
+   * This is used as a fallback when dynamic rate control is not available,
+   * and for calculating expected total record counts.
+   */
+  def getAverageRate: Int = {
+    val samplePoints = 10
+    val samples = (0 until samplePoints).map { i =>
+      val elapsedSeconds = (totalDurationSeconds / samplePoints) * i
+      loadPattern.getRateAt(elapsedSeconds, totalDurationSeconds)
+    }
+    (samples.sum.toDouble / samplePoints).toInt
+  }
 
   override def calculateNumBatches: Int = {
     // For pattern-based execution, we don't know the exact number of batches upfront

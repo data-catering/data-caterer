@@ -1,7 +1,7 @@
 package io.github.datacatering.datacaterer.core.validator.metric
 
 import io.github.datacatering.datacaterer.api.model._
-import io.github.datacatering.datacaterer.core.generator.metrics.{BatchMetrics, PerformanceMetrics}
+import io.github.datacatering.datacaterer.api.model.{BatchMetrics, PerformanceMetrics}
 import org.scalatest.funsuite.AnyFunSuite
 
 import java.time.LocalDateTime

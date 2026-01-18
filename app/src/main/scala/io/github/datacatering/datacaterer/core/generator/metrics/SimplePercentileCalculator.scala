@@ -167,20 +167,3 @@ object SimplePercentileCalculator {
   val COMPRESSION_MEDIUM: Double = 100.0
   val COMPRESSION_HIGH: Double = 200.0
 }
-
-/**
- * Type alias for backwards compatibility.
- * @deprecated Use SimplePercentileCalculator instead
- */
-@deprecated("Use SimplePercentileCalculator instead", "1.0")
-object TDigest {
-  def apply(): SimplePercentileCalculator = SimplePercentileCalculator()
-  def apply(compression: Double): SimplePercentileCalculator = SimplePercentileCalculator(compression)
-  def fromValues(values: Seq[Double], compression: Double = 100.0): SimplePercentileCalculator =
-    SimplePercentileCalculator.fromValues(values, compression)
-
-  val LARGE_DATASET_THRESHOLD: Int = SimplePercentileCalculator.LARGE_DATASET_THRESHOLD
-  val COMPRESSION_LOW: Double = SimplePercentileCalculator.COMPRESSION_LOW
-  val COMPRESSION_MEDIUM: Double = SimplePercentileCalculator.COMPRESSION_MEDIUM
-  val COMPRESSION_HIGH: Double = SimplePercentileCalculator.COMPRESSION_HIGH
-}

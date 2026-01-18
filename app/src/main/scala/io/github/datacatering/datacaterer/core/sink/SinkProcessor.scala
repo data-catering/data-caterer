@@ -1,6 +1,6 @@
 package io.github.datacatering.datacaterer.core.sink
 
-import io.github.datacatering.datacaterer.api.model.Constants.{HTTP, JMS}
+import io.github.datacatering.datacaterer.api.model.Constants.{HTTP, JMS, KAFKA}
 import io.github.datacatering.datacaterer.api.model.Step
 import io.github.datacatering.datacaterer.core.exception.UnsupportedRealTimeDataSourceFormat
 import io.github.datacatering.datacaterer.core.model.RealTimeSinkResult
@@ -66,6 +66,7 @@ object SinkProcessor {
     format match {
       case HTTP => new http.HttpSinkProcessor().createConnections(connectionConfig, step)
       case JMS => new jms.JmsSinkProcessor().createConnections(connectionConfig, step)
+      case KAFKA => new kafka.KafkaSinkProcessor().createConnections(connectionConfig, step)
       case x => throw UnsupportedRealTimeDataSourceFormat(x)
     }
   }
@@ -74,6 +75,7 @@ object SinkProcessor {
     format match {
       case HTTP => new http.HttpSinkProcessor().validate(schema)
       case JMS => new jms.JmsSinkProcessor().validate(schema)
+      case KAFKA => new kafka.KafkaSinkProcessor().validate(schema)
       case _ => //do nothing
     }
   }

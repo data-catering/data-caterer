@@ -1,0 +1,68 @@
+version: "1.0"
+name: "stress_test_http_memory"
+description: "Stress test with 5K records and large payloads to test memory bounds"
+
+config:
+  flags:
+    enableGenerateData: true
+    enableFastGeneration: true
+    enableSaveReports: true
+    enableDeleteGeneratedRecords: false
+    enableRecordTracking: false
+
+dataSources:
+  - name: "test_http"
+    connection:
+      type: "http"
+      options:
+        url: "http://localhost:8080"
+    steps:
+      - name: "stress_data"
+        options:
+          format: "http"  # REQUIRED for HTTP format
+        count:
+          records: 5000
+          perColumnCount:
+            rate: 25  # 25 records per second for sustained stress
+        fields:
+          # Direct internal field names for HTTP
+          - name: "url"
+            static: "http://localhost:8080/"
+
+          - name: "method"
+            static: "POST"
+
+          - name: "Content-Type"
+            static: "application/json"
+
+          - name: "body"
+            options:
+              sql: "TO_JSON(STRUCT(stress_id, correlation_id, large_field_1, large_field_2, large_field_3, metadata, timestamp))"
+
+          # Body fields - larger payloads for stress testing
+          - name: "stress_id"
+            options:
+              regex: "STRESS[0-9]{10}"
+
+          - name: "correlation_id"
+            options:
+              regex: "[A-Z0-9]{32}"
+
+          - name: "large_field_1"
+            options:
+              regex: "[A-Za-z0-9]{500}"
+
+          - name: "large_field_2"
+            options:
+              regex: "[A-Za-z0-9]{500}"
+
+          - name: "large_field_3"
+            options:
+              regex: "[A-Za-z0-9]{500}"
+
+          - name: "metadata"
+            options:
+              regex: "[A-Za-z0-9]{300}"
+
+          - name: "timestamp"
+            type: "timestamp"

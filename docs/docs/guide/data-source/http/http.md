@@ -96,23 +96,16 @@ Create a file depending on which interface you want to use.
 
 === "YAML"
 
-    In `docker/data/custom/plan/my-http.yaml`:
+    Create a unified YAML file `docker/data/custom/unified/my-http.yaml`:
     ```yaml
     name: "my_http_plan"
     description: "Create account data via HTTP from OpenAPI metadata"
-    tasks:
-      - name: "http_task"
-        dataSourceName: "my_http"
-    ```
 
-    In `docker/data/custom/application.conf`:
-    ```
-    flags {
-      enableGeneratePlanAndTasks = true
-    }
-    folders {
-      generatedReportsFolderPath = "/opt/app/data/report"
-    }
+    config:
+      flags:
+        enableGeneratePlanAndTasks: true
+      folders:
+        generatedReportsFolderPath: "/opt/app/data/report"
     ```
 
 === "UI"
@@ -154,16 +147,20 @@ We have kept the following endpoints to test out:
 
 === "YAML"
 
-    In `docker/data/custom/task/http/openapi-task.yaml`:
+    In a unified YAML file, define the steps within `dataSources`:
     ```yaml
-    name: "http_task"
-    steps:
-      - name: "my_petstore"
-        options:
-          metadataSourceType: "openapi"
-          schemaLocation: "/opt/app/mount/http/petstore.json"
-        count:
-          records: 2
+    dataSources:
+      - name: "my_http"
+        connection:
+          type: "http"
+          options:
+        steps:
+          - name: "my_petstore"
+            options:
+              metadataSourceType: "openapi"
+              schemaLocation: "/opt/app/mount/http/petstore.json"
+            count:
+              records: 2
     ```
 
 === "UI"
@@ -253,27 +250,26 @@ knowledge to link all the `id` values together.
 
 === "YAML"
 
-    In `docker/data/custom/plan/my-http.yaml`:
+    In a unified YAML file `docker/data/custom/unified/my-http.yaml`:
     ```yaml
     name: "my_http_plan"
     description: "Create account data via HTTP from OpenAPI metadata"
-    tasks:
-      - name: "http_task"
-        dataSourceName: "my_http"
 
-    sinkOptions:
-      foreignKeys:
-        - source:
-            dataSource: "my_http"
-            step: "POST/pets"
-            fields: ["body.id"]
-          generate:
-            - dataSource: "my_http"
-              step: "DELETE/pets/{id}"
-              fields: ["pathParamid"]
-            - dataSource: "my_http"
-              step: "GET/pets/{id}"
-              fields: ["pathParamid"]
+    foreignKeys:
+      - source:
+          dataSource: "my_http"
+          step: "POST/pets"
+          fields:
+            - "body.id"
+        generate:
+          - dataSource: "my_http"
+            step: "DELETE/pets/{id}"
+            fields:
+              - "pathParamid"
+          - dataSource: "my_http"
+            step: "GET/pets/{id}"
+            fields:
+              - "pathParamid"
     ```
 
 === "UI"
@@ -328,22 +324,26 @@ Given the `id` field is a nested field as noted in the foreign key, we can alter
 
 === "YAML"
 
-    In `docker/data/custom/task/http/openapi-task.yaml`:
+    In a unified YAML file:
     ```yaml
-    name: "http_task"
-    steps:
-      - name: "my_petstore"
-        options:
-          metadataSourceType: "openapi"
-          schemaLocation: "/opt/app/mount/http/petstore.json"
-        count:
-          records: 2
-        fields:
-          - name: "body"
+    dataSources:
+      - name: "my_http"
+        connection:
+          type: "http"
+          options:
+        steps:
+          - name: "my_petstore"
+            options:
+              metadataSourceType: "openapi"
+              schemaLocation: "/opt/app/mount/http/petstore.json"
+            count:
+              records: 2
             fields:
-              - name: "id"
-                options:
-                  regex: "ID[0-9]{8}"
+              - name: "body"
+                fields:
+                  - name: "id"
+                    options:
+                      regex: "ID[0-9]{8}"
     ```
 
 === "UI"
@@ -426,30 +426,34 @@ There are 4 different parts of creating an HTTP URL. At minimum, you need a base
 
 === "YAML"
 
-    In `docker/data/custom/task/http/http-task.yaml`:
+    In a unified YAML file:
     ```yaml
-    name: "http_task"
-    steps:
-      - name: "my_petstore"
-        count:
-          records: 2
-        fields:
-          - name: "httpUrl"
+    dataSources:
+      - name: "my_http"
+        connection:
+          type: "http"
+          options:
+        steps:
+          - name: "my_petstore"
+            count:
+              records: 2
             fields:
-              - name: "url"
-                static: "http://localhost:80/anything/{id}"
-              - name: "method"
-                static: "GET"
-              - name: "pathParam"
+              - name: "httpUrl"
                 fields:
-                  - name: "id"
-              - name: "queryParam"
-                fields:
-                  - name: "limit"
-                    type: "integer"
-                    options:
-                      min: 1
-                      max: 10
+                  - name: "url"
+                    static: "http://localhost:80/anything/{id}"
+                  - name: "method"
+                    static: "GET"
+                  - name: "pathParam"
+                    fields:
+                      - name: "id"
+                  - name: "queryParam"
+                    fields:
+                      - name: "limit"
+                        type: "integer"
+                        options:
+                          min: 1
+                          max: 10
     ```
 
 === "UI"
@@ -503,22 +507,26 @@ HTTP headers can also be generated and have values that are based on the request
 
 === "YAML"
 
-    In `docker/data/custom/task/http/http-task.yaml`:
+    In a unified YAML file:
     ```yaml
-    name: "http_task"
-    steps:
-      - name: "my_petstore"
-        count:
-          records: 2
-        fields:
-          - name: "httpHeaders"
+    dataSources:
+      - name: "my_http"
+        connection:
+          type: "http"
+          options:
+        steps:
+          - name: "my_petstore"
+            count:
+              records: 2
             fields:
-              - name: "Content-Type"
-                static: "application/json"
-              - name: "Content-Length"
-              - name: "X-Account-Id"
-                options:
-                  sql: "body.account_id"
+              - name: "httpHeaders"
+                fields:
+                  - name: "Content-Type"
+                    static: "application/json"
+                  - name: "Content-Length"
+                  - name: "X-Account-Id"
+                    options:
+                      sql: "body.account_id"
     ```
 
 === "UI"
@@ -574,28 +582,32 @@ HTTP body can be currently formed as a JSON structure that is generated from the
 
 === "YAML"
 
-    In `docker/data/custom/task/http/http-task.yaml`:
+    In a unified YAML file:
     ```yaml
-    name: "http_task"
-    steps:
-      - name: "my_petstore"
-        count:
-          records: 2
-        fields:
-          - name: "httpBody"
+    dataSources:
+      - name: "my_http"
+        connection:
+          type: "http"
+          options:
+        steps:
+          - name: "my_petstore"
+            count:
+              records: 2
             fields:
-              - name: "account_id"
-                options:
-                  regex: "ACC[0-9]{8}"
-              - name: "details"
+              - name: "httpBody"
                 fields:
-                  - name: "name"
+                  - name: "account_id"
                     options:
-                      expression: "#{Name.name}"
-                  - name: "age"
-                    type: Integer
-                    options:
-                      max: 100
+                      regex: "ACC[0-9]{8}"
+                  - name: "details"
+                    fields:
+                      - name: "name"
+                        options:
+                          expression: "#{Name.name}"
+                      - name: "age"
+                        type: integer
+                        options:
+                          max: 100
     ```
 
 === "UI"
@@ -651,16 +663,20 @@ want to alter this value, you can do so via the below configuration. The lowest 
 
 === "YAML"
 
-    In `docker/data/custom/task/http/openapi-task.yaml`:
+    In a unified YAML file:
     ```yaml
-    name: "http_task"
-    steps:
-      - name: "my_petstore"
-        options:
-          metadataSourceType: "openapi"
-          schemaLocation: "/opt/app/mount/http/petstore.json"
-          rowsPerSecond: "1"
-        ...
+    dataSources:
+      - name: "my_http"
+        connection:
+          type: "http"
+          options:
+        steps:
+          - name: "my_petstore"
+            options:
+              metadataSourceType: "openapi"
+              schemaLocation: "/opt/app/mount/http/petstore.json"
+              rowsPerSecond: "1"
+            ...
     ```
 
 ### Validation
@@ -718,19 +734,29 @@ The following fields are made available to you to validate against:
 
 === "YAML"
 
-    In `docker/data/custom/validation/http/http-validation.yaml`:
+    In a unified YAML file, add validations within the data source:
     ```yaml
-    name: "http_checks"
     dataSources:
-      my_http:
-        - options:
-            validationIdentifier: "POST/pets"
-          validations:
-            - expr: "request.method == 'POST'"
-            - expr: "response.statusCode == 200"
-            - expr: "response.timeTakenMs < 100"
-            - expr: "response.headers.Content-Length > 0"
-            - expr: "response.headers.Content-Type == 'application/json'"
+      - name: "my_http"
+        connection:
+          type: "http"
+          options:
+        steps:
+          - name: "my_petstore"
+            options:
+              metadataSourceType: "openapi"
+              schemaLocation: "/opt/app/mount/http/petstore.json"
+            count:
+              records: 2
+        validations:
+          - options:
+              validationIdentifier: "POST/pets"
+            validations:
+              - expr: "request.method == 'POST'"
+              - expr: "response.statusCode == 200"
+              - expr: "response.timeTakenMs < 100"
+              - expr: "response.headers.Content-Length > 0"
+              - expr: "response.headers.Content-Type == 'application/json'"
     ```
 
 === "UI"
@@ -786,24 +812,27 @@ You can generate query parameters with different serialization styles (per OpenA
 === "YAML"
 
     ```yaml
-    name: "http_query_params_task"
-    steps:
-      - name: "query_pets"
-        type: "http"
-        options:
-          url: "http://host.docker.internal:80/anything/pets"
-          method: "GET"
-        fields:
-          - name: "tags"
-            type: "array<string>"
+    dataSources:
+      - name: "my_http"
+        connection:
+          type: "http"
+          options:
+        steps:
+          - name: "query_pets"
             options:
-              isQueryParam: true
-              queryParamStyle: "form"
-              queryParamExplode: false
-          - name: "limit"
-            type: "integer"
-            options:
-              isQueryParam: true
+              url: "http://host.docker.internal:80/anything/pets"
+              method: "GET"
+            fields:
+              - name: "tags"
+                type: "array<string>"
+                options:
+                  isQueryParam: true
+                  queryParamStyle: "form"
+                  queryParamExplode: false
+              - name: "limit"
+                type: "integer"
+                options:
+                  isQueryParam: true
     ```
 
 

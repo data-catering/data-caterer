@@ -80,7 +80,7 @@ class YamlPlanExecutionIntegrationTest extends SparkSuite with Matchers with Bef
          |    fields:
          |      - name: "account_number"
          |        options:
-         |          regex: "ACC1[0-9]{5,10}"
+         |          regex: "ACC1[0-9]{10}"
          |          isUnique: true
          |      - name: "create_time"
          |        type: "timestamp"
@@ -124,8 +124,19 @@ class YamlPlanExecutionIntegrationTest extends SparkSuite with Matchers with Bef
     println(s"Plan file: $planFile")
     println(s"Task folder: $taskDir")
 
-    // Execute using the actual YAML flow
-    val result = PlanProcessor.executeFromYamlFiles(planFile.toString, taskDir)
+    // Execute using the actual YAML flow with custom config to keep generated files in tmp
+    val dataCatererConfiguration = io.github.datacatering.datacaterer.core.config.ConfigParser.toDataCatererConfiguration.copy(
+      foldersConfig = io.github.datacatering.datacaterer.core.config.ConfigParser.toDataCatererConfiguration.foldersConfig.copy(
+        planFilePath = planFile.toString,
+        taskFolderPath = taskDir,
+        generatedPlanAndTaskFolderPath = s"$testDataPath/generated"  // Keep generated files in tmp
+      )
+    )
+    val result = PlanProcessor.executePlanWithConfig(
+      dataCatererConfiguration,
+      None,
+      io.github.datacatering.datacaterer.api.model.Constants.DATA_CATERER_INTERFACE_YAML
+    )
 
     println(s"\n=== Execution Results ===")
     println(s"Generation results: ${result.generationResults.size}")
@@ -196,7 +207,7 @@ class YamlPlanExecutionIntegrationTest extends SparkSuite with Matchers with Bef
          |    fields:
          |      - name: "account_number"
          |        options:
-         |          regex: "ACC[0-9]{8}"
+         |          regex: "ACC[0-9]{10}"
          |          isUnique: true
          |      - name: "balance"
          |        type: "double"
@@ -223,7 +234,19 @@ class YamlPlanExecutionIntegrationTest extends SparkSuite with Matchers with Bef
 
     println(s"\n=== YAML Execution Test (500 balances) ===")
 
-    val result = PlanProcessor.executeFromYamlFiles(planFile.toString, taskDir)
+    // Execute using the actual YAML flow with custom config to keep generated files in tmp
+    val dataCatererConfiguration = io.github.datacatering.datacaterer.core.config.ConfigParser.toDataCatererConfiguration.copy(
+      foldersConfig = io.github.datacatering.datacaterer.core.config.ConfigParser.toDataCatererConfiguration.foldersConfig.copy(
+        planFilePath = planFile.toString,
+        taskFolderPath = taskDir,
+        generatedPlanAndTaskFolderPath = s"$testDataPath/generated"  // Keep generated files in tmp
+      )
+    )
+    val result = PlanProcessor.executePlanWithConfig(
+      dataCatererConfiguration,
+      None,
+      io.github.datacatering.datacaterer.api.model.Constants.DATA_CATERER_INTERFACE_YAML
+    )
 
     val balancesData = sparkSession.read.parquet(balancesPath).collect()
     val transactionsData = sparkSession.read.parquet(transactionsPath).collect()

@@ -351,6 +351,48 @@ tasks.register<Test>("integrationTestInsta") {
     mustRunAfter("test", "integrationTest")
 }
 
+// Manual test task for standalone integration testing with external dependencies (e.g., Kafka, databases)
+// These tests are NOT run as part of regular test suites - they must be run explicitly
+// Usage:
+//   ./gradlew :app:manualTest --tests "io.github.datacatering.datacaterer.core.manual.KafkaStreamingManualTest"
+//   YAML_FILE=/path/to/config.yaml ./gradlew :app:manualTest --tests "*YamlFileManualTest"
+tasks.register<Test>("manualTest") {
+    description = "Runs manual integration tests with external dependencies (Kafka, databases, etc.)"
+    group = "verification"
+
+    testClassesDirs = sourceSets["manualTest"].output.classesDirs
+    classpath = sourceSets["manualTest"].runtimeClasspath
+
+    // Allow generous memory for real integration tests
+    minHeapSize = "1024m"
+    maxHeapSize = "4096m"
+
+    jvmArgs("-Djava.security.manager=allow", "-Djdk.module.illegalAccess=deny", "--add-opens=java.base/java.lang=ALL-UNNAMED", "--add-opens=java.base/java.lang.invoke=ALL-UNNAMED", "--add-opens=java.base/java.lang.reflect=ALL-UNNAMED", "--add-opens=java.base/java.io=ALL-UNNAMED", "--add-opens=java.base/java.net=ALL-UNNAMED", "--add-opens=java.base/java.nio=ALL-UNNAMED", "--add-opens=java.base/java.util=ALL-UNNAMED", "--add-opens=java.base/java.util.concurrent=ALL-UNNAMED", "--add-opens=java.base/java.util.concurrent.atomic=ALL-UNNAMED", "--add-opens=java.base/sun.nio.ch=ALL-UNNAMED", "--add-opens=java.base/sun.nio.cs=ALL-UNNAMED", "--add-opens=java.base/sun.security.action=ALL-UNNAMED", "--add-opens=java.base/sun.util.calendar=ALL-UNNAMED", "--add-opens=java.security.jgss/sun.security.krb5=ALL-UNNAMED")
+
+    useJUnitPlatform {
+        includeEngines("scalatest")
+        testLogging {
+            events("passed", "failed", "skipped", "standard_out", "standard_error")
+            showStandardStreams = true // Always show output for manual tests
+        }
+    }
+
+    // Run sequentially to avoid conflicts with external resources
+    maxParallelForks = 1
+
+    // Fork per test class to isolate state
+    forkEvery = 1
+
+    // Enable proper test filtering
+    filter {
+        setFailOnNoMatchingTests(false)
+    }
+
+    // Pass through environment variables for YAML file configuration
+    environment("YAML_FILE", System.getenv("YAML_FILE") ?: "")
+    environment("LOG_LEVEL", System.getenv("LOG_LEVEL") ?: "info")
+}
+
 application {
     // Define the main class for the application.
     mainClass.set("io.github.datacatering.datacaterer.App")
@@ -453,6 +495,17 @@ sourceSets {
             setSrcDirs(listOf("src/test/resources")) // Reuse test resources
         }
     }
+
+    // Manual test source set for standalone integration testing with external dependencies
+    create("manualTest") {
+        compileClasspath += sourceSets.main.get().output
+        runtimeClasspath += sourceSets.main.get().output
+        compileClasspath += sourceSets.test.get().output
+        runtimeClasspath += sourceSets.test.get().output
+        resources {
+            setSrcDirs(listOf("src/test/resources", "../misc/schema/examples")) // Include example YAML files
+        }
+    }
 }
 
 // Configure integration test configurations after source sets are created
@@ -467,6 +520,12 @@ configurations {
         extendsFrom(testImplementation.get())
     }
     named("performanceTestRuntimeOnly") {
+        extendsFrom(testRuntimeOnly.get())
+    }
+    named("manualTestImplementation") {
+        extendsFrom(testImplementation.get())
+    }
+    named("manualTestRuntimeOnly") {
         extendsFrom(testRuntimeOnly.get())
     }
 }

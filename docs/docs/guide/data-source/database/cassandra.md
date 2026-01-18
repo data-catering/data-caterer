@@ -109,13 +109,21 @@ Make sure your class extends `PlanRun`.
 
 === "YAML"
 
-    In `docker/data/custom/plan/my-cassandra.yaml`:
+    In `docker/data/custom/unified/my-cassandra.yaml`:
     ```yaml
     name: "my_cassandra_plan"
     description: "Create account data via Cassandra"
-    tasks:
-      - name: "cassandra_task"
-        dataSourceName: "my_cassandra"
+
+    dataSources:
+      - name: "my_cassandra"
+        connection:
+          type: "cassandra"
+          options:
+            url: "localhost:9042"
+            user: "cassandra"
+            password: "cassandra"
+        steps:
+          - name: "accounts"
     ```
 
 === "UI"
@@ -171,20 +179,16 @@ Within our class, we can start by defining the connection properties to connect 
 
 === "YAML"
 
-    In `docker/data/custom/application.conf`:
-    ```
-    org.apache.spark.sql.cassandra {
-        cassandra {
-            spark.cassandra.connection.host = "localhost"
-            spark.cassandra.connection.host = ${?CASSANDRA_HOST}
-            spark.cassandra.connection.port = "9042"
-            spark.cassandra.connection.port = ${?CASSANDRA_PORT}
-            spark.cassandra.auth.username = "cassandra"
-            spark.cassandra.auth.username = ${?CASSANDRA_USERNAME}
-            spark.cassandra.auth.password = "cassandra"
-            spark.cassandra.auth.password = ${?CASSANDRA_PASSWORD}
-        }
-    }
+    In a unified YAML file:
+    ```yaml
+    dataSources:
+      - name: "my_cassandra"
+        connection:
+          type: "cassandra"
+          options:
+            url: "localhost:9042"
+            user: "cassandra"
+            password: "cassandra"
     ```
 
 === "UI"
@@ -264,23 +268,29 @@ corresponds to `text` in Cassandra.
 
 === "YAML"
 
-    In `docker/data/custom/task/cassandra/cassandra-task.yaml`:
+    In a unified YAML file:
     ```yaml
-    name: "cassandra_task"
-    steps:
-      - name: "accounts"
-        type: "cassandra"
-        options:
-          keyspace: "account"
-          table: "accounts"
-        fields:
-        - name: "account_number"
-        - name: "amount"
-          type: "double"
-        - name: "created_by"
-        - name: "open_time"
-          type: "timestamp"
-        - name: "status"
+    dataSources:
+      - name: "my_cassandra"
+        connection:
+          type: "cassandra"
+          options:
+            url: "host.docker.internal:9042"
+            user: "cassandra"
+            password: "cassandra"
+        steps:
+          - name: "accounts"
+            options:
+              keyspace: "account"
+              table: "accounts"
+            fields:
+              - name: "account_number"
+              - name: "amount"
+                type: "double"
+              - name: "created_by"
+              - name: "open_time"
+                type: "timestamp"
+              - name: "status"
     ```
 
 === "UI"

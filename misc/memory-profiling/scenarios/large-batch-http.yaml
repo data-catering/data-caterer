@@ -1,0 +1,66 @@
+version: "1.0"
+name: "large_batch_http_memory_test"
+description: "Large batch size test with 500K records and large payloads (testing batch processing)"
+
+config:
+  flags:
+    enableGenerateData: true
+    enableFastGeneration: true
+    enableSaveReports: true
+    enableDeleteGeneratedRecords: false
+    enableRecordTracking: false
+
+dataSources:
+  - name: "test_http"
+    connection:
+      type: "http"
+      options:
+        url: "http://localhost:8080"
+    steps:
+      - name: "large_batch"
+        options:
+          format: "http"  # REQUIRED for HTTP format
+        count:
+          records: 500000  # 500K records for large batch test
+          perColumnCount:
+            rate: 100  # 100 records per second
+        fields:
+          # Direct internal field names for HTTP
+          - name: "url"
+            static: "http://localhost:8080/"
+
+          - name: "method"
+            static: "POST"
+
+          - name: "Content-Type"
+            static: "application/json"
+
+          - name: "body"
+            options:
+              sql: "TO_JSON(STRUCT(record_id, batch_id, sequence_number, large_payload, additional_data, timestamp))"
+
+          # Body fields
+          - name: "record_id"
+            options:
+              regex: "REC[0-9]{12}"
+
+          - name: "batch_id"
+            options:
+              regex: "BATCH[0-9]{8}"
+
+          - name: "sequence_number"
+            type: "integer"
+            options:
+              min: 1
+              max: 1000000
+
+          - name: "large_payload"
+            options:
+              regex: "[A-Za-z0-9]{1000}"
+
+          - name: "additional_data"
+            options:
+              regex: "[A-Za-z0-9]{500}"
+
+          - name: "timestamp"
+            type: "timestamp"
