@@ -322,6 +322,32 @@ class StringPatternHelpersIntegrationTest extends SparkSuite {
       val digitsOnly = card.replaceAll("[^0-9]", "")
       assert(digitsOnly.length >= 13 && digitsOnly.length <= 19)
     }
+
+    def isVisa(card: String): Boolean = {
+      val digits = card.replaceAll("[^0-9]", "")
+      val lengthOk = digits.length == 13 || digits.length == 16 || digits.length == 19
+      lengthOk && digits.startsWith("4")
+    }
+
+    def isMastercard(card: String): Boolean = {
+      val digits = card.replaceAll("[^0-9]", "")
+      if (digits.length != 16) {
+        false
+      } else {
+        val prefix2 = digits.take(2).toInt
+        val prefix4 = digits.take(4).toInt
+        (prefix2 >= 51 && prefix2 <= 55) || (prefix4 >= 2221 && prefix4 <= 2720)
+      }
+    }
+
+    def isAmex(card: String): Boolean = {
+      val digits = card.replaceAll("[^0-9]", "")
+      digits.length == 15 && (digits.startsWith("34") || digits.startsWith("37"))
+    }
+
+    assert(visaCards.forall(isVisa), "Visa cards should use Visa prefixes/lengths")
+    assert(mastercards.forall(isMastercard), "Mastercards should use Mastercard prefixes/lengths")
+    assert(amexCards.forall(isAmex), "Amex cards should use Amex prefixes/lengths")
   }
 
   // ========== Combined Tests ==========

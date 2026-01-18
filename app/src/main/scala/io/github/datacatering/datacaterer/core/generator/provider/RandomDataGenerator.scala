@@ -10,7 +10,7 @@ import org.apache.spark.sql.types._
 
 import java.sql.{Date, Timestamp}
 import java.time.temporal.ChronoUnit
-import java.time.{Instant, LocalDate}
+import java.time.{DayOfWeek, Instant, LocalDate}
 import scala.util.Try
 
 object RandomDataGenerator {
@@ -52,6 +52,18 @@ object RandomDataGenerator {
     private val characterSet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 "
     private val characterSetSize = characterSet.length
 
+    private def creditCardRegex(expression: String): Option[String] = {
+      expression.trim match {
+        case "#{Finance.creditCard 'VISA'}" =>
+          Some("(4[0-9]{12}|4[0-9]{15}|4[0-9]{18})")
+        case "#{Finance.creditCard 'MASTERCARD'}" =>
+          Some("5[1-5][0-9]{14}")
+        case "#{Finance.creditCard 'AMEX'}" =>
+          Some("3[47][0-9]{13}")
+        case _ => None
+      }
+    }
+
     override val edgeCases: List[String] = List("", "\n", "\r", "\t", " ", "\\u0000", "\\ufff",
       "İyi günler", "Спасибо", "Καλημέρα", "صباح الخير", "Förlåt", "你好吗", "Nhà vệ sinh ở đâu", "こんにちは", "नमस्ते", "Բարեւ", "Здравейте")
 
@@ -66,7 +78,14 @@ object RandomDataGenerator {
 
     override def generateSqlExpression: String = {
       if (tryExpression.isSuccess) {
-        s"$GENERATE_FAKER_EXPRESSION_UDF('${tryExpression.get}')"
+        val expression = tryExpression.get
+        creditCardRegex(expression) match {
+          case Some(regex) =>
+            s"$GENERATE_REGEX_UDF('$regex')"
+          case None =>
+            val escapedExpression = expression.replace("'", "''")
+            s"$GENERATE_FAKER_EXPRESSION_UDF('$escapedExpression')"
+        }
       } else {
         val randLength = s"CAST($sqlRandom * (${maxLength - minLength}) + $minLength AS INT)"
         s"CONCAT_WS('', TRANSFORM(SEQUENCE(1, $randLength), i -> SUBSTR('$characterSet', CAST($sqlRandom * $characterSetSize + 1 AS INT), 1)))"
@@ -181,7 +200,24 @@ object RandomDataGenerator {
     )
 
     override def generate: Date = {
-      Date.valueOf(min.plusDays(random.nextInt(maxDays)))
+      val excludeWeekends = structField.metadata.contains(DATE_EXCLUDE_WEEKENDS) &&
+        Try(structField.metadata.getString(DATE_EXCLUDE_WEEKENDS)).toOption.exists(_.equalsIgnoreCase("true"))
+      val safeMaxDays = Math.max(maxDays, 1)
+
+      if (!excludeWeekends) {
+        Date.valueOf(min.plusDays(random.nextInt(safeMaxDays)))
+      } else {
+        val weekdayOffsets = (0 until maxDays).filter { offset =>
+          val day = min.plusDays(offset).getDayOfWeek
+          day != DayOfWeek.SATURDAY && day != DayOfWeek.SUNDAY
+        }
+        if (weekdayOffsets.nonEmpty) {
+          val offset = weekdayOffsets(random.nextInt(weekdayOffsets.length))
+          Date.valueOf(min.plusDays(offset))
+        } else {
+          Date.valueOf(min.plusDays(random.nextInt(safeMaxDays)))
+        }
+      }
     }
 
     private def getMinValue: LocalDate = {
@@ -200,33 +236,20 @@ object RandomDataGenerator {
         Try(structField.metadata.getString(DATE_EXCLUDE_WEEKENDS)).toOption.exists(_.equalsIgnoreCase("true"))
 
       if (excludeWeekends) {
-        // Pure SQL approach to generate weekday-only dates
-        //
-        // Strategy: Calculate offset to first Monday, then generate random weekdays from there
-        // 1. Find first Monday on or after min date
-        // 2. Generate random weekday index (0-4 for Mon-Fri) and random week
-        // 3. Result = first_monday + (week * 7) + weekday
-        //
+        // Use a simple weekday filter for correctness.
         // Note: DAYOFWEEK returns 1=Sunday, 2=Monday, ..., 7=Saturday
-        // To get to Monday: if today is Sun(1), add 1; if Mon(2), add 0; if Tue(3), add 6; etc.
-        // Formula: (9 - DAYOFWEEK(date)) % 7
+        val minDate = s"DATE'${min.toString}'"
+        val maxDate = s"DATE'${max.toString}'"
+        val allDates = s"SEQUENCE($minDate, $maxDate)"
+        val weekdayDates = s"FILTER($allDates, d -> DAYOFWEEK(d) BETWEEN 2 AND 6)"
+        val weekdayCount = s"SIZE($weekdayDates)"
+        val randWeekdayIndex = s"CAST($sqlRandom * $weekdayCount AS INT) + 1"
+        val weekdayDate = s"ELEMENT_AT($weekdayDates, $randWeekdayIndex)"
 
-        val startDayOfWeek = s"DAYOFWEEK(DATE'${min.toString}')"
-        val daysToMonday = s"MOD((9 - $startDayOfWeek), 7)"
-        val firstMonday = s"DATE_ADD(DATE'${min.toString}', $daysToMonday)"
-
-        // Calculate how many complete weeks fit in the remaining range
-        val remainingDays = s"($maxDays - $daysToMonday)"
-        val numCompleteWeeks = s"CAST($remainingDays / 7 AS INT)"
-
-        // Generate random week (0 to numCompleteWeeks-1) and weekday (0-4)
-        // Use separate seeded RAND calls for week and weekday to ensure proper independence
-        val randWeek = s"CAST($sqlRandom * $numCompleteWeeks AS INT)"
-        val randWeekday = s"CAST(${sqlRandomWithOffset(1)} * 5 AS INT)"
-
-        s"DATE_ADD($firstMonday, $randWeek * 7 + $randWeekday)"
+        val fallbackDate = s"DATE_ADD($minDate, CAST($sqlRandom * ${Math.max(maxDays, 1)} AS INT))"
+        s"CASE WHEN $weekdayCount = 0 THEN $fallbackDate ELSE $weekdayDate END"
       } else {
-        s"DATE_ADD('${min.toString}', CAST($sqlRandom * $maxDays AS INT))"
+        s"DATE_ADD('${min.toString}', CAST($sqlRandom * ${Math.max(maxDays, 1)} AS INT))"
       }
     }
   }
@@ -392,17 +415,7 @@ object RandomDataGenerator {
 
     private def generateArrayWeightedOneOfSql(weightedStr: String): String = {
       // Parse weighted values: 'val1':0.2,'val2':0.5,'val3':0.3
-      val weightedPairs = weightedStr.split(",").map { pair =>
-        val parts = pair.split(":")
-        require(parts.length == 2,
-          s"Invalid weighted value format in field '${structField.name}': '$pair'. Expected format 'value:weight'")
-        val weight = Try(parts(1).trim.toDouble).getOrElse(
-          throw new IllegalArgumentException(s"Invalid weight value in field '${structField.name}': '${parts(1).trim}'. Weight must be a number.")
-        )
-        require(weight >= 0,
-          s"Invalid weight in field '${structField.name}': $weight. Weights must be non-negative.")
-        (parts(0).trim, weight)
-      }
+      val weightedPairs = parseWeightedPairs(weightedStr)
 
       // Calculate cumulative weights
       val totalWeight = weightedPairs.map(_._2).sum
@@ -429,6 +442,73 @@ object RandomDataGenerator {
       val arrayExpr = s"TRANSFORM(ARRAY_REPEAT(1, $sizeExpr), i -> $weightedSelectExpr)"
 
       applyEmptyProbability(arrayExpr)
+    }
+
+    private def parseWeightedPairs(weightedStr: String): Seq[(String, Double)] = {
+      val rawPairs = splitOutsideQuotes(weightedStr, ',').map(_.trim).filter(_.nonEmpty)
+      rawPairs.map { pair =>
+        val separatorIdx = findDelimiterOutsideQuotes(pair, ':')
+        require(separatorIdx >= 0,
+          s"Invalid weighted value format in field '${structField.name}': '$pair'. Expected format 'value:weight'")
+
+        val valuePart = pair.substring(0, separatorIdx).trim
+        val weightPart = pair.substring(separatorIdx + 1).trim
+        require(valuePart.nonEmpty && weightPart.nonEmpty,
+          s"Invalid weighted value format in field '${structField.name}': '$pair'. Expected format 'value:weight'")
+
+        val weight = Try(weightPart.toDouble).getOrElse(
+          throw new IllegalArgumentException(s"Invalid weight value in field '${structField.name}': '$weightPart'. Weight must be a number.")
+        )
+        require(weight >= 0,
+          s"Invalid weight in field '${structField.name}': $weight. Weights must be non-negative.")
+        (valuePart, weight)
+      }
+    }
+
+    private def splitOutsideQuotes(value: String, delimiter: Char): Seq[String] = {
+      val parts = scala.collection.mutable.ArrayBuffer.empty[String]
+      val current = new StringBuilder
+      var inSingleQuotes = false
+      var i = 0
+      while (i < value.length) {
+        val ch = value.charAt(i)
+        if (ch == '\'') {
+          if (inSingleQuotes && i + 1 < value.length && value.charAt(i + 1) == '\'') {
+            current.append("''")
+            i += 1
+          } else {
+            inSingleQuotes = !inSingleQuotes
+            current.append(ch)
+          }
+        } else if (ch == delimiter && !inSingleQuotes) {
+          parts += current.toString()
+          current.clear()
+        } else {
+          current.append(ch)
+        }
+        i += 1
+      }
+      parts += current.toString()
+      parts.toSeq
+    }
+
+    private def findDelimiterOutsideQuotes(value: String, delimiter: Char): Int = {
+      var inSingleQuotes = false
+      var i = 0
+      while (i < value.length) {
+        val ch = value.charAt(i)
+        if (ch == '\'') {
+          if (inSingleQuotes && i + 1 < value.length && value.charAt(i + 1) == '\'') {
+            i += 1
+          } else {
+            inSingleQuotes = !inSingleQuotes
+          }
+        } else if (ch == delimiter && !inSingleQuotes) {
+          return i
+        }
+        i += 1
+      }
+      -1
     }
   }
 

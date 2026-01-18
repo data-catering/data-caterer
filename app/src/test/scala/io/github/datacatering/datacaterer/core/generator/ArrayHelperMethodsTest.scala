@@ -163,7 +163,7 @@ class ArrayHelperMethodsTest extends AnyFunSuite {
     assert(sqlExpr.contains("ARRAY()"))
   }
 
-  test("arrayWeightedOneOf should generate SQL with CASE statement") {
+  test("arrayWeightedOneOf should generate SQL with weighted aggregation") {
     val metadata = new MetadataBuilder()
       .putString(ARRAY_WEIGHTED_ONE_OF, "'HIGH':0.2,'MEDIUM':0.5,'LOW':0.3")
       .putLong(ARRAY_MINIMUM_LENGTH, 1)
@@ -174,9 +174,24 @@ class ArrayHelperMethodsTest extends AnyFunSuite {
     val generator = new RandomDataGenerator.RandomArrayDataGenerator(structField, StringType)
 
     val sqlExpr = generator.generateSqlExpression
-    assert(sqlExpr.contains("CASE"))
-    assert(sqlExpr.contains("WHEN"))
-    assert(sqlExpr.contains("ELSE"))
+    assert(sqlExpr.contains("AGGREGATE"))
+    assert(sqlExpr.contains("ZIP_WITH"))
+    assert(sqlExpr.contains("named_struct"))
+  }
+
+  test("arrayWeightedOneOf should handle quoted values with commas and colons") {
+    val metadata = new MetadataBuilder()
+      .putString(ARRAY_WEIGHTED_ONE_OF, "'10:30':0.5,'hello, world':0.5")
+      .putLong(ARRAY_MINIMUM_LENGTH, 1)
+      .putLong(ARRAY_MAXIMUM_LENGTH, 2)
+      .build()
+
+    val structField = StructField("times", org.apache.spark.sql.types.ArrayType(StringType), nullable = false, metadata)
+    val generator = new RandomDataGenerator.RandomArrayDataGenerator(structField, StringType)
+
+    val sqlExpr = generator.generateSqlExpression
+    assert(sqlExpr.contains("'10:30'"))
+    assert(sqlExpr.contains("'hello, world'"))
   }
 
   test("array helper methods should be chainable") {

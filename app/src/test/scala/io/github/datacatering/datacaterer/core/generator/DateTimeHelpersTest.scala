@@ -104,10 +104,12 @@ class DateTimeHelpersTest extends AnyFunSuite {
     val generator = RandomDataGenerator.getGeneratorForStructField(structField, new net.datafaker.Faker())
     val sql = generator.generateSqlExpression
 
-    // Verify SQL contains date calculations for finding Monday and weekday offsets
+    // Verify SQL contains weekday filtering logic
     assert(sql.contains("DAYOFWEEK"), "Should calculate day of week")
-    assert(sql.contains("DATE_ADD"), "Should use DATE_ADD for date arithmetic")
-    assert(sql.contains("MOD"), "Should use modulo for finding Monday")
+    assert(sql.contains("SEQUENCE"), "Should build a date sequence")
+    assert(sql.contains("FILTER"), "Should filter to weekdays")
+    assert(sql.contains("ELEMENT_AT"), "Should pick a weekday from the filtered set")
+    assert(sql.contains("CASE WHEN"), "Should handle empty weekday ranges")
   }
 
   // ========== businessHours Tests ==========

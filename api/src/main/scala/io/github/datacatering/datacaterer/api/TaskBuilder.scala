@@ -1376,10 +1376,11 @@ case class FieldBuilder(field: Field = Field()) {
    * }}}
    */
   def creditCard(cardType: String = "visa"): FieldBuilder = {
-    val expr = cardType.toLowerCase match {
-      case "visa" => "#{Finance.creditCard}"
-      case "mastercard" => "#{Finance.creditCard}"
-      case "amex" => "#{Finance.creditCard}"
+    val normalized = Option(cardType).map(_.trim.toLowerCase).getOrElse("")
+    val expr = normalized match {
+      case "visa" => "#{Finance.creditCard 'VISA'}"
+      case "mastercard" => "#{Finance.creditCard 'MASTERCARD'}"
+      case "amex" => "#{Finance.creditCard 'AMEX'}"
       case _ => "#{Finance.creditCard}"
     }
     this.modify(_.field.options).setTo(getGenBuilder.expression(expr).options)

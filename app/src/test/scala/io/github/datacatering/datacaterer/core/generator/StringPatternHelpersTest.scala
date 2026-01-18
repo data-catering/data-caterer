@@ -144,7 +144,7 @@ class StringPatternHelpersTest extends AnyFunSuite {
 
     val expression = field.options.get(EXPRESSION)
     assert(expression.isDefined)
-    assert(expression.get == "#{Finance.creditCard}")
+    assert(expression.get == "#{Finance.creditCard 'VISA'}")
   }
 
   test("creditCard() with mastercard type should use credit card expression") {
@@ -155,7 +155,7 @@ class StringPatternHelpersTest extends AnyFunSuite {
 
     val expression = field.options.get(EXPRESSION)
     assert(expression.isDefined)
-    assert(expression.get == "#{Finance.creditCard}")
+    assert(expression.get == "#{Finance.creditCard 'MASTERCARD'}")
   }
 
   test("creditCard() with amex type should use credit card expression") {
@@ -166,7 +166,7 @@ class StringPatternHelpersTest extends AnyFunSuite {
 
     val expression = field.options.get(EXPRESSION)
     assert(expression.isDefined)
-    assert(expression.get == "#{Finance.creditCard}")
+    assert(expression.get == "#{Finance.creditCard 'AMEX'}")
   }
 
   test("string pattern helpers should be chainable with other methods") {

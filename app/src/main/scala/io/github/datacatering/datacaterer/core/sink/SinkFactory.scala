@@ -40,8 +40,12 @@ class SinkFactory(
   private val batchSinkWriter = new BatchSinkWriter(fileConsolidator, transformationApplicator)
 
   // Shared ActorSystem for PekkoStreamingSinkWriter to avoid expensive per-call creation
+  @volatile private var streamingWriterInitialized = false
   private lazy val sharedActorSystem = ActorSystem("SinkFactoryPekkoStreaming")
-  private lazy val pekkoStreamingSinkWriter = new PekkoStreamingSinkWriter(foldersConfig, streamingConfig, Some(sharedActorSystem))
+  private lazy val pekkoStreamingSinkWriter = {
+    streamingWriterInitialized = true
+    new PekkoStreamingSinkWriter(foldersConfig, streamingConfig, Some(sharedActorSystem))
+  }
 
   /**
    * Main entry point for pushing data to a sink (single-batch mode).
@@ -203,7 +207,11 @@ class SinkFactory(
    * Should be called when the SinkFactory is no longer needed.
    */
   def shutdown(): Unit = {
-    LOGGER.info("Shutting down SinkFactory resources")
-    pekkoStreamingSinkWriter.shutdown()
+    if (streamingWriterInitialized) {
+      LOGGER.info("Shutting down SinkFactory resources")
+      pekkoStreamingSinkWriter.shutdown()
+    } else {
+      LOGGER.debug("Skipping SinkFactory shutdown; streaming writer was never initialized")
+    }
   }
 }
