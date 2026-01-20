@@ -53,15 +53,17 @@ class BatchTimestampTracker(windowMs: Long = 1000) {
   def recordTimestamp(): Unit = {
     val now = System.currentTimeMillis()
 
+    // CRITICAL: Increment BEFORE flush check to prevent race condition
+    // If we increment after, concurrent threads can both enter flush path and
+    // assign their increments to the NEW window, losing counts from the old window
+    currentWindowCount.incrementAndGet()
+
     // Check if window should be flushed (time-based) - unsynchronized check
     if (now - currentWindowStart >= windowMs) {
       // Double-checked locking: verify condition inside synchronized block
       // This prevents race condition where multiple threads enter flush simultaneously
       flushCurrentWindow(now)
     }
-
-    // Increment count after flush check to ensure it goes to the correct window
-    currentWindowCount.incrementAndGet()
   }
 
   /**
@@ -98,9 +100,15 @@ class BatchTimestampTracker(windowMs: Long = 1000) {
     endTime: LocalDateTime,
     executionType: String
   ): StreamingMetrics = {
-    // Flush any remaining records in current window
+    // Force flush of any remaining records in current window, regardless of duration
     val now = System.currentTimeMillis()
-    flushCurrentWindow(now)
+    synchronized {
+      val count = currentWindowCount.getAndSet(0)
+      if (count > 0) {
+        batches.add(TimestampBatch(currentWindowStart, now, count))
+        currentWindowStart = now
+      }
+    }
 
     val batchList = batches.asScala.toList
 

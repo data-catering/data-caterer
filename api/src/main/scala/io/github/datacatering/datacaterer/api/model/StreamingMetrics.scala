@@ -248,18 +248,20 @@ object StreamingMetrics {
   /**
    * Create StreamingMetrics from batch summaries (memory-efficient approach).
    *
-   * Instead of storing per-record timestamps, aggregates batches into
-   * synthetic timestamps for metrics calculation. This is a memory-efficient
-   * alternative that reduces overhead from O(records) to O(batches).
+   * Instead of storing per-record timestamps, stores only batch boundaries.
+   * This is a memory-efficient alternative that reduces overhead from O(records) to O(batches).
    *
    * For example: 10M records over 1 hour with 1-second windows = 3600 batches
-   * Memory: ~300 KB vs 80 MB for per-record timestamps
+   * Memory: ~300 KB (batch metadata only) vs 80 MB for per-record timestamps
+   *
+   * CRITICAL FIX: This method now stores only batch window timestamps (start/end),
+   * not synthetic per-record timestamps. Metrics are calculated directly from batches.
    *
    * @param batches List of TimestampBatch representing time windows
    * @param startTime Logical start time
    * @param endTime Logical end time
    * @param executionType Type of execution (constant, pattern, etc.)
-   * @return StreamingMetrics instance with synthetic timestamps
+   * @return StreamingMetrics instance with batch-level timestamps only
    */
   def fromBatches(
     batches: List[Any],
@@ -268,23 +270,13 @@ object StreamingMetrics {
     executionType: String = "streaming"
   ): StreamingMetrics = {
     // Extract batch data using reflection to avoid circular dependency
-    val syntheticTimestamps = batches.flatMap { batchObj =>
+    // Store only batch boundaries (start/end), NOT per-record synthetic timestamps
+    val batchTimestamps = batches.flatMap { batchObj =>
       val windowStartMs = batchObj.getClass.getMethod("windowStartMs").invoke(batchObj).asInstanceOf[Long]
       val windowEndMs = batchObj.getClass.getMethod("windowEndMs").invoke(batchObj).asInstanceOf[Long]
-      val recordCount = batchObj.getClass.getMethod("recordCount").invoke(batchObj).asInstanceOf[Int]
 
-      val durationMs = windowEndMs - windowStartMs
-
-      // Generate synthetic timestamps: distribute records evenly within window
-      val intervalMs = if (recordCount > 1) {
-        durationMs.toDouble / (recordCount - 1)
-      } else {
-        0.0
-      }
-
-      (0 until recordCount).map { i =>
-        windowStartMs + (i * intervalMs).toLong
-      }
+      // Only store window boundaries: 2 timestamps per batch instead of recordCount timestamps
+      List(windowStartMs, windowEndMs)
     }
 
     val totalRecords = batches.map { batchObj =>
@@ -292,7 +284,7 @@ object StreamingMetrics {
     }.sum
 
     StreamingMetrics(
-      recordTimestamps = syntheticTimestamps.sorted,
+      recordTimestamps = batchTimestamps.sorted,
       startTime = startTime,
       endTime = endTime,
       totalRecords = totalRecords,

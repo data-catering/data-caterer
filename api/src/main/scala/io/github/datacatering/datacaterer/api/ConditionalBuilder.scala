@@ -90,7 +90,7 @@ case class ConditionalBuilder(fieldName: String) {
     ConditionalBranch(s"$fieldName != ${formatValue(value)}")
 
   private def formatValue(value: Any): String = value match {
-    case s: String => s"'$s'"
+    case s: String => s"'${s.replace("'", "''")}'"  // Escape single quotes to prevent SQL injection
     case v => v.toString
   }
 }
@@ -109,7 +109,7 @@ case class ConditionalBranch(condition: String) {
    */
   def ->(thenValue: Any): ConditionalCase = {
     val formattedValue = thenValue match {
-      case s: String => s"'$s'"
+      case s: String => s"'${s.replace("'", "''")}'"  // Escape single quotes to prevent SQL injection
       case v => v.toString
     }
     ConditionalCase(condition, formattedValue)
