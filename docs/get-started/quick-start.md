@@ -156,7 +156,7 @@ A web interface for creating and running data generation plans.
 ### Run
 
 ```shell
-docker run -d -p 9898:9898 -e DEPLOY_MODE=standalone --name datacaterer datacatering/data-caterer:0.19.0
+docker run -d -p 9898:9898 -e DEPLOY_MODE=standalone --name datacaterer datacatering/data-caterer:0.19.1
 ```
 
 Open [http://localhost:9898](http://localhost:9898) in your browser.
@@ -203,6 +203,6 @@ After running, check the generated report:
 
     ---
 
-    [Supported connections](../docs/connection/index.md) - databases, files, messaging, and HTTP.
+    [Supported connections](../docs/connection.md) - databases, files, messaging, and HTTP.
 
 </div>

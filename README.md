@@ -76,7 +76,7 @@ Check results at `docker/data/custom/report/index.html`.
 ### UI
 
 ```shell
-docker run -d -p 9898:9898 -e DEPLOY_MODE=standalone --name datacaterer datacatering/data-caterer:0.19.0
+docker run -d -p 9898:9898 -e DEPLOY_MODE=standalone --name datacaterer datacatering/data-caterer:0.19.1
 ```
 
 Open [http://localhost:9898](http://localhost:9898).

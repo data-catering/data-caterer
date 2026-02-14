@@ -4,7 +4,7 @@ This directory contains migration guides and tools for upgrading between Data Ca
 
 ## Available Migrations
 
-### [YAML Unified Format Migration](yaml-unified-format/)
+### [YAML Unified Format Migration](yaml-unified-format/README.md)
 
 **From:** Legacy YAML format (separate plan + task files)
 **To:** Unified YAML format v1.0 (single-file configuration)

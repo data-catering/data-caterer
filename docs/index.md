@@ -552,7 +552,7 @@ validating the downstream data sources have the correct information.
 
 | Type      | Interface                                              | User                                 |
 |-----------|--------------------------------------------------------|--------------------------------------|
-| No Code   | [UI](get-started/quick-start.md#mac)                   | QA, Testers, Data Scientist, Analyst |
+| No Code   | [UI](get-started/quick-start.md)                   | QA, Testers, Data Scientist, Analyst |
 | Low Code  | [YAML](get-started/quick-start.md#yaml)                | DevOps, Kubernetes Fans              |
 | High Code | [Java/Scala](get-started/quick-start.md#javascala-api) | Software Developers, Data Engineers  |
 

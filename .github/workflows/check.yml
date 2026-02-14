@@ -15,7 +15,7 @@ jobs:
           java-version: '17'
           java-package: jdk
           architecture: x64
-          distribution: oracle
+          distribution: temurin
       - name: Gradle build with cache
         uses: burrunan/gradle-cache-action@v1
         with:

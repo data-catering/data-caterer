@@ -35,7 +35,7 @@ jobs:
           java-version: '17'
           java-package: jdk
           architecture: x64
-          distribution: oracle
+          distribution: temurin
       - name: Login to DockerHub
         uses: docker/login-action@v2
         with:

@@ -21,6 +21,7 @@ site
 # Python/virtualenvs used by docs
 .venv
 .python-version
+__pycache__
 
 app/docs
 app/out

@@ -1,0 +1,6168 @@
+{
+  "project": {
+    "name": "Data Caterer",
+    "version": "0.19.0",
+    "repository": "https://github.com/data-catering/data-caterer",
+    "lastUpdated": "2026-02-11"
+  },
+  "categories": [
+    {
+      "id": "advanced",
+      "name": "Advanced",
+      "featureCount": 11
+    },
+    {
+      "id": "configuration",
+      "name": "Configuration",
+      "featureCount": 29
+    },
+    {
+      "id": "connectors",
+      "name": "Connectors",
+      "featureCount": 16
+    },
+    {
+      "id": "generation",
+      "name": "Generation",
+      "featureCount": 55
+    },
+    {
+      "id": "metadata",
+      "name": "Metadata",
+      "featureCount": 10
+    },
+    {
+      "id": "ui_api",
+      "name": "Ui Api",
+      "featureCount": 6
+    },
+    {
+      "id": "validation",
+      "name": "Validation",
+      "featureCount": 42
+    }
+  ],
+  "features": [
+    {
+      "id": "connector.databases.postgres",
+      "name": "PostgreSQL Connector",
+      "category": "connectors",
+      "status": "stable",
+      "description": "Connect to PostgreSQL databases for reading and writing data. Supports table-level configuration, custom queries, and JDBC options.",
+      "subcategory": "databases",
+      "configuration": [
+        {
+          "name": "url",
+          "type": "string",
+          "description": "JDBC connection URL",
+          "required": true,
+          "scope": "datasource",
+          "yamlPath": "dataSources[].connection.options.url"
+        },
+        {
+          "name": "user",
+          "type": "string",
+          "description": "Database username",
+          "required": false,
+          "scope": "datasource",
+          "yamlPath": "dataSources[].connection.options.user"
+        },
+        {
+          "name": "password",
+          "type": "string",
+          "description": "Database password",
+          "required": false,
+          "scope": "datasource",
+          "yamlPath": "dataSources[].connection.options.password"
+        },
+        {
+          "name": "driver",
+          "type": "string",
+          "description": "JDBC driver class",
+          "required": false,
+          "scope": "datasource",
+          "default": "org.postgresql.Driver"
+        },
+        {
+          "name": "dbtable",
+          "type": "string",
+          "description": "Target table (schema.table)",
+          "required": false,
+          "scope": "step",
+          "yamlPath": "dataSources[].steps[].options.dbtable"
+        },
+        {
+          "name": "query",
+          "type": "string",
+          "description": "Custom SQL query for reading",
+          "required": false,
+          "scope": "step"
+        }
+      ],
+      "examples": [
+        {
+          "format": "yaml",
+          "code": "dataSources:\n  - name: my_postgres\n    connection:\n      type: postgres\n      options:\n        url: \"jdbc:postgresql://localhost:5432/mydb\"\n        user: \"postgres\"\n        password: \"${POSTGRES_PASSWORD}\"\n    steps:\n      - name: customers\n        options:\n          dbtable: \"public.customers\"\n        count:\n          records: 1000",
+          "title": "PostgreSQL data generation"
+        }
+      ],
+      "tags": [
+        "database",
+        "jdbc",
+        "relational",
+        "sql"
+      ],
+      "sourceFiles": [
+        {
+          "path": "api/src/main/scala/io/github/datacatering/datacaterer/api/model/Constants.scala",
+          "role": "supporting"
+        }
+      ]
+    },
+    {
+      "id": "connector.databases.mysql",
+      "name": "MySQL Connector",
+      "category": "connectors",
+      "status": "stable",
+      "description": "Connect to MySQL databases for reading and writing data. Supports table-level configuration and JDBC options.",
+      "subcategory": "databases",
+      "configuration": [
+        {
+          "name": "url",
+          "type": "string",
+          "description": "JDBC connection URL",
+          "required": true,
+          "scope": "datasource"
+        },
+        {
+          "name": "user",
+          "type": "string",
+          "description": "Database username",
+          "required": false,
+          "scope": "datasource"
+        },
+        {
+          "name": "password",
+          "type": "string",
+          "description": "Database password",
+          "required": false,
+          "scope": "datasource"
+        },
+        {
+          "name": "driver",
+          "type": "string",
+          "description": "JDBC driver class",
+          "required": false,
+          "scope": "datasource",
+          "default": "com.mysql.cj.jdbc.Driver"
+        },
+        {
+          "name": "dbtable",
+          "type": "string",
+          "description": "Target table",
+          "required": false,
+          "scope": "step"
+        }
+      ],
+      "examples": [
+        {
+          "format": "yaml",
+          "code": "connection:\n  type: mysql\n  options:\n    url: \"jdbc:mysql://localhost:3306/mydb\"\n    user: \"root\"\n    password: \"${MYSQL_PASSWORD}\"",
+          "title": "MySQL connection"
+        }
+      ],
+      "tags": [
+        "database",
+        "jdbc",
+        "relational",
+        "sql"
+      ],
+      "sourceFiles": [
+        {
+          "path": "api/src/main/scala/io/github/datacatering/datacaterer/api/model/Constants.scala",
+          "role": "supporting"
+        }
+      ]
+    },
+    {
+      "id": "connector.databases.cassandra",
+      "name": "Cassandra Connector",
+      "category": "connectors",
+      "status": "stable",
+      "description": "Connect to Apache Cassandra for reading and writing data. Supports keyspace/table configuration, primary key and clustering positions.",
+      "subcategory": "databases",
+      "configuration": [
+        {
+          "name": "url",
+          "type": "string",
+          "description": "Cassandra contact point URL",
+          "required": true,
+          "scope": "datasource"
+        },
+        {
+          "name": "user",
+          "type": "string",
+          "description": "Cassandra username",
+          "required": false,
+          "scope": "datasource"
+        },
+        {
+          "name": "password",
+          "type": "string",
+          "description": "Cassandra password",
+          "required": false,
+          "scope": "datasource"
+        },
+        {
+          "name": "keyspace",
+          "type": "string",
+          "description": "Cassandra keyspace",
+          "required": true,
+          "scope": "step"
+        },
+        {
+          "name": "table",
+          "type": "string",
+          "description": "Cassandra table",
+          "required": true,
+          "scope": "step"
+        }
+      ],
+      "examples": [
+        {
+          "format": "yaml",
+          "code": "connection:\n  type: cassandra\n  options:\n    url: \"localhost:9042\"\n    user: \"cassandra\"\n    password: \"cassandra\"",
+          "title": "Cassandra connection"
+        }
+      ],
+      "tags": [
+        "database",
+        "nosql",
+        "wide-column"
+      ],
+      "sourceFiles": [
+        {
+          "path": "api/src/main/scala/io/github/datacatering/datacaterer/api/model/Constants.scala",
+          "role": "supporting"
+        }
+      ]
+    },
+    {
+      "id": "connector.databases.bigquery",
+      "name": "BigQuery Connector",
+      "category": "connectors",
+      "status": "stable",
+      "description": "Connect to Google BigQuery for reading and writing data. Supports direct and indirect write methods.",
+      "subcategory": "databases",
+      "configuration": [
+        {
+          "name": "table",
+          "type": "string",
+          "description": "BigQuery table (project.dataset.table)",
+          "required": true,
+          "scope": "step"
+        },
+        {
+          "name": "credentialsFile",
+          "type": "string",
+          "description": "Path to GCP credentials JSON",
+          "required": false,
+          "scope": "datasource"
+        },
+        {
+          "name": "writeMethod",
+          "type": "string",
+          "description": "Write method",
+          "required": false,
+          "scope": "datasource",
+          "default": "indirect",
+          "validValues": [
+            "direct",
+            "indirect"
+          ]
+        },
+        {
+          "name": "temporaryGcsBucket",
+          "type": "string",
+          "description": "GCS bucket for indirect writes",
+          "required": false,
+          "scope": "datasource"
+        },
+        {
+          "name": "queryJobPriority",
+          "type": "string",
+          "description": "Query job priority",
+          "required": false,
+          "scope": "datasource",
+          "default": "batch"
+        }
+      ],
+      "tags": [
+        "database",
+        "cloud",
+        "google",
+        "data-warehouse"
+      ],
+      "sourceFiles": [
+        {
+          "path": "api/src/main/scala/io/github/datacatering/datacaterer/api/model/Constants.scala",
+          "role": "supporting"
+        }
+      ]
+    },
+    {
+      "id": "connector.files.csv",
+      "name": "CSV File Connector",
+      "category": "connectors",
+      "status": "stable",
+      "description": "Read and write CSV files. Supports headers, delimiters, and other CSV-specific options.",
+      "subcategory": "files",
+      "configuration": [
+        {
+          "name": "path",
+          "type": "string",
+          "description": "File system path for CSV files",
+          "required": true,
+          "scope": "datasource",
+          "yamlPath": "dataSources[].connection.options.path"
+        }
+      ],
+      "examples": [
+        {
+          "format": "yaml",
+          "code": "connection:\n  type: csv\n  options:\n    path: \"/tmp/data/csv-output\"",
+          "title": "CSV file output"
+        }
+      ],
+      "tags": [
+        "file",
+        "csv",
+        "delimited",
+        "text"
+      ],
+      "sourceFiles": [
+        {
+          "path": "api/src/main/scala/io/github/datacatering/datacaterer/api/model/Constants.scala",
+          "role": "supporting"
+        }
+      ]
+    },
+    {
+      "id": "connector.files.json",
+      "name": "JSON File Connector",
+      "category": "connectors",
+      "status": "stable",
+      "description": "Read and write JSON files. Supports nested structures, arrays, and unwrapping top-level arrays.",
+      "subcategory": "files",
+      "configuration": [
+        {
+          "name": "path",
+          "type": "string",
+          "description": "File system path for JSON files",
+          "required": true,
+          "scope": "datasource"
+        },
+        {
+          "name": "unwrapTopLevelArray",
+          "type": "boolean",
+          "description": "Output JSON as root-level array instead of object",
+          "required": false,
+          "scope": "step",
+          "default": false
+        }
+      ],
+      "examples": [
+        {
+          "format": "yaml",
+          "code": "connection:\n  type: json\n  options:\n    path: \"/tmp/data/json-output\"",
+          "title": "JSON file output"
+        }
+      ],
+      "tags": [
+        "file",
+        "json",
+        "structured"
+      ],
+      "sourceFiles": [
+        {
+          "path": "api/src/main/scala/io/github/datacatering/datacaterer/api/model/Constants.scala",
+          "role": "supporting"
+        }
+      ]
+    },
+    {
+      "id": "connector.files.parquet",
+      "name": "Parquet File Connector",
+      "category": "connectors",
+      "status": "stable",
+      "description": "Read and write Apache Parquet columnar files. Efficient for large datasets.",
+      "subcategory": "files",
+      "configuration": [
+        {
+          "name": "path",
+          "type": "string",
+          "description": "File system path for Parquet files",
+          "required": true,
+          "scope": "datasource"
+        }
+      ],
+      "tags": [
+        "file",
+        "parquet",
+        "columnar",
+        "binary"
+      ],
+      "sourceFiles": [
+        {
+          "path": "api/src/main/scala/io/github/datacatering/datacaterer/api/model/Constants.scala",
+          "role": "supporting"
+        }
+      ]
+    },
+    {
+      "id": "connector.files.orc",
+      "name": "ORC File Connector",
+      "category": "connectors",
+      "status": "stable",
+      "description": "Read and write Apache ORC columnar files.",
+      "subcategory": "files",
+      "configuration": [
+        {
+          "name": "path",
+          "type": "string",
+          "description": "File system path for ORC files",
+          "required": true,
+          "scope": "datasource"
+        }
+      ],
+      "tags": [
+        "file",
+        "orc",
+        "columnar",
+        "binary"
+      ],
+      "sourceFiles": [
+        {
+          "path": "api/src/main/scala/io/github/datacatering/datacaterer/api/model/Constants.scala",
+          "role": "supporting"
+        }
+      ]
+    },
+    {
+      "id": "connector.files.delta",
+      "name": "Delta Lake Connector",
+      "category": "connectors",
+      "status": "stable",
+      "description": "Read and write Delta Lake tables. Supports ACID transactions, time travel, and schema evolution.",
+      "subcategory": "files",
+      "configuration": [
+        {
+          "name": "path",
+          "type": "string",
+          "description": "File system path for Delta tables",
+          "required": true,
+          "scope": "datasource"
+        }
+      ],
+      "tags": [
+        "file",
+        "delta",
+        "lakehouse",
+        "acid"
+      ],
+      "sourceFiles": [
+        {
+          "path": "api/src/main/scala/io/github/datacatering/datacaterer/api/model/Constants.scala",
+          "role": "supporting"
+        }
+      ]
+    },
+    {
+      "id": "connector.files.iceberg",
+      "name": "Apache Iceberg Connector",
+      "category": "connectors",
+      "status": "stable",
+      "description": "Read and write Apache Iceberg tables. Supports multiple catalog types (Hadoop, Hive, REST, Glue, JDBC, Nessie).",
+      "subcategory": "files",
+      "configuration": [
+        {
+          "name": "path",
+          "type": "string",
+          "description": "Table path",
+          "required": true,
+          "scope": "datasource"
+        },
+        {
+          "name": "catalogType",
+          "type": "string",
+          "description": "Iceberg catalog type",
+          "required": false,
+          "scope": "datasource",
+          "default": "hadoop",
+          "validValues": [
+            "hadoop",
+            "hive",
+            "rest",
+            "glue",
+            "jdbc",
+            "nessie"
+          ]
+        },
+        {
+          "name": "catalogUri",
+          "type": "string",
+          "description": "Catalog URI (for hive/rest/nessie)",
+          "required": false,
+          "scope": "datasource"
+        },
+        {
+          "name": "catalogDefaultNamespace",
+          "type": "string",
+          "description": "Default namespace",
+          "required": false,
+          "scope": "datasource"
+        }
+      ],
+      "tags": [
+        "file",
+        "iceberg",
+        "lakehouse",
+        "catalog"
+      ],
+      "sourceFiles": [
+        {
+          "path": "api/src/main/scala/io/github/datacatering/datacaterer/api/model/Constants.scala",
+          "role": "supporting"
+        }
+      ]
+    },
+    {
+      "id": "connector.files.hudi",
+      "name": "Apache Hudi Connector",
+      "category": "connectors",
+      "status": "stable",
+      "description": "Read and write Apache Hudi tables.",
+      "subcategory": "files",
+      "configuration": [
+        {
+          "name": "path",
+          "type": "string",
+          "description": "Table path",
+          "required": true,
+          "scope": "datasource"
+        },
+        {
+          "name": "hoodie.table.name",
+          "type": "string",
+          "description": "Hudi table name",
+          "required": true,
+          "scope": "step"
+        }
+      ],
+      "tags": [
+        "file",
+        "hudi",
+        "lakehouse"
+      ],
+      "sourceFiles": [
+        {
+          "path": "api/src/main/scala/io/github/datacatering/datacaterer/api/model/Constants.scala",
+          "role": "supporting"
+        }
+      ]
+    },
+    {
+      "id": "connector.files.xml",
+      "name": "XML File Connector",
+      "category": "connectors",
+      "status": "stable",
+      "description": "Read and write XML files.",
+      "subcategory": "files",
+      "configuration": [
+        {
+          "name": "path",
+          "type": "string",
+          "description": "File system path for XML files",
+          "required": true,
+          "scope": "datasource"
+        }
+      ],
+      "tags": [
+        "file",
+        "xml",
+        "structured"
+      ],
+      "sourceFiles": [
+        {
+          "path": "api/src/main/scala/io/github/datacatering/datacaterer/api/model/Constants.scala",
+          "role": "supporting"
+        }
+      ]
+    },
+    {
+      "id": "connector.messaging.kafka",
+      "name": "Apache Kafka Connector",
+      "category": "connectors",
+      "status": "stable",
+      "description": "Connect to Apache Kafka for producing and consuming messages. Supports topics, partitions, headers, key/value serialization, and streaming patterns.",
+      "subcategory": "messaging",
+      "configuration": [
+        {
+          "name": "url",
+          "type": "string",
+          "description": "Kafka bootstrap servers",
+          "required": true,
+          "scope": "datasource",
+          "yamlPath": "dataSources[].connection.options.url"
+        },
+        {
+          "name": "topic",
+          "type": "string",
+          "description": "Kafka topic name",
+          "required": true,
+          "scope": "step"
+        },
+        {
+          "name": "schemaLocation",
+          "type": "string",
+          "description": "Schema registry URL or file path",
+          "required": false,
+          "scope": "datasource"
+        }
+      ],
+      "examples": [
+        {
+          "format": "yaml",
+          "code": "dataSources:\n  - name: my_kafka\n    connection:\n      type: kafka\n      options:\n        url: \"localhost:9092\"\n    steps:\n      - name: orders_topic\n        options:\n          topic: \"orders\"\n        count:\n          duration: \"1m\"\n          rate: 100\n          rateUnit: \"second\"",
+          "title": "Kafka streaming"
+        }
+      ],
+      "tags": [
+        "messaging",
+        "kafka",
+        "streaming",
+        "event"
+      ],
+      "sourceFiles": [
+        {
+          "path": "api/src/main/scala/io/github/datacatering/datacaterer/api/model/Constants.scala",
+          "role": "supporting"
+        }
+      ]
+    },
+    {
+      "id": "connector.messaging.solace",
+      "name": "Solace JMS Connector",
+      "category": "connectors",
+      "status": "stable",
+      "description": "Connect to Solace PubSub+ message broker via JMS. Supports queues and topics.",
+      "subcategory": "messaging",
+      "configuration": [
+        {
+          "name": "url",
+          "type": "string",
+          "description": "Solace broker URL",
+          "required": true,
+          "scope": "datasource"
+        },
+        {
+          "name": "user",
+          "type": "string",
+          "description": "Username",
+          "required": false,
+          "scope": "datasource"
+        },
+        {
+          "name": "password",
+          "type": "string",
+          "description": "Password",
+          "required": false,
+          "scope": "datasource"
+        },
+        {
+          "name": "vpnName",
+          "type": "string",
+          "description": "VPN name",
+          "required": false,
+          "scope": "datasource",
+          "default": "default"
+        },
+        {
+          "name": "connectionFactory",
+          "type": "string",
+          "description": "JNDI connection factory",
+          "required": false,
+          "scope": "datasource",
+          "default": "/jms/cf/default"
+        },
+        {
+          "name": "initialContextFactory",
+          "type": "string",
+          "description": "JNDI context factory",
+          "required": false,
+          "scope": "datasource"
+        },
+        {
+          "name": "destinationName",
+          "type": "string",
+          "description": "Queue/topic destination",
+          "required": true,
+          "scope": "step"
+        }
+      ],
+      "tags": [
+        "messaging",
+        "jms",
+        "solace"
+      ],
+      "sourceFiles": [
+        {
+          "path": "api/src/main/scala/io/github/datacatering/datacaterer/api/model/Constants.scala",
+          "role": "supporting"
+        }
+      ]
+    },
+    {
+      "id": "connector.messaging.rabbitmq",
+      "name": "RabbitMQ Connector",
+      "category": "connectors",
+      "status": "stable",
+      "description": "Connect to RabbitMQ message broker via JMS. Supports queues.",
+      "subcategory": "messaging",
+      "configuration": [
+        {
+          "name": "url",
+          "type": "string",
+          "description": "RabbitMQ URL",
+          "required": true,
+          "scope": "datasource"
+        },
+        {
+          "name": "user",
+          "type": "string",
+          "description": "Username",
+          "required": false,
+          "scope": "datasource",
+          "default": "guest"
+        },
+        {
+          "name": "password",
+          "type": "string",
+          "description": "Password",
+          "required": false,
+          "scope": "datasource",
+          "default": "guest"
+        },
+        {
+          "name": "virtualHost",
+          "type": "string",
+          "description": "Virtual host",
+          "required": false,
+          "scope": "datasource",
+          "default": "/"
+        },
+        {
+          "name": "destinationName",
+          "type": "string",
+          "description": "Queue name",
+          "required": true,
+          "scope": "step"
+        }
+      ],
+      "tags": [
+        "messaging",
+        "rabbitmq",
+        "jms",
+        "amqp"
+      ],
+      "sourceFiles": [
+        {
+          "path": "api/src/main/scala/io/github/datacatering/datacaterer/api/model/Constants.scala",
+          "role": "supporting"
+        }
+      ]
+    },
+    {
+      "id": "connector.http.http",
+      "name": "HTTP/REST API Connector",
+      "category": "connectors",
+      "status": "stable",
+      "description": "Send generated data to HTTP/REST APIs. Supports custom methods, headers, URL path parameters, query parameters, and request bodies.",
+      "subcategory": "http",
+      "configuration": [
+        {
+          "name": "url",
+          "type": "string",
+          "description": "Base URL for HTTP requests",
+          "required": true,
+          "scope": "datasource"
+        }
+      ],
+      "examples": [
+        {
+          "format": "yaml",
+          "code": "dataSources:\n  - name: my_api\n    connection:\n      type: http\n      options:\n        url: \"http://localhost:8080\"\n    steps:\n      - name: create_users\n        fields:\n          - name: httpUrl\n            type: struct\n            fields:\n              - name: url\n                static: \"http://localhost:8080/api/users\"\n              - name: method\n                static: \"POST\"\n          - name: httpBody\n            type: struct\n            fields:\n              - name: name\n                options:\n                  expression: \"#{Name.fullName}\"",
+          "title": "HTTP API data generation"
+        }
+      ],
+      "tags": [
+        "http",
+        "rest",
+        "api",
+        "web"
+      ],
+      "sourceFiles": [
+        {
+          "path": "api/src/main/scala/io/github/datacatering/datacaterer/api/model/Constants.scala",
+          "role": "supporting"
+        }
+      ]
+    },
+    {
+      "id": "generation.field.regex",
+      "name": "Regex Pattern Generation",
+      "category": "generation",
+      "status": "stable",
+      "description": "Generate string values matching a regular expression pattern. Supports SQL-based optimization for common patterns with automatic fallback to UDF for complex patterns (lookaheads, backreferences).",
+      "subcategory": "generators",
+      "configuration": [
+        {
+          "name": "regex",
+          "type": "string",
+          "description": "Regular expression pattern to generate values from",
+          "required": true,
+          "scope": "field",
+          "yamlPath": "fields[].options.regex"
+        }
+      ],
+      "examples": [
+        {
+          "format": "yaml",
+          "code": "- name: account_id\n  options:\n    regex: \"ACC[0-9]{8}\"",
+          "title": "Simple regex pattern"
+        },
+        {
+          "format": "yaml",
+          "code": "- name: product_code\n  options:\n    regex: \"[A-Z]{3}-[0-9]{4}\"",
+          "title": "Alphanumeric pattern"
+        },
+        {
+          "format": "scala",
+          "code": "field.name(\"account_id\").regex(\"ACC[0-9]{8}\")",
+          "title": "Scala API"
+        }
+      ],
+      "tags": [
+        "generation",
+        "string",
+        "pattern",
+        "regex"
+      ],
+      "relatedFeatures": [
+        "configuration.flags.enable_fast_generation"
+      ],
+      "sourceFiles": [
+        {
+          "path": "app/src/main/scala/io/github/datacatering/datacaterer/core/generator/provider/regex/RegexPatternParser.scala",
+          "role": "primary"
+        }
+      ],
+      "performanceNotes": [
+        "SQL-based optimization available via enableFastGeneration flag",
+        "Complex patterns (lookaheads, backreferences) automatically fall back to UDF"
+      ]
+    },
+    {
+      "id": "generation.field.expression",
+      "name": "DataFaker Expression",
+      "category": "generation",
+      "status": "stable",
+      "description": "Generate realistic fake data using DataFaker library expressions. Supports names, addresses, emails, phone numbers, and hundreds of other data types.",
+      "subcategory": "generators",
+      "configuration": [
+        {
+          "name": "expression",
+          "type": "string",
+          "description": "DataFaker expression (e.g., #{Name.firstName})",
+          "required": true,
+          "scope": "field",
+          "yamlPath": "fields[].options.expression"
+        }
+      ],
+      "examples": [
+        {
+          "format": "yaml",
+          "code": "- name: full_name\n  options:\n    expression: \"#{Name.fullName}\"",
+          "title": "Full name generation"
+        },
+        {
+          "format": "yaml",
+          "code": "- name: email\n  options:\n    expression: \"#{Internet.emailAddress}\"",
+          "title": "Email generation"
+        },
+        {
+          "format": "scala",
+          "code": "field.name(\"email\").expression(\"#{Internet.emailAddress}\")",
+          "title": "Scala API"
+        }
+      ],
+      "tags": [
+        "generation",
+        "faker",
+        "realistic",
+        "expression"
+      ],
+      "dependencies": {
+        "libraries": [
+          "net.datafaker:datafaker"
+        ]
+      }
+    },
+    {
+      "id": "generation.field.one_of",
+      "name": "One-Of Selection",
+      "category": "generation",
+      "status": "stable",
+      "description": "Generate values by randomly selecting from a predefined list of options. Useful for categorical data like statuses, types, and enums.",
+      "subcategory": "generators",
+      "configuration": [
+        {
+          "name": "oneOf",
+          "type": "array",
+          "description": "List of values to randomly select from",
+          "required": true,
+          "scope": "field",
+          "yamlPath": "fields[].options.oneOf"
+        }
+      ],
+      "examples": [
+        {
+          "format": "yaml",
+          "code": "- name: status\n  options:\n    oneOf: [\"active\", \"inactive\", \"pending\"]",
+          "title": "Enum field"
+        },
+        {
+          "format": "scala",
+          "code": "field.name(\"status\").oneOf(\"active\", \"inactive\", \"pending\")",
+          "title": "Scala API"
+        }
+      ],
+      "tags": [
+        "generation",
+        "enum",
+        "categorical",
+        "selection"
+      ]
+    },
+    {
+      "id": "generation.field.sql",
+      "name": "SQL Expression",
+      "category": "generation",
+      "status": "stable",
+      "description": "Generate field values using Spark SQL expressions. Supports referencing other fields, date functions, string operations, aggregations, and conditional logic.",
+      "subcategory": "generators",
+      "configuration": [
+        {
+          "name": "sql",
+          "type": "string",
+          "description": "Spark SQL expression for computed value",
+          "required": true,
+          "scope": "field",
+          "yamlPath": "fields[].options.sql"
+        }
+      ],
+      "examples": [
+        {
+          "format": "yaml",
+          "code": "- name: year\n  type: integer\n  options:\n    sql: \"YEAR(created_at)\"",
+          "title": "Extract year from date field"
+        },
+        {
+          "format": "yaml",
+          "code": "- name: full_name\n  type: string\n  options:\n    sql: \"CONCAT(first_name, ' ', last_name)\"",
+          "title": "Concatenate fields"
+        },
+        {
+          "format": "yaml",
+          "code": "- name: total_amount\n  type: double\n  options:\n    sql: \"quantity * unit_price\"",
+          "title": "Computed field"
+        }
+      ],
+      "tags": [
+        "generation",
+        "sql",
+        "computed",
+        "derived"
+      ]
+    },
+    {
+      "id": "generation.field.static",
+      "name": "Static Value",
+      "category": "generation",
+      "status": "stable",
+      "description": "Set a fixed static value for all generated records. Useful for constant fields like API endpoints, methods, or content types.",
+      "subcategory": "generators",
+      "configuration": [
+        {
+          "name": "static",
+          "type": "string",
+          "description": "Fixed value for all records",
+          "required": true,
+          "scope": "field",
+          "yamlPath": "fields[].static"
+        }
+      ],
+      "examples": [
+        {
+          "format": "yaml",
+          "code": "- name: method\n  static: \"POST\"",
+          "title": "Static HTTP method"
+        }
+      ],
+      "tags": [
+        "generation",
+        "static",
+        "constant"
+      ]
+    },
+    {
+      "id": "generation.field.uuid",
+      "name": "UUID Generation",
+      "category": "generation",
+      "status": "stable",
+      "description": "Generate universally unique identifiers (UUID v4).",
+      "subcategory": "generators",
+      "configuration": [
+        {
+          "name": "uuidPattern",
+          "type": "boolean",
+          "description": "Enable UUID generation",
+          "required": false,
+          "scope": "field",
+          "default": false,
+          "yamlPath": "fields[].options.uuidPattern"
+        }
+      ],
+      "examples": [
+        {
+          "format": "yaml",
+          "code": "- name: id\n  options:\n    uuidPattern: true",
+          "title": "UUID field"
+        }
+      ],
+      "tags": [
+        "generation",
+        "uuid",
+        "identifier",
+        "unique"
+      ]
+    },
+    {
+      "id": "generation.field.sequence",
+      "name": "Sequential Value Generation",
+      "category": "generation",
+      "status": "stable",
+      "description": "Generate sequential values with optional prefix and padding. Useful for IDs, batch numbers, and sequential identifiers.",
+      "subcategory": "generators",
+      "configuration": [
+        {
+          "name": "sequence",
+          "type": "object",
+          "description": "Sequential value configuration with prefix and padding",
+          "required": true,
+          "scope": "field",
+          "yamlPath": "fields[].options.sequence"
+        }
+      ],
+      "examples": [
+        {
+          "format": "yaml",
+          "code": "- name: order_id\n  options:\n    sequence:\n      start: 1000\n      step: 1\n      prefix: \"ORD-\"\n      padding: 8",
+          "title": "Sequential order IDs"
+        }
+      ],
+      "tags": [
+        "generation",
+        "sequence",
+        "sequential",
+        "incremental"
+      ]
+    },
+    {
+      "id": "generation.field.conditional_value",
+      "name": "Conditional Value Generation",
+      "category": "generation",
+      "status": "stable",
+      "description": "Generate values using CASE WHEN logic based on other field values. Enables dependent field generation.",
+      "subcategory": "generators",
+      "configuration": [
+        {
+          "name": "conditionalValue",
+          "type": "object",
+          "description": "CASE WHEN conditions and result values",
+          "required": true,
+          "scope": "field",
+          "yamlPath": "fields[].options.conditionalValue"
+        }
+      ],
+      "examples": [
+        {
+          "format": "yaml",
+          "code": "- name: discount\n  type: double\n  options:\n    conditionalValue:\n      conditions:\n        - expr: \"customer_type = 'premium'\"\n          value: 0.2\n        - expr: \"customer_type = 'standard'\"\n          value: 0.1\n      default: 0.0",
+          "title": "Conditional discount"
+        }
+      ],
+      "tags": [
+        "generation",
+        "conditional",
+        "logic",
+        "derived"
+      ]
+    },
+    {
+      "id": "generation.field.correlated",
+      "name": "Correlated Field Generation",
+      "category": "generation",
+      "status": "stable",
+      "description": "Generate values that are correlated (or negatively correlated) with another field. Useful for creating realistic relationships between numeric fields.",
+      "subcategory": "generators",
+      "configuration": [
+        {
+          "name": "correlatedWith",
+          "type": "string",
+          "description": "Field name to correlate with",
+          "required": false,
+          "scope": "field",
+          "yamlPath": "fields[].options.correlatedWith"
+        },
+        {
+          "name": "negativelyCorrelatedWith",
+          "type": "string",
+          "description": "Field name to negatively correlate with",
+          "required": false,
+          "scope": "field",
+          "yamlPath": "fields[].options.negativelyCorrelatedWith"
+        }
+      ],
+      "examples": [
+        {
+          "format": "yaml",
+          "code": "- name: revenue\n  type: double\n  options:\n    correlatedWith: \"customer_count\"",
+          "title": "Positively correlated fields"
+        }
+      ],
+      "tags": [
+        "generation",
+        "correlation",
+        "statistical",
+        "relationship"
+      ]
+    },
+    {
+      "id": "generation.field.mapping",
+      "name": "Value Mapping",
+      "category": "generation",
+      "status": "stable",
+      "description": "Map values from one field to generate deterministic output in another field.",
+      "subcategory": "generators",
+      "configuration": [
+        {
+          "name": "mapping",
+          "type": "object",
+          "description": "Mapping configuration from source field to output values",
+          "required": true,
+          "scope": "field",
+          "yamlPath": "fields[].options.mapping"
+        }
+      ],
+      "examples": [
+        {
+          "format": "yaml",
+          "code": "- name: country_code\n  options:\n    mapping:\n      sourceField: \"country\"\n      mappings:\n        \"United States\": \"US\"\n        \"United Kingdom\": \"UK\"",
+          "title": "Country code mapping"
+        }
+      ],
+      "tags": [
+        "generation",
+        "mapping",
+        "lookup",
+        "derived"
+      ]
+    },
+    {
+      "id": "generation.type.string",
+      "name": "String Type",
+      "category": "generation",
+      "status": "stable",
+      "description": "Text data type. Default field type.",
+      "subcategory": "data_types",
+      "configuration": [
+        {
+          "name": "type",
+          "type": "string",
+          "description": "Set field type to \"string\"",
+          "required": false,
+          "scope": "field",
+          "yamlPath": "fields[].type"
+        }
+      ],
+      "tags": [
+        "generation",
+        "type",
+        "string"
+      ]
+    },
+    {
+      "id": "generation.type.integer",
+      "name": "Integer Type",
+      "category": "generation",
+      "status": "stable",
+      "description": "32-bit integer values.",
+      "subcategory": "data_types",
+      "configuration": [
+        {
+          "name": "type",
+          "type": "string",
+          "description": "Set field type to \"integer\"",
+          "required": false,
+          "scope": "field",
+          "yamlPath": "fields[].type"
+        }
+      ],
+      "tags": [
+        "generation",
+        "type",
+        "integer"
+      ]
+    },
+    {
+      "id": "generation.type.long",
+      "name": "Long Type",
+      "category": "generation",
+      "status": "stable",
+      "description": "64-bit long integer values.",
+      "subcategory": "data_types",
+      "configuration": [
+        {
+          "name": "type",
+          "type": "string",
+          "description": "Set field type to \"long\"",
+          "required": false,
+          "scope": "field",
+          "yamlPath": "fields[].type"
+        }
+      ],
+      "tags": [
+        "generation",
+        "type",
+        "long"
+      ]
+    },
+    {
+      "id": "generation.type.double",
+      "name": "Double Type",
+      "category": "generation",
+      "status": "stable",
+      "description": "Double-precision floating point values.",
+      "subcategory": "data_types",
+      "configuration": [
+        {
+          "name": "type",
+          "type": "string",
+          "description": "Set field type to \"double\"",
+          "required": false,
+          "scope": "field",
+          "yamlPath": "fields[].type"
+        }
+      ],
+      "tags": [
+        "generation",
+        "type",
+        "double"
+      ]
+    },
+    {
+      "id": "generation.type.float",
+      "name": "Float Type",
+      "category": "generation",
+      "status": "stable",
+      "description": "Single-precision floating point values.",
+      "subcategory": "data_types",
+      "configuration": [
+        {
+          "name": "type",
+          "type": "string",
+          "description": "Set field type to \"float\"",
+          "required": false,
+          "scope": "field",
+          "yamlPath": "fields[].type"
+        }
+      ],
+      "tags": [
+        "generation",
+        "type",
+        "float"
+      ]
+    },
+    {
+      "id": "generation.type.decimal",
+      "name": "Decimal Type",
+      "category": "generation",
+      "status": "stable",
+      "description": "Fixed-precision decimal values with configurable precision and scale.",
+      "subcategory": "data_types",
+      "configuration": [
+        {
+          "name": "type",
+          "type": "string",
+          "description": "Set field type to \"decimal\"",
+          "required": false,
+          "scope": "field",
+          "yamlPath": "fields[].type"
+        }
+      ],
+      "tags": [
+        "generation",
+        "type",
+        "decimal"
+      ]
+    },
+    {
+      "id": "generation.type.boolean",
+      "name": "Boolean Type",
+      "category": "generation",
+      "status": "stable",
+      "description": "True/false boolean values.",
+      "subcategory": "data_types",
+      "configuration": [
+        {
+          "name": "type",
+          "type": "string",
+          "description": "Set field type to \"boolean\"",
+          "required": false,
+          "scope": "field",
+          "yamlPath": "fields[].type"
+        }
+      ],
+      "tags": [
+        "generation",
+        "type",
+        "boolean"
+      ]
+    },
+    {
+      "id": "generation.type.date",
+      "name": "Date Type",
+      "category": "generation",
+      "status": "stable",
+      "description": "Date values (year-month-day).",
+      "subcategory": "data_types",
+      "configuration": [
+        {
+          "name": "type",
+          "type": "string",
+          "description": "Set field type to \"date\"",
+          "required": false,
+          "scope": "field",
+          "yamlPath": "fields[].type"
+        }
+      ],
+      "tags": [
+        "generation",
+        "type",
+        "date"
+      ]
+    },
+    {
+      "id": "generation.type.timestamp",
+      "name": "Timestamp Type",
+      "category": "generation",
+      "status": "stable",
+      "description": "Timestamp values with date and time.",
+      "subcategory": "data_types",
+      "configuration": [
+        {
+          "name": "type",
+          "type": "string",
+          "description": "Set field type to \"timestamp\"",
+          "required": false,
+          "scope": "field",
+          "yamlPath": "fields[].type"
+        }
+      ],
+      "tags": [
+        "generation",
+        "type",
+        "timestamp"
+      ]
+    },
+    {
+      "id": "generation.type.binary",
+      "name": "Binary Type",
+      "category": "generation",
+      "status": "stable",
+      "description": "Binary byte array values.",
+      "subcategory": "data_types",
+      "configuration": [
+        {
+          "name": "type",
+          "type": "string",
+          "description": "Set field type to \"binary\"",
+          "required": false,
+          "scope": "field",
+          "yamlPath": "fields[].type"
+        }
+      ],
+      "tags": [
+        "generation",
+        "type",
+        "binary"
+      ]
+    },
+    {
+      "id": "generation.type.array",
+      "name": "Array Type",
+      "category": "generation",
+      "status": "stable",
+      "description": "Array/list of elements. Configurable element type, min/max length.",
+      "subcategory": "data_types",
+      "configuration": [
+        {
+          "name": "type",
+          "type": "string",
+          "description": "Set field type to \"array\"",
+          "required": false,
+          "scope": "field",
+          "yamlPath": "fields[].type"
+        }
+      ],
+      "tags": [
+        "generation",
+        "type",
+        "array"
+      ]
+    },
+    {
+      "id": "generation.type.struct",
+      "name": "Struct Type",
+      "category": "generation",
+      "status": "stable",
+      "description": "Nested structure with named fields. Supports deep nesting.",
+      "subcategory": "data_types",
+      "configuration": [
+        {
+          "name": "type",
+          "type": "string",
+          "description": "Set field type to \"struct\"",
+          "required": false,
+          "scope": "field",
+          "yamlPath": "fields[].type"
+        }
+      ],
+      "tags": [
+        "generation",
+        "type",
+        "struct"
+      ]
+    },
+    {
+      "id": "generation.type.map",
+      "name": "Map Type",
+      "category": "generation",
+      "status": "stable",
+      "description": "Key-value map type with configurable key and value types.",
+      "subcategory": "data_types",
+      "configuration": [
+        {
+          "name": "type",
+          "type": "string",
+          "description": "Set field type to \"map\"",
+          "required": false,
+          "scope": "field",
+          "yamlPath": "fields[].type"
+        }
+      ],
+      "tags": [
+        "generation",
+        "type",
+        "map"
+      ]
+    },
+    {
+      "id": "generation.option.numeric_range",
+      "name": "Numeric Range",
+      "category": "generation",
+      "status": "stable",
+      "description": "Constrain numeric fields (integer, long, double, float, decimal) to a minimum and maximum range.",
+      "subcategory": "field_options",
+      "configuration": [
+        {
+          "name": "min",
+          "type": "any",
+          "description": "Minimum value (inclusive)",
+          "required": false,
+          "scope": "field",
+          "yamlPath": "fields[].options.min",
+          "scalaConstant": "MINIMUM"
+        },
+        {
+          "name": "max",
+          "type": "any",
+          "description": "Maximum value (inclusive)",
+          "required": false,
+          "scope": "field",
+          "yamlPath": "fields[].options.max",
+          "scalaConstant": "MAXIMUM"
+        }
+      ],
+      "examples": [
+        {
+          "format": "yaml",
+          "code": "- name: age\n  type: integer\n  options:\n    min: 18\n    max: 120",
+          "title": "Integer range"
+        },
+        {
+          "format": "yaml",
+          "code": "- name: price\n  type: double\n  options:\n    min: 9.99\n    max: 999.99",
+          "title": "Double range"
+        }
+      ],
+      "tags": [
+        "generation",
+        "numeric",
+        "range",
+        "constraint"
+      ]
+    },
+    {
+      "id": "generation.option.date_range",
+      "name": "Date/Time Range",
+      "category": "generation",
+      "status": "stable",
+      "description": "Constrain date and timestamp fields to a minimum and maximum range. Also supports excluding weekends, business hours, within/future days.",
+      "subcategory": "field_options",
+      "configuration": [
+        {
+          "name": "min",
+          "type": "string",
+          "description": "Minimum date/timestamp",
+          "required": false,
+          "scope": "field",
+          "yamlPath": "fields[].options.min"
+        },
+        {
+          "name": "max",
+          "type": "string",
+          "description": "Maximum date/timestamp",
+          "required": false,
+          "scope": "field",
+          "yamlPath": "fields[].options.max"
+        },
+        {
+          "name": "excludeWeekends",
+          "type": "boolean",
+          "description": "Exclude Saturday and Sunday",
+          "required": false,
+          "scope": "field",
+          "default": false,
+          "yamlPath": "fields[].options.excludeWeekends",
+          "scalaConstant": "DATE_EXCLUDE_WEEKENDS"
+        },
+        {
+          "name": "withinDays",
+          "type": "integer",
+          "description": "Generate dates within last N days from now",
+          "required": false,
+          "scope": "field",
+          "yamlPath": "fields[].options.withinDays"
+        },
+        {
+          "name": "futureDays",
+          "type": "integer",
+          "description": "Generate dates within next N days from now",
+          "required": false,
+          "scope": "field",
+          "yamlPath": "fields[].options.futureDays"
+        },
+        {
+          "name": "businessHours",
+          "type": "boolean",
+          "description": "Restrict to business hours",
+          "required": false,
+          "scope": "field",
+          "default": false,
+          "yamlPath": "fields[].options.businessHours"
+        },
+        {
+          "name": "timeBetween",
+          "type": "object",
+          "description": "Generate times between start and end",
+          "required": false,
+          "scope": "field",
+          "yamlPath": "fields[].options.timeBetween"
+        }
+      ],
+      "examples": [
+        {
+          "format": "yaml",
+          "code": "- name: created_at\n  type: timestamp\n  options:\n    min: \"2024-01-01T00:00:00\"\n    max: \"2024-12-31T23:59:59\"",
+          "title": "Timestamp range"
+        }
+      ],
+      "tags": [
+        "generation",
+        "date",
+        "timestamp",
+        "range"
+      ]
+    },
+    {
+      "id": "generation.option.null_handling",
+      "name": "Null Value Control",
+      "category": "generation",
+      "status": "stable",
+      "description": "Control whether and how often null values appear in generated data. Configurable null probability per field.",
+      "subcategory": "field_options",
+      "configuration": [
+        {
+          "name": "enableNull",
+          "type": "boolean",
+          "description": "Allow null values for this field",
+          "required": false,
+          "scope": "field",
+          "default": false,
+          "yamlPath": "fields[].options.enableNull",
+          "scalaConstant": "ENABLED_NULL"
+        },
+        {
+          "name": "nullProb",
+          "type": "double",
+          "description": "Probability of generating a null value (0-1)",
+          "required": false,
+          "scope": "field",
+          "yamlPath": "fields[].options.nullProb",
+          "scalaConstant": "PROBABILITY_OF_NULL"
+        },
+        {
+          "name": "nullable",
+          "type": "boolean",
+          "description": "Whether the field schema allows nulls",
+          "required": false,
+          "scope": "field",
+          "default": true,
+          "yamlPath": "fields[].nullable"
+        }
+      ],
+      "examples": [
+        {
+          "format": "yaml",
+          "code": "- name: middle_name\n  options:\n    enableNull: true\n    nullProb: 0.3",
+          "title": "30% null probability"
+        }
+      ],
+      "tags": [
+        "generation",
+        "null",
+        "nullable",
+        "probability"
+      ]
+    },
+    {
+      "id": "generation.option.edge_cases",
+      "name": "Edge Case Generation",
+      "category": "generation",
+      "status": "stable",
+      "description": "Control the probability of generating edge case values (empty strings, boundary values, special characters).",
+      "subcategory": "field_options",
+      "configuration": [
+        {
+          "name": "enableEdgeCase",
+          "type": "boolean",
+          "description": "Enable edge case generation",
+          "required": false,
+          "scope": "field",
+          "default": false,
+          "scalaConstant": "ENABLED_EDGE_CASE"
+        },
+        {
+          "name": "edgeCaseProb",
+          "type": "double",
+          "description": "Probability of generating edge case values (0-1)",
+          "required": false,
+          "scope": "field",
+          "scalaConstant": "PROBABILITY_OF_EDGE_CASE"
+        }
+      ],
+      "tags": [
+        "generation",
+        "edge-case",
+        "boundary",
+        "testing"
+      ]
+    },
+    {
+      "id": "generation.option.string_length",
+      "name": "String Length Control",
+      "category": "generation",
+      "status": "stable",
+      "description": "Control the length of generated string values with minimum, maximum, and average length.",
+      "subcategory": "field_options",
+      "configuration": [
+        {
+          "name": "minLen",
+          "type": "integer",
+          "description": "Minimum string length",
+          "required": false,
+          "scope": "field",
+          "scalaConstant": "MINIMUM_LENGTH"
+        },
+        {
+          "name": "maxLen",
+          "type": "integer",
+          "description": "Maximum string length",
+          "required": false,
+          "scope": "field",
+          "scalaConstant": "MAXIMUM_LENGTH"
+        },
+        {
+          "name": "avgLen",
+          "type": "integer",
+          "description": "Average string length",
+          "required": false,
+          "scope": "field",
+          "scalaConstant": "AVERAGE_LENGTH"
+        }
+      ],
+      "tags": [
+        "generation",
+        "string",
+        "length",
+        "constraint"
+      ]
+    },
+    {
+      "id": "generation.option.array_config",
+      "name": "Array Configuration",
+      "category": "generation",
+      "status": "stable",
+      "description": "Configure array field generation: element count, element type, uniqueness, empty probability, and weighted selection.",
+      "subcategory": "field_options",
+      "configuration": [
+        {
+          "name": "arrayMinLen",
+          "type": "integer",
+          "description": "Minimum array length",
+          "required": false,
+          "scope": "field",
+          "yamlPath": "fields[].options.arrayMinLength",
+          "scalaConstant": "ARRAY_MINIMUM_LENGTH"
+        },
+        {
+          "name": "arrayMaxLen",
+          "type": "integer",
+          "description": "Maximum array length",
+          "required": false,
+          "scope": "field",
+          "yamlPath": "fields[].options.arrayMaxLength",
+          "scalaConstant": "ARRAY_MAXIMUM_LENGTH"
+        },
+        {
+          "name": "arrayFixedSize",
+          "type": "integer",
+          "description": "Fixed array size",
+          "required": false,
+          "scope": "field",
+          "scalaConstant": "ARRAY_FIXED_SIZE"
+        },
+        {
+          "name": "arrayEmptyProb",
+          "type": "double",
+          "description": "Probability of empty array (0-1)",
+          "required": false,
+          "scope": "field",
+          "yamlPath": "fields[].options.arrayEmptyProbability",
+          "scalaConstant": "ARRAY_EMPTY_PROBABILITY"
+        },
+        {
+          "name": "arrayType",
+          "type": "string",
+          "description": "Element data type for array",
+          "required": false,
+          "scope": "field",
+          "scalaConstant": "ARRAY_TYPE"
+        },
+        {
+          "name": "arrayOneOf",
+          "type": "string",
+          "description": "Comma-separated values for array elements",
+          "required": false,
+          "scope": "field",
+          "scalaConstant": "ARRAY_ONE_OF"
+        },
+        {
+          "name": "arrayUniqueFrom",
+          "type": "string",
+          "description": "Source for unique array elements",
+          "required": false,
+          "scope": "field",
+          "scalaConstant": "ARRAY_UNIQUE_FROM"
+        },
+        {
+          "name": "arrayWeightedOneOf",
+          "type": "string",
+          "description": "Weighted selection for elements (e.g., HIGH:0.2,MEDIUM:0.5,LOW:0.3)",
+          "required": false,
+          "scope": "field",
+          "yamlPath": "fields[].options.arrayWeightedOneOf",
+          "scalaConstant": "ARRAY_WEIGHTED_ONE_OF"
+        }
+      ],
+      "tags": [
+        "generation",
+        "array",
+        "collection",
+        "nested"
+      ]
+    },
+    {
+      "id": "generation.option.map_config",
+      "name": "Map Configuration",
+      "category": "generation",
+      "status": "stable",
+      "description": "Configure map field generation with minimum and maximum size.",
+      "subcategory": "field_options",
+      "configuration": [
+        {
+          "name": "mapMinSize",
+          "type": "integer",
+          "description": "Minimum number of entries",
+          "required": false,
+          "scope": "field",
+          "scalaConstant": "MAP_MINIMUM_SIZE"
+        },
+        {
+          "name": "mapMaxSize",
+          "type": "integer",
+          "description": "Maximum number of entries",
+          "required": false,
+          "scope": "field",
+          "scalaConstant": "MAP_MAXIMUM_SIZE"
+        }
+      ],
+      "tags": [
+        "generation",
+        "map",
+        "key-value",
+        "nested"
+      ]
+    },
+    {
+      "id": "generation.option.distribution",
+      "name": "Value Distribution",
+      "category": "generation",
+      "status": "stable",
+      "description": "Control the statistical distribution of generated numeric values. Supports uniform, normal, and exponential distributions.",
+      "subcategory": "field_options",
+      "configuration": [
+        {
+          "name": "distribution",
+          "type": "enum",
+          "description": "Distribution type",
+          "required": false,
+          "scope": "field",
+          "validValues": [
+            "uniform",
+            "normal",
+            "exponential"
+          ],
+          "scalaConstant": "DISTRIBUTION"
+        },
+        {
+          "name": "mean",
+          "type": "double",
+          "description": "Mean for normal distribution",
+          "required": false,
+          "scope": "field",
+          "scalaConstant": "MEAN"
+        },
+        {
+          "name": "stddev",
+          "type": "double",
+          "description": "Standard deviation for normal distribution",
+          "required": false,
+          "scope": "field",
+          "scalaConstant": "STANDARD_DEVIATION"
+        },
+        {
+          "name": "distributionRateParam",
+          "type": "double",
+          "description": "Rate parameter for exponential distribution",
+          "required": false,
+          "scope": "field",
+          "scalaConstant": "DISTRIBUTION_RATE_PARAMETER"
+        }
+      ],
+      "tags": [
+        "generation",
+        "distribution",
+        "statistical",
+        "normal",
+        "uniform"
+      ]
+    },
+    {
+      "id": "generation.option.uniqueness",
+      "name": "Uniqueness Constraint",
+      "category": "generation",
+      "status": "stable",
+      "description": "Enforce unique values for a field using bloom filter-based deduplication.",
+      "subcategory": "field_options",
+      "configuration": [
+        {
+          "name": "isUnique",
+          "type": "boolean",
+          "description": "Enforce unique values",
+          "required": false,
+          "scope": "field",
+          "default": false,
+          "yamlPath": "fields[].options.isUnique",
+          "scalaConstant": "IS_UNIQUE"
+        },
+        {
+          "name": "isPrimaryKey",
+          "type": "boolean",
+          "description": "Mark as primary key (implies unique)",
+          "required": false,
+          "scope": "field",
+          "default": false,
+          "yamlPath": "fields[].options.isPrimaryKey",
+          "scalaConstant": "IS_PRIMARY_KEY"
+        },
+        {
+          "name": "primaryKeyPos",
+          "type": "integer",
+          "description": "Position in composite primary key",
+          "required": false,
+          "scope": "field",
+          "scalaConstant": "PRIMARY_KEY_POSITION"
+        }
+      ],
+      "tags": [
+        "generation",
+        "unique",
+        "primary-key",
+        "constraint"
+      ],
+      "relatedFeatures": [
+        "configuration.flags.enable_unique_check"
+      ]
+    },
+    {
+      "id": "generation.option.numeric_precision",
+      "name": "Numeric Precision and Scale",
+      "category": "generation",
+      "status": "stable",
+      "description": "Control precision and scale for decimal fields, and rounding for numeric fields.",
+      "subcategory": "field_options",
+      "configuration": [
+        {
+          "name": "precision",
+          "type": "integer",
+          "description": "Numeric precision (total digits)",
+          "required": false,
+          "scope": "field",
+          "scalaConstant": "NUMERIC_PRECISION"
+        },
+        {
+          "name": "scale",
+          "type": "integer",
+          "description": "Numeric scale (decimal places)",
+          "required": false,
+          "scope": "field",
+          "scalaConstant": "NUMERIC_SCALE"
+        },
+        {
+          "name": "round",
+          "type": "integer",
+          "description": "Round numeric values to N decimal places",
+          "required": false,
+          "scope": "field",
+          "scalaConstant": "ROUND"
+        }
+      ],
+      "tags": [
+        "generation",
+        "numeric",
+        "precision",
+        "decimal"
+      ]
+    },
+    {
+      "id": "generation.option.omit",
+      "name": "Field Omission",
+      "category": "generation",
+      "status": "stable",
+      "description": "Generate a field for use in computed expressions but omit it from the final output.",
+      "subcategory": "field_options",
+      "configuration": [
+        {
+          "name": "omit",
+          "type": "boolean",
+          "description": "Omit field from output",
+          "required": false,
+          "scope": "field",
+          "default": false,
+          "yamlPath": "fields[].options.omit",
+          "scalaConstant": "OMIT"
+        }
+      ],
+      "tags": [
+        "generation",
+        "omit",
+        "helper",
+        "computed"
+      ]
+    },
+    {
+      "id": "generation.option.seed",
+      "name": "Random Seed",
+      "category": "generation",
+      "status": "stable",
+      "description": "Set a random seed for reproducible data generation per field.",
+      "subcategory": "field_options",
+      "configuration": [
+        {
+          "name": "seed",
+          "type": "integer",
+          "description": "Random seed for reproducible generation",
+          "required": false,
+          "scope": "field",
+          "yamlPath": "fields[].options.seed",
+          "scalaConstant": "RANDOM_SEED"
+        }
+      ],
+      "tags": [
+        "generation",
+        "seed",
+        "reproducible",
+        "deterministic"
+      ]
+    },
+    {
+      "id": "generation.option.distinct_count",
+      "name": "Distinct Value Count",
+      "category": "generation",
+      "status": "stable",
+      "description": "Control how many distinct values are generated for a field. Used with metadata-driven generation.",
+      "subcategory": "field_options",
+      "configuration": [
+        {
+          "name": "distinctCount",
+          "type": "integer",
+          "description": "Number of distinct values to generate",
+          "required": false,
+          "scope": "field",
+          "scalaConstant": "DISTINCT_COUNT"
+        },
+        {
+          "name": "histogram",
+          "type": "object",
+          "description": "Value distribution histogram",
+          "required": false,
+          "scope": "field",
+          "scalaConstant": "HISTOGRAM"
+        }
+      ],
+      "tags": [
+        "generation",
+        "distinct",
+        "cardinality",
+        "metadata"
+      ]
+    },
+    {
+      "id": "generation.option.cassandra_keys",
+      "name": "Cassandra Key Configuration",
+      "category": "generation",
+      "status": "stable",
+      "description": "Configure Cassandra-specific primary key and clustering positions for fields.",
+      "subcategory": "field_options",
+      "configuration": [
+        {
+          "name": "isPrimaryKey",
+          "type": "boolean",
+          "description": "Mark as partition key",
+          "required": false,
+          "scope": "field",
+          "scalaConstant": "IS_PRIMARY_KEY"
+        },
+        {
+          "name": "primaryKeyPos",
+          "type": "integer",
+          "description": "Position in composite partition key",
+          "required": false,
+          "scope": "field",
+          "scalaConstant": "PRIMARY_KEY_POSITION"
+        },
+        {
+          "name": "clusteringPos",
+          "type": "integer",
+          "description": "Clustering column position",
+          "required": false,
+          "scope": "field",
+          "scalaConstant": "CLUSTERING_POSITION"
+        }
+      ],
+      "tags": [
+        "generation",
+        "cassandra",
+        "primary-key",
+        "clustering"
+      ]
+    },
+    {
+      "id": "generation.option.incremental",
+      "name": "Incremental Generation",
+      "category": "generation",
+      "status": "stable",
+      "description": "Mark a field for incremental generation, tracking the last generated value across runs.",
+      "subcategory": "field_options",
+      "configuration": [
+        {
+          "name": "incremental",
+          "type": "boolean",
+          "description": "Enable incremental mode",
+          "required": false,
+          "scope": "field",
+          "default": false,
+          "scalaConstant": "INCREMENTAL"
+        }
+      ],
+      "tags": [
+        "generation",
+        "incremental",
+        "tracking"
+      ]
+    },
+    {
+      "id": "generation.option.http_param_type",
+      "name": "HTTP Parameter Type",
+      "category": "generation",
+      "status": "stable",
+      "description": "Specify the HTTP parameter type for a field when using the HTTP connector (path, query, or header).",
+      "subcategory": "field_options",
+      "configuration": [
+        {
+          "name": "httpParamType",
+          "type": "enum",
+          "description": "HTTP parameter placement",
+          "required": false,
+          "scope": "field",
+          "validValues": [
+            "path",
+            "query",
+            "header"
+          ],
+          "scalaConstant": "HTTP_PARAMETER_TYPE"
+        }
+      ],
+      "tags": [
+        "generation",
+        "http",
+        "parameter",
+        "api"
+      ]
+    },
+    {
+      "id": "generation.option.post_sql_expression",
+      "name": "Post-SQL Expression",
+      "category": "generation",
+      "status": "stable",
+      "description": "Apply a SQL expression to transform the field value after initial generation.",
+      "subcategory": "field_options",
+      "configuration": [
+        {
+          "name": "postSqlExpression",
+          "type": "string",
+          "description": "SQL expression to apply after generation",
+          "required": false,
+          "scope": "field",
+          "scalaConstant": "POST_SQL_EXPRESSION"
+        }
+      ],
+      "tags": [
+        "generation",
+        "sql",
+        "transform",
+        "post-processing"
+      ]
+    },
+    {
+      "id": "generation.field.semantic_version",
+      "name": "Semantic Version Generation",
+      "category": "generation",
+      "status": "stable",
+      "description": "Generate semantic version strings (e.g., 1.2.3).",
+      "subcategory": "generators",
+      "configuration": [
+        {
+          "name": "semanticVersion",
+          "type": "object",
+          "description": "Semantic version configuration",
+          "required": false,
+          "scope": "field",
+          "yamlPath": "fields[].options.semanticVersion"
+        }
+      ],
+      "tags": [
+        "generation",
+        "version",
+        "semver"
+      ]
+    },
+    {
+      "id": "generation.field.daily_batch_sequence",
+      "name": "Daily Batch Sequence",
+      "category": "generation",
+      "status": "stable",
+      "description": "Generate daily batch sequence identifiers.",
+      "subcategory": "generators",
+      "configuration": [
+        {
+          "name": "dailyBatchSequence",
+          "type": "object",
+          "description": "Daily batch sequence configuration",
+          "required": false,
+          "scope": "field",
+          "yamlPath": "fields[].options.dailyBatchSequence"
+        }
+      ],
+      "tags": [
+        "generation",
+        "batch",
+        "daily",
+        "sequence"
+      ]
+    },
+    {
+      "id": "generation.label.name",
+      "name": "Name Label",
+      "category": "generation",
+      "status": "stable",
+      "description": "Generate person name fields (first name, last name, full name). Used for metadata-driven field generation to automatically select appropriate data generators.",
+      "subcategory": "labels",
+      "configuration": [
+        {
+          "name": "label",
+          "type": "string",
+          "description": "Set field label to \"name\" for auto-detection",
+          "required": false,
+          "scope": "field",
+          "scalaConstant": "FIELD_LABEL"
+        }
+      ],
+      "tags": [
+        "generation",
+        "label",
+        "metadata",
+        "name"
+      ]
+    },
+    {
+      "id": "generation.label.username",
+      "name": "Username Label",
+      "category": "generation",
+      "status": "stable",
+      "description": "Generate username fields. Used for metadata-driven field generation to automatically select appropriate data generators.",
+      "subcategory": "labels",
+      "configuration": [
+        {
+          "name": "label",
+          "type": "string",
+          "description": "Set field label to \"username\" for auto-detection",
+          "required": false,
+          "scope": "field",
+          "scalaConstant": "FIELD_LABEL"
+        }
+      ],
+      "tags": [
+        "generation",
+        "label",
+        "metadata",
+        "username"
+      ]
+    },
+    {
+      "id": "generation.label.address",
+      "name": "Address Label",
+      "category": "generation",
+      "status": "stable",
+      "description": "Generate address fields (street, city, postcode). Used for metadata-driven field generation to automatically select appropriate data generators.",
+      "subcategory": "labels",
+      "configuration": [
+        {
+          "name": "label",
+          "type": "string",
+          "description": "Set field label to \"address\" for auto-detection",
+          "required": false,
+          "scope": "field",
+          "scalaConstant": "FIELD_LABEL"
+        }
+      ],
+      "tags": [
+        "generation",
+        "label",
+        "metadata",
+        "address"
+      ]
+    },
+    {
+      "id": "generation.label.app",
+      "name": "Application Label",
+      "category": "generation",
+      "status": "stable",
+      "description": "Generate application-related fields (version). Used for metadata-driven field generation to automatically select appropriate data generators.",
+      "subcategory": "labels",
+      "configuration": [
+        {
+          "name": "label",
+          "type": "string",
+          "description": "Set field label to \"app\" for auto-detection",
+          "required": false,
+          "scope": "field",
+          "scalaConstant": "FIELD_LABEL"
+        }
+      ],
+      "tags": [
+        "generation",
+        "label",
+        "metadata",
+        "app"
+      ]
+    },
+    {
+      "id": "generation.label.nation",
+      "name": "Nation Label",
+      "category": "generation",
+      "status": "stable",
+      "description": "Generate nationality, language, capital city. Used for metadata-driven field generation to automatically select appropriate data generators.",
+      "subcategory": "labels",
+      "configuration": [
+        {
+          "name": "label",
+          "type": "string",
+          "description": "Set field label to \"nation\" for auto-detection",
+          "required": false,
+          "scope": "field",
+          "scalaConstant": "FIELD_LABEL"
+        }
+      ],
+      "tags": [
+        "generation",
+        "label",
+        "metadata",
+        "nation"
+      ]
+    },
+    {
+      "id": "generation.label.money",
+      "name": "Money Label",
+      "category": "generation",
+      "status": "stable",
+      "description": "Generate currency and financial fields. Used for metadata-driven field generation to automatically select appropriate data generators.",
+      "subcategory": "labels",
+      "configuration": [
+        {
+          "name": "label",
+          "type": "string",
+          "description": "Set field label to \"money\" for auto-detection",
+          "required": false,
+          "scope": "field",
+          "scalaConstant": "FIELD_LABEL"
+        }
+      ],
+      "tags": [
+        "generation",
+        "label",
+        "metadata",
+        "money"
+      ]
+    },
+    {
+      "id": "generation.label.internet",
+      "name": "Internet Label",
+      "category": "generation",
+      "status": "stable",
+      "description": "Generate email, IP, MAC address fields. Used for metadata-driven field generation to automatically select appropriate data generators.",
+      "subcategory": "labels",
+      "configuration": [
+        {
+          "name": "label",
+          "type": "string",
+          "description": "Set field label to \"internet\" for auto-detection",
+          "required": false,
+          "scope": "field",
+          "scalaConstant": "FIELD_LABEL"
+        }
+      ],
+      "tags": [
+        "generation",
+        "label",
+        "metadata",
+        "internet"
+      ]
+    },
+    {
+      "id": "generation.label.food",
+      "name": "Food Label",
+      "category": "generation",
+      "status": "stable",
+      "description": "Generate food and ingredient fields. Used for metadata-driven field generation to automatically select appropriate data generators.",
+      "subcategory": "labels",
+      "configuration": [
+        {
+          "name": "label",
+          "type": "string",
+          "description": "Set field label to \"food\" for auto-detection",
+          "required": false,
+          "scope": "field",
+          "scalaConstant": "FIELD_LABEL"
+        }
+      ],
+      "tags": [
+        "generation",
+        "label",
+        "metadata",
+        "food"
+      ]
+    },
+    {
+      "id": "generation.label.job",
+      "name": "Job Label",
+      "category": "generation",
+      "status": "stable",
+      "description": "Generate job title, field, position. Used for metadata-driven field generation to automatically select appropriate data generators.",
+      "subcategory": "labels",
+      "configuration": [
+        {
+          "name": "label",
+          "type": "string",
+          "description": "Set field label to \"job\" for auto-detection",
+          "required": false,
+          "scope": "field",
+          "scalaConstant": "FIELD_LABEL"
+        }
+      ],
+      "tags": [
+        "generation",
+        "label",
+        "metadata",
+        "job"
+      ]
+    },
+    {
+      "id": "generation.label.relationship",
+      "name": "Relationship Label",
+      "category": "generation",
+      "status": "stable",
+      "description": "Generate relationship type fields. Used for metadata-driven field generation to automatically select appropriate data generators.",
+      "subcategory": "labels",
+      "configuration": [
+        {
+          "name": "label",
+          "type": "string",
+          "description": "Set field label to \"relationship\" for auto-detection",
+          "required": false,
+          "scope": "field",
+          "scalaConstant": "FIELD_LABEL"
+        }
+      ],
+      "tags": [
+        "generation",
+        "label",
+        "metadata",
+        "relationship"
+      ]
+    },
+    {
+      "id": "generation.label.weather",
+      "name": "Weather Label",
+      "category": "generation",
+      "status": "stable",
+      "description": "Generate weather description fields. Used for metadata-driven field generation to automatically select appropriate data generators.",
+      "subcategory": "labels",
+      "configuration": [
+        {
+          "name": "label",
+          "type": "string",
+          "description": "Set field label to \"weather\" for auto-detection",
+          "required": false,
+          "scope": "field",
+          "scalaConstant": "FIELD_LABEL"
+        }
+      ],
+      "tags": [
+        "generation",
+        "label",
+        "metadata",
+        "weather"
+      ]
+    },
+    {
+      "id": "generation.label.phone",
+      "name": "Phone Label",
+      "category": "generation",
+      "status": "stable",
+      "description": "Generate phone number fields. Used for metadata-driven field generation to automatically select appropriate data generators.",
+      "subcategory": "labels",
+      "configuration": [
+        {
+          "name": "label",
+          "type": "string",
+          "description": "Set field label to \"phone\" for auto-detection",
+          "required": false,
+          "scope": "field",
+          "scalaConstant": "FIELD_LABEL"
+        }
+      ],
+      "tags": [
+        "generation",
+        "label",
+        "metadata",
+        "phone"
+      ]
+    },
+    {
+      "id": "generation.label.geo",
+      "name": "Geo Label",
+      "category": "generation",
+      "status": "stable",
+      "description": "Generate geographic coordinate fields. Used for metadata-driven field generation to automatically select appropriate data generators.",
+      "subcategory": "labels",
+      "configuration": [
+        {
+          "name": "label",
+          "type": "string",
+          "description": "Set field label to \"geo\" for auto-detection",
+          "required": false,
+          "scope": "field",
+          "scalaConstant": "FIELD_LABEL"
+        }
+      ],
+      "tags": [
+        "generation",
+        "label",
+        "metadata",
+        "geo"
+      ]
+    },
+    {
+      "id": "validation.field.null",
+      "name": "Null Check",
+      "category": "validation",
+      "status": "stable",
+      "description": "Validate that a field is null (or not null with negate=true).",
+      "subcategory": "field_validations",
+      "configuration": [
+        {
+          "name": "type",
+          "type": "string",
+          "description": "Set validation type to \"null\"",
+          "required": false,
+          "scope": "field"
+        },
+        {
+          "name": "negate",
+          "type": "boolean",
+          "description": "Invert the validation result",
+          "required": false,
+          "scope": "field",
+          "default": false
+        },
+        {
+          "name": "errorThreshold",
+          "type": "double",
+          "description": "Allowed error rate (0-1)",
+          "required": false,
+          "scope": "field"
+        },
+        {
+          "name": "description",
+          "type": "string",
+          "description": "Human-readable description",
+          "required": false,
+          "scope": "field"
+        }
+      ],
+      "tags": [
+        "validation",
+        "field",
+        "null"
+      ]
+    },
+    {
+      "id": "validation.field.unique",
+      "name": "Unique Values",
+      "category": "validation",
+      "status": "stable",
+      "description": "Validate that all values in a field are unique.",
+      "subcategory": "field_validations",
+      "configuration": [
+        {
+          "name": "type",
+          "type": "string",
+          "description": "Set validation type to \"unique\"",
+          "required": false,
+          "scope": "field"
+        },
+        {
+          "name": "negate",
+          "type": "boolean",
+          "description": "Invert the validation result",
+          "required": false,
+          "scope": "field",
+          "default": false
+        },
+        {
+          "name": "errorThreshold",
+          "type": "double",
+          "description": "Allowed error rate (0-1)",
+          "required": false,
+          "scope": "field"
+        },
+        {
+          "name": "description",
+          "type": "string",
+          "description": "Human-readable description",
+          "required": false,
+          "scope": "field"
+        }
+      ],
+      "tags": [
+        "validation",
+        "field",
+        "unique"
+      ]
+    },
+    {
+      "id": "validation.field.equal",
+      "name": "Equality Check",
+      "category": "validation",
+      "status": "stable",
+      "description": "Validate that field values equal a specified value.",
+      "subcategory": "field_validations",
+      "configuration": [
+        {
+          "name": "type",
+          "type": "string",
+          "description": "Set validation type to \"equal\"",
+          "required": false,
+          "scope": "field"
+        },
+        {
+          "name": "negate",
+          "type": "boolean",
+          "description": "Invert the validation result",
+          "required": false,
+          "scope": "field",
+          "default": false
+        },
+        {
+          "name": "errorThreshold",
+          "type": "double",
+          "description": "Allowed error rate (0-1)",
+          "required": false,
+          "scope": "field"
+        },
+        {
+          "name": "description",
+          "type": "string",
+          "description": "Human-readable description",
+          "required": false,
+          "scope": "field"
+        }
+      ],
+      "tags": [
+        "validation",
+        "field",
+        "equal"
+      ]
+    },
+    {
+      "id": "validation.field.contains",
+      "name": "Contains Check",
+      "category": "validation",
+      "status": "stable",
+      "description": "Validate that string field values contain a substring.",
+      "subcategory": "field_validations",
+      "configuration": [
+        {
+          "name": "type",
+          "type": "string",
+          "description": "Set validation type to \"contains\"",
+          "required": false,
+          "scope": "field"
+        },
+        {
+          "name": "negate",
+          "type": "boolean",
+          "description": "Invert the validation result",
+          "required": false,
+          "scope": "field",
+          "default": false
+        },
+        {
+          "name": "errorThreshold",
+          "type": "double",
+          "description": "Allowed error rate (0-1)",
+          "required": false,
+          "scope": "field"
+        },
+        {
+          "name": "description",
+          "type": "string",
+          "description": "Human-readable description",
+          "required": false,
+          "scope": "field"
+        }
+      ],
+      "tags": [
+        "validation",
+        "field",
+        "contains"
+      ]
+    },
+    {
+      "id": "validation.field.starts_with",
+      "name": "Starts With",
+      "category": "validation",
+      "status": "stable",
+      "description": "Validate that string field values start with a prefix.",
+      "subcategory": "field_validations",
+      "configuration": [
+        {
+          "name": "type",
+          "type": "string",
+          "description": "Set validation type to \"startswith\"",
+          "required": false,
+          "scope": "field"
+        },
+        {
+          "name": "negate",
+          "type": "boolean",
+          "description": "Invert the validation result",
+          "required": false,
+          "scope": "field",
+          "default": false
+        },
+        {
+          "name": "errorThreshold",
+          "type": "double",
+          "description": "Allowed error rate (0-1)",
+          "required": false,
+          "scope": "field"
+        },
+        {
+          "name": "description",
+          "type": "string",
+          "description": "Human-readable description",
+          "required": false,
+          "scope": "field"
+        }
+      ],
+      "tags": [
+        "validation",
+        "field",
+        "starts-with"
+      ]
+    },
+    {
+      "id": "validation.field.ends_with",
+      "name": "Ends With",
+      "category": "validation",
+      "status": "stable",
+      "description": "Validate that string field values end with a suffix.",
+      "subcategory": "field_validations",
+      "configuration": [
+        {
+          "name": "type",
+          "type": "string",
+          "description": "Set validation type to \"endswith\"",
+          "required": false,
+          "scope": "field"
+        },
+        {
+          "name": "negate",
+          "type": "boolean",
+          "description": "Invert the validation result",
+          "required": false,
+          "scope": "field",
+          "default": false
+        },
+        {
+          "name": "errorThreshold",
+          "type": "double",
+          "description": "Allowed error rate (0-1)",
+          "required": false,
+          "scope": "field"
+        },
+        {
+          "name": "description",
+          "type": "string",
+          "description": "Human-readable description",
+          "required": false,
+          "scope": "field"
+        }
+      ],
+      "tags": [
+        "validation",
+        "field",
+        "ends-with"
+      ]
+    },
+    {
+      "id": "validation.field.less_than",
+      "name": "Less Than",
+      "category": "validation",
+      "status": "stable",
+      "description": "Validate that numeric values are less than a threshold.",
+      "subcategory": "field_validations",
+      "configuration": [
+        {
+          "name": "type",
+          "type": "string",
+          "description": "Set validation type to \"lessthan\"",
+          "required": false,
+          "scope": "field"
+        },
+        {
+          "name": "negate",
+          "type": "boolean",
+          "description": "Invert the validation result",
+          "required": false,
+          "scope": "field",
+          "default": false
+        },
+        {
+          "name": "errorThreshold",
+          "type": "double",
+          "description": "Allowed error rate (0-1)",
+          "required": false,
+          "scope": "field"
+        },
+        {
+          "name": "description",
+          "type": "string",
+          "description": "Human-readable description",
+          "required": false,
+          "scope": "field"
+        }
+      ],
+      "tags": [
+        "validation",
+        "field",
+        "less-than"
+      ]
+    },
+    {
+      "id": "validation.field.greater_than",
+      "name": "Greater Than",
+      "category": "validation",
+      "status": "stable",
+      "description": "Validate that numeric values are greater than a threshold.",
+      "subcategory": "field_validations",
+      "configuration": [
+        {
+          "name": "type",
+          "type": "string",
+          "description": "Set validation type to \"greaterthan\"",
+          "required": false,
+          "scope": "field"
+        },
+        {
+          "name": "negate",
+          "type": "boolean",
+          "description": "Invert the validation result",
+          "required": false,
+          "scope": "field",
+          "default": false
+        },
+        {
+          "name": "errorThreshold",
+          "type": "double",
+          "description": "Allowed error rate (0-1)",
+          "required": false,
+          "scope": "field"
+        },
+        {
+          "name": "description",
+          "type": "string",
+          "description": "Human-readable description",
+          "required": false,
+          "scope": "field"
+        }
+      ],
+      "tags": [
+        "validation",
+        "field",
+        "greater-than"
+      ]
+    },
+    {
+      "id": "validation.field.between",
+      "name": "Between Range",
+      "category": "validation",
+      "status": "stable",
+      "description": "Validate that values fall within a min/max range (inclusive).",
+      "subcategory": "field_validations",
+      "configuration": [
+        {
+          "name": "type",
+          "type": "string",
+          "description": "Set validation type to \"between\"",
+          "required": false,
+          "scope": "field"
+        },
+        {
+          "name": "negate",
+          "type": "boolean",
+          "description": "Invert the validation result",
+          "required": false,
+          "scope": "field",
+          "default": false
+        },
+        {
+          "name": "errorThreshold",
+          "type": "double",
+          "description": "Allowed error rate (0-1)",
+          "required": false,
+          "scope": "field"
+        },
+        {
+          "name": "description",
+          "type": "string",
+          "description": "Human-readable description",
+          "required": false,
+          "scope": "field"
+        }
+      ],
+      "tags": [
+        "validation",
+        "field",
+        "between"
+      ]
+    },
+    {
+      "id": "validation.field.in",
+      "name": "In Set",
+      "category": "validation",
+      "status": "stable",
+      "description": "Validate that values exist in a specified set of allowed values.",
+      "subcategory": "field_validations",
+      "configuration": [
+        {
+          "name": "type",
+          "type": "string",
+          "description": "Set validation type to \"in\"",
+          "required": false,
+          "scope": "field"
+        },
+        {
+          "name": "negate",
+          "type": "boolean",
+          "description": "Invert the validation result",
+          "required": false,
+          "scope": "field",
+          "default": false
+        },
+        {
+          "name": "errorThreshold",
+          "type": "double",
+          "description": "Allowed error rate (0-1)",
+          "required": false,
+          "scope": "field"
+        },
+        {
+          "name": "description",
+          "type": "string",
+          "description": "Human-readable description",
+          "required": false,
+          "scope": "field"
+        }
+      ],
+      "tags": [
+        "validation",
+        "field",
+        "in"
+      ]
+    },
+    {
+      "id": "validation.field.matches",
+      "name": "Regex Match",
+      "category": "validation",
+      "status": "stable",
+      "description": "Validate that string values match a regular expression pattern.",
+      "subcategory": "field_validations",
+      "configuration": [
+        {
+          "name": "type",
+          "type": "string",
+          "description": "Set validation type to \"matches\"",
+          "required": false,
+          "scope": "field"
+        },
+        {
+          "name": "negate",
+          "type": "boolean",
+          "description": "Invert the validation result",
+          "required": false,
+          "scope": "field",
+          "default": false
+        },
+        {
+          "name": "errorThreshold",
+          "type": "double",
+          "description": "Allowed error rate (0-1)",
+          "required": false,
+          "scope": "field"
+        },
+        {
+          "name": "description",
+          "type": "string",
+          "description": "Human-readable description",
+          "required": false,
+          "scope": "field"
+        }
+      ],
+      "tags": [
+        "validation",
+        "field",
+        "matches"
+      ]
+    },
+    {
+      "id": "validation.field.matches_list",
+      "name": "Regex Match List",
+      "category": "validation",
+      "status": "stable",
+      "description": "Validate that string values match one of multiple regex patterns.",
+      "subcategory": "field_validations",
+      "configuration": [
+        {
+          "name": "type",
+          "type": "string",
+          "description": "Set validation type to \"matcheslist\"",
+          "required": false,
+          "scope": "field"
+        },
+        {
+          "name": "negate",
+          "type": "boolean",
+          "description": "Invert the validation result",
+          "required": false,
+          "scope": "field",
+          "default": false
+        },
+        {
+          "name": "errorThreshold",
+          "type": "double",
+          "description": "Allowed error rate (0-1)",
+          "required": false,
+          "scope": "field"
+        },
+        {
+          "name": "description",
+          "type": "string",
+          "description": "Human-readable description",
+          "required": false,
+          "scope": "field"
+        }
+      ],
+      "tags": [
+        "validation",
+        "field",
+        "matches-list"
+      ]
+    },
+    {
+      "id": "validation.field.size",
+      "name": "Size Check",
+      "category": "validation",
+      "status": "stable",
+      "description": "Validate the size/length of a collection or string field.",
+      "subcategory": "field_validations",
+      "configuration": [
+        {
+          "name": "type",
+          "type": "string",
+          "description": "Set validation type to \"size\"",
+          "required": false,
+          "scope": "field"
+        },
+        {
+          "name": "negate",
+          "type": "boolean",
+          "description": "Invert the validation result",
+          "required": false,
+          "scope": "field",
+          "default": false
+        },
+        {
+          "name": "errorThreshold",
+          "type": "double",
+          "description": "Allowed error rate (0-1)",
+          "required": false,
+          "scope": "field"
+        },
+        {
+          "name": "description",
+          "type": "string",
+          "description": "Human-readable description",
+          "required": false,
+          "scope": "field"
+        }
+      ],
+      "tags": [
+        "validation",
+        "field",
+        "size"
+      ]
+    },
+    {
+      "id": "validation.field.less_than_size",
+      "name": "Less Than Size",
+      "category": "validation",
+      "status": "stable",
+      "description": "Validate that collection size is less than a threshold.",
+      "subcategory": "field_validations",
+      "configuration": [
+        {
+          "name": "type",
+          "type": "string",
+          "description": "Set validation type to \"lessthansize\"",
+          "required": false,
+          "scope": "field"
+        },
+        {
+          "name": "negate",
+          "type": "boolean",
+          "description": "Invert the validation result",
+          "required": false,
+          "scope": "field",
+          "default": false
+        },
+        {
+          "name": "errorThreshold",
+          "type": "double",
+          "description": "Allowed error rate (0-1)",
+          "required": false,
+          "scope": "field"
+        },
+        {
+          "name": "description",
+          "type": "string",
+          "description": "Human-readable description",
+          "required": false,
+          "scope": "field"
+        }
+      ],
+      "tags": [
+        "validation",
+        "field",
+        "less-than-size"
+      ]
+    },
+    {
+      "id": "validation.field.greater_than_size",
+      "name": "Greater Than Size",
+      "category": "validation",
+      "status": "stable",
+      "description": "Validate that collection size is greater than a threshold.",
+      "subcategory": "field_validations",
+      "configuration": [
+        {
+          "name": "type",
+          "type": "string",
+          "description": "Set validation type to \"greaterthansize\"",
+          "required": false,
+          "scope": "field"
+        },
+        {
+          "name": "negate",
+          "type": "boolean",
+          "description": "Invert the validation result",
+          "required": false,
+          "scope": "field",
+          "default": false
+        },
+        {
+          "name": "errorThreshold",
+          "type": "double",
+          "description": "Allowed error rate (0-1)",
+          "required": false,
+          "scope": "field"
+        },
+        {
+          "name": "description",
+          "type": "string",
+          "description": "Human-readable description",
+          "required": false,
+          "scope": "field"
+        }
+      ],
+      "tags": [
+        "validation",
+        "field",
+        "greater-than-size"
+      ]
+    },
+    {
+      "id": "validation.field.length_between",
+      "name": "Length Between",
+      "category": "validation",
+      "status": "stable",
+      "description": "Validate that string length falls within a range.",
+      "subcategory": "field_validations",
+      "configuration": [
+        {
+          "name": "type",
+          "type": "string",
+          "description": "Set validation type to \"lengthbetween\"",
+          "required": false,
+          "scope": "field"
+        },
+        {
+          "name": "negate",
+          "type": "boolean",
+          "description": "Invert the validation result",
+          "required": false,
+          "scope": "field",
+          "default": false
+        },
+        {
+          "name": "errorThreshold",
+          "type": "double",
+          "description": "Allowed error rate (0-1)",
+          "required": false,
+          "scope": "field"
+        },
+        {
+          "name": "description",
+          "type": "string",
+          "description": "Human-readable description",
+          "required": false,
+          "scope": "field"
+        }
+      ],
+      "tags": [
+        "validation",
+        "field",
+        "length-between"
+      ]
+    },
+    {
+      "id": "validation.field.length_equal",
+      "name": "Length Equal",
+      "category": "validation",
+      "status": "stable",
+      "description": "Validate that string length equals a specific value.",
+      "subcategory": "field_validations",
+      "configuration": [
+        {
+          "name": "type",
+          "type": "string",
+          "description": "Set validation type to \"lengthequal\"",
+          "required": false,
+          "scope": "field"
+        },
+        {
+          "name": "negate",
+          "type": "boolean",
+          "description": "Invert the validation result",
+          "required": false,
+          "scope": "field",
+          "default": false
+        },
+        {
+          "name": "errorThreshold",
+          "type": "double",
+          "description": "Allowed error rate (0-1)",
+          "required": false,
+          "scope": "field"
+        },
+        {
+          "name": "description",
+          "type": "string",
+          "description": "Human-readable description",
+          "required": false,
+          "scope": "field"
+        }
+      ],
+      "tags": [
+        "validation",
+        "field",
+        "length-equal"
+      ]
+    },
+    {
+      "id": "validation.field.luhn_check",
+      "name": "Luhn Check",
+      "category": "validation",
+      "status": "stable",
+      "description": "Validate values using the Luhn algorithm (credit cards, IDs).",
+      "subcategory": "field_validations",
+      "configuration": [
+        {
+          "name": "type",
+          "type": "string",
+          "description": "Set validation type to \"luhncheck\"",
+          "required": false,
+          "scope": "field"
+        },
+        {
+          "name": "negate",
+          "type": "boolean",
+          "description": "Invert the validation result",
+          "required": false,
+          "scope": "field",
+          "default": false
+        },
+        {
+          "name": "errorThreshold",
+          "type": "double",
+          "description": "Allowed error rate (0-1)",
+          "required": false,
+          "scope": "field"
+        },
+        {
+          "name": "description",
+          "type": "string",
+          "description": "Human-readable description",
+          "required": false,
+          "scope": "field"
+        }
+      ],
+      "tags": [
+        "validation",
+        "field",
+        "luhn-check"
+      ]
+    },
+    {
+      "id": "validation.field.has_type",
+      "name": "Type Check",
+      "category": "validation",
+      "status": "stable",
+      "description": "Validate that field values are of a specific data type.",
+      "subcategory": "field_validations",
+      "configuration": [
+        {
+          "name": "type",
+          "type": "string",
+          "description": "Set validation type to \"hastype\"",
+          "required": false,
+          "scope": "field"
+        },
+        {
+          "name": "negate",
+          "type": "boolean",
+          "description": "Invert the validation result",
+          "required": false,
+          "scope": "field",
+          "default": false
+        },
+        {
+          "name": "errorThreshold",
+          "type": "double",
+          "description": "Allowed error rate (0-1)",
+          "required": false,
+          "scope": "field"
+        },
+        {
+          "name": "description",
+          "type": "string",
+          "description": "Human-readable description",
+          "required": false,
+          "scope": "field"
+        }
+      ],
+      "tags": [
+        "validation",
+        "field",
+        "has-type"
+      ]
+    },
+    {
+      "id": "validation.field.has_types",
+      "name": "Multi-Type Check",
+      "category": "validation",
+      "status": "stable",
+      "description": "Validate that field values match one of multiple types.",
+      "subcategory": "field_validations",
+      "configuration": [
+        {
+          "name": "type",
+          "type": "string",
+          "description": "Set validation type to \"hastypes\"",
+          "required": false,
+          "scope": "field"
+        },
+        {
+          "name": "negate",
+          "type": "boolean",
+          "description": "Invert the validation result",
+          "required": false,
+          "scope": "field",
+          "default": false
+        },
+        {
+          "name": "errorThreshold",
+          "type": "double",
+          "description": "Allowed error rate (0-1)",
+          "required": false,
+          "scope": "field"
+        },
+        {
+          "name": "description",
+          "type": "string",
+          "description": "Human-readable description",
+          "required": false,
+          "scope": "field"
+        }
+      ],
+      "tags": [
+        "validation",
+        "field",
+        "has-types"
+      ]
+    },
+    {
+      "id": "validation.field.is_decreasing",
+      "name": "Monotonically Decreasing",
+      "category": "validation",
+      "status": "stable",
+      "description": "Validate that values are in decreasing order.",
+      "subcategory": "field_validations",
+      "configuration": [
+        {
+          "name": "type",
+          "type": "string",
+          "description": "Set validation type to \"isdecreasing\"",
+          "required": false,
+          "scope": "field"
+        },
+        {
+          "name": "negate",
+          "type": "boolean",
+          "description": "Invert the validation result",
+          "required": false,
+          "scope": "field",
+          "default": false
+        },
+        {
+          "name": "errorThreshold",
+          "type": "double",
+          "description": "Allowed error rate (0-1)",
+          "required": false,
+          "scope": "field"
+        },
+        {
+          "name": "description",
+          "type": "string",
+          "description": "Human-readable description",
+          "required": false,
+          "scope": "field"
+        }
+      ],
+      "tags": [
+        "validation",
+        "field",
+        "is-decreasing"
+      ]
+    },
+    {
+      "id": "validation.field.is_increasing",
+      "name": "Monotonically Increasing",
+      "category": "validation",
+      "status": "stable",
+      "description": "Validate that values are in increasing order.",
+      "subcategory": "field_validations",
+      "configuration": [
+        {
+          "name": "type",
+          "type": "string",
+          "description": "Set validation type to \"isincreasing\"",
+          "required": false,
+          "scope": "field"
+        },
+        {
+          "name": "negate",
+          "type": "boolean",
+          "description": "Invert the validation result",
+          "required": false,
+          "scope": "field",
+          "default": false
+        },
+        {
+          "name": "errorThreshold",
+          "type": "double",
+          "description": "Allowed error rate (0-1)",
+          "required": false,
+          "scope": "field"
+        },
+        {
+          "name": "description",
+          "type": "string",
+          "description": "Human-readable description",
+          "required": false,
+          "scope": "field"
+        }
+      ],
+      "tags": [
+        "validation",
+        "field",
+        "is-increasing"
+      ]
+    },
+    {
+      "id": "validation.field.is_json_parsable",
+      "name": "JSON Parsable",
+      "category": "validation",
+      "status": "stable",
+      "description": "Validate that string values are valid JSON.",
+      "subcategory": "field_validations",
+      "configuration": [
+        {
+          "name": "type",
+          "type": "string",
+          "description": "Set validation type to \"isjsonparsable\"",
+          "required": false,
+          "scope": "field"
+        },
+        {
+          "name": "negate",
+          "type": "boolean",
+          "description": "Invert the validation result",
+          "required": false,
+          "scope": "field",
+          "default": false
+        },
+        {
+          "name": "errorThreshold",
+          "type": "double",
+          "description": "Allowed error rate (0-1)",
+          "required": false,
+          "scope": "field"
+        },
+        {
+          "name": "description",
+          "type": "string",
+          "description": "Human-readable description",
+          "required": false,
+          "scope": "field"
+        }
+      ],
+      "tags": [
+        "validation",
+        "field",
+        "is-json-parsable"
+      ]
+    },
+    {
+      "id": "validation.field.match_json_schema",
+      "name": "JSON Schema Match",
+      "category": "validation",
+      "status": "stable",
+      "description": "Validate that JSON values conform to a JSON schema.",
+      "subcategory": "field_validations",
+      "configuration": [
+        {
+          "name": "type",
+          "type": "string",
+          "description": "Set validation type to \"matchjsonschema\"",
+          "required": false,
+          "scope": "field"
+        },
+        {
+          "name": "negate",
+          "type": "boolean",
+          "description": "Invert the validation result",
+          "required": false,
+          "scope": "field",
+          "default": false
+        },
+        {
+          "name": "errorThreshold",
+          "type": "double",
+          "description": "Allowed error rate (0-1)",
+          "required": false,
+          "scope": "field"
+        },
+        {
+          "name": "description",
+          "type": "string",
+          "description": "Human-readable description",
+          "required": false,
+          "scope": "field"
+        }
+      ],
+      "tags": [
+        "validation",
+        "field",
+        "match-json-schema"
+      ]
+    },
+    {
+      "id": "validation.field.match_date_time_format",
+      "name": "DateTime Format Match",
+      "category": "validation",
+      "status": "stable",
+      "description": "Validate that values match a specific date/time format.",
+      "subcategory": "field_validations",
+      "configuration": [
+        {
+          "name": "type",
+          "type": "string",
+          "description": "Set validation type to \"matchdatetimeformat\"",
+          "required": false,
+          "scope": "field"
+        },
+        {
+          "name": "negate",
+          "type": "boolean",
+          "description": "Invert the validation result",
+          "required": false,
+          "scope": "field",
+          "default": false
+        },
+        {
+          "name": "errorThreshold",
+          "type": "double",
+          "description": "Allowed error rate (0-1)",
+          "required": false,
+          "scope": "field"
+        },
+        {
+          "name": "description",
+          "type": "string",
+          "description": "Human-readable description",
+          "required": false,
+          "scope": "field"
+        }
+      ],
+      "tags": [
+        "validation",
+        "field",
+        "match-date-time-format"
+      ]
+    },
+    {
+      "id": "validation.field.distinct_in_set",
+      "name": "Distinct In Set",
+      "category": "validation",
+      "status": "stable",
+      "description": "Validate that all distinct values exist in a specified set.",
+      "subcategory": "field_validations",
+      "configuration": [
+        {
+          "name": "type",
+          "type": "string",
+          "description": "Set validation type to \"distinctinset\"",
+          "required": false,
+          "scope": "field"
+        },
+        {
+          "name": "negate",
+          "type": "boolean",
+          "description": "Invert the validation result",
+          "required": false,
+          "scope": "field",
+          "default": false
+        },
+        {
+          "name": "errorThreshold",
+          "type": "double",
+          "description": "Allowed error rate (0-1)",
+          "required": false,
+          "scope": "field"
+        },
+        {
+          "name": "description",
+          "type": "string",
+          "description": "Human-readable description",
+          "required": false,
+          "scope": "field"
+        }
+      ],
+      "tags": [
+        "validation",
+        "field",
+        "distinct-in-set"
+      ]
+    },
+    {
+      "id": "validation.field.distinct_contains_set",
+      "name": "Distinct Contains Set",
+      "category": "validation",
+      "status": "stable",
+      "description": "Validate that distinct values contain all values from a specified set.",
+      "subcategory": "field_validations",
+      "configuration": [
+        {
+          "name": "type",
+          "type": "string",
+          "description": "Set validation type to \"distinctcontainsset\"",
+          "required": false,
+          "scope": "field"
+        },
+        {
+          "name": "negate",
+          "type": "boolean",
+          "description": "Invert the validation result",
+          "required": false,
+          "scope": "field",
+          "default": false
+        },
+        {
+          "name": "errorThreshold",
+          "type": "double",
+          "description": "Allowed error rate (0-1)",
+          "required": false,
+          "scope": "field"
+        },
+        {
+          "name": "description",
+          "type": "string",
+          "description": "Human-readable description",
+          "required": false,
+          "scope": "field"
+        }
+      ],
+      "tags": [
+        "validation",
+        "field",
+        "distinct-contains-set"
+      ]
+    },
+    {
+      "id": "validation.field.distinct_equal",
+      "name": "Distinct Equal",
+      "category": "validation",
+      "status": "stable",
+      "description": "Validate that the set of distinct values exactly equals a specified set.",
+      "subcategory": "field_validations",
+      "configuration": [
+        {
+          "name": "type",
+          "type": "string",
+          "description": "Set validation type to \"distinctequal\"",
+          "required": false,
+          "scope": "field"
+        },
+        {
+          "name": "negate",
+          "type": "boolean",
+          "description": "Invert the validation result",
+          "required": false,
+          "scope": "field",
+          "default": false
+        },
+        {
+          "name": "errorThreshold",
+          "type": "double",
+          "description": "Allowed error rate (0-1)",
+          "required": false,
+          "scope": "field"
+        },
+        {
+          "name": "description",
+          "type": "string",
+          "description": "Human-readable description",
+          "required": false,
+          "scope": "field"
+        }
+      ],
+      "tags": [
+        "validation",
+        "field",
+        "distinct-equal"
+      ]
+    },
+    {
+      "id": "validation.field.most_common_value_in_set",
+      "name": "Most Common Value",
+      "category": "validation",
+      "status": "stable",
+      "description": "Validate that the most common value is in a specified set.",
+      "subcategory": "field_validations",
+      "configuration": [
+        {
+          "name": "type",
+          "type": "string",
+          "description": "Set validation type to \"mostcommonvalueinset\"",
+          "required": false,
+          "scope": "field"
+        },
+        {
+          "name": "negate",
+          "type": "boolean",
+          "description": "Invert the validation result",
+          "required": false,
+          "scope": "field",
+          "default": false
+        },
+        {
+          "name": "errorThreshold",
+          "type": "double",
+          "description": "Allowed error rate (0-1)",
+          "required": false,
+          "scope": "field"
+        },
+        {
+          "name": "description",
+          "type": "string",
+          "description": "Human-readable description",
+          "required": false,
+          "scope": "field"
+        }
+      ],
+      "tags": [
+        "validation",
+        "field",
+        "most-common-value-in-set"
+      ]
+    },
+    {
+      "id": "validation.statistical.max_between",
+      "name": "Max Between",
+      "category": "validation",
+      "status": "stable",
+      "description": "Validate that the maximum value of a field falls within a range.",
+      "subcategory": "statistical_validations",
+      "configuration": [
+        {
+          "name": "type",
+          "type": "string",
+          "description": "Set validation type",
+          "required": false,
+          "scope": "field"
+        },
+        {
+          "name": "min",
+          "type": "any",
+          "description": "Minimum expected value",
+          "required": false,
+          "scope": "field"
+        },
+        {
+          "name": "max",
+          "type": "any",
+          "description": "Maximum expected value",
+          "required": false,
+          "scope": "field"
+        }
+      ],
+      "tags": [
+        "validation",
+        "statistical",
+        "max-between"
+      ]
+    },
+    {
+      "id": "validation.statistical.mean_between",
+      "name": "Mean Between",
+      "category": "validation",
+      "status": "stable",
+      "description": "Validate that the mean value of a field falls within a range.",
+      "subcategory": "statistical_validations",
+      "configuration": [
+        {
+          "name": "type",
+          "type": "string",
+          "description": "Set validation type",
+          "required": false,
+          "scope": "field"
+        },
+        {
+          "name": "min",
+          "type": "any",
+          "description": "Minimum expected value",
+          "required": false,
+          "scope": "field"
+        },
+        {
+          "name": "max",
+          "type": "any",
+          "description": "Maximum expected value",
+          "required": false,
+          "scope": "field"
+        }
+      ],
+      "tags": [
+        "validation",
+        "statistical",
+        "mean-between"
+      ]
+    },
+    {
+      "id": "validation.statistical.median_between",
+      "name": "Median Between",
+      "category": "validation",
+      "status": "stable",
+      "description": "Validate that the median value of a field falls within a range.",
+      "subcategory": "statistical_validations",
+      "configuration": [
+        {
+          "name": "type",
+          "type": "string",
+          "description": "Set validation type",
+          "required": false,
+          "scope": "field"
+        },
+        {
+          "name": "min",
+          "type": "any",
+          "description": "Minimum expected value",
+          "required": false,
+          "scope": "field"
+        },
+        {
+          "name": "max",
+          "type": "any",
+          "description": "Maximum expected value",
+          "required": false,
+          "scope": "field"
+        }
+      ],
+      "tags": [
+        "validation",
+        "statistical",
+        "median-between"
+      ]
+    },
+    {
+      "id": "validation.statistical.min_between",
+      "name": "Min Between",
+      "category": "validation",
+      "status": "stable",
+      "description": "Validate that the minimum value of a field falls within a range.",
+      "subcategory": "statistical_validations",
+      "configuration": [
+        {
+          "name": "type",
+          "type": "string",
+          "description": "Set validation type",
+          "required": false,
+          "scope": "field"
+        },
+        {
+          "name": "min",
+          "type": "any",
+          "description": "Minimum expected value",
+          "required": false,
+          "scope": "field"
+        },
+        {
+          "name": "max",
+          "type": "any",
+          "description": "Maximum expected value",
+          "required": false,
+          "scope": "field"
+        }
+      ],
+      "tags": [
+        "validation",
+        "statistical",
+        "min-between"
+      ]
+    },
+    {
+      "id": "validation.statistical.std_dev_between",
+      "name": "Std Dev Between",
+      "category": "validation",
+      "status": "stable",
+      "description": "Validate that the standard deviation of a field falls within a range.",
+      "subcategory": "statistical_validations",
+      "configuration": [
+        {
+          "name": "type",
+          "type": "string",
+          "description": "Set validation type",
+          "required": false,
+          "scope": "field"
+        },
+        {
+          "name": "min",
+          "type": "any",
+          "description": "Minimum expected value",
+          "required": false,
+          "scope": "field"
+        },
+        {
+          "name": "max",
+          "type": "any",
+          "description": "Maximum expected value",
+          "required": false,
+          "scope": "field"
+        }
+      ],
+      "tags": [
+        "validation",
+        "statistical",
+        "std-dev-between"
+      ]
+    },
+    {
+      "id": "validation.statistical.sum_between",
+      "name": "Sum Between",
+      "category": "validation",
+      "status": "stable",
+      "description": "Validate that the sum of a field falls within a range.",
+      "subcategory": "statistical_validations",
+      "configuration": [
+        {
+          "name": "type",
+          "type": "string",
+          "description": "Set validation type",
+          "required": false,
+          "scope": "field"
+        },
+        {
+          "name": "min",
+          "type": "any",
+          "description": "Minimum expected value",
+          "required": false,
+          "scope": "field"
+        },
+        {
+          "name": "max",
+          "type": "any",
+          "description": "Maximum expected value",
+          "required": false,
+          "scope": "field"
+        }
+      ],
+      "tags": [
+        "validation",
+        "statistical",
+        "sum-between"
+      ]
+    },
+    {
+      "id": "validation.statistical.unique_values_proportion_between",
+      "name": "Unique Values Proportion",
+      "category": "validation",
+      "status": "stable",
+      "description": "Validate that the proportion of unique values falls within a range.",
+      "subcategory": "statistical_validations",
+      "configuration": [
+        {
+          "name": "type",
+          "type": "string",
+          "description": "Set validation type",
+          "required": false,
+          "scope": "field"
+        },
+        {
+          "name": "min",
+          "type": "any",
+          "description": "Minimum expected value",
+          "required": false,
+          "scope": "field"
+        },
+        {
+          "name": "max",
+          "type": "any",
+          "description": "Maximum expected value",
+          "required": false,
+          "scope": "field"
+        }
+      ],
+      "tags": [
+        "validation",
+        "statistical",
+        "unique-values-proportion-between"
+      ]
+    },
+    {
+      "id": "validation.statistical.quantile_values_between",
+      "name": "Quantile Values Between",
+      "category": "validation",
+      "status": "stable",
+      "description": "Validate that quantile values fall within specified ranges.",
+      "subcategory": "statistical_validations",
+      "configuration": [
+        {
+          "name": "type",
+          "type": "string",
+          "description": "Set validation type",
+          "required": false,
+          "scope": "field"
+        },
+        {
+          "name": "min",
+          "type": "any",
+          "description": "Minimum expected value",
+          "required": false,
+          "scope": "field"
+        },
+        {
+          "name": "max",
+          "type": "any",
+          "description": "Maximum expected value",
+          "required": false,
+          "scope": "field"
+        }
+      ],
+      "tags": [
+        "validation",
+        "statistical",
+        "quantile-values-between"
+      ]
+    },
+    {
+      "id": "validation.expression",
+      "name": "SQL Expression Validation",
+      "category": "validation",
+      "status": "stable",
+      "description": "Validate data using arbitrary Spark SQL expressions that must evaluate to true. The most flexible validation type.",
+      "subcategory": "expression_validations",
+      "configuration": [
+        {
+          "name": "expr",
+          "type": "string",
+          "description": "SQL expression that must evaluate to true",
+          "required": true,
+          "scope": "step",
+          "yamlPath": "validations[].expr"
+        },
+        {
+          "name": "selectExpr",
+          "type": "array",
+          "description": "SELECT columns for the expression",
+          "required": false,
+          "scope": "step",
+          "yamlPath": "validations[].selectExpr"
+        },
+        {
+          "name": "preFilterExpr",
+          "type": "string",
+          "description": "SQL filter to apply before validation",
+          "required": false,
+          "scope": "step",
+          "yamlPath": "validations[].preFilterExpr"
+        },
+        {
+          "name": "description",
+          "type": "string",
+          "description": "Human-readable description",
+          "required": false,
+          "scope": "step"
+        },
+        {
+          "name": "errorThreshold",
+          "type": "double",
+          "description": "Allowed error rate (0-1)",
+          "required": false,
+          "scope": "step"
+        }
+      ],
+      "examples": [
+        {
+          "format": "yaml",
+          "code": "validations:\n  - expr: \"age >= 18 AND age <= 120\"\n    description: \"Age must be valid\"",
+          "title": "Expression validation"
+        }
+      ],
+      "tags": [
+        "validation",
+        "expression",
+        "sql",
+        "flexible"
+      ]
+    },
+    {
+      "id": "validation.group_by",
+      "name": "Group By Aggregation Validation",
+      "category": "validation",
+      "status": "stable",
+      "description": "Validate aggregated data grouped by specified fields. Supports sum, avg, min, max, count, and stddev aggregations.",
+      "subcategory": "aggregation_validations",
+      "configuration": [
+        {
+          "name": "groupByFields",
+          "type": "array",
+          "description": "Fields to group by",
+          "required": true,
+          "scope": "step",
+          "yamlPath": "validations[].groupByFields"
+        },
+        {
+          "name": "aggField",
+          "type": "string",
+          "description": "Field to aggregate",
+          "required": false,
+          "scope": "step",
+          "yamlPath": "validations[].aggField"
+        },
+        {
+          "name": "aggType",
+          "type": "enum",
+          "description": "Aggregation function",
+          "required": false,
+          "scope": "step",
+          "validValues": [
+            "sum",
+            "avg",
+            "min",
+            "max",
+            "count",
+            "stddev"
+          ],
+          "yamlPath": "validations[].aggType"
+        },
+        {
+          "name": "aggExpr",
+          "type": "string",
+          "description": "Custom aggregation expression",
+          "required": false,
+          "scope": "step",
+          "yamlPath": "validations[].aggExpr"
+        }
+      ],
+      "examples": [
+        {
+          "format": "yaml",
+          "code": "validations:\n  - groupByFields: [\"status\"]\n    aggField: \"balance\"\n    aggType: \"avg\"\n    aggExpr: \"avg_balance > 0\"\n    description: \"Average balance per status\"",
+          "title": "Group by validation"
+        }
+      ],
+      "tags": [
+        "validation",
+        "aggregation",
+        "group-by",
+        "statistical"
+      ]
+    },
+    {
+      "id": "validation.upstream",
+      "name": "Upstream Cross-Source Validation",
+      "category": "validation",
+      "status": "stable",
+      "description": "Validate data by joining with an upstream data source. Enables cross-system data consistency checks.",
+      "subcategory": "cross_source_validations",
+      "configuration": [
+        {
+          "name": "upstreamDataSource",
+          "type": "string",
+          "description": "Upstream data source name",
+          "required": true,
+          "scope": "step",
+          "yamlPath": "validations[].upstreamDataSource"
+        },
+        {
+          "name": "upstreamReadOptions",
+          "type": "object",
+          "description": "Read options for upstream source",
+          "required": false,
+          "scope": "step",
+          "yamlPath": "validations[].upstreamReadOptions"
+        },
+        {
+          "name": "joinFields",
+          "type": "array",
+          "description": "Fields to join on",
+          "required": false,
+          "scope": "step",
+          "yamlPath": "validations[].joinFields"
+        },
+        {
+          "name": "joinType",
+          "type": "enum",
+          "description": "Join type",
+          "required": false,
+          "scope": "step",
+          "default": "outer",
+          "validValues": [
+            "inner",
+            "left",
+            "right",
+            "full",
+            "anti",
+            "semi"
+          ],
+          "yamlPath": "validations[].joinType"
+        }
+      ],
+      "examples": [
+        {
+          "format": "yaml",
+          "code": "validations:\n  - upstreamDataSource: \"source_json\"\n    joinFields: [\"account_id\"]\n    joinType: \"outer\"\n    validations:\n      - expr: \"source_json_name == name\"",
+          "title": "Cross-source validation"
+        }
+      ],
+      "tags": [
+        "validation",
+        "upstream",
+        "cross-source",
+        "join"
+      ]
+    },
+    {
+      "id": "validation.field_names",
+      "name": "Schema Field Names Validation",
+      "category": "validation",
+      "status": "stable",
+      "description": "Validate the schema structure by checking field/column names, counts, and ordering.",
+      "subcategory": "schema_validations",
+      "configuration": [
+        {
+          "name": "names",
+          "type": "array",
+          "description": "Expected field names",
+          "required": false,
+          "scope": "step",
+          "yamlPath": "validations[].names"
+        },
+        {
+          "name": "fieldNameType",
+          "type": "enum",
+          "description": "Validation type for field names",
+          "required": false,
+          "scope": "step",
+          "validValues": [
+            "fieldCountEqual",
+            "fieldCountBetween",
+            "fieldNameMatchOrder",
+            "fieldNameMatchSet"
+          ]
+        },
+        {
+          "name": "count",
+          "type": "integer",
+          "description": "Expected exact field count",
+          "required": false,
+          "scope": "step"
+        },
+        {
+          "name": "min",
+          "type": "integer",
+          "description": "Minimum field count",
+          "required": false,
+          "scope": "step"
+        },
+        {
+          "name": "max",
+          "type": "integer",
+          "description": "Maximum field count",
+          "required": false,
+          "scope": "step"
+        }
+      ],
+      "tags": [
+        "validation",
+        "schema",
+        "field-names",
+        "structure"
+      ]
+    },
+    {
+      "id": "validation.wait_condition",
+      "name": "Wait Conditions",
+      "category": "validation",
+      "status": "stable",
+      "description": "Define conditions to wait for before running validations. Supports pause, file existence, data existence, and webhook checks.",
+      "subcategory": "wait_conditions",
+      "configuration": [
+        {
+          "name": "type",
+          "type": "enum",
+          "description": "Wait condition type",
+          "required": false,
+          "scope": "step",
+          "validValues": [
+            "pause",
+            "fileExists",
+            "dataExists",
+            "webhook"
+          ],
+          "yamlPath": "validations[].waitCondition.type"
+        },
+        {
+          "name": "pauseInSeconds",
+          "type": "integer",
+          "description": "Seconds to pause",
+          "required": false,
+          "scope": "step"
+        },
+        {
+          "name": "path",
+          "type": "string",
+          "description": "File path to wait for",
+          "required": false,
+          "scope": "step"
+        },
+        {
+          "name": "url",
+          "type": "string",
+          "description": "Webhook URL",
+          "required": false,
+          "scope": "step"
+        },
+        {
+          "name": "method",
+          "type": "enum",
+          "description": "HTTP method for webhook",
+          "required": false,
+          "scope": "step",
+          "validValues": [
+            "GET",
+            "POST",
+            "PUT",
+            "DELETE"
+          ]
+        },
+        {
+          "name": "statusCodes",
+          "type": "array",
+          "description": "Expected HTTP status codes",
+          "required": false,
+          "scope": "step"
+        },
+        {
+          "name": "maxRetries",
+          "type": "integer",
+          "description": "Maximum retry attempts",
+          "required": false,
+          "scope": "step"
+        },
+        {
+          "name": "waitBeforeRetrySeconds",
+          "type": "integer",
+          "description": "Seconds between retries",
+          "required": false,
+          "scope": "step"
+        }
+      ],
+      "tags": [
+        "validation",
+        "wait",
+        "condition",
+        "async"
+      ]
+    },
+    {
+      "id": "configuration.flags.enablecount",
+      "name": "Count Records",
+      "category": "configuration",
+      "status": "stable",
+      "description": "Count the number of records generated for each data source step.",
+      "subcategory": "flags",
+      "configuration": [
+        {
+          "name": "enableCount",
+          "type": "boolean",
+          "description": "Count the number of records generated for each data source step.",
+          "required": false,
+          "scope": "global",
+          "default": true,
+          "yamlPath": "config.flags.enableCount",
+          "envVar": "ENABLE_COUNT"
+        }
+      ],
+      "tags": [
+        "configuration",
+        "flag",
+        "count"
+      ],
+      "sourceFiles": [
+        {
+          "path": "api/src/main/scala/io/github/datacatering/datacaterer/api/model/ConfigModels.scala",
+          "role": "primary"
+        }
+      ]
+    },
+    {
+      "id": "configuration.flags.enablegeneratedata",
+      "name": "Generate Data",
+      "category": "configuration",
+      "status": "stable",
+      "description": "Enable or disable data generation. When false, only validation runs.",
+      "subcategory": "flags",
+      "configuration": [
+        {
+          "name": "enableGenerateData",
+          "type": "boolean",
+          "description": "Enable or disable data generation. When false, only validation runs.",
+          "required": false,
+          "scope": "global",
+          "default": true,
+          "yamlPath": "config.flags.enableGenerateData",
+          "envVar": "ENABLE_GENERATE_DATA"
+        }
+      ],
+      "tags": [
+        "configuration",
+        "flag",
+        "generatedata"
+      ],
+      "sourceFiles": [
+        {
+          "path": "api/src/main/scala/io/github/datacatering/datacaterer/api/model/ConfigModels.scala",
+          "role": "primary"
+        }
+      ]
+    },
+    {
+      "id": "configuration.flags.enablerecordtracking",
+      "name": "Record Tracking",
+      "category": "configuration",
+      "status": "stable",
+      "description": "Track generated records for later cleanup/deletion.",
+      "subcategory": "flags",
+      "configuration": [
+        {
+          "name": "enableRecordTracking",
+          "type": "boolean",
+          "description": "Track generated records for later cleanup/deletion.",
+          "required": false,
+          "scope": "global",
+          "default": false,
+          "yamlPath": "config.flags.enableRecordTracking",
+          "envVar": "ENABLE_RECORD_TRACKING"
+        }
+      ],
+      "tags": [
+        "configuration",
+        "flag",
+        "recordtracking"
+      ],
+      "sourceFiles": [
+        {
+          "path": "api/src/main/scala/io/github/datacatering/datacaterer/api/model/ConfigModels.scala",
+          "role": "primary"
+        }
+      ]
+    },
+    {
+      "id": "configuration.flags.enabledeletegeneratedrecords",
+      "name": "Delete Generated Records",
+      "category": "configuration",
+      "status": "stable",
+      "description": "Enable cleanup mode to delete previously generated records.",
+      "subcategory": "flags",
+      "configuration": [
+        {
+          "name": "enableDeleteGeneratedRecords",
+          "type": "boolean",
+          "description": "Enable cleanup mode to delete previously generated records.",
+          "required": false,
+          "scope": "global",
+          "default": false,
+          "yamlPath": "config.flags.enableDeleteGeneratedRecords",
+          "envVar": "ENABLE_DELETE_GENERATED_RECORDS"
+        }
+      ],
+      "tags": [
+        "configuration",
+        "flag",
+        "deletegeneratedrecords"
+      ],
+      "sourceFiles": [
+        {
+          "path": "api/src/main/scala/io/github/datacatering/datacaterer/api/model/ConfigModels.scala",
+          "role": "primary"
+        }
+      ]
+    },
+    {
+      "id": "configuration.flags.enablegenerateplanandtasks",
+      "name": "Auto-Generate Plan and Tasks",
+      "category": "configuration",
+      "status": "stable",
+      "description": "Automatically generate plan and tasks from metadata sources.",
+      "subcategory": "flags",
+      "configuration": [
+        {
+          "name": "enableGeneratePlanAndTasks",
+          "type": "boolean",
+          "description": "Automatically generate plan and tasks from metadata sources.",
+          "required": false,
+          "scope": "global",
+          "default": false,
+          "yamlPath": "config.flags.enableGeneratePlanAndTasks",
+          "envVar": "ENABLE_GENERATE_PLAN_AND_TASKS"
+        }
+      ],
+      "tags": [
+        "configuration",
+        "flag",
+        "generateplanandtasks"
+      ],
+      "sourceFiles": [
+        {
+          "path": "api/src/main/scala/io/github/datacatering/datacaterer/api/model/ConfigModels.scala",
+          "role": "primary"
+        }
+      ]
+    },
+    {
+      "id": "configuration.flags.enablefailonerror",
+      "name": "Fail on Error",
+      "category": "configuration",
+      "status": "stable",
+      "description": "Fail execution immediately when errors occur.",
+      "subcategory": "flags",
+      "configuration": [
+        {
+          "name": "enableFailOnError",
+          "type": "boolean",
+          "description": "Fail execution immediately when errors occur.",
+          "required": false,
+          "scope": "global",
+          "default": true,
+          "yamlPath": "config.flags.enableFailOnError",
+          "envVar": "ENABLE_FAIL_ON_ERROR"
+        }
+      ],
+      "tags": [
+        "configuration",
+        "flag",
+        "failonerror"
+      ],
+      "sourceFiles": [
+        {
+          "path": "api/src/main/scala/io/github/datacatering/datacaterer/api/model/ConfigModels.scala",
+          "role": "primary"
+        }
+      ]
+    },
+    {
+      "id": "configuration.flags.enableuniquecheck",
+      "name": "Unique Check",
+      "category": "configuration",
+      "status": "stable",
+      "description": "Validate uniqueness constraints during data generation.",
+      "subcategory": "flags",
+      "configuration": [
+        {
+          "name": "enableUniqueCheck",
+          "type": "boolean",
+          "description": "Validate uniqueness constraints during data generation.",
+          "required": false,
+          "scope": "global",
+          "default": false,
+          "yamlPath": "config.flags.enableUniqueCheck",
+          "envVar": "ENABLE_UNIQUE_CHECK"
+        }
+      ],
+      "tags": [
+        "configuration",
+        "flag",
+        "uniquecheck"
+      ],
+      "sourceFiles": [
+        {
+          "path": "api/src/main/scala/io/github/datacatering/datacaterer/api/model/ConfigModels.scala",
+          "role": "primary"
+        }
+      ]
+    },
+    {
+      "id": "configuration.flags.enablesinkmetadata",
+      "name": "Sink Metadata",
+      "category": "configuration",
+      "status": "stable",
+      "description": "Save metadata about generated data to the sink.",
+      "subcategory": "flags",
+      "configuration": [
+        {
+          "name": "enableSinkMetadata",
+          "type": "boolean",
+          "description": "Save metadata about generated data to the sink.",
+          "required": false,
+          "scope": "global",
+          "default": false,
+          "yamlPath": "config.flags.enableSinkMetadata",
+          "envVar": "ENABLE_SINK_METADATA"
+        }
+      ],
+      "tags": [
+        "configuration",
+        "flag",
+        "sinkmetadata"
+      ],
+      "sourceFiles": [
+        {
+          "path": "api/src/main/scala/io/github/datacatering/datacaterer/api/model/ConfigModels.scala",
+          "role": "primary"
+        }
+      ]
+    },
+    {
+      "id": "configuration.flags.enablesavereports",
+      "name": "Save Reports",
+      "category": "configuration",
+      "status": "stable",
+      "description": "Generate and save execution reports with generation and validation results.",
+      "subcategory": "flags",
+      "configuration": [
+        {
+          "name": "enableSaveReports",
+          "type": "boolean",
+          "description": "Generate and save execution reports with generation and validation results.",
+          "required": false,
+          "scope": "global",
+          "default": true,
+          "yamlPath": "config.flags.enableSaveReports",
+          "envVar": "ENABLE_SAVE_REPORTS"
+        }
+      ],
+      "tags": [
+        "configuration",
+        "flag",
+        "savereports"
+      ],
+      "sourceFiles": [
+        {
+          "path": "api/src/main/scala/io/github/datacatering/datacaterer/api/model/ConfigModels.scala",
+          "role": "primary"
+        }
+      ]
+    },
+    {
+      "id": "configuration.flags.enablevalidation",
+      "name": "Data Validation",
+      "category": "configuration",
+      "status": "stable",
+      "description": "Run data validations after generation completes.",
+      "subcategory": "flags",
+      "configuration": [
+        {
+          "name": "enableValidation",
+          "type": "boolean",
+          "description": "Run data validations after generation completes.",
+          "required": false,
+          "scope": "global",
+          "default": true,
+          "yamlPath": "config.flags.enableValidation",
+          "envVar": "ENABLE_VALIDATION"
+        }
+      ],
+      "tags": [
+        "configuration",
+        "flag",
+        "validation"
+      ],
+      "sourceFiles": [
+        {
+          "path": "api/src/main/scala/io/github/datacatering/datacaterer/api/model/ConfigModels.scala",
+          "role": "primary"
+        }
+      ]
+    },
+    {
+      "id": "configuration.flags.enablegeneratevalidations",
+      "name": "Suggest Validations",
+      "category": "configuration",
+      "status": "stable",
+      "description": "Auto-suggest validations based on data analysis.",
+      "subcategory": "flags",
+      "configuration": [
+        {
+          "name": "enableGenerateValidations",
+          "type": "boolean",
+          "description": "Auto-suggest validations based on data analysis.",
+          "required": false,
+          "scope": "global",
+          "default": false,
+          "yamlPath": "config.flags.enableGenerateValidations",
+          "envVar": "ENABLE_SUGGEST_VALIDATIONS"
+        }
+      ],
+      "tags": [
+        "configuration",
+        "flag",
+        "generatevalidations"
+      ],
+      "sourceFiles": [
+        {
+          "path": "api/src/main/scala/io/github/datacatering/datacaterer/api/model/ConfigModels.scala",
+          "role": "primary"
+        }
+      ]
+    },
+    {
+      "id": "configuration.flags.enablealerts",
+      "name": "Alerts",
+      "category": "configuration",
+      "status": "stable",
+      "description": "Send alert notifications on completion (supports Slack).",
+      "subcategory": "flags",
+      "configuration": [
+        {
+          "name": "enableAlerts",
+          "type": "boolean",
+          "description": "Send alert notifications on completion (supports Slack).",
+          "required": false,
+          "scope": "global",
+          "default": true,
+          "yamlPath": "config.flags.enableAlerts",
+          "envVar": "ENABLE_ALERTS"
+        }
+      ],
+      "tags": [
+        "configuration",
+        "flag",
+        "alerts"
+      ],
+      "sourceFiles": [
+        {
+          "path": "api/src/main/scala/io/github/datacatering/datacaterer/api/model/ConfigModels.scala",
+          "role": "primary"
+        }
+      ]
+    },
+    {
+      "id": "configuration.flags.enableuniquecheckonlyinbatch",
+      "name": "Unique Check Only In Batch",
+      "category": "configuration",
+      "status": "stable",
+      "description": "Check uniqueness only within the current batch for better performance.",
+      "subcategory": "flags",
+      "configuration": [
+        {
+          "name": "enableUniqueCheckOnlyInBatch",
+          "type": "boolean",
+          "description": "Check uniqueness only within the current batch for better performance.",
+          "required": false,
+          "scope": "global",
+          "default": false,
+          "yamlPath": "config.flags.enableUniqueCheckOnlyInBatch",
+          "envVar": "ENABLE_UNIQUE_CHECK_ONLY_WITHIN_BATCH"
+        }
+      ],
+      "tags": [
+        "configuration",
+        "flag",
+        "uniquecheckonlyinbatch"
+      ],
+      "sourceFiles": [
+        {
+          "path": "api/src/main/scala/io/github/datacatering/datacaterer/api/model/ConfigModels.scala",
+          "role": "primary"
+        }
+      ]
+    },
+    {
+      "id": "configuration.flags.enablefastgeneration",
+      "name": "Fast Generation",
+      "category": "configuration",
+      "status": "stable",
+      "description": "Use SQL-based generation for regex patterns instead of UDFs. Dramatically improves performance.",
+      "subcategory": "flags",
+      "configuration": [
+        {
+          "name": "enableFastGeneration",
+          "type": "boolean",
+          "description": "Use SQL-based generation for regex patterns instead of UDFs. Dramatically improves performance.",
+          "required": false,
+          "scope": "global",
+          "default": false,
+          "yamlPath": "config.flags.enableFastGeneration",
+          "envVar": "ENABLE_FAST_GENERATION"
+        }
+      ],
+      "tags": [
+        "configuration",
+        "flag",
+        "fastgeneration"
+      ],
+      "sourceFiles": [
+        {
+          "path": "api/src/main/scala/io/github/datacatering/datacaterer/api/model/ConfigModels.scala",
+          "role": "primary"
+        }
+      ]
+    },
+    {
+      "id": "configuration.folders.planfilepath",
+      "name": "plan File",
+      "category": "configuration",
+      "status": "stable",
+      "description": "Configuration path for planFilePath.",
+      "subcategory": "folders",
+      "configuration": [
+        {
+          "name": "planFilePath",
+          "type": "string",
+          "description": "Path setting for planFilePath",
+          "required": false,
+          "scope": "global",
+          "yamlPath": "config.folders.planFilePath"
+        }
+      ],
+      "tags": [
+        "configuration",
+        "folder",
+        "path"
+      ]
+    },
+    {
+      "id": "configuration.folders.taskfolderpath",
+      "name": "task Folder",
+      "category": "configuration",
+      "status": "stable",
+      "description": "Configuration path for taskFolderPath.",
+      "subcategory": "folders",
+      "configuration": [
+        {
+          "name": "taskFolderPath",
+          "type": "string",
+          "description": "Path setting for taskFolderPath",
+          "required": false,
+          "scope": "global",
+          "yamlPath": "config.folders.taskFolderPath"
+        }
+      ],
+      "tags": [
+        "configuration",
+        "folder",
+        "path"
+      ]
+    },
+    {
+      "id": "configuration.folders.generatedplanandtaskfolderpath",
+      "name": "generatedPlanAndTask Folder",
+      "category": "configuration",
+      "status": "stable",
+      "description": "Configuration path for generatedPlanAndTaskFolderPath.",
+      "subcategory": "folders",
+      "configuration": [
+        {
+          "name": "generatedPlanAndTaskFolderPath",
+          "type": "string",
+          "description": "Path setting for generatedPlanAndTaskFolderPath",
+          "required": false,
+          "scope": "global",
+          "yamlPath": "config.folders.generatedPlanAndTaskFolderPath"
+        }
+      ],
+      "tags": [
+        "configuration",
+        "folder",
+        "path"
+      ]
+    },
+    {
+      "id": "configuration.folders.generatedreportsfolderpath",
+      "name": "generatedReports Folder",
+      "category": "configuration",
+      "status": "stable",
+      "description": "Configuration path for generatedReportsFolderPath.",
+      "subcategory": "folders",
+      "configuration": [
+        {
+          "name": "generatedReportsFolderPath",
+          "type": "string",
+          "description": "Path setting for generatedReportsFolderPath",
+          "required": false,
+          "scope": "global",
+          "yamlPath": "config.folders.generatedReportsFolderPath"
+        }
+      ],
+      "tags": [
+        "configuration",
+        "folder",
+        "path"
+      ]
+    },
+    {
+      "id": "configuration.folders.recordtrackingfolderpath",
+      "name": "recordTracking Folder",
+      "category": "configuration",
+      "status": "stable",
+      "description": "Configuration path for recordTrackingFolderPath.",
+      "subcategory": "folders",
+      "configuration": [
+        {
+          "name": "recordTrackingFolderPath",
+          "type": "string",
+          "description": "Path setting for recordTrackingFolderPath",
+          "required": false,
+          "scope": "global",
+          "yamlPath": "config.folders.recordTrackingFolderPath"
+        }
+      ],
+      "tags": [
+        "configuration",
+        "folder",
+        "path"
+      ]
+    },
+    {
+      "id": "configuration.folders.validationfolderpath",
+      "name": "validation Folder",
+      "category": "configuration",
+      "status": "stable",
+      "description": "Configuration path for validationFolderPath.",
+      "subcategory": "folders",
+      "configuration": [
+        {
+          "name": "validationFolderPath",
+          "type": "string",
+          "description": "Path setting for validationFolderPath",
+          "required": false,
+          "scope": "global",
+          "yamlPath": "config.folders.validationFolderPath"
+        }
+      ],
+      "tags": [
+        "configuration",
+        "folder",
+        "path"
+      ]
+    },
+    {
+      "id": "configuration.folders.recordtrackingforvalidationfolderpath",
+      "name": "recordTrackingForValidation Folder",
+      "category": "configuration",
+      "status": "stable",
+      "description": "Configuration path for recordTrackingForValidationFolderPath.",
+      "subcategory": "folders",
+      "configuration": [
+        {
+          "name": "recordTrackingForValidationFolderPath",
+          "type": "string",
+          "description": "Path setting for recordTrackingForValidationFolderPath",
+          "required": false,
+          "scope": "global",
+          "yamlPath": "config.folders.recordTrackingForValidationFolderPath"
+        }
+      ],
+      "tags": [
+        "configuration",
+        "folder",
+        "path"
+      ]
+    },
+    {
+      "id": "configuration.generation.batch_size",
+      "name": "Batch Size",
+      "category": "configuration",
+      "status": "stable",
+      "description": "Control the number of records generated per batch. Affects memory usage and performance.",
+      "subcategory": "generation",
+      "configuration": [
+        {
+          "name": "numRecordsPerBatch",
+          "type": "long",
+          "description": "Records per batch",
+          "required": false,
+          "scope": "global",
+          "default": 100000,
+          "yamlPath": "config.generation.numRecordsPerBatch"
+        },
+        {
+          "name": "numRecordsPerStep",
+          "type": "long",
+          "description": "Default records per step/table",
+          "required": false,
+          "scope": "global",
+          "yamlPath": "config.generation.numRecordsPerStep"
+        }
+      ],
+      "tags": [
+        "configuration",
+        "generation",
+        "batch",
+        "performance"
+      ]
+    },
+    {
+      "id": "configuration.generation.bloom_filter",
+      "name": "Bloom Filter Configuration",
+      "category": "configuration",
+      "status": "stable",
+      "description": "Configure bloom filter parameters for uniqueness checking during generation.",
+      "subcategory": "generation",
+      "configuration": [
+        {
+          "name": "uniqueBloomFilterNumItems",
+          "type": "long",
+          "description": "Expected number of items in bloom filter",
+          "required": false,
+          "scope": "global",
+          "default": 10000000,
+          "yamlPath": "config.generation.uniqueBloomFilterNumItems"
+        },
+        {
+          "name": "uniqueBloomFilterFalsePositiveProbability",
+          "type": "double",
+          "description": "Bloom filter false positive rate (0-1)",
+          "required": false,
+          "scope": "global",
+          "default": 0.01,
+          "range": {
+            "min": 0,
+            "max": 1
+          },
+          "yamlPath": "config.generation.uniqueBloomFilterFalsePositiveProbability"
+        }
+      ],
+      "tags": [
+        "configuration",
+        "generation",
+        "bloom-filter",
+        "uniqueness"
+      ]
+    },
+    {
+      "id": "configuration.metadata",
+      "name": "Metadata Analysis Configuration",
+      "category": "configuration",
+      "status": "stable",
+      "description": "Configure how metadata is sampled and analyzed for auto-generation of field patterns.",
+      "subcategory": "metadata",
+      "configuration": [
+        {
+          "name": "numRecordsFromDataSource",
+          "type": "integer",
+          "description": "Sample size from data source",
+          "required": false,
+          "scope": "global",
+          "default": 10000,
+          "yamlPath": "config.metadata.numRecordsFromDataSource"
+        },
+        {
+          "name": "numRecordsForAnalysis",
+          "type": "integer",
+          "description": "Records analyzed for pattern detection",
+          "required": false,
+          "scope": "global",
+          "default": 10000,
+          "yamlPath": "config.metadata.numRecordsForAnalysis"
+        },
+        {
+          "name": "oneOfDistinctCountVsCountThreshold",
+          "type": "double",
+          "description": "Threshold for detecting oneOf fields",
+          "required": false,
+          "scope": "global",
+          "default": 0.2,
+          "yamlPath": "config.metadata.oneOfDistinctCountVsCountThreshold"
+        },
+        {
+          "name": "oneOfMinCount",
+          "type": "long",
+          "description": "Minimum records for oneOf detection",
+          "required": false,
+          "scope": "global",
+          "default": 1000,
+          "yamlPath": "config.metadata.oneOfMinCount"
+        },
+        {
+          "name": "numGeneratedSamples",
+          "type": "integer",
+          "description": "Number of sample records in metadata suggestions",
+          "required": false,
+          "scope": "global",
+          "default": 10,
+          "yamlPath": "config.metadata.numGeneratedSamples"
+        }
+      ],
+      "tags": [
+        "configuration",
+        "metadata",
+        "analysis",
+        "sampling"
+      ]
+    },
+    {
+      "id": "configuration.streaming",
+      "name": "Streaming Configuration",
+      "category": "configuration",
+      "status": "stable",
+      "description": "Configure streaming/real-time data generation parameters.",
+      "subcategory": "streaming",
+      "configuration": [
+        {
+          "name": "maxTimeoutSeconds",
+          "type": "integer",
+          "description": "Maximum streaming timeout",
+          "required": false,
+          "scope": "global",
+          "default": 3600
+        },
+        {
+          "name": "maxAsyncParallelism",
+          "type": "integer",
+          "description": "Maximum async parallelism",
+          "required": false,
+          "scope": "global",
+          "default": 100
+        },
+        {
+          "name": "responseBufferSize",
+          "type": "integer",
+          "description": "Response buffer size for streaming",
+          "required": false,
+          "scope": "global",
+          "default": 10000
+        },
+        {
+          "name": "timestampWindowMs",
+          "type": "long",
+          "description": "Timestamp window in milliseconds",
+          "required": false,
+          "scope": "global",
+          "default": 1000
+        }
+      ],
+      "tags": [
+        "configuration",
+        "streaming",
+        "real-time",
+        "performance"
+      ]
+    },
+    {
+      "id": "configuration.alerts",
+      "name": "Alert Configuration",
+      "category": "configuration",
+      "status": "stable",
+      "description": "Configure alert notifications triggered on execution completion. Supports Slack integration.",
+      "subcategory": "alerts",
+      "configuration": [
+        {
+          "name": "triggerOn",
+          "type": "enum",
+          "description": "When to trigger alerts",
+          "required": false,
+          "scope": "global",
+          "default": "all",
+          "validValues": [
+            "all",
+            "failure",
+            "success",
+            "generation_failure",
+            "validation_failure",
+            "generation_success",
+            "validation_success"
+          ],
+          "yamlPath": "config.alert.triggerOn"
+        },
+        {
+          "name": "slackToken",
+          "type": "string",
+          "description": "Slack API token",
+          "required": false,
+          "scope": "global",
+          "yamlPath": "config.alert.slackToken"
+        },
+        {
+          "name": "slackChannels",
+          "type": "array",
+          "description": "Slack channels to notify",
+          "required": false,
+          "scope": "global",
+          "yamlPath": "config.alert.slackChannels"
+        }
+      ],
+      "tags": [
+        "configuration",
+        "alert",
+        "notification",
+        "slack"
+      ]
+    },
+    {
+      "id": "configuration.validation",
+      "name": "Validation Runtime Configuration",
+      "category": "configuration",
+      "status": "stable",
+      "description": "Configure validation execution behavior.",
+      "subcategory": "validation_runtime",
+      "configuration": [
+        {
+          "name": "numSampleErrorRecords",
+          "type": "integer",
+          "description": "Number of sample error records in reports",
+          "required": false,
+          "scope": "global",
+          "default": 5,
+          "yamlPath": "config.validation.numSampleErrorRecords"
+        },
+        {
+          "name": "enableDeleteRecordTrackingFiles",
+          "type": "boolean",
+          "description": "Delete tracking files after validation",
+          "required": false,
+          "scope": "global",
+          "default": true,
+          "yamlPath": "config.validation.enableDeleteRecordTrackingFiles"
+        }
+      ],
+      "tags": [
+        "configuration",
+        "validation",
+        "runtime"
+      ]
+    },
+    {
+      "id": "configuration.runtime.spark",
+      "name": "Apache Spark Configuration",
+      "category": "configuration",
+      "status": "stable",
+      "description": "Configure the Apache Spark runtime for data processing. Set master URL, driver/executor memory, and Spark SQL settings.",
+      "subcategory": "runtime",
+      "configuration": [
+        {
+          "name": "master",
+          "type": "string",
+          "description": "Spark master URL",
+          "required": false,
+          "scope": "global",
+          "default": "local[*]",
+          "yamlPath": "config.runtime.master"
+        },
+        {
+          "name": "sparkConfig",
+          "type": "object",
+          "description": "Spark configuration key-value pairs",
+          "required": false,
+          "scope": "global",
+          "yamlPath": "config.runtime.sparkConfig"
+        }
+      ],
+      "examples": [
+        {
+          "format": "yaml",
+          "code": "config:\n  runtime:\n    master: \"local[4]\"\n    sparkConfig:\n      \"spark.driver.memory\": \"4g\"\n      \"spark.sql.shuffle.partitions\": \"10\"",
+          "title": "Spark configuration"
+        }
+      ],
+      "tags": [
+        "configuration",
+        "runtime",
+        "spark",
+        "performance"
+      ]
+    },
+    {
+      "id": "configuration.sink_options",
+      "name": "Global Sink Options",
+      "category": "configuration",
+      "status": "stable",
+      "description": "Global options for data output: random seed for reproducibility and locale for data generation.",
+      "subcategory": "sink",
+      "configuration": [
+        {
+          "name": "seed",
+          "type": "string",
+          "description": "Random seed for reproducible generation",
+          "required": false,
+          "scope": "global",
+          "yamlPath": "sinkOptions.seed"
+        },
+        {
+          "name": "locale",
+          "type": "string",
+          "description": "Locale for data generation (affects names, addresses)",
+          "required": false,
+          "scope": "global",
+          "yamlPath": "sinkOptions.locale"
+        }
+      ],
+      "examples": [
+        {
+          "format": "yaml",
+          "code": "sinkOptions:\n  seed: \"42\"\n  locale: \"en-US\"",
+          "title": "Sink options"
+        }
+      ],
+      "tags": [
+        "configuration",
+        "sink",
+        "seed",
+        "locale"
+      ]
+    },
+    {
+      "id": "advanced.foreign_keys",
+      "name": "Foreign Key Relationships",
+      "category": "advanced",
+      "status": "stable",
+      "description": "Define foreign key relationships between data sources to maintain referential integrity. Supports composite keys, cardinality control, nullability, and multiple generation modes.",
+      "subcategory": "referential_integrity",
+      "configuration": [
+        {
+          "name": "source",
+          "type": "object",
+          "description": "Source table containing primary key",
+          "required": true,
+          "scope": "plan",
+          "yamlPath": "foreignKeys[].source"
+        },
+        {
+          "name": "generate",
+          "type": "array",
+          "description": "Target tables with foreign key references",
+          "required": false,
+          "scope": "plan",
+          "yamlPath": "foreignKeys[].generate"
+        },
+        {
+          "name": "delete",
+          "type": "array",
+          "description": "Target tables for cleanup",
+          "required": false,
+          "scope": "plan",
+          "yamlPath": "foreignKeys[].delete"
+        }
+      ],
+      "examples": [
+        {
+          "format": "yaml",
+          "code": "foreignKeys:\n  - source:\n      dataSource: postgres_db\n      step: customers\n      fields: [\"customer_id\"]\n    generate:\n      - dataSource: postgres_db\n        step: orders\n        fields: [\"customer_id\"]\n        cardinality:\n          min: 1\n          max: 10\n          distribution: \"uniform\"",
+          "title": "Foreign key with cardinality"
+        }
+      ],
+      "tags": [
+        "advanced",
+        "foreign-key",
+        "referential-integrity",
+        "relationship"
+      ]
+    },
+    {
+      "id": "advanced.foreign_key_cardinality",
+      "name": "Foreign Key Cardinality Control",
+      "category": "advanced",
+      "status": "stable",
+      "description": "Control the cardinality of foreign key relationships. Set min/max records per parent, ratio multipliers, and distribution patterns.",
+      "subcategory": "referential_integrity",
+      "configuration": [
+        {
+          "name": "min",
+          "type": "integer",
+          "description": "Minimum records per parent key",
+          "required": false,
+          "scope": "plan",
+          "yamlPath": "foreignKeys[].generate[].cardinality.min"
+        },
+        {
+          "name": "max",
+          "type": "integer",
+          "description": "Maximum records per parent key",
+          "required": false,
+          "scope": "plan",
+          "yamlPath": "foreignKeys[].generate[].cardinality.max"
+        },
+        {
+          "name": "ratio",
+          "type": "double",
+          "description": "Ratio multiplier (e.g., 10.0 = 10x parent records)",
+          "required": false,
+          "scope": "plan",
+          "yamlPath": "foreignKeys[].generate[].cardinality.ratio"
+        },
+        {
+          "name": "distribution",
+          "type": "enum",
+          "description": "Cardinality distribution",
+          "required": false,
+          "scope": "plan",
+          "default": "uniform",
+          "validValues": [
+            "uniform",
+            "normal",
+            "zipf",
+            "power"
+          ],
+          "yamlPath": "foreignKeys[].generate[].cardinality.distribution"
+        }
+      ],
+      "tags": [
+        "advanced",
+        "cardinality",
+        "distribution",
+        "foreign-key"
+      ]
+    },
+    {
+      "id": "advanced.foreign_key_nullability",
+      "name": "Foreign Key Nullability",
+      "category": "advanced",
+      "status": "stable",
+      "description": "Control null value injection in foreign key fields. Configure percentage of nulls and distribution strategy (random, head, tail).",
+      "subcategory": "referential_integrity",
+      "configuration": [
+        {
+          "name": "nullPercentage",
+          "type": "double",
+          "description": "Percentage of null values (0-1)",
+          "required": false,
+          "scope": "plan",
+          "range": {
+            "min": 0,
+            "max": 1
+          },
+          "yamlPath": "foreignKeys[].generate[].nullability.nullPercentage"
+        },
+        {
+          "name": "strategy",
+          "type": "enum",
+          "description": "Null distribution strategy",
+          "required": false,
+          "scope": "plan",
+          "default": "random",
+          "validValues": [
+            "random",
+            "leading",
+            "trailing"
+          ],
+          "yamlPath": "foreignKeys[].generate[].nullability.strategy"
+        }
+      ],
+      "tags": [
+        "advanced",
+        "nullability",
+        "foreign-key",
+        "null"
+      ]
+    },
+    {
+      "id": "advanced.foreign_key_generation_modes",
+      "name": "Foreign Key Generation Modes",
+      "category": "advanced",
+      "status": "stable",
+      "description": "Control how foreign key values are generated. \"all-exist\" ensures all records have valid FKs, \"all-combinations\" generates all possible combinations, \"partial\" creates a mix of valid and invalid references.",
+      "subcategory": "referential_integrity",
+      "configuration": [
+        {
+          "name": "generationMode",
+          "type": "enum",
+          "description": "FK generation strategy",
+          "required": false,
+          "scope": "plan",
+          "default": "all-exist",
+          "validValues": [
+            "all-exist",
+            "all-combinations",
+            "partial"
+          ]
+        }
+      ],
+      "tags": [
+        "advanced",
+        "foreign-key",
+        "generation-mode"
+      ],
+      "useCases": [
+        "all-exist: Standard referential integrity testing",
+        "all-combinations: Comprehensive join testing with all possible combinations",
+        "partial: Testing handling of orphan records and broken references"
+      ]
+    },
+    {
+      "id": "advanced.count",
+      "name": "Record Count Configuration",
+      "category": "advanced",
+      "status": "stable",
+      "description": "Configure how many records to generate per step. Supports fixed count, per-field distribution, and streaming rate-based generation.",
+      "subcategory": "count",
+      "configuration": [
+        {
+          "name": "records",
+          "type": "integer",
+          "description": "Total records to generate",
+          "required": false,
+          "scope": "step",
+          "default": 1000,
+          "yamlPath": "dataSources[].steps[].count.records"
+        },
+        {
+          "name": "perField",
+          "type": "object",
+          "description": "Generate records per unique field value",
+          "required": false,
+          "scope": "step",
+          "yamlPath": "dataSources[].steps[].count.perField"
+        }
+      ],
+      "examples": [
+        {
+          "format": "yaml",
+          "code": "count:\n  records: 5000",
+          "title": "Fixed count"
+        },
+        {
+          "format": "yaml",
+          "code": "count:\n  records: 100\n  perField:\n    fieldNames: [\"account_id\"]\n    options:\n      min: 1\n      max: 5",
+          "title": "Per-field count distribution"
+        }
+      ],
+      "tags": [
+        "advanced",
+        "count",
+        "records",
+        "distribution"
+      ]
+    },
+    {
+      "id": "advanced.streaming_load_patterns",
+      "name": "Streaming Load Patterns",
+      "category": "advanced",
+      "status": "stable",
+      "description": "Define time-based data generation patterns for streaming scenarios. Supports ramp, spike, sine, and custom step patterns.",
+      "subcategory": "streaming",
+      "configuration": [
+        {
+          "name": "duration",
+          "type": "string",
+          "description": "Streaming duration (e.g., 10m, 1h)",
+          "required": false,
+          "scope": "step",
+          "yamlPath": "dataSources[].steps[].count.duration"
+        },
+        {
+          "name": "rate",
+          "type": "integer",
+          "description": "Records per time unit",
+          "required": false,
+          "scope": "step",
+          "yamlPath": "dataSources[].steps[].count.rate"
+        },
+        {
+          "name": "rateUnit",
+          "type": "enum",
+          "description": "Time unit for rate",
+          "required": false,
+          "scope": "step",
+          "validValues": [
+            "second",
+            "minute",
+            "hour"
+          ],
+          "yamlPath": "dataSources[].steps[].count.rateUnit"
+        },
+        {
+          "name": "pattern.type",
+          "type": "enum",
+          "description": "Load pattern type",
+          "required": false,
+          "scope": "step",
+          "validValues": [
+            "ramp",
+            "spike",
+            "sine",
+            "steps"
+          ],
+          "yamlPath": "dataSources[].steps[].count.pattern.type"
+        },
+        {
+          "name": "pattern.startRate",
+          "type": "integer",
+          "description": "Starting rate for ramp pattern",
+          "required": false,
+          "scope": "step"
+        },
+        {
+          "name": "pattern.endRate",
+          "type": "integer",
+          "description": "Ending rate for ramp pattern",
+          "required": false,
+          "scope": "step"
+        },
+        {
+          "name": "pattern.baseRate",
+          "type": "integer",
+          "description": "Base rate for spike pattern",
+          "required": false,
+          "scope": "step"
+        },
+        {
+          "name": "pattern.spikeRate",
+          "type": "integer",
+          "description": "Spike rate",
+          "required": false,
+          "scope": "step"
+        },
+        {
+          "name": "pattern.amplitude",
+          "type": "integer",
+          "description": "Amplitude for sine pattern",
+          "required": false,
+          "scope": "step"
+        },
+        {
+          "name": "pattern.frequency",
+          "type": "double",
+          "description": "Frequency for sine pattern",
+          "required": false,
+          "scope": "step"
+        },
+        {
+          "name": "pattern.steps",
+          "type": "array",
+          "description": "Custom step definitions with rate and duration",
+          "required": false,
+          "scope": "step"
+        }
+      ],
+      "examples": [
+        {
+          "format": "yaml",
+          "code": "count:\n  duration: \"1m\"\n  rate: 100\n  rateUnit: \"second\"\n  pattern:\n    type: \"ramp\"\n    startRate: 10\n    endRate: 200",
+          "title": "Ramp load pattern"
+        }
+      ],
+      "tags": [
+        "advanced",
+        "streaming",
+        "load-pattern",
+        "rate"
+      ]
+    },
+    {
+      "id": "advanced.transformation",
+      "name": "Post-Generation Transformation",
+      "category": "advanced",
+      "status": "stable",
+      "description": "Apply custom Java/Scala transformations to generated data before writing to output. Supports whole-file and row-by-row modes.",
+      "subcategory": "transformation",
+      "configuration": [
+        {
+          "name": "className",
+          "type": "string",
+          "description": "Fully qualified transformation class name",
+          "required": true,
+          "scope": "step",
+          "yamlPath": "dataSources[].steps[].transformation.className"
+        },
+        {
+          "name": "methodName",
+          "type": "string",
+          "description": "Method to call",
+          "required": false,
+          "scope": "step",
+          "default": "transform"
+        },
+        {
+          "name": "mode",
+          "type": "enum",
+          "description": "Transformation mode",
+          "required": false,
+          "scope": "step",
+          "validValues": [
+            "whole-file",
+            "row-by-row"
+          ]
+        },
+        {
+          "name": "outputPath",
+          "type": "string",
+          "description": "Output directory",
+          "required": false,
+          "scope": "step"
+        },
+        {
+          "name": "deleteOriginal",
+          "type": "boolean",
+          "description": "Delete input after transformation",
+          "required": false,
+          "scope": "step"
+        },
+        {
+          "name": "enabled",
+          "type": "boolean",
+          "description": "Enable/disable transformation",
+          "required": false,
+          "scope": "step",
+          "default": true
+        }
+      ],
+      "tags": [
+        "advanced",
+        "transformation",
+        "custom",
+        "plugin"
+      ]
+    },
+    {
+      "id": "advanced.step_options",
+      "name": "Step Field Filtering",
+      "category": "advanced",
+      "status": "stable",
+      "description": "Include or exclude fields from metadata-driven generation using exact names or patterns.",
+      "subcategory": "step_options",
+      "configuration": [
+        {
+          "name": "includeFields",
+          "type": "array",
+          "description": "List of field names to include",
+          "required": false,
+          "scope": "step",
+          "scalaConstant": "INCLUDE_FIELDS"
+        },
+        {
+          "name": "excludeFields",
+          "type": "array",
+          "description": "List of field names to exclude",
+          "required": false,
+          "scope": "step",
+          "scalaConstant": "EXCLUDE_FIELDS"
+        },
+        {
+          "name": "includeFieldPatterns",
+          "type": "array",
+          "description": "Regex patterns for fields to include",
+          "required": false,
+          "scope": "step",
+          "scalaConstant": "INCLUDE_FIELD_PATTERNS"
+        },
+        {
+          "name": "excludeFieldPatterns",
+          "type": "array",
+          "description": "Regex patterns for fields to exclude",
+          "required": false,
+          "scope": "step",
+          "scalaConstant": "EXCLUDE_FIELD_PATTERNS"
+        },
+        {
+          "name": "allCombinations",
+          "type": "boolean",
+          "description": "Generate all field value combinations",
+          "required": false,
+          "scope": "step",
+          "scalaConstant": "ALL_COMBINATIONS"
+        }
+      ],
+      "tags": [
+        "advanced",
+        "step",
+        "filtering",
+        "metadata"
+      ]
+    },
+    {
+      "id": "metadata.source.marquez",
+      "name": "Marquez Integration",
+      "category": "metadata",
+      "status": "stable",
+      "description": "Apache Marquez open-source metadata service with OpenLineage support.",
+      "subcategory": "sources",
+      "tags": [
+        "metadata",
+        "integration",
+        "marquez"
+      ]
+    },
+    {
+      "id": "metadata.source.open_metadata",
+      "name": "OpenMetadata Integration",
+      "category": "metadata",
+      "status": "stable",
+      "description": "OpenMetadata platform for metadata discovery. Supports multiple auth types (basic, Azure, Google, Okta, Auth0, AWS Cognito).",
+      "subcategory": "sources",
+      "tags": [
+        "metadata",
+        "integration",
+        "open-metadata"
+      ]
+    },
+    {
+      "id": "metadata.source.open_api",
+      "name": "OpenAPI/Swagger Integration",
+      "category": "metadata",
+      "status": "stable",
+      "description": "Generate data from OpenAPI/Swagger specifications.",
+      "subcategory": "sources",
+      "tags": [
+        "metadata",
+        "integration",
+        "open-api"
+      ]
+    },
+    {
+      "id": "metadata.source.great_expectations",
+      "name": "Great Expectations Integration",
+      "category": "metadata",
+      "status": "stable",
+      "description": "Import data quality expectations from Great Expectations suites.",
+      "subcategory": "sources",
+      "tags": [
+        "metadata",
+        "integration",
+        "great-expectations"
+      ]
+    },
+    {
+      "id": "metadata.source.open_data_contract_standard",
+      "name": "Open Data Contract Standard Integration",
+      "category": "metadata",
+      "status": "stable",
+      "description": "Import schemas from ODCS format.",
+      "subcategory": "sources",
+      "tags": [
+        "metadata",
+        "integration",
+        "open-data-contract-standard"
+      ]
+    },
+    {
+      "id": "metadata.source.data_contract_cli",
+      "name": "Data Contract CLI Integration",
+      "category": "metadata",
+      "status": "stable",
+      "description": "Import schemas from Data Contract CLI format.",
+      "subcategory": "sources",
+      "tags": [
+        "metadata",
+        "integration",
+        "data-contract-cli"
+      ]
+    },
+    {
+      "id": "metadata.source.amundsen",
+      "name": "Amundsen Integration",
+      "category": "metadata",
+      "status": "stable",
+      "description": "Import metadata from Amundsen data catalog.",
+      "subcategory": "sources",
+      "tags": [
+        "metadata",
+        "integration",
+        "amundsen"
+      ]
+    },
+    {
+      "id": "metadata.source.datahub",
+      "name": "DataHub Integration",
+      "category": "metadata",
+      "status": "stable",
+      "description": "Import metadata from DataHub data catalog.",
+      "subcategory": "sources",
+      "tags": [
+        "metadata",
+        "integration",
+        "datahub"
+      ]
+    },
+    {
+      "id": "metadata.source.confluent_schema_registry",
+      "name": "Confluent Schema Registry Integration",
+      "category": "metadata",
+      "status": "stable",
+      "description": "Import schemas from Confluent Schema Registry (Avro, Protobuf, JSON Schema).",
+      "subcategory": "sources",
+      "tags": [
+        "metadata",
+        "integration",
+        "confluent-schema-registry"
+      ]
+    },
+    {
+      "id": "metadata.source.json_schema",
+      "name": "JSON Schema Integration",
+      "category": "metadata",
+      "status": "stable",
+      "description": "Generate data from JSON Schema definitions.",
+      "subcategory": "sources",
+      "tags": [
+        "metadata",
+        "integration",
+        "json-schema"
+      ]
+    },
+    {
+      "id": "advanced.reference_mode",
+      "name": "Reference Mode",
+      "category": "advanced",
+      "status": "stable",
+      "description": "Load existing data as reference for foreign key relationships instead of generating new data. Useful when you need realistic FK values from existing datasets.",
+      "subcategory": "reference",
+      "configuration": [
+        {
+          "name": "enableReferenceMode",
+          "type": "boolean",
+          "description": "Enable reference mode for this data source",
+          "required": false,
+          "scope": "datasource",
+          "default": false
+        },
+        {
+          "name": "enableDataGeneration",
+          "type": "boolean",
+          "description": "Disable generation (use with reference mode)",
+          "required": false,
+          "scope": "datasource",
+          "default": true
+        }
+      ],
+      "tags": [
+        "advanced",
+        "reference",
+        "existing-data",
+        "foreign-key"
+      ]
+    },
+    {
+      "id": "advanced.interfaces",
+      "name": "Configuration Interfaces",
+      "category": "advanced",
+      "status": "stable",
+      "description": "Data Caterer supports multiple configuration interfaces: Java API, Scala API, YAML configuration, and Web UI.",
+      "subcategory": "interfaces",
+      "tags": [
+        "advanced",
+        "interface",
+        "api",
+        "yaml",
+        "ui"
+      ],
+      "useCases": [
+        "Java API: Programmatic configuration from Java applications",
+        "Scala API: Programmatic configuration with Scala builders",
+        "YAML: Declarative configuration for CI/CD and automation",
+        "Web UI: Visual configuration and execution management"
+      ]
+    },
+    {
+      "id": "advanced.env_substitution",
+      "name": "Environment Variable Substitution",
+      "category": "advanced",
+      "status": "stable",
+      "description": "Use ${VAR_NAME} syntax in YAML configuration to substitute environment variables at runtime. Supports default values with ${VAR:-default}.",
+      "subcategory": "configuration",
+      "examples": [
+        {
+          "format": "yaml",
+          "code": "options:\n  password: \"${DB_PASSWORD}\"\n  url: \"${KAFKA_BROKERS:-localhost:9092}\"",
+          "title": "Environment variable substitution"
+        }
+      ],
+      "tags": [
+        "advanced",
+        "environment",
+        "variable",
+        "secrets"
+      ]
+    },
+    {
+      "id": "ui.connection_management",
+      "name": "Connection Management",
+      "category": "ui_api",
+      "status": "stable",
+      "description": "Create, edit, test, and manage data source connections through the web UI.",
+      "subcategory": "web_ui",
+      "tags": [
+        "ui",
+        "web",
+        "connection-management"
+      ],
+      "sourceFiles": [
+        {
+          "path": "app/src/main/scala/io/github/datacatering/datacaterer/core/ui/",
+          "role": "primary"
+        }
+      ]
+    },
+    {
+      "id": "ui.plan_creation",
+      "name": "Interactive Plan Creation",
+      "category": "ui_api",
+      "status": "stable",
+      "description": "Build data generation plans interactively with visual field configuration.",
+      "subcategory": "web_ui",
+      "tags": [
+        "ui",
+        "web",
+        "plan-creation"
+      ],
+      "sourceFiles": [
+        {
+          "path": "app/src/main/scala/io/github/datacatering/datacaterer/core/ui/",
+          "role": "primary"
+        }
+      ]
+    },
+    {
+      "id": "ui.execution_history",
+      "name": "Execution History",
+      "category": "ui_api",
+      "status": "stable",
+      "description": "View past execution runs with status, timing, and record counts.",
+      "subcategory": "web_ui",
+      "tags": [
+        "ui",
+        "web",
+        "execution-history"
+      ],
+      "sourceFiles": [
+        {
+          "path": "app/src/main/scala/io/github/datacatering/datacaterer/core/ui/",
+          "role": "primary"
+        }
+      ]
+    },
+    {
+      "id": "ui.results_viewing",
+      "name": "Real-time Results",
+      "category": "ui_api",
+      "status": "stable",
+      "description": "View generation and validation results in real-time during execution.",
+      "subcategory": "web_ui",
+      "tags": [
+        "ui",
+        "web",
+        "results-viewing"
+      ],
+      "sourceFiles": [
+        {
+          "path": "app/src/main/scala/io/github/datacatering/datacaterer/core/ui/",
+          "role": "primary"
+        }
+      ]
+    },
+    {
+      "id": "ui.sample_data",
+      "name": "Sample Data Generation",
+      "category": "ui_api",
+      "status": "stable",
+      "description": "Preview generated sample data before running full generation.",
+      "subcategory": "web_ui",
+      "tags": [
+        "ui",
+        "web",
+        "sample-data"
+      ],
+      "sourceFiles": [
+        {
+          "path": "app/src/main/scala/io/github/datacatering/datacaterer/core/ui/",
+          "role": "primary"
+        }
+      ]
+    },
+    {
+      "id": "ui.report_generation",
+      "name": "Report Generation",
+      "category": "ui_api",
+      "status": "stable",
+      "description": "Generate detailed HTML reports with generation statistics and validation results.",
+      "subcategory": "web_ui",
+      "tags": [
+        "ui",
+        "web",
+        "report-generation"
+      ],
+      "sourceFiles": [
+        {
+          "path": "app/src/main/scala/io/github/datacatering/datacaterer/core/ui/",
+          "role": "primary"
+        }
+      ]
+    }
+  ]
+}

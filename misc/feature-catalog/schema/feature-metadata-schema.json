@@ -1,0 +1,175 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/data-catering/data-caterer/feature-catalog/schema",
+  "title": "Feature Catalog Schema",
+  "description": "Generic schema for documenting software features. Designed to be reusable across projects.",
+  "type": "object",
+  "properties": {
+    "project": {
+      "type": "object",
+      "description": "Project metadata",
+      "properties": {
+        "name": { "type": "string" },
+        "version": { "type": "string" },
+        "repository": { "type": "string" },
+        "lastUpdated": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "version"]
+    },
+    "categories": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/category" }
+    },
+    "features": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/feature" }
+    }
+  },
+  "required": ["project", "features"],
+  "$defs": {
+    "category": {
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique category identifier" },
+        "name": { "type": "string", "description": "Human-readable name" },
+        "description": { "type": "string" },
+        "featureCount": { "type": "integer" }
+      },
+      "required": ["id", "name"]
+    },
+    "feature": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique feature identifier using dot notation (e.g., 'generation.field.regex')",
+          "pattern": "^[a-z][a-z0-9_]*(\\.[a-z][a-z0-9_]*)*$"
+        },
+        "name": {
+          "type": "string",
+          "description": "Human-readable feature name"
+        },
+        "category": {
+          "type": "string",
+          "description": "Category this feature belongs to"
+        },
+        "subcategory": {
+          "type": "string",
+          "description": "Subcategory for finer grouping"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["stable", "experimental", "deprecated", "planned"],
+          "description": "Implementation status"
+        },
+        "description": {
+          "type": "string",
+          "description": "Detailed description of the feature"
+        },
+        "useCases": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Common use cases for this feature"
+        },
+        "configuration": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/configOption" },
+          "description": "Configuration options that control this feature"
+        },
+        "sourceFiles": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/sourceFile" },
+          "description": "Source code locations implementing this feature"
+        },
+        "dependencies": {
+          "type": "object",
+          "properties": {
+            "features": {
+              "type": "array",
+              "items": { "type": "string" },
+              "description": "Other feature IDs this feature depends on"
+            },
+            "libraries": {
+              "type": "array",
+              "items": { "type": "string" },
+              "description": "External library dependencies"
+            }
+          }
+        },
+        "examples": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/example" },
+          "description": "Usage examples"
+        },
+        "relatedFeatures": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "IDs of related features"
+        },
+        "tags": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Searchable tags"
+        },
+        "limitations": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Known limitations"
+        },
+        "performanceNotes": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Performance considerations"
+        }
+      },
+      "required": ["id", "name", "category", "status", "description"]
+    },
+    "configOption": {
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "description": "Option name as used in configuration" },
+        "type": { "type": "string", "enum": ["boolean", "string", "integer", "long", "double", "enum", "array", "object", "any"] },
+        "required": { "type": "boolean", "default": false },
+        "default": { "description": "Default value" },
+        "description": { "type": "string" },
+        "validValues": { "type": "array", "items": {}, "description": "Valid values for enum types" },
+        "range": {
+          "type": "object",
+          "properties": {
+            "min": { "type": "number" },
+            "max": { "type": "number" }
+          }
+        },
+        "scope": {
+          "type": "string",
+          "enum": ["field", "step", "datasource", "plan", "global"],
+          "description": "Configuration scope level"
+        },
+        "yamlPath": { "type": "string", "description": "Path in YAML configuration" },
+        "envVar": { "type": "string", "description": "Environment variable name" },
+        "scalaConstant": { "type": "string", "description": "Scala constant name in source code" }
+      },
+      "required": ["name", "type", "description"]
+    },
+    "sourceFile": {
+      "type": "object",
+      "properties": {
+        "path": { "type": "string" },
+        "role": { "type": "string", "enum": ["primary", "supporting", "test", "example"] },
+        "classes": { "type": "array", "items": { "type": "string" } },
+        "methods": { "type": "array", "items": { "type": "string" } }
+      },
+      "required": ["path"]
+    },
+    "example": {
+      "type": "object",
+      "properties": {
+        "format": { "type": "string", "enum": ["yaml", "scala", "java", "json", "shell"] },
+        "title": { "type": "string" },
+        "code": { "type": "string" },
+        "description": { "type": "string" }
+      },
+      "required": ["format", "code"]
+    }
+  }
+}

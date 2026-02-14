@@ -220,14 +220,14 @@ python3 migrate_yaml.py plan.yaml --task-folder /path/to/tasks
 ```
 
 ### Issue: Unsupported field options
-**Solution**: Some advanced options may need manual adjustment. Check the [unified YAML schema](misc/schema/unified-config-schema.json) for supported options.
+**Solution**: Some advanced options may need manual adjustment. Check the [unified YAML schema](https://github.com/data-catering/data-caterer/blob/176baa3762ccdca05b024ccd2efcd6335359e713/misc/schema/unified-config-schema.json) for supported options.
 
 ### Issue: Validation references
 **Solution**: Update validation `dataSourceName` to match the new data source names in the unified format.
 
 ## Getting Help
 
-- **Documentation**: See [Configuration Guide](docs/docs/configuration.md)
+- **Documentation**: See [Configuration Guide](../../docs/configuration.md)
 - **Examples**: Check `misc/schema/examples/` for unified YAML examples
 - **Issues**: Report migration problems at [GitHub Issues](https://github.com/data-catering/data-caterer/issues)
 
