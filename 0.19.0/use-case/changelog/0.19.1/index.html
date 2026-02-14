@@ -6,17 +6,17 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="Major YAML support enhancements with new YamlBuilder API, enhanced metadata processing, Java API improvements, and comprehensive end-to-end testing infrastructure.">
+        <meta name="description" content="Foreign key cardinality and nullability controls, Hadoop compatibility fix, and documentation improvements.">
       
       
       
-        <link rel="canonical" href="https://data.catering/0.19.0/use-case/changelog/0.17.0/">
+        <link rel="canonical" href="https://data.catering/0.19.0/use-case/changelog/0.19.1/">
       
       
-        <link rel="prev" href="../0.17.1/">
+        <link rel="prev" href="../../blog/shift-left-data-quality/">
       
       
-        <link rel="next" href="../0.16.11/">
+        <link rel="next" href="../0.19.0/">
       
       
         
@@ -27,7 +27,7 @@
     
     
       
-        <title>Data Caterer 0.17.0 release notes - Data Catering</title>
+        <title>Data Caterer 0.19.1 release notes - Data Catering</title>
       
     
     
@@ -98,17 +98,17 @@
     
   
 <meta property="og:type" content="website" />
-<meta property="og:title" content="Data Caterer 0.17.0 release notes - Data Catering" />
-<meta property="og:description" content="Major YAML support enhancements with new YamlBuilder API, enhanced metadata processing, Java API improvements, and comprehensive end-to-end testing infrastructure." />
-<meta property="og:image" content="https://data.catering/0.19.0/assets/images/social/use-case/changelog/0.17.0.png" />
+<meta property="og:title" content="Data Caterer 0.19.1 release notes - Data Catering" />
+<meta property="og:description" content="Foreign key cardinality and nullability controls, Hadoop compatibility fix, and documentation improvements." />
+<meta property="og:image" content="https://data.catering/0.19.0/assets/images/social/use-case/changelog/0.19.1.png" />
 <meta property="og:image:type" content="image/png" />
 <meta property="og:image:width" content="1200" />
 <meta property="og:image:height" content="630" />
-<meta property="og:url" content="https://data.catering/0.19.0/use-case/changelog/0.17.0/" />
+<meta property="og:url" content="https://data.catering/0.19.0/use-case/changelog/0.19.1/" />
 <meta property="twitter:card" content="summary_large_image" />
-<meta property="twitter:title" content="Data Caterer 0.17.0 release notes - Data Catering" />
-<meta property="twitter:description" content="Major YAML support enhancements with new YamlBuilder API, enhanced metadata processing, Java API improvements, and comprehensive end-to-end testing infrastructure." />
-<meta property="twitter:image" content="https://data.catering/0.19.0/assets/images/social/use-case/changelog/0.17.0.png" />
+<meta property="twitter:title" content="Data Caterer 0.19.1 release notes - Data Catering" />
+<meta property="twitter:description" content="Foreign key cardinality and nullability controls, Hadoop compatibility fix, and documentation improvements." />
+<meta property="twitter:image" content="https://data.catering/0.19.0/assets/images/social/use-case/changelog/0.19.1.png" />
 </head>
   
   
@@ -128,7 +128,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#0170" class="md-skip">
+        <a href="#0191" class="md-skip">
           Skip to content
         </a>
       
@@ -165,7 +165,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Data Caterer 0.17.0 release notes
+              Data Caterer 0.19.1 release notes
             
           </span>
         </div>
@@ -3159,10 +3159,37 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../0.19.1/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    0.19.1
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   
@@ -3178,6 +3205,59 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#foreign-key-enhancements" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Foreign Key Enhancements
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#bug-fixes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Bug Fixes
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#documentation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Documentation
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -3327,37 +3407,10 @@
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    0.17.0
-  
-
-    
-  </span>
-  
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../0.17.0/" class="md-nav__link">
         
   
   
@@ -3373,103 +3426,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#yaml-support-enhancements" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        YAML Support Enhancements
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#java-api-improvements" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Java API Improvements
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#ui-and-api-server-enhancements" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        UI and API Server Enhancements
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#core-engine-improvements" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Core Engine Improvements
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#testing-and-quality-assurance" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Testing and Quality Assurance
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#examples-and-configuration" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Examples and Configuration
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#documentation" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Documentation
-      
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -4307,7 +4263,7 @@
     
     
       <li class="md-path__item">
-        <a href="../0.19.1/" class="md-path__link">
+        <a href="./" class="md-path__link">
           
   <span class="md-ellipsis">
     Changelog
@@ -4332,57 +4288,34 @@
   
 
 
-<h1 id="0170">0.17.0</h1>
-<p>Deployed: 23-10-2025</p>
-<p>Latest features and fixes for Data Catering include major enhancements to YAML support, Java API improvements, and expanded testing infrastructure.</p>
-<h2 id="yaml-support-enhancements">YAML Support Enhancements</h2>
+<h1 id="0191">0.19.1</h1>
+<p>Deployed: 14-02-2026</p>
+<p>Foreign key relationships get cardinality, generation modes, and nullability controls, plus a Hadoop compatibility fix and documentation cleanup.</p>
+<h2 id="foreign-key-enhancements">Foreign Key Enhancements</h2>
 <ul>
-<li>
-<p><strong>YAML Metadata Source</strong>: Reference YAML field definitions across data sources with <code>metadataSource.yamlTask()</code> for reusable step libraries and DRY configurations. <a href="../../../docs/guide/data-source/metadata/yaml-configurations/#yaml-metadata-source-programmatic-references">Docs</a></p>
-</li>
-<li>
-<p><strong>YamlBuilder API</strong>: Load and extend YAML plans/tasks programmatically with methods like <code>yaml.plan()</code>, <code>yaml.taskByFile()</code>, <code>yaml.stepByName()</code>, etc. Enables hybrid YAML + code approach. <a href="../../../docs/guide/data-source/metadata/yaml-configurations/">Docs</a></p>
-</li>
-<li>
-<p><strong>Enhanced Processing</strong>: Task/step filtering by name, improved type inference, better error handling, comprehensive test infrastructure</p>
-</li>
+<li><strong>Cardinality (one-to-many)</strong>: Configure fixed ratio or bounded min/max child records per parent for foreign key relationships
+  (<a href="../../../docs/generator/foreign-key/#cardinality-one-to-many">Cardinality docs</a>)</li>
+<li><strong>Generation modes</strong>: Control FK value validity with <code>all-exist</code>, <code>partial</code>, and <code>all-combinations</code> modes for testing referential integrity scenarios
+  (<a href="../../../docs/generator/foreign-key/#generation-modes">Generation modes docs</a>)</li>
+<li><strong>Nullability</strong>: Configure percentage of null FK values with <code>random</code>, <code>head</code>, or <code>tail</code> strategies
+  (<a href="../../../docs/generator/foreign-key/#nullability">Nullability docs</a>)</li>
+<li><strong>Deterministic generation</strong>: Seed support for reproducible FK assignment, nullability selection, and cardinality distribution
+  (<a href="../../../docs/generator/foreign-key/#deterministic-generation-with-seed">Seed docs</a>)</li>
+<li><strong>Configuration reference</strong>: Complete reference table for all foreign key target, cardinality, and nullability options
+  (<a href="../../../docs/generator/foreign-key/#configuration-reference">Reference docs</a>)</li>
 </ul>
-<h2 id="java-api-improvements">Java API Improvements</h2>
+<h2 id="bug-fixes">Bug Fixes</h2>
 <ul>
-<li><strong>WeightedValue Class</strong>: <code>WeightedValue.of(value, weight)</code> for type-safe weighted field generation in Java</li>
-<li><strong>Enhanced Integration</strong>: Better Java-Scala interoperability, improved type safety, enhanced method signatures</li>
-</ul>
-<h2 id="ui-and-api-server-enhancements">UI and API Server Enhancements</h2>
-<ul>
-<li><strong>Sample Generation Endpoints</strong>: New REST endpoints for generating sample data from plans/tasks/steps with <code>fastMode</code> (45-58% faster) and raw data responses</li>
-<li><strong>Plan Execution Endpoints</strong>: Execute plans/tasks/steps by name with filtering (<code>POST /run/plans/{planName}/tasks/{taskName}/steps/{stepName}</code>)</li>
-<li><strong>FastSampleGenerator</strong>: Multi-schema support, improved error handling, content-type negotiation for JSON/CSV/Parquet</li>
-<li><strong>PlanRepository</strong>: YAML plan loading with task/step filtering</li>
-</ul>
-<h2 id="core-engine-improvements">Core Engine Improvements</h2>
-<ul>
-<li><strong>YamlDataSourceMetadata</strong>: Refined type inference, nested structures support, validation extraction</li>
-<li><strong>PlanParser</strong>: Better error handling and validation for YAML</li>
-<li><strong>Data Generators</strong>: Optimized pipeline, enhanced sample generation, improved memory management</li>
-<li><strong>SinkFactory</strong>: Single file consolidation, better error handling, cleanup improvements</li>
-</ul>
-<h2 id="testing-and-quality-assurance">Testing and Quality Assurance</h2>
-<ul>
-<li><strong>YAML Test Suite</strong>: <code>YamlBuilderTest</code>, <code>YamlMetadataSourceTest</code>, <code>YamlMetadataTest</code>, <code>YamlMetadataReferenceTest</code>, <code>YamlMetadataReuseTest</code></li>
-<li><strong>End-to-End Tests</strong>: <code>PlanApiEndToEndTest</code> (950+ lines) covering API endpoints, sample generation, plan execution with filtering</li>
-<li><strong>Java API Tests</strong>: <code>JavaApiImprovementsTest</code> for WeightedValue and Java-Scala compatibility</li>
-</ul>
-<h2 id="examples-and-configuration">Examples and Configuration</h2>
-<ul>
-<li><strong>Example Plans</strong>: <code>YamlEnvironmentSpecificPlan</code>, <code>YamlPlanWithExtensionsPlan</code>, <code>YamlReferenceExamplePlan</code>, <code>YamlSchemaMultipleOutputsPlan</code>, <code>YamlTaskWithOverridesPlan</code>, <code>YamlWithForeignKeysPlan</code>, <code>YamlWithValidationsPlan</code>, <code>YamlMetadataReuseMultipleOutputs</code> (Java/Scala), <code>DynamicCompanyPaymentsPlan</code></li>
-<li><strong>Constants</strong>: New YAML constants (<code>YAML_PLAN_FILE</code>, <code>YAML_TASK_FILE</code>, <code>YAML_STEP_NAME</code>, <code>YAML_TASK_NAME</code>)</li>
-<li><strong>Configuration</strong>: Enhanced YAML integration with application settings, connection merging</li>
+<li><strong>Hadoop service file merging</strong>: Added <code>mergeServiceFiles()</code> to shadow JAR build to resolve Hadoop filesystem provider conflicts</li>
+<li><strong>Step format inference</strong>: Automatically set the <code>format</code> option from step <code>type</code> when not explicitly provided, fixing issues with YAML-configured file data sources</li>
+<li><strong>Logging improvements</strong>: Reduced noisy <code>ForeignKeyUniquenessProcessor</code> log from INFO to DEBUG; added task names to post-processor log output</li>
 </ul>
 <h2 id="documentation">Documentation</h2>
 <ul>
-<li><strong>YAML Guide</strong>: <a href="../../../docs/guide/data-source/metadata/yaml-configurations/">Comprehensive YAML configurations guide</a> with examples, best practices, migration patterns</li>
-<li><strong>REST API</strong>: Enhanced endpoint documentation with curl/wget examples, fast mode benchmarks, content-type handling</li>
-<li><strong>Version Updates</strong>: Docker images and quick-start guides updated to 0.17.0</li>
+<li><strong>Foreign key documentation</strong>: Comprehensive rewrite with visual diagrams, code examples in Java/Scala/YAML, and a full configuration reference</li>
+<li><strong>Broken link fixes</strong>: Fixed invalid anchor links across changelogs and documentation pages</li>
+<li><strong>Data Caterer YAML metadata source</strong>: Added to mkdocs navigation</li>
+<li><strong>Version bump</strong>: Updated Docker image references, quick-start guide, and example Dockerfile to 0.19.1</li>
 </ul>
 
 
@@ -4426,7 +4359,7 @@
       <nav class="md-footer__inner md-grid" aria-label="Footer" >
         
           
-          <a href="../0.17.1/" class="md-footer__link md-footer__link--prev" aria-label="Previous: 0.17.1">
+          <a href="../../blog/shift-left-data-quality/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Shift Left Data Quality">
             <div class="md-footer__button md-icon">
               
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
@@ -4436,20 +4369,20 @@
                 Previous
               </span>
               <div class="md-ellipsis">
-                0.17.1
+                Shift Left Data Quality
               </div>
             </div>
           </a>
         
         
           
-          <a href="../0.16.11/" class="md-footer__link md-footer__link--next" aria-label="Next: 0.16.11">
+          <a href="../0.19.0/" class="md-footer__link md-footer__link--next" aria-label="Next: 0.19.0">
             <div class="md-footer__title">
               <span class="md-footer__direction">
                 Next
               </span>
               <div class="md-ellipsis">
-                0.16.11
+                0.19.0
               </div>
             </div>
             <div class="md-footer__button md-icon">
