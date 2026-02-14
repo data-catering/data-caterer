@@ -289,7 +289,8 @@ object Constants {
     "spark.hadoop.fs.hdfs.impl" -> "org.apache.hadoop.hdfs.DistributedFileSystem",
     "spark.hadoop.fs.file.impl" -> "com.globalmentor.apache.hadoop.fs.BareLocalFileSystem",
     "spark.sql.extensions" -> "io.delta.sql.DeltaSparkSessionExtension,org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions",
-    "spark.metrics.executorMetricsSource.enabled" -> "false"
+    "spark.metrics.executorMetricsSource.enabled" -> "false",
+    "spark.executor.processTreeMetrics.enabled" -> "false"
   )
 
   //jdbc defaults

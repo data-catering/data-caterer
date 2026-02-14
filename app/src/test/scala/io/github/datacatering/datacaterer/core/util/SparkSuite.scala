@@ -12,7 +12,7 @@ trait SparkSuite extends AnyFunSuite with BeforeAndAfterAll with BeforeAndAfterE
       .appName("spark tests")
       .config("spark.sql.legacy.allowUntypedScalaUDF", "true")
       .config("spark.sql.shuffle.partitions", "2")
-//      .config("spark.ui.enabled", "false")
+      .config("spark.ui.enabled", "false")
       .config("spark.sql.extensions", "org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions,io.delta.sql.DeltaSparkSessionExtension")
       .config("spark.metrics.executorMetricsSource.enabled", "false")
       .getOrCreate()
