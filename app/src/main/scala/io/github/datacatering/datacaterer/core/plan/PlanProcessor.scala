@@ -1,7 +1,7 @@
 package io.github.datacatering.datacaterer.core.plan
 
 import io.github.datacatering.datacaterer.api.PlanRun
-import io.github.datacatering.datacaterer.api.model.Constants.{DATA_CATERER_INTERFACE_JAVA, DATA_CATERER_INTERFACE_SCALA, DATA_CATERER_INTERFACE_YAML, PLAN_CLASS, PLAN_STAGE_EXTRACT_METADATA, PLAN_STAGE_PARSE_PLAN}
+import io.github.datacatering.datacaterer.api.model.Constants.{DATA_CATERER_INTERFACE_JAVA, DATA_CATERER_INTERFACE_SCALA, DATA_CATERER_INTERFACE_YAML, DEFAULT_STEP_TYPE, FORMAT, PLAN_CLASS, PLAN_STAGE_EXTRACT_METADATA, PLAN_STAGE_PARSE_PLAN}
 import io.github.datacatering.datacaterer.api.model.{DataCatererConfiguration, Plan, Task, ValidationConfiguration}
 import io.github.datacatering.datacaterer.core.activity.{PlanRunPostPlanProcessor, PlanRunPrePlanProcessor}
 import io.github.datacatering.datacaterer.core.config.ConfigParser
@@ -118,7 +118,7 @@ object PlanProcessor {
         basePlan, baseTasks, baseValidations, dataCatererConfiguration, resolvedInterface
       )
 
-      LOGGER.info(s"After pre-processors: num-tasks=${finalTasks.size}")
+      LOGGER.info(s"After pre-processors: num-tasks=${finalTasks.size}, task-names=${finalTasks.map(_.name).mkString(", ")}")
 
       // Step 4: Generate data with the final modified plan/tasks
       val dataGeneratorProcessor = new DataGeneratorProcessor(dataCatererConfiguration)
@@ -358,7 +358,13 @@ class YamlPlanRun(
 
     // Merge connection config into each step's options (connection config as base, step options override)
     val stepsWithConnectionConfig = task.steps.map(step => {
-      step.copy(options = connectionConfig ++ step.options)
+      val mergedOptions = connectionConfig ++ step.options
+      val optionsWithFormat = if (!mergedOptions.contains(FORMAT) && step.`type` != DEFAULT_STEP_TYPE) {
+        mergedOptions + (FORMAT -> step.`type`)
+      } else {
+        mergedOptions
+      }
+      step.copy(options = optionsWithFormat)
     })
 
     task.copy(steps = stepsWithConnectionConfig)
@@ -386,7 +392,13 @@ class UnifiedPlanRun(
     val connectionConfig = dataCatererConfig.connectionConfigByName.getOrElse(dataSourceName, Map())
 
     val stepsWithConnectionConfig = task.steps.map(step => {
-      step.copy(options = connectionConfig ++ step.options)
+      val mergedOptions = connectionConfig ++ step.options
+      val optionsWithFormat = if (!mergedOptions.contains(FORMAT) && step.`type` != DEFAULT_STEP_TYPE) {
+        mergedOptions + (FORMAT -> step.`type`)
+      } else {
+        mergedOptions
+      }
+      step.copy(options = optionsWithFormat)
     })
 
     task.copy(steps = stepsWithConnectionConfig)

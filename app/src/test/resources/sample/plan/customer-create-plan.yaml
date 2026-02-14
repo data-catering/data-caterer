@@ -15,4 +15,7 @@ tasks:
     enabled: false
   - name: "json_schema_file"
     dataSourceName: "json"
+    enabled: false
+  - name: "csv_transaction_file"
+    dataSourceName: "csv"
     enabled: true

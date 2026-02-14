@@ -40,7 +40,7 @@ class ForeignKeyUniquenessProcessor(val dataCatererConfiguration: DataCatererCon
                       validations: List[ValidationConfiguration]
                     ): (Plan, List[Task], List[ValidationConfiguration]) = {
 
-    LOGGER.info("ForeignKeyUniquenessProcessor starting...")
+    LOGGER.debug("ForeignKeyUniquenessProcessor starting...")
 
     // Extract foreign keys from plan's sink options
     val foreignKeys = plan.sinkOptions.map(_.foreignKeys).getOrElse(List())

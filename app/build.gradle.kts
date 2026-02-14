@@ -543,6 +543,7 @@ tasks.shadowJar {
     val newTransformer = com.github.jengelman.gradle.plugins.shadow.transformers.AppendingTransformer()
     newTransformer.resource = "reference.conf"
     transformers.add(newTransformer)
+    mergeServiceFiles()
 }
 
 // Configure Scoverage only when it's applied (configuration cache disabled)

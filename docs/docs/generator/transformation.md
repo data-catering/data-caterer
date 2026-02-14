@@ -754,7 +754,7 @@ When you configure a transformation on a step, it will be applied when generatin
 - Transformation options (from configuration) are passed to the transformer
 - Same transformer classes work for both full generation and sampling
 
-See the [API Documentation](../api.md#sample-generation) for more details on sample endpoints.
+See the [API Documentation](../api.md#sample-data-generation) for more details on sample endpoints.
 
 ## Example Transformers
 
