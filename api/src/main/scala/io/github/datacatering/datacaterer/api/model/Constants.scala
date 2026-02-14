@@ -288,7 +288,8 @@ object Constants {
     "spark.hadoop.fs.s3a.bucket.all.committer.magic.enabled" -> "true",
     "spark.hadoop.fs.hdfs.impl" -> "org.apache.hadoop.hdfs.DistributedFileSystem",
     "spark.hadoop.fs.file.impl" -> "com.globalmentor.apache.hadoop.fs.BareLocalFileSystem",
-    "spark.sql.extensions" -> "io.delta.sql.DeltaSparkSessionExtension,org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions"
+    "spark.sql.extensions" -> "io.delta.sql.DeltaSparkSessionExtension,org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions",
+    "spark.metrics.executorMetricsSource.enabled" -> "false"
   )
 
   //jdbc defaults
